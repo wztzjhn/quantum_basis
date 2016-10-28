@@ -1,5 +1,5 @@
 CXX       = icpc
-CPPFLAGS  = -O2 -std=c++11 -w3 -wd383,981 -isystem /usr/local/Cellar/boost/1.62.0/include
+CPPFLAGS  = -O0 -std=c++11 -w3 -wd383,981 -isystem /usr/local/Cellar/boost/1.62.0/include
 LIBS      =
 
 OBJS      = basis.o main.o
