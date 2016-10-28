@@ -1,0 +1,19 @@
+CXX       = g++
+CPPFLAGS  = -O2 -std=c++11 -Wall -Wextra -Wpadded -isystem /usr/local/Cellar/boost/1.61.0_1/include
+LIBS      = 
+
+OBJS      = basis.o main.o
+
+OPTS      = 
+
+EXEC      = ../bin/test.x
+
+
+all: $(OBJS)
+	$(CXX) $(OBJS) $(OPTS) $(LIBS) -o $(EXEC)
+
+%.o: %.cc
+	$(CXX) $(CPPFLAGS)  -c -o $@ $<
+
+clean:
+	$(RM) *.o
