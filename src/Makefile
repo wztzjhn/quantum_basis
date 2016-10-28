@@ -1,5 +1,5 @@
 CXX       = g++
-CPPFLAGS  = -O2 -std=c++11 -Wall -Wextra -Wpadded -isystem /usr/local/Cellar/boost/1.61.0_1/include
+CPPFLAGS  = -O2 -std=c++11 -Wall -Wextra -Wpadded -isystem /usr/local/Cellar/boost/1.62.0/include
 LIBS      = 
 
 OBJS      = basis.o main.o
