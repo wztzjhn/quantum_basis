@@ -6,20 +6,23 @@
 
 
 // ----------------- implementation of basis ------------------
-basis::basis(const int &n_sites, const int &dim_local_):
-             dim_local(dim_local_),
-             bits_per_site(static_cast<int>(ceil(log2(static_cast<double>(dim_local_)) - 1e-9))),
+basis::basis(const int &n_sites, const bool &fermion_, const int &dim_local_):
+             dim_local(static_cast<short>(dim_local_)),
+             bits_per_site(static_cast<short>(ceil(log2(static_cast<double>(dim_local_)) - 1e-9))),
+             fermion(fermion_),
              bits(static_cast<DBitSet::size_type>(n_sites * bits_per_site)) {};
 
 basis::basis(const int &n_sites, const std::string &s)
 {
     if (s == "spin-1/2") {
         dim_local = 2;
+        fermion = false;
         
     } else if (s == "spin-1") {
         dim_local = 3;
+        fermion = false;
     }
-    bits_per_site = static_cast<int>(ceil(log2(static_cast<double>(dim_local)) - 1e-9));
+    bits_per_site = static_cast<short>(ceil(log2(static_cast<double>(dim_local)) - 1e-9));
     bits = DBitSet(static_cast<DBitSet::size_type>(n_sites * bits_per_site));
 }
 
@@ -40,12 +43,6 @@ void basis::test() const
 
 
 // ----------------- implementation of mbasis ------------------
-mbasis::mbasis(const int &n_sites, std::initializer_list<int> lst)
-{
-    for (const auto &elem : lst) mbits.push_back(basis(n_sites, elem));
-    mbits.shrink_to_fit();
-}
-
 mbasis::mbasis(const int &n_sites, std::initializer_list<std::string> lst)
 {
     for (const auto &elem : lst) mbits.push_back(basis(n_sites, elem));

@@ -16,7 +16,7 @@ public:
     basis() = default;
     
     // constructor with total number of sites, and local dimension of Hilbert space
-    basis(const int &n_sites, const int &dim_local_);
+    basis(const int &n_sites, const bool &fermion_, const int &dim_local_);
     
     // constructor from total number of sites and a given name.
     // current choices:
@@ -29,8 +29,9 @@ public:
     void test() const;
 
 private:
-    int dim_local;
-    int bits_per_site;
+    short dim_local;
+    short bits_per_site;
+    bool fermion;
     DBitSet bits;
     
     
@@ -43,8 +44,7 @@ class mbasis {
 public:
     // default constructor
     mbasis() = default;
-    // construcutor with total number of sites, and local dimension (or name) of each orbital
-    mbasis(const int &n_sites, std::initializer_list<int> lst);
+    // construcutor with total number of sites, and name  of each orbital
     mbasis(const int &n_sites, std::initializer_list<std::string> lst);
     
     int total_sites() const;
@@ -58,6 +58,7 @@ private:
     
     
 };
+
 
 
 #endif

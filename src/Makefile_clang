@@ -1,8 +1,8 @@
 CXX       = clang++
-CPPFLAGS  = -O2 -std=c++11 -Weverything -Wno-c++98-compat-pedantic -Wno-c++98-compat -Wno-extra-semi -isystem /usr/local/Cellar/boost/1.62.0/include
+CPPFLAGS  = -g -O2 -std=c++11 -Weverything -Wno-c++98-compat-pedantic -Wno-c++98-compat -Wno-extra-semi -isystem /usr/local/Cellar/boost/1.62.0/include
 LIBS      =
 
-OBJS      = basis.o main.o
+OBJS      = operators.o basis.o main.o
 
 OPTS      = 
 
