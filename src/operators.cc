@@ -32,3 +32,6 @@ void opr<T>::test() const
 //Explicit instantiation, so the class definition can be put in this file
 template class opr<double>;
 template class opr<std::complex<double>>;
+
+template class mopr<double>;
+template class mopr<std::complex<double>>;

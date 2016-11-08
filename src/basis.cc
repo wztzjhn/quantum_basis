@@ -2,17 +2,18 @@
 #include <iostream>
 #include <cmath>
 #include <cassert>
+#include <utility>
 #include "basis.h"
 
 
 // ----------------- implementation of basis ------------------
-basis::basis(const int &n_sites, const bool &fermion_, const int &dim_local_):
+basis_elem::basis_elem(const int &n_sites, const bool &fermion_, const int &dim_local_):
              dim_local(static_cast<short>(dim_local_)),
              bits_per_site(static_cast<short>(ceil(log2(static_cast<double>(dim_local_)) - 1e-9))),
              fermion(fermion_),
              bits(static_cast<DBitSet::size_type>(n_sites * bits_per_site)) {};
 
-basis::basis(const int &n_sites, const std::string &s)
+basis_elem::basis_elem(const int &n_sites, const std::string &s)
 {
     if (s == "spin-1/2") {
         dim_local = 2;
@@ -26,30 +27,53 @@ basis::basis(const int &n_sites, const std::string &s)
     bits = DBitSet(static_cast<DBitSet::size_type>(n_sites * bits_per_site));
 }
 
-void basis::test() const
+basis_elem::basis_elem(const basis_elem &old):
+             dim_local(old.dim_local),
+             bits_per_site(old.bits_per_site),
+             fermion(old.fermion),
+             bits(old.bits) {};
+
+basis_elem::basis_elem(basis_elem &&old) noexcept :
+             dim_local(old.dim_local),
+             bits_per_site(old.bits_per_site),
+             fermion(old.fermion),
+             bits(std::move(old.bits)) {};
+
+basis_elem& basis_elem::operator=(basis_elem old)
 {
-    std::cout << "total sites(" << basis::total_sites()
-              << ") * bits per site(" << bits_per_site
-              << ") = size of bits(" << bits.size() << ")" << std::endl;
-    std::cout << "number of blocks: " << bits.num_blocks() << std::endl;
-    std::cout << "capacity: " << bits.capacity() << std::endl;
+    swap(*this, old);
+    return *this;
+}
+
+int basis_elem::total_sites() const
+{
+    if (bits_per_site > 0) {
+        return static_cast<int>(bits.size()) / bits_per_site;
+    } else {
+        return 0;
+    }
+}
+
+void basis_elem::prt() const
+{
+    std::cout << basis_elem::total_sites() << " sites * "
+              << bits_per_site << " bits/site = "
+              << bits.size() << " bits." << std::endl;
+    std::cout << "local Hibert space: " << basis_elem::dim_local << std::endl;
     std::cout << "number of bits on: " << bits.count() << std::endl;
-    std::cout << "sizeof int: " << sizeof(dim_local) << std::endl;
-    std::cout << "sizeof double: " << sizeof(0.3) << std::endl;
-    std::cout << bits.empty() << std::endl;
     std::cout << bits << std::endl;
 }
 
 
 
 // ----------------- implementation of mbasis ------------------
-mbasis::mbasis(const int &n_sites, std::initializer_list<std::string> lst)
+mbasis_elem::mbasis_elem(const int &n_sites, std::initializer_list<std::string> lst)
 {
-    for (const auto &elem : lst) mbits.push_back(basis(n_sites, elem));
+    for (const auto &elem : lst) mbits.push_back(basis_elem(n_sites, elem));
     mbits.shrink_to_fit();
 }
 
-int mbasis::total_sites() const
+int mbasis_elem::total_sites() const
 {
     assert(! mbits.empty());
     return mbits[0].total_sites();
@@ -57,8 +81,8 @@ int mbasis::total_sites() const
 
 
 
-void mbasis::test() const
+void mbasis_elem::test() const
 {
-    std::cout << "total sites: " << mbasis::total_sites() << std::endl;
+    std::cout << "total sites: " << mbasis_elem::total_sites() << std::endl;
     
 }
