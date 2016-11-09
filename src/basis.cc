@@ -27,24 +27,6 @@ basis_elem::basis_elem(const int &n_sites, const std::string &s)
     bits = DBitSet(static_cast<DBitSet::size_type>(n_sites * bits_per_site));
 }
 
-basis_elem::basis_elem(const basis_elem &old):
-             dim_local(old.dim_local),
-             bits_per_site(old.bits_per_site),
-             fermion(old.fermion),
-             bits(old.bits) {};
-
-basis_elem::basis_elem(basis_elem &&old) noexcept :
-             dim_local(old.dim_local),
-             bits_per_site(old.bits_per_site),
-             fermion(old.fermion),
-             bits(std::move(old.bits)) {};
-
-basis_elem& basis_elem::operator=(basis_elem old)
-{
-    swap(*this, old);
-    return *this;
-}
-
 int basis_elem::total_sites() const
 {
     if (bits_per_site > 0) {
@@ -64,19 +46,32 @@ void basis_elem::prt() const
     std::cout << bits << std::endl;
 }
 
+basis_elem& basis_elem::flip()
+{
+    bits.flip();
+    return *this;
+}
 
 
 // ----------------- implementation of mbasis ------------------
 mbasis_elem::mbasis_elem(const int &n_sites, std::initializer_list<std::string> lst)
 {
     for (const auto &elem : lst) mbits.push_back(basis_elem(n_sites, elem));
+    //std::cout << "size before shrink: " << mbits.capacity() << std::endl;
     mbits.shrink_to_fit();
+    //std::cout << "size after shrink: " << mbits.capacity() << std::endl;
 }
 
 int mbasis_elem::total_sites() const
 {
     assert(! mbits.empty());
     return mbits[0].total_sites();
+}
+
+int mbasis_elem::total_orbitals() const
+{
+    assert(! mbits.empty());
+    return static_cast<int>(mbits.size());
 }
 
 
