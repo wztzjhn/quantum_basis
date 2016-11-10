@@ -4,20 +4,34 @@
 #include <vector>
 #include <list>
 #include "basis.h"
+#define MKL_INT size_t
+#define MKL_Complex16 std::complex<double>
+#include "mkl.h"
 
 // ---------------- fundamental class for operators ------------------
 // an operator on a given site and orbital
 template <typename T> class opr {
 public:
+    // default constructor
     opr() = default;
+    
+    // constructor from diagonal elements
     opr(const int &site_, const int &orbital_, const bool &fermion_, const std::vector<T> &mat_);
+    
+    // constructor from a matrix
     opr(const int &site_, const int &orbital_, const bool &fermion_, const std::vector<std::vector<T>> &mat_);
     
-    void test() const;
+    
+    // destructor
+    ~opr() {delete [] mat; mat = nullptr;}
+    
+    void prt() const;
     
 private:
     int site;      // site No.
     int orbital;   // orbital No.
+    size_t m;      // number of rows of the matrix
+    size_t n;      // number of cols of the matrix
     bool fermion;  // fermion or not
     bool diagonal; // diagonal in matrix form
     T *mat;        // matrix form, or diagonal elements if diagonal

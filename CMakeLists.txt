@@ -33,6 +33,13 @@ endif()
 find_package(Boost 1.56.0 REQUIRED)
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 
+#MKL
+find_package(MKL)
+include_directories(SYSTEM ${MKL_INCLUDE_DIRS})
+#temporarily use this ugly way
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
+set(LIBS "-L${MKL_ROOT}/lib -Wl,-rpath,${MKL_ROOT}/lib -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl")
+
 # -- BUILD -------------------------------------------
 
 include_directories(src)

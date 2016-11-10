@@ -20,10 +20,21 @@ int main(){
     
     
     opr<double> phi(3,2,false,std::vector<double>(3,0.2));
-    phi.test();
+    phi.prt();
+    auto temp = std::vector<std::vector<double>>(2,std::vector<double>(3,0.4));
+    temp[0][1] = 0.5;
+    temp[0][2] = 0.6;
+    temp[1][0] = 0.7;
+    temp[1][1] = 0.8;
+    temp[1][2] = 0.9;
     
-    opr<double> phi2(6,1,false,std::vector<std::vector<double>>(3,std::vector<double>(3,0.4)));
-    phi2.test();
+    opr<double> phi2(6,1,false,temp);
+    phi2.prt();
+    
+    std::cout << std::endl;
+    //phi2.prt();
+    
+    
     
 }
 
