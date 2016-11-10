@@ -23,7 +23,7 @@ public:
     
     
     // destructor
-    ~opr() {delete [] mat; mat = nullptr;}
+    ~opr() {delete [] mat;}
     
     void prt() const;
     
