@@ -1,5 +1,5 @@
 CXX       = icpc
-CPPFLAGS  = -O3 -std=c++11 -w3 -wd383,981 -isystem /usr/local/Cellar/boost/1.62.0/include -isystem ${MKLROOT}/include
+CPPFLAGS  = -O3 -std=c++11 -w3 -wd383,981,11074,11076 -isystem /usr/local/Cellar/boost/1.62.0/include -isystem ${MKLROOT}/include
 LIBS      = -L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl
 
 OBJS      = operators.o basis.o main.o

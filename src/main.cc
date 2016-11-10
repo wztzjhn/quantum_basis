@@ -34,7 +34,32 @@ int main(){
     std::cout << std::endl;
     //phi2.prt();
     
+    std::cout << "swapping" << std::endl;
+    swap(phi, phi2);
+    phi.prt(); std::cout << std::endl;
+    phi2.prt(); std::cout << std::endl;
+    
+    std::cout << "testing copy constructor" << std::endl;
+    auto phi3(phi);
+    phi3.prt();
+    
+    std::cout << std::endl;
+    std::cout << "testing move constructor" << std::endl;
+    auto phi4(std::move(phi));
+    phi4.prt();
+    std::cout << "in phi:" << std::endl;
+    phi.prt();
+    
+    std::cout << std::endl;
+    std::cout << "testing copy assignment" << std::endl;
+    phi = phi3;
+    phi.prt();
     
     
+    std::cout << std::endl;
+    std::cout << "testing move assignment" << std::endl;
+    phi = std::move(phi3);
+    phi.prt();
+    phi3.prt();
 }
 

@@ -53,6 +53,16 @@ basis_elem& basis_elem::flip()
 }
 
 
+void swap(basis_elem &lhs, basis_elem &rhs)
+{
+    using std::swap;
+    swap(lhs.dim_local, rhs.dim_local);
+    swap(lhs.bits_per_site, rhs.bits_per_site);
+    swap(lhs.fermion, rhs.fermion);
+    lhs.bits.swap(rhs.bits);
+}
+
+
 // ----------------- implementation of mbasis ------------------
 mbasis_elem::mbasis_elem(const int &n_sites, std::initializer_list<std::string> lst)
 {
@@ -80,4 +90,19 @@ void mbasis_elem::test() const
 {
     std::cout << "total sites: " << mbasis_elem::total_sites() << std::endl;
     
+}
+
+void swap(mbasis_elem &lhs, mbasis_elem &rhs)
+{
+    using std::swap;
+    swap(lhs.mbits, rhs.mbits);
+}
+
+
+
+void swap(wavefunction &lhs, wavefunction &rhs)
+{
+    using std::swap;
+    swap(lhs.elements, rhs.elements);
+    swap(lhs.coeffs, rhs.coeffs);
 }

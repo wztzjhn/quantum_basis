@@ -56,14 +56,7 @@ private:
     DBitSet bits;
 };
 
-inline void swap(basis_elem &lhs, basis_elem &rhs)
-{
-    using std::swap;
-    swap(lhs.dim_local, rhs.dim_local);
-    swap(lhs.bits_per_site, rhs.bits_per_site);
-    swap(lhs.fermion, rhs.fermion);
-    lhs.bits.swap(rhs.bits);
-}
+
 
 
 // -------------- class for basis with several orbitals---------------
@@ -102,11 +95,7 @@ private:
     std::vector<basis_elem> mbits;
 };
 
-inline void swap(mbasis_elem &lhs, mbasis_elem &rhs)
-{
-    using std::swap;
-    swap(lhs.mbits, rhs.mbits);
-}
+
 
 
 // -------------- class for wave functions ---------------
@@ -140,11 +129,6 @@ private:
     std::vector<std::complex<double>> coeffs;
 };
 
-inline void swap(wavefunction &lhs, wavefunction &rhs)
-{
-    using std::swap;
-    swap(lhs.elements, rhs.elements);
-    swap(lhs.coeffs, rhs.coeffs);
-}
+
 
 #endif
