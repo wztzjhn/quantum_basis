@@ -1,15 +1,18 @@
 #include <iostream>
+#include <algorithm>
 #include "basis.h"
 #include "operators.h"
 
-
+// deal with zero operator
+// deal with operator normalization
 
 // ----------------- implementation of class opr (operator) ------------------
 template <typename T>
 opr<T>::opr(const int &site_, const int &orbital_, const bool &fermion_, const std::vector<T> &mat_):
             site(site_), orbital(orbital_), dim(mat_.size()), fermion(fermion_), diagonal(true)
 {
-    if (mat_.empty()) {
+    if (mat_.empty() ||
+        std::all_of(mat_.begin(), mat_.end(), [](const T &a){ return std::abs(a) < opr_precision; })) {
         mat = nullptr;
     } else {
         mat = new T[mat_.size()];
@@ -25,11 +28,22 @@ opr<T>::opr(const int &site_, const int &orbital_, const bool &fermion_, const s
     if (mat_.empty()) {
         mat = nullptr;
     } else {
-        mat = new T[dim * dim];
-        for (decltype(mat_.size()) j = 0; j < dim; j++) {
-            for (decltype(mat_.size()) i = 0; i < dim; i++) {
-                // column major order
-                mat[i + j * dim] = mat_[i][j];
+        bool qempty = 1;
+        for (auto &ele : mat_) {
+            if (std::any_of(ele.begin(), ele.end(), [](const T &a){ return std::abs(a) >= opr_precision; })) {
+                qempty = 0;
+                break;
+            }
+        }
+        if (qempty) {
+            mat = nullptr;
+        } else {
+            mat = new T[dim * dim];
+            for (decltype(mat_.size()) j = 0; j < dim; j++) {
+                for (decltype(mat_.size()) i = 0; i < dim; i++) {
+                    // column major order
+                    mat[i + j * dim] = mat_[i][j];
+                }
             }
         }
     }
@@ -57,18 +71,28 @@ opr<T>::opr(opr<T> &&old) noexcept :
 }
 
 template <typename T>
+opr<T> &opr<T>::negative()
+{
+    decltype(dim) sz = (mat == nullptr ? 0 : (diagonal ? dim : dim * dim));
+    for (decltype(sz) i = 0; i < sz; i++) mat[i] = -mat[i];
+    return *this;
+}
+
+template <typename T>
 opr<T> &opr<T>::operator+=(const opr<T> &rhs)
 {
-    assert(site == rhs.site &&
-           orbital == rhs.orbital &&
-           dim == rhs.dim &&
-           fermion == rhs.fermion);
+    if (rhs.mat == nullptr) return *this;
+    if (mat == nullptr) {
+        *this = rhs;
+        return *this;
+    }
+    assert(site == rhs.site && orbital == rhs.orbital && dim == rhs.dim && fermion == rhs.fermion);
     if (diagonal == rhs.diagonal) {
         auto sz = (diagonal ? dim : dim * dim);
         for (decltype(sz) i = 0; i < sz; i++) mat[i] += rhs.mat[i];
     } else if (rhs.diagonal) {
         for (decltype(dim) i = 0; i < dim; i++) mat[i + i * dim] += rhs.mat[i];
-    } else { // need enlarge the memory usage
+    } else {
         diagonal = false;
         T *mat_new = new T[dim * dim];
         for (decltype(dim) i = 0; i < dim * dim; i++) mat_new[i] = rhs.mat[i];  // copy from rhs
@@ -83,16 +107,19 @@ opr<T> &opr<T>::operator+=(const opr<T> &rhs)
 template <typename T>
 opr<T> &opr<T>::operator-=(const opr<T> &rhs)
 {
-    assert(site == rhs.site &&
-           orbital == rhs.orbital &&
-           dim == rhs.dim &&
-           fermion == rhs.fermion);
+    if (rhs.mat == nullptr) return *this;
+    if (mat == nullptr) {
+        *this = rhs;
+        this->negative();
+        return *this;
+    }
+    assert(site == rhs.site && orbital == rhs.orbital && dim == rhs.dim && fermion == rhs.fermion);
     if (diagonal == rhs.diagonal) {
         auto sz = (diagonal ? dim : dim * dim);
         for (decltype(sz) i = 0; i < sz; i++) mat[i] -= rhs.mat[i];
     } else if (rhs.diagonal) {
         for (decltype(dim) i = 0; i < dim; i++) mat[i + i * dim] -= rhs.mat[i];
-    } else { // need enlarge the memory usage
+    } else {
         diagonal = false;
         T *mat_new = new T[dim * dim];
         for (decltype(dim) i = 0; i < dim * dim; i++) mat_new[i] = -rhs.mat[i]; // copy from rhs
@@ -107,14 +134,15 @@ opr<T> &opr<T>::operator-=(const opr<T> &rhs)
 template <typename T>
 opr<T> &opr<T>::operator*=(const opr<T> &rhs)
 {
-    assert(site == rhs.site &&
-           orbital == rhs.orbital &&
-           dim == rhs.dim);
-    if (fermion == rhs.fermion) {
-        fermion = false;
-    } else {
-        fermion = true;
+    if (rhs.mat == nullptr || mat == nullptr) {
+        if (mat != nullptr) {
+            delete [] mat;
+            mat = nullptr;
+        }
+        return *this;
     }
+    assert(site == rhs.site && orbital == rhs.orbital && dim == rhs.dim);
+    fermion = (fermion == rhs.fermion ? false : true);
     if (diagonal && rhs.diagonal) {
         for (decltype(dim) i = 0; i < dim; i++) mat[i] *= rhs.mat[i];
     } else if ((! diagonal) && rhs.diagonal) {
@@ -142,10 +170,26 @@ opr<T> &opr<T>::operator*=(const opr<T> &rhs)
 }
 
 template <typename T>
+opr<T> &opr<T>::operator*=(const T &rhs)
+{
+    if (mat == nullptr || std::abs(rhs) < opr_precision) {
+        if (mat != nullptr) {
+            delete [] mat;
+            mat = nullptr;
+        }
+        return *this;
+    }
+    auto sz = (diagonal ? dim : dim * dim);
+    for (decltype(sz) i = 0; i < sz; i++) mat[i] *= rhs;
+    return *this;
+}
+
+template <typename T>
 void opr<T>::prt() const
 {
     std::cout << "operator (" << site << "," << orbital << "), "
               << dim << " x " << dim << ":" << std::endl;
+    if (fermion) std::cout << "fermion" << std::endl;
     if (mat != nullptr) {
         if (diagonal) {
             for (decltype(dim) i = 0; i < dim; i++) std::cout << mat[i] << " ";
@@ -162,6 +206,8 @@ void opr<T>::prt() const
             }
             
         }
+    } else {
+        std::cout << "zero operator!" << std::endl;
     }
 }
 
@@ -181,13 +227,16 @@ void swap(opr<T> &lhs, opr<T> &rhs)
 template <typename T>
 bool operator==(const opr<T> &lhs, const opr<T> &rhs)
 {
-    if (lhs.site == rhs.site &&
-        lhs.orbital == rhs.orbital &&
-        lhs.dim == rhs.dim &&
-        lhs.fermion == rhs.fermion) {
+    if (lhs.mat == nullptr && rhs.mat == nullptr) {
+        return true;
+    } else if (lhs.mat == nullptr || rhs.mat == nullptr) {
+        return false;
+    }
+    // 你有酒哥有花生米，咱坐下唠唠
+    if (lhs.site == rhs.site && lhs.orbital == rhs.orbital &&
+        lhs.dim == rhs.dim && lhs.fermion == rhs.fermion) {
         auto m = lhs.dim;
         if (m == 0) return true;
-        assert(lhs.mat != nullptr && rhs.mat != nullptr);
         if (lhs.diagonal == rhs.diagonal) { // both diagonal or both not
             auto sz = (lhs.diagonal ? m : m * m);
             for (decltype(sz) i = 0; i < sz; i++)
@@ -250,22 +299,61 @@ opr<T> operator*(const opr<T> &lhs, const opr<T> &rhs)
     return prod;
 }
 
+template <typename T>
+opr<T> operator*(const T &lhs, const opr<T> &rhs)
+{
+    opr<T> prod = rhs;
+    prod *= lhs;
+    return prod;
+}
+
+template <typename T>
+opr<T> operator*(const opr<T> &lhs, const T &rhs)
+{
+    opr<T> prod = lhs;
+    prod *= rhs;
+    return prod;
+}
+
+// ----------------- implementation of class mopr ------------------------
+
+template <typename T>
+void swap(mopr<T> &lhs, mopr<T> &rhs)
+{
+    using std::swap;
+    swap(lhs.mats, rhs.mats);
+}
+
 //Explicit instantiation, so the class definition can be put in this file
 template class opr<double>;
 template class opr<std::complex<double>>;
 
 template void swap(opr<double>&, opr<double>&);
 template void swap(opr<std::complex<double>>&, opr<std::complex<double>>&);
+
 template bool operator==(const opr<double>&, const opr<double>&);
 template bool operator==(const opr<std::complex<double>>&, const opr<std::complex<double>>&);
+
 template bool operator!=(const opr<double>&, const opr<double>&);
 template bool operator!=(const opr<std::complex<double>>&, const opr<std::complex<double>>&);
+
 template opr<double> operator+(const opr<double>&, const opr<double>&);
 template opr<std::complex<double>> operator+(const opr<std::complex<double>>&, const opr<std::complex<double>>&);
+
 template opr<double> operator-(const opr<double>&, const opr<double>&);
 template opr<std::complex<double>> operator-(const opr<std::complex<double>>&, const opr<std::complex<double>>&);
+
 template opr<double> operator*(const opr<double>&, const opr<double>&);
 template opr<std::complex<double>> operator*(const opr<std::complex<double>>&, const opr<std::complex<double>>&);
 
+template opr<double> operator*(const double&, const opr<double>&);
+template opr<std::complex<double>> operator*(const std::complex<double>&, const opr<std::complex<double>>&);
+
+template opr<double> operator*(const opr<double>&, const double&);
+template opr<std::complex<double>> operator*(const opr<std::complex<double>>&, const std::complex<double>&);
+
 template class mopr<double>;
 template class mopr<std::complex<double>>;
+
+template void swap(mopr<double>&, mopr<double>&);
+template void swap(mopr<std::complex<double>>&, mopr<std::complex<double>>&);

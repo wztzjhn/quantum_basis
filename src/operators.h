@@ -7,10 +7,7 @@
 #include "mkl_interface.h"
 
 
-const double opr_precision = 1e-9; // used as the threshold value in comparison
-
-// ---------------- fundamental class for operators ------------------
-// an operator on a given site and orbital
+const double opr_precision = 1e-12; // used as the threshold value in comparison
 
 // forward declarations
 template <typename> class opr;
@@ -20,7 +17,18 @@ template <typename T> bool operator!=(const opr<T>&, const opr<T>&);
 template <typename T> opr<T> operator+(const opr<T>&, const opr<T>&);
 template <typename T> opr<T> operator-(const opr<T>&, const opr<T>&);
 template <typename T> opr<T> operator*(const opr<T>&, const opr<T>&);
+template <typename T> opr<T> operator*(const T&, const opr<T>&);
+template <typename T> opr<T> operator*(const opr<T>&, const T&);
 
+template <typename> class mopr;
+template <typename T> void swap(mopr<T>&, mopr<T>&);
+
+
+// note:
+// zero operator: mat==nullptr
+
+// ---------------- fundamental class for operators ------------------
+// an operator on a given site and orbital
 template <typename T> class opr {
     friend void swap <> (opr<T>&, opr<T>&);
     friend bool operator== <> (const opr<T>&, const opr<T>&);
@@ -28,6 +36,9 @@ template <typename T> class opr {
     friend opr<T> operator+ <> (const opr<T>&, const opr<T>&);
     friend opr<T> operator- <> (const opr<T>&, const opr<T>&);
     friend opr<T> operator* <> (const opr<T>&, const opr<T>&);
+    friend opr<T> operator* <> (const T&, const opr<T>&);
+    friend opr<T> operator* <> (const opr<T>&, const T&);
+    
 public:
     // default constructor
     opr() = default;
@@ -51,13 +62,18 @@ public:
         return *this;
     }
     
+    // invert the sign
+    opr& negative();
+    
     // compound assignment operators
     opr& operator+=(const opr<T> &rhs);
     opr& operator-=(const opr<T> &rhs);
     opr& operator*=(const opr<T> &rhs);
+    opr& operator*=(const T &rhs);
     
     // destructor
     ~opr() {if(mat != nullptr) delete [] mat;}
+    
     
     
     
@@ -80,7 +96,34 @@ private:
 // I sacrificed the efficiency by assuming all matrices in this class have the same type, think later how we can improve
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 template <typename T> class mopr {
+    friend void swap <> (mopr<T>&, mopr<T>&);
 public:
+    // default constructor
+    mopr() = default;
+    
+    // constructor from one fundamental operator
+    mopr(const opr<T> &ele): mats(std::list<std::list<opr<T>>>(1,std::list<opr<T>>(1,ele))) {}
+    
+    // copy constructor
+    mopr(const mopr<T> &old): mats(old.mats) {}
+    
+    // move constructor
+    mopr(mopr<T> &&old) noexcept : mats(std::move(old.mats)) {}
+    
+    // copy assignment constructor and move assignment constructor, using "swap and copy"
+    mopr& operator=(mopr<T> old)
+    {
+        swap(*this, old);
+        return *this;
+    }
+    
+    // compound assignment operators
+    mopr& operator+=(const opr<T> &rhs);
+    mopr& operator+=(const mopr<T> &rhs);
+    
+    // destructor
+    ~mopr() {}
+    
     
 private:
     // the outer list represents the sum of operators

@@ -128,5 +128,11 @@ void test_operator(){
     gamma.prt();
     std::cout << std::endl;
     
+    std::vector<opr<std::complex<double>>> kkk(5, std::move(psi));
+    kkk[0].prt();
+    kkk[1].prt();
+    kkk[2].prt();
+    
+    
     
 }
