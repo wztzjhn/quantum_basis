@@ -7,15 +7,27 @@
 #include "mkl_interface.h"
 
 
+const double opr_precision = 1e-9; // used as the threshold value in comparison
+
 // ---------------- fundamental class for operators ------------------
 // an operator on a given site and orbital
 
-// declare friends before use
+// forward declarations
 template <typename> class opr;
 template <typename T> void swap(opr<T>&, opr<T>&); // which by itself is just a template function
+template <typename T> bool operator==(const opr<T>&, const opr<T>&);
+template <typename T> bool operator!=(const opr<T>&, const opr<T>&);
+template <typename T> opr<T> operator+(const opr<T>&, const opr<T>&);
+template <typename T> opr<T> operator-(const opr<T>&, const opr<T>&);
+template <typename T> opr<T> operator*(const opr<T>&, const opr<T>&);
 
 template <typename T> class opr {
     friend void swap <> (opr<T>&, opr<T>&);
+    friend bool operator== <> (const opr<T>&, const opr<T>&);
+    friend bool operator!= <> (const opr<T>&, const opr<T>&);
+    friend opr<T> operator+ <> (const opr<T>&, const opr<T>&);
+    friend opr<T> operator- <> (const opr<T>&, const opr<T>&);
+    friend opr<T> operator* <> (const opr<T>&, const opr<T>&);
 public:
     // default constructor
     opr() = default;
@@ -39,16 +51,22 @@ public:
         return *this;
     }
     
+    // compound assignment operators
+    opr& operator+=(const opr<T> &rhs);
+    opr& operator-=(const opr<T> &rhs);
+    opr& operator*=(const opr<T> &rhs);
+    
     // destructor
     ~opr() {if(mat != nullptr) delete [] mat;}
+    
+    
     
     void prt() const;
     
 private:
     int site;      // site No.
     int orbital;   // orbital No.
-    size_t m;      // number of rows of the matrix
-    size_t n;      // number of cols of the matrix
+    size_t dim;    // number of rows(columns) of the matrix
     bool fermion;  // fermion or not
     bool diagonal; // diagonal in matrix form
     T *mat;        // matrix form, or diagonal elements if diagonal
