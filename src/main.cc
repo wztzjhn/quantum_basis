@@ -128,11 +128,40 @@ void test_operator(){
     gamma.prt();
     std::cout << std::endl;
     
-    std::vector<opr<std::complex<double>>> kkk(5, std::move(psi));
+    std::vector<opr<std::complex<double>>> kkk(5, psi);
     kkk[0].prt();
     kkk[1].prt();
     kkk[2].prt();
     
+    kkk[2].negative();
+    kkk[2].prt();
+    kkk[2] *= 0.0;
+    kkk[2].prt();
+    auto ttst = kkk[0] * kkk[1];
+    ttst.prt();
     
+    std::cout << std::endl;
+    chi.prt();
+    psi.prt();
+    kkk[0] = chi  - chi;
+    kkk[0].prt();
+    kkk[0].simplify();
+    kkk[0].prt();
+    std::cout << std::endl;
+    
+    double prefactor;
+    kkk[0] = normalize(psi, prefactor);
+    kkk[0].prt();
+    std::cout << "prefactor = " << prefactor << std::endl;
+    std::cout << "norm^2 now = " << kkk[0].norm() * kkk[0].norm() << std::endl;
+    std::cout << std::endl;
+    
+    std::vector<std::vector<std::complex<double>>> vec_pauli = {{0, std::complex<double>(0,-1)}, {std::complex<double>(0,1), 0}};
+    opr<std::complex<double>> pauli(5, 2, false, vec_pauli);
+    pauli.prt();
+    std::cout << "pauli.norm = " << pauli.norm() << std::endl;
+    auto pauli_new = normalize(pauli, prefactor);
+    std::cout << "prefactor = " << prefactor << std::endl;
+    std::cout << "norm now = " << pauli_new.norm() << std::endl;
     
 }

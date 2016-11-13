@@ -71,10 +71,69 @@ opr<T>::opr(opr<T> &&old) noexcept :
 }
 
 template <typename T>
+double opr<T>::norm()
+{
+    if (mat == nullptr) {
+        return 0.0;
+    } else {
+        decltype(dim) n = diagonal ? dim : dim * dim;
+        return nrm2(n, mat, 1);
+    }
+}
+
+template <typename T>
 opr<T> &opr<T>::negative()
 {
     decltype(dim) sz = (mat == nullptr ? 0 : (diagonal ? dim : dim * dim));
     for (decltype(sz) i = 0; i < sz; i++) mat[i] = -mat[i];
+    return *this;
+}
+
+template <typename T>
+opr<T> &opr<T>::simplify()
+{
+    if (mat == nullptr) return *this;
+    if (! diagonal) {
+        diagonal = true; // until found false
+        for (decltype(dim) j = 0; j < dim; j++) {
+            for (decltype(dim) i = 0; i < dim; i++) {
+                if (i != j && std::abs(mat[j + i * dim]) > opr_precision) {
+                    diagonal = false;
+                    break;
+                }
+            }
+        }
+        if(! diagonal) return *this; // nothing to simplify
+        bool zero = true; // until found false
+        for (decltype(dim) j = 0; j < dim; j++) {
+            if (std::abs(mat[j + j * dim]) > opr_precision) {
+                zero = false;
+                break;
+            }
+        }
+        if (zero) { // found zero operator
+            delete [] mat;
+            mat = nullptr;
+        } else {    // found diagonal operator
+            T* mat_new = new T[dim];
+            for (decltype(dim) j = 0; j < dim; j++) mat_new[j] = mat[j + j * dim];
+            using std::swap;
+            swap(mat, mat_new);
+            delete [] mat_new;
+        }
+    } else {
+        bool zero = true; // until found false
+        for (decltype(dim) j = 0; j < dim; j++) {
+            if (std::abs(mat[j]) > opr_precision) {
+                zero = false;
+                break;
+            }
+        }
+        if (zero) {
+            delete [] mat;
+            mat = nullptr;
+        }
+    }
     return *this;
 }
 
@@ -194,9 +253,6 @@ void opr<T>::prt() const
         if (diagonal) {
             for (decltype(dim) i = 0; i < dim; i++) std::cout << mat[i] << " ";
             std::cout << std::endl;
-            size_t xx = 1;
-            std::cout << "testing dasum: " << DASUM(&dim, (double*)mat, &xx);
-            std::cout << std::endl;
         } else {
             for (decltype(dim) i = 0; i < dim; i++) {
                 for (decltype(dim) j = 0; j < dim; j++) {
@@ -209,6 +265,7 @@ void opr<T>::prt() const
     } else {
         std::cout << "zero operator!" << std::endl;
     }
+    std::cout << std::endl;
 }
 
 template <typename T>
@@ -315,6 +372,24 @@ opr<T> operator*(const opr<T> &lhs, const T &rhs)
     return prod;
 }
 
+template <typename T>
+opr<T> normalize(const opr<T> &old, double &prefactor)
+{
+    opr<T> temp = old;
+    temp.simplify();
+    if (temp.mat == nullptr) {
+        prefactor = 0.0;
+    } else {
+        double norm = temp.norm();
+        assert(norm > opr_precision);
+        decltype(temp.dim) n = temp.diagonal ? temp.dim : temp.dim * temp.dim;
+        prefactor = norm / sqrt(static_cast<double>(temp.dim));
+        double preinv = 1.0 / prefactor;
+        for (decltype(n) j = 0; j < n; j++) temp.mat[j] *= preinv;
+    }
+    return temp;
+}
+
 // ----------------- implementation of class mopr ------------------------
 
 template <typename T>
@@ -351,6 +426,9 @@ template opr<std::complex<double>> operator*(const std::complex<double>&, const 
 
 template opr<double> operator*(const opr<double>&, const double&);
 template opr<std::complex<double>> operator*(const opr<std::complex<double>>&, const std::complex<double>&);
+
+template opr<double> normalize(const opr<double>&, double&);
+template opr<std::complex<double>> normalize(const opr<std::complex<double>>&, double&);
 
 template class mopr<double>;
 template class mopr<std::complex<double>>;

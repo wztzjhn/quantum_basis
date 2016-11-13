@@ -19,6 +19,7 @@ template <typename T> opr<T> operator-(const opr<T>&, const opr<T>&);
 template <typename T> opr<T> operator*(const opr<T>&, const opr<T>&);
 template <typename T> opr<T> operator*(const T&, const opr<T>&);
 template <typename T> opr<T> operator*(const opr<T>&, const T&);
+template <typename T> opr<T> normalize(const opr<T>&, double&); // sum_{i,j} mat[i,j]^2 == dim
 
 template <typename> class mopr;
 template <typename T> void swap(mopr<T>&, mopr<T>&);
@@ -38,6 +39,7 @@ template <typename T> class opr {
     friend opr<T> operator* <> (const opr<T>&, const opr<T>&);
     friend opr<T> operator* <> (const T&, const opr<T>&);
     friend opr<T> operator* <> (const opr<T>&, const T&);
+    friend opr<T> normalize <> (const opr<T>&, double&);
     
 public:
     // default constructor
@@ -62,9 +64,16 @@ public:
         return *this;
     }
     
+    // \sqrt { sum_{i,j} |mat[i,j]|^2 }
+    double norm();
+    
     // invert the sign
     opr& negative();
     
+    // simplify the structure if possible
+    opr& simplify();
+    
+
     // compound assignment operators
     opr& operator+=(const opr<T> &rhs);
     opr& operator-=(const opr<T> &rhs);
