@@ -19,7 +19,8 @@ template <typename T> opr<T> operator-(const opr<T>&, const opr<T>&);
 template <typename T> opr<T> operator*(const opr<T>&, const opr<T>&);
 template <typename T> opr<T> operator*(const T&, const opr<T>&);
 template <typename T> opr<T> operator*(const opr<T>&, const T&);
-template <typename T> opr<T> normalize(const opr<T>&, double&); // sum_{i,j} mat[i,j]^2 == dim
+// sum_{i,j} mat[i,j]^2 == dim; and also require the 1st nonzero element (in memory) to be real positive
+template <typename T> opr<T> normalize(const opr<T>&, T&);
 
 template <typename> class mopr;
 template <typename T> void swap(mopr<T>&, mopr<T>&);
@@ -39,7 +40,7 @@ template <typename T> class opr {
     friend opr<T> operator* <> (const opr<T>&, const opr<T>&);
     friend opr<T> operator* <> (const T&, const opr<T>&);
     friend opr<T> operator* <> (const opr<T>&, const T&);
-    friend opr<T> normalize <> (const opr<T>&, double&);
+    friend opr<T> normalize <> (const opr<T>&, T&);
     
 public:
     // default constructor
@@ -83,9 +84,6 @@ public:
     // destructor
     ~opr() {if(mat != nullptr) delete [] mat;}
     
-    
-    
-    
     void prt() const;
     
 private:
@@ -111,13 +109,13 @@ public:
     mopr() = default;
     
     // constructor from one fundamental operator
-    mopr(const opr<T> &ele): mats(std::list<std::list<opr<T>>>(1,std::list<opr<T>>(1,ele))) {}
+    mopr(const opr<T> &ele);
     
     // copy constructor
-    mopr(const mopr<T> &old): mats(old.mats) {}
+    mopr(const mopr<T> &old): coeffs(old.coeffs), mats(old.mats) {}
     
     // move constructor
-    mopr(mopr<T> &&old) noexcept : mats(std::move(old.mats)) {}
+    mopr(mopr<T> &&old) noexcept : coeffs(std::move(old.coeffs)), mats(std::move(old.mats)) {}
     
     // copy assignment constructor and move assignment constructor, using "swap and copy"
     mopr& operator=(mopr<T> old)
@@ -133,8 +131,12 @@ public:
     // destructor
     ~mopr() {}
     
+    void prt() const;
+    
     
 private:
+    // coefficients in front of the operator products, each operator should be normalized when stored
+    std::list<T> coeffs;
     // the outer list represents the sum of operators
     // the innter list represents the product of operators
     std::list<std::list<opr<T>>> mats;

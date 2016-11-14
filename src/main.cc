@@ -149,7 +149,7 @@ void test_operator(){
     kkk[0].prt();
     std::cout << std::endl;
     
-    double prefactor;
+    std::complex<double> prefactor;
     kkk[0] = normalize(psi, prefactor);
     kkk[0].prt();
     std::cout << "prefactor = " << prefactor << std::endl;
@@ -158,10 +158,25 @@ void test_operator(){
     
     std::vector<std::vector<std::complex<double>>> vec_pauli = {{0, std::complex<double>(0,-1)}, {std::complex<double>(0,1), 0}};
     opr<std::complex<double>> pauli(5, 2, false, vec_pauli);
+    pauli *= 2.0;
     pauli.prt();
     std::cout << "pauli.norm = " << pauli.norm() << std::endl;
     auto pauli_new = normalize(pauli, prefactor);
     std::cout << "prefactor = " << prefactor << std::endl;
     std::cout << "norm now = " << pauli_new.norm() << std::endl;
+    pauli_new.prt();
+    
+    
+    mopr<std::complex<double>> test_mopr(psi);
+    test_mopr.prt();
+    
+    test_mopr += chi;
+    test_mopr.prt();
+    
+    test_mopr += psi;
+    test_mopr.prt();
+    
+    test_mopr += std::complex<double>(-2.0,0.0) * psi;
+    test_mopr.prt();
     
 }

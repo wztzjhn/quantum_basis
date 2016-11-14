@@ -97,7 +97,7 @@ opr<T> &opr<T>::simplify()
         diagonal = true; // until found false
         for (decltype(dim) j = 0; j < dim; j++) {
             for (decltype(dim) i = 0; i < dim; i++) {
-                if (i != j && std::abs(mat[j + i * dim]) > opr_precision) {
+                if (i != j && std::abs(mat[j + i * dim]) >= opr_precision) {
                     diagonal = false;
                     break;
                 }
@@ -106,7 +106,7 @@ opr<T> &opr<T>::simplify()
         if(! diagonal) return *this; // nothing to simplify
         bool zero = true; // until found false
         for (decltype(dim) j = 0; j < dim; j++) {
-            if (std::abs(mat[j + j * dim]) > opr_precision) {
+            if (std::abs(mat[j + j * dim]) >= opr_precision) {
                 zero = false;
                 break;
             }
@@ -124,7 +124,7 @@ opr<T> &opr<T>::simplify()
     } else {
         bool zero = true; // until found false
         for (decltype(dim) j = 0; j < dim; j++) {
-            if (std::abs(mat[j]) > opr_precision) {
+            if (std::abs(mat[j]) >= opr_precision) {
                 zero = false;
                 break;
             }
@@ -297,14 +297,14 @@ bool operator==(const opr<T> &lhs, const opr<T> &rhs)
         if (lhs.diagonal == rhs.diagonal) { // both diagonal or both not
             auto sz = (lhs.diagonal ? m : m * m);
             for (decltype(sz) i = 0; i < sz; i++)
-                if (std::abs(lhs.mat[i] - rhs.mat[i]) > opr_precision) return false;
+                if (std::abs(lhs.mat[i] - rhs.mat[i]) >= opr_precision) return false;
         } else if (lhs.diagonal){ // need all rhs non-diagonal elements to be zero
             for (decltype(m) j = 0; j < m; j++) {
                 for (decltype(m) i = 0; i < m; i++) {
                     if (i == j) {
-                        if (std::abs(lhs.mat[j] - rhs.mat[i + j * m]) > opr_precision) return false;
+                        if (std::abs(lhs.mat[j] - rhs.mat[i + j * m]) >= opr_precision) return false;
                     } else {
-                        if (std::abs(rhs.mat[i + j * m]) > opr_precision) return false;
+                        if (std::abs(rhs.mat[i + j * m]) >= opr_precision) return false;
                     }
                 }
             }
@@ -312,9 +312,9 @@ bool operator==(const opr<T> &lhs, const opr<T> &rhs)
             for (decltype(m) j = 0; j < m; j++) {
                 for (decltype(m) i = 0; i < m; i++) {
                     if (i == j) {
-                        if (std::abs(lhs.mat[i + j * m] - rhs.mat[j]) > opr_precision) return false;
+                        if (std::abs(lhs.mat[i + j * m] - rhs.mat[j]) >= opr_precision) return false;
                     } else {
-                        if (std::abs(lhs.mat[i + j * m]) > opr_precision) return false;
+                        if (std::abs(lhs.mat[i + j * m]) >= opr_precision) return false;
                     }
                 }
             }
@@ -373,7 +373,7 @@ opr<T> operator*(const opr<T> &lhs, const T &rhs)
 }
 
 template <typename T>
-opr<T> normalize(const opr<T> &old, double &prefactor)
+opr<T> normalize(const opr<T> &old, T &prefactor)
 {
     opr<T> temp = old;
     temp.simplify();
@@ -381,21 +381,87 @@ opr<T> normalize(const opr<T> &old, double &prefactor)
         prefactor = 0.0;
     } else {
         double norm = temp.norm();
-        assert(norm > opr_precision);
+        assert(norm >= opr_precision);
         decltype(temp.dim) n = temp.diagonal ? temp.dim : temp.dim * temp.dim;
-        prefactor = norm / sqrt(static_cast<double>(temp.dim));
-        double preinv = 1.0 / prefactor;
+        T phase = 0.0;
+        for (decltype(n) j = 0; j < n; j++) {
+            if (std::abs(temp.mat[j]) > opr_precision) {
+                phase = temp.mat[j] / std::abs(temp.mat[j]);
+                break;
+            }
+        }
+        assert(std::abs(std::abs(phase) - 1.0) < opr_precision);
+        prefactor = norm / sqrt(static_cast<double>(temp.dim)) * phase;
+        T preinv = 1.0 / prefactor;
         for (decltype(n) j = 0; j < n; j++) temp.mat[j] *= preinv;
     }
     return temp;
 }
 
 // ----------------- implementation of class mopr ------------------------
+template <typename T>
+mopr<T>::mopr(const opr<T> &ele)
+{
+    T prefactor;
+    auto ele_new = normalize(ele, prefactor);
+    if (std::abs(prefactor) >= opr_precision) {
+        coeffs.push_back(prefactor);
+        mats = std::list<std::list<opr<T>>>(1,std::list<opr<T>>(1,ele_new));
+    } else {
+        coeffs = std::list<T>();
+        mats = std::list<std::list<opr<T>>>();
+    }
+    
+}
+
+template <typename T>
+mopr<T> &mopr<T>::operator+=(const opr<T> &rhs)
+{
+    T prefactor;
+    auto rhs_new = normalize(rhs, prefactor);
+    if (std::abs(prefactor) < opr_precision) return *this;
+    auto it_coeffs = coeffs.begin();
+    for (auto it_mats = mats.begin(); it_mats != mats.end(); it_mats++, it_coeffs++) {
+        if (it_mats->size() != 1 || it_mats->front() != rhs_new) {
+            continue;
+        } else {
+            *it_coeffs += prefactor;
+            // if coefficient becomes zero, delete
+            if (std::abs(*it_coeffs) < opr_precision) {
+                coeffs.erase(it_coeffs);
+                mats.erase(it_mats);
+            }
+            break;
+        }
+    }
+    if (it_coeffs == coeffs.end()) { // opr not found
+        coeffs.push_back(prefactor);
+        mats.push_back(std::list<opr<T>>(1,rhs_new));
+    }
+    return *this;
+}
+
+template <typename T>
+void mopr<T>::prt() const
+{
+    std::cout << "terms: " << mats.size() << std::endl;
+    auto it_coeffs = coeffs.begin();
+    for(auto &product : mats){
+        std::cout << "prefactor: " << *it_coeffs << std::endl;
+        for (auto &individual : product) {
+            individual.prt();
+            std::cout << "xxxxxxxx" << std::endl;
+        }
+        it_coeffs++;
+        std::cout << std::endl;
+    }
+}
 
 template <typename T>
 void swap(mopr<T> &lhs, mopr<T> &rhs)
 {
     using std::swap;
+    swap(lhs.coeffs, rhs.coeffs);
     swap(lhs.mats, rhs.mats);
 }
 
@@ -428,7 +494,7 @@ template opr<double> operator*(const opr<double>&, const double&);
 template opr<std::complex<double>> operator*(const opr<std::complex<double>>&, const std::complex<double>&);
 
 template opr<double> normalize(const opr<double>&, double&);
-template opr<std::complex<double>> normalize(const opr<std::complex<double>>&, double&);
+template opr<std::complex<double>> normalize(const opr<std::complex<double>>&, std::complex<double>&);
 
 template class mopr<double>;
 template class mopr<std::complex<double>>;
