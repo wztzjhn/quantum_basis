@@ -7,13 +7,14 @@
 #include "mkl_interface.h"
 
 
-const double opr_precision = 1e-12; // used as the threshold value in comparison
+static const double opr_precision = 1e-12; // used as the threshold value in comparison
 
 // forward declarations
 template <typename> class opr;
 template <typename T> void swap(opr<T>&, opr<T>&); // which by itself is just a template function
 template <typename T> bool operator==(const opr<T>&, const opr<T>&);
 template <typename T> bool operator!=(const opr<T>&, const opr<T>&);
+template <typename T> bool operator<(const opr<T>&, const opr<T>&); // only compares site, orbital and fermion, for sorting purpose
 template <typename T> opr<T> operator+(const opr<T>&, const opr<T>&);
 template <typename T> opr<T> operator-(const opr<T>&, const opr<T>&);
 template <typename T> opr<T> operator*(const opr<T>&, const opr<T>&);
@@ -21,6 +22,9 @@ template <typename T> opr<T> operator*(const T&, const opr<T>&);
 template <typename T> opr<T> operator*(const opr<T>&, const T&);
 // sum_{i,j} mat[i,j]^2 == dim; and also require the 1st nonzero element (in memory) to be real positive
 template <typename T> opr<T> normalize(const opr<T>&, T&);
+
+template <typename> class opr_prod;
+template <typename T> void swap(opr_prod<T>&, opr_prod<T>&);
 
 template <typename> class mopr;
 template <typename T> void swap(mopr<T>&, mopr<T>&);
@@ -35,12 +39,14 @@ template <typename T> class opr {
     friend void swap <> (opr<T>&, opr<T>&);
     friend bool operator== <> (const opr<T>&, const opr<T>&);
     friend bool operator!= <> (const opr<T>&, const opr<T>&);
+    friend bool operator< <> (const opr<T>&, const opr<T>&);
     friend opr<T> operator+ <> (const opr<T>&, const opr<T>&);
     friend opr<T> operator- <> (const opr<T>&, const opr<T>&);
     friend opr<T> operator* <> (const opr<T>&, const opr<T>&);
     friend opr<T> operator* <> (const T&, const opr<T>&);
     friend opr<T> operator* <> (const opr<T>&, const T&);
     friend opr<T> normalize <> (const opr<T>&, T&);
+    friend class opr_prod<T>;
     
 public:
     // default constructor
@@ -66,10 +72,13 @@ public:
     }
     
     // \sqrt { sum_{i,j} |mat[i,j]|^2 }
-    double norm();
+    double norm() const;
     
     // invert the sign
     opr& negative();
+    
+    // question if it is identity operator
+    bool q_identity() const;
     
     // simplify the structure if possible
     opr& simplify();
@@ -96,6 +105,45 @@ private:
 };
 
 
+// -------------- class for operator products ----------------
+// note: when mat_prod is empty, it represents identity operator, with coefficient coeff
+template <typename T> class opr_prod {
+    friend void swap <> (opr_prod<T>&, opr_prod<T>&);
+    friend class mopr<T>;
+public:
+    // default constructor
+    opr_prod() = default;
+    
+    // constructor from one fundamental operator
+    opr_prod(const opr<T> &ele);
+    
+    // copy constructor
+    opr_prod(const opr_prod<T> &old): mat_prod(old.mat_prod) {}
+    
+    // move constructor
+    opr_prod(opr_prod<T> &&old) noexcept : mat_prod(std::move(old.mat_prod)) {}
+    
+    // copy assignment constructor and move assignment constructor, using "swap and copy"
+    opr_prod& operator=(opr_prod<T> old)
+    {
+        swap(*this, old);
+        return *this;
+    }
+    
+    // compound assignment operators
+    opr_prod& operator*=(const opr<T> &rhs);
+    opr_prod& operator*=(const opr_prod<T> &rhs);
+    
+    // destructor
+    ~opr_prod() {}
+    
+    void prt() const;
+    
+private:
+    T coeff;
+    std::list<opr<T>> mat_prod; // each opr<T> should be normalized
+};
+
 
 // -------------- class for a combination of operators ----------------
 // a linear combination of products of operators
@@ -109,13 +157,13 @@ public:
     mopr() = default;
     
     // constructor from one fundamental operator
-    mopr(const opr<T> &ele);
+    mopr(const opr<T> &ele) { mats.emplace_back(ele); }
     
     // copy constructor
-    mopr(const mopr<T> &old): coeffs(old.coeffs), mats(old.mats) {}
+    mopr(const mopr<T> &old): mats(old.mats) {}
     
     // move constructor
-    mopr(mopr<T> &&old) noexcept : coeffs(std::move(old.coeffs)), mats(std::move(old.mats)) {}
+    mopr(mopr<T> &&old) noexcept : mats(std::move(old.mats)) {}
     
     // copy assignment constructor and move assignment constructor, using "swap and copy"
     mopr& operator=(mopr<T> old)
@@ -126,6 +174,7 @@ public:
     
     // compound assignment operators
     mopr& operator+=(const opr<T> &rhs);
+    mopr& operator*=(const opr<T> &rhs);
     mopr& operator+=(const mopr<T> &rhs);
     
     // destructor
@@ -135,11 +184,8 @@ public:
     
     
 private:
-    // coefficients in front of the operator products, each operator should be normalized when stored
-    std::list<T> coeffs;
-    // the outer list represents the sum of operators
-    // the innter list represents the product of operators
-    std::list<std::list<opr<T>>> mats;
+    // the outer list represents the sum of operators, inner data structure taken care by operator products
+    std::list<opr_prod<T>> mats;
 };
 
 
