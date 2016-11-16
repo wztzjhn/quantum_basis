@@ -530,8 +530,23 @@ opr_prod<T> &opr_prod<T>::operator*=(opr_prod<T> rhs)
     }
     coeff *= rhs.coeff;
     for (auto &ele : rhs.mat_prod) {
-        (*this) *= ele;                                 // speed slower in this way, but safer
+        (*this) *= ele;                                 // speed slower in this way, but safer; optimize later if needed
+        if (this->q_zero()) break;
     }
+    return *this;
+}
+
+template <typename T>
+opr_prod<T> &opr_prod<T>::operator*=(const T &rhs)
+{
+    coeff *= rhs;
+    return *this;
+}
+
+template <typename T>
+opr_prod<T> &opr_prod<T>::negative()
+{
+    coeff = -coeff;
     return *this;
 }
 
@@ -567,9 +582,97 @@ void swap(opr_prod<T> &lhs, opr_prod<T> &rhs)
     swap(lhs.mat_prod, rhs.mat_prod);
 }
 
+template <typename T>
+bool operator==(const opr_prod<T> &lhs, const opr_prod<T> &rhs)
+{
+    if (std::abs(lhs.coeff - rhs.coeff) >= opr_precision || lhs.mat_prod.size() != rhs.mat_prod.size()) {
+        return false;
+    } else {
+        return lhs.mat_prod == rhs.mat_prod;
+    }
+}
+
+template <typename T>
+bool operator!=(const opr_prod<T> &lhs, const opr_prod<T> &rhs)
+{
+    return !(lhs == rhs);
+}
+
+template <typename T>
+bool operator<(const opr_prod<T> &lhs, const opr_prod<T> &rhs)
+{
+    if (rhs.q_zero()) {
+        return false;
+    } else if (lhs.q_zero()) {
+        return true;
+    }
+    if (lhs.mat_prod.size() < rhs.mat_prod.size()) {
+        return true;
+    } else {
+        return lhs.mat_prod < rhs.mat_prod;
+    }
+}
+
+template <typename T>
+opr_prod<T> operator*(const opr_prod<T> &lhs, const opr_prod<T> &rhs)
+{
+    opr_prod<T> prod = lhs;
+    prod *= rhs;
+    return prod;
+}
+
+template <typename T>
+opr_prod<T> operator*(const opr_prod<T> &lhs, const opr<T> &rhs)
+{
+    opr_prod<T> prod = lhs;
+    prod *= rhs;
+    return prod;
+}
+
+template <typename T>
+opr_prod<T> operator*(const opr<T> &lhs, const opr_prod<T> &rhs)
+{
+    opr_prod<T> prod(lhs);
+    prod *= rhs;
+    return prod;
+}
+
+template <typename T>
+opr_prod<T> operator*(const opr_prod<T> &lhs, const T &rhs)
+{
+    opr_prod<T> prod = lhs;
+    prod *= rhs;
+    return prod;
+}
+
+template <typename T>
+opr_prod<T> operator*(const T &lhs, const opr_prod<T> &rhs)
+{
+    opr_prod<T> prod = rhs;
+    prod *= lhs;
+    return prod;
+}
 
 // ----------------- implementation of class mopr ------------------------
+template <typename T>
+mopr<T>::mopr(const opr<T> &ele)
+{
+    if (ele.q_zero()) {
+        mats = std::list<opr_prod<T>>();
+    } else {
+        mats.emplace_back(ele);
+    }
+}
 
+template <typename T>
+mopr<T>::mopr(const opr_prod<T> &ele)
+{
+    if (ele.q_zero()) {
+        mats = std::list<opr_prod<T>>();
+    } else {
+        mats = std::list<opr_prod<T>>(1, ele);
+    }
+}
 
 //template <typename T>
 //mopr<T> &mopr<T>::operator+=(const opr<T> &rhs)
@@ -690,14 +793,38 @@ template opr<std::complex<double>> operator*(const opr<std::complex<double>>&, c
 template opr<double> normalize(const opr<double>&, double&);
 template opr<std::complex<double>> normalize(const opr<std::complex<double>>&, std::complex<double>&);
 
-
+// explicit instantiation of opr_prod
 template class opr_prod<double>;
 template class opr_prod<std::complex<double>>;
 
 template void swap(opr_prod<double>&, opr_prod<double>&);
 template void swap(opr_prod<std::complex<double>>&, opr_prod<std::complex<double>>&);
 
+template bool operator==(const opr_prod<double>&, const opr_prod<double>&);
+template bool operator==(const opr_prod<std::complex<double>>&, const opr_prod<std::complex<double>>&);
 
+template bool operator!=(const opr_prod<double>&, const opr_prod<double>&);
+template bool operator!=(const opr_prod<std::complex<double>>&, const opr_prod<std::complex<double>>&);
+
+template bool operator<(const opr_prod<double>&, const opr_prod<double>&);
+template bool operator<(const opr_prod<std::complex<double>>&, const opr_prod<std::complex<double>>&);
+
+template opr_prod<double> operator*(const opr_prod<double>&, const opr_prod<double>&);
+template opr_prod<std::complex<double>> operator*(const opr_prod<std::complex<double>>&, const opr_prod<std::complex<double>>&);
+
+template opr_prod<double> operator*(const opr_prod<double>&, const opr<double>&);
+template opr_prod<std::complex<double>> operator*(const opr_prod<std::complex<double>>&, const opr<std::complex<double>>&);
+
+template opr_prod<double> operator*(const opr<double>&, const opr_prod<double>&);
+template opr_prod<std::complex<double>> operator*(const opr<std::complex<double>>&, const opr_prod<std::complex<double>>&);
+
+template opr_prod<double> operator*(const opr_prod<double>&, const double&);
+template opr_prod<std::complex<double>> operator*(const opr_prod<std::complex<double>>&, const std::complex<double>&);
+
+template opr_prod<double> operator*(const double&, const opr_prod<double>&);
+template opr_prod<std::complex<double>> operator*(const std::complex<double>&, const opr_prod<std::complex<double>>&);
+
+// explicit instantiation of mopr
 template class mopr<double>;
 template class mopr<std::complex<double>>;
 

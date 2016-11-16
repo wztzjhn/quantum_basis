@@ -20,11 +20,18 @@ template <typename T> opr<T> operator-(const opr<T>&, const opr<T>&);
 template <typename T> opr<T> operator*(const opr<T>&, const opr<T>&);
 template <typename T> opr<T> operator*(const T&, const opr<T>&);
 template <typename T> opr<T> operator*(const opr<T>&, const T&);
-// sum_{i,j} mat[i,j]^2 == dim; and also require the 1st nonzero element (in memory) to be real positive
-template <typename T> opr<T> normalize(const opr<T>&, T&);
+template <typename T> opr<T> normalize(const opr<T>&, T&); // sum_{i,j} mat[i,j]^2 == dim; the 1st nonzero element (in memory) be real positive
 
 template <typename> class opr_prod;
 template <typename T> void swap(opr_prod<T>&, opr_prod<T>&);
+template <typename T> bool operator==(const opr_prod<T>&, const opr_prod<T>&);
+template <typename T> bool operator!=(const opr_prod<T>&, const opr_prod<T>&);
+template <typename T> bool operator<(const opr_prod<T>&, const opr_prod<T>&); // compare only length, and if each lhs.mat_prod < rhs.mat_prod
+template <typename T> opr_prod<T> operator*(const opr_prod<T>&, const opr_prod<T>&);
+template <typename T> opr_prod<T> operator*(const opr_prod<T>&, const opr<T>&);
+template <typename T> opr_prod<T> operator*(const opr<T>&, const opr_prod<T>&);
+template <typename T> opr_prod<T> operator*(const opr_prod<T>&, const T&);
+template <typename T> opr_prod<T> operator*(const T&, const opr_prod<T>&);
 
 template <typename> class mopr;
 template <typename T> void swap(mopr<T>&, mopr<T>&);
@@ -111,8 +118,21 @@ private:
 
 // -------------- class for operator products ----------------
 // note: when mat_prod is empty, it represents identity operator, with coefficient coeff
+
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// I sacrificed the efficiency by assuming all matrices in this class have the same type, think later how we can improve
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 template <typename T> class opr_prod {
     friend void swap <> (opr_prod<T>&, opr_prod<T>&);
+    friend bool operator== <> (const opr_prod<T>&, const opr_prod<T>&);
+    friend bool operator!= <> (const opr_prod<T>&, const opr_prod<T>&);
+    friend bool operator< <> (const opr_prod<T>&, const opr_prod<T>&);
+    friend opr_prod<T> operator* <> (const opr_prod<T>&, const opr_prod<T>&);
+    friend opr_prod<T> operator* <> (const opr_prod<T>&, const opr<T>&);
+    friend opr_prod<T> operator* <> (const opr<T>&, const opr_prod<T>&);
+    friend opr_prod<T> operator* <> (const opr_prod<T>&, const T&);
+    friend opr_prod<T> operator* <> (const T&, const opr_prod<T>&);
+    
     friend class mopr<T>;
 public:
     // default constructor
@@ -137,6 +157,10 @@ public:
     // compound assignment operators
     opr_prod& operator*=(const opr<T> &rhs);
     opr_prod& operator*=(opr_prod<T> rhs); // in this form to avoid self-assignment
+    opr_prod& operator*=(const T &rhs);
+    
+    // invert the sign
+    opr_prod& negative();
     
     // question if it is proportional to identity operator
     bool q_prop_identity() const;
@@ -157,9 +181,6 @@ private:
 
 // -------------- class for a combination of operators ----------------
 // a linear combination of products of operators
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// I sacrificed the efficiency by assuming all matrices in this class have the same type, think later how we can improve
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 template <typename T> class mopr {
     friend void swap <> (mopr<T>&, mopr<T>&);
 public:
@@ -167,7 +188,10 @@ public:
     mopr() = default;
     
     // constructor from one fundamental operator
-    mopr(const opr<T> &ele) { mats.emplace_back(ele); }
+    mopr(const opr<T> &ele);
+    
+    // constructor from operator products
+    mopr(const opr_prod<T> &ele);
     
     // copy constructor
     mopr(const mopr<T> &old): mats(old.mats) {}

@@ -21,6 +21,9 @@ void test_operator(){
         sigmaz_list.push_back(opr<std::complex<double>>(i, 3, true, vec_sigmaz));
     }
     
+    sigmax_list[0] *= sigmax_list[0];
+    sigmax_list[0].prt();
+    
     opr_prod<std::complex<double>> ham(sigmaz_list[3]);
     ham.prt(); std::cout << std::endl;
     
