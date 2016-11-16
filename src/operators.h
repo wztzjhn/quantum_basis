@@ -47,6 +47,7 @@ template <typename T> class opr {
     friend opr<T> operator* <> (const opr<T>&, const T&);
     friend opr<T> normalize <> (const opr<T>&, T&);
     friend class opr_prod<T>;
+    friend class mopr<T>;
     
 public:
     // default constructor
@@ -79,6 +80,9 @@ public:
     
     // question if it is identity operator
     bool q_identity() const;
+    
+    // question if it is zero operator
+    bool q_zero() const;
     
     // simplify the structure if possible
     opr& simplify();
@@ -118,10 +122,10 @@ public:
     opr_prod(const opr<T> &ele);
     
     // copy constructor
-    opr_prod(const opr_prod<T> &old): mat_prod(old.mat_prod) {}
+    opr_prod(const opr_prod<T> &old): coeff(old.coeff), mat_prod(old.mat_prod) {}
     
     // move constructor
-    opr_prod(opr_prod<T> &&old) noexcept : mat_prod(std::move(old.mat_prod)) {}
+    opr_prod(opr_prod<T> &&old) noexcept : coeff(std::move(old.coeff)), mat_prod(std::move(old.mat_prod)) {}
     
     // copy assignment constructor and move assignment constructor, using "swap and copy"
     opr_prod& operator=(opr_prod<T> old)
@@ -132,7 +136,13 @@ public:
     
     // compound assignment operators
     opr_prod& operator*=(const opr<T> &rhs);
-    opr_prod& operator*=(const opr_prod<T> &rhs);
+    opr_prod& operator*=(opr_prod<T> rhs); // in this form to avoid self-assignment
+    
+    // question if it is proportional to identity operator
+    bool q_prop_identity() const;
+    
+    // question if it is zero operator
+    bool q_zero() const;
     
     // destructor
     ~opr_prod() {}

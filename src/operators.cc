@@ -92,15 +92,27 @@ opr<T> &opr<T>::negative()
 template <typename T>
 bool opr<T>::q_identity() const
 {
-    auto temp = *this;
-    temp.simplify();
-    if (temp.mat == nullptr || ! temp.diagonal || temp.fermion) {
+    T prefactor;
+    auto temp = normalize(*this, prefactor);
+    if (temp.mat == nullptr || ! temp.diagonal || temp.fermion || std::abs(prefactor - static_cast<T>(1.0)) >= opr_precision) {
         return false;
     } else {
         for (decltype(temp.dim) j = 0; j < temp.dim; j++) {
-            if (std::abs(std::abs(temp.mat[j]) - 1.0) >= opr_precision) return false;
+            if (std::abs(temp.mat[j] - static_cast<T>(1.0)) >= opr_precision) return false;
         }
         return true;
+    }
+}
+
+template <typename T>
+bool opr<T>::q_zero() const
+{
+    auto temp = *this;
+    temp.simplify();
+    if (temp.mat == nullptr) {
+        return true;
+    } else {
+        return false;
     }
 }
 
@@ -349,9 +361,9 @@ bool operator!=(const opr<T> &lhs, const opr<T> &rhs)
 template <typename T>
 bool operator<(const opr<T> &lhs, const opr<T> &rhs)
 {
-    if (rhs.mat == nullptr) {
+    if (rhs.q_zero()) {
         return false;
-    } else if (lhs.mat == nullptr) {
+    } else if (lhs.q_zero()) {
         return true;
     }
     if (lhs.site < rhs.site) {
@@ -452,12 +464,12 @@ opr_prod<T>::opr_prod(const opr<T> &ele)
 template <typename T>
 opr_prod<T> &opr_prod<T>::operator*=(const opr<T> &rhs)
 {
-    if (std::abs(coeff) < opr_precision) return *this; // zero operator self
+    if (this->q_zero()) return *this;                  // zero operator self
     T prefactor;
     auto rhs_new = normalize(rhs, prefactor);
-    if (mat_prod.empty()) {                            // identity operator self
+    if (this->q_prop_identity()) {                     // itself proportional to identity operator
         coeff *= prefactor;
-        if (std::abs(prefactor) >= opr_precision) mat_prod.push_back(rhs_new);
+        if (std::abs(prefactor) >= opr_precision) mat_prod.push_back(std::move(rhs_new));
         return *this;
     }
     if (std::abs(prefactor) < opr_precision) {         // zero operator
@@ -483,7 +495,7 @@ opr_prod<T> &opr_prod<T>::operator*=(const opr<T> &rhs)
     }
     if (j == mat_prod.rend() || val_j < val_rhs) { // opr not found
         coeff *= (prefactor * static_cast<T>(sgn));
-        mat_prod.insert(j.base(), rhs_new);
+        mat_prod.insert(j.base(), std::move(rhs_new));
     } else { // found an operator on same site and same orbital
         auto opr_prod = (*j) * rhs_new;
         T prefactor_new;
@@ -496,6 +508,43 @@ opr_prod<T> &opr_prod<T>::operator*=(const opr<T> &rhs)
         }
     }
     return *this;
+}
+
+// be careful about self-assignment
+template <typename T>
+opr_prod<T> &opr_prod<T>::operator*=(opr_prod<T> rhs)
+{
+    if (this->q_zero()) return *this;                   // zero operator self
+    if (this->q_prop_identity()) {                      // itself proportional to identity operator
+        (*this) = rhs;
+        return *this;
+    }
+    if (rhs.q_zero()) {                                 // zero operator
+        coeff = static_cast<T>(0.0);
+        mat_prod.clear();
+        return *this;
+    }
+    if (rhs.q_prop_identity()) {                        // proportional to identity operator
+        coeff *= rhs.coeff;
+        return *this;
+    }
+    coeff *= rhs.coeff;
+    for (auto &ele : rhs.mat_prod) {
+        (*this) *= ele;                                 // speed slower in this way, but safer
+    }
+    return *this;
+}
+
+template <typename T>
+bool opr_prod<T>::q_prop_identity() const // ask this question without simplifying the operator products
+{
+    return (std::abs(coeff) >= opr_precision && mat_prod.empty()) ? true : false;
+}
+
+template <typename T>
+bool opr_prod<T>::q_zero() const
+{
+    return std::abs(coeff) < opr_precision ? true : false;
 }
 
 template <typename T>
@@ -514,6 +563,7 @@ template <typename T>
 void swap(opr_prod<T> &lhs, opr_prod<T> &rhs)
 {
     using std::swap;
+    swap(lhs.coeff, rhs.coeff);
     swap(lhs.mat_prod, rhs.mat_prod);
 }
 
@@ -640,11 +690,13 @@ template opr<std::complex<double>> operator*(const opr<std::complex<double>>&, c
 template opr<double> normalize(const opr<double>&, double&);
 template opr<std::complex<double>> normalize(const opr<std::complex<double>>&, std::complex<double>&);
 
+
 template class opr_prod<double>;
 template class opr_prod<std::complex<double>>;
 
 template void swap(opr_prod<double>&, opr_prod<double>&);
 template void swap(opr_prod<std::complex<double>>&, opr_prod<std::complex<double>>&);
+
 
 template class mopr<double>;
 template class mopr<std::complex<double>>;

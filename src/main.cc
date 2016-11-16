@@ -24,8 +24,11 @@ void test_operator(){
     opr_prod<std::complex<double>> ham(sigmaz_list[3]);
     ham.prt(); std::cout << std::endl;
     
-    ham *= ( sigmax_list[3] * sigmax_list[3]);
+    ham *= ham;
     ham.prt(); std::cout << std::endl;
+    
+    //ham *= ham;
+    //ham.prt(); std::cout << std::endl;
     
     auto temp1 = std::vector<std::complex<double>>(3);
     temp1[0] =std::complex<double>(2.0,1.0);
