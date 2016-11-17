@@ -15,9 +15,6 @@ template <typename T> void swap(opr<T>&, opr<T>&); // which by itself is just a 
 template <typename T> bool operator==(const opr<T>&, const opr<T>&);
 template <typename T> bool operator!=(const opr<T>&, const opr<T>&);
 template <typename T> bool operator<(const opr<T>&, const opr<T>&); // only compares site, orbital and fermion, for sorting purpose
-template <typename T> opr<T> operator+(const opr<T>&, const opr<T>&);
-template <typename T> opr<T> operator-(const opr<T>&, const opr<T>&);
-template <typename T> opr<T> operator*(const opr<T>&, const opr<T>&);
 template <typename T> opr<T> operator*(const T&, const opr<T>&);
 template <typename T> opr<T> operator*(const opr<T>&, const T&);
 template <typename T> opr<T> normalize(const opr<T>&, T&); // sum_{i,j} mat[i,j]^2 == dim; the 1st nonzero element (in memory) be real positive
@@ -32,10 +29,33 @@ template <typename T> opr_prod<T> operator*(const opr_prod<T>&, const opr<T>&);
 template <typename T> opr_prod<T> operator*(const opr<T>&, const opr_prod<T>&);
 template <typename T> opr_prod<T> operator*(const opr_prod<T>&, const T&);
 template <typename T> opr_prod<T> operator*(const T&, const opr_prod<T>&);
+//template <typename T> opr<T> operator*(const opr<T>&, const opr<T>&);
 
 template <typename> class mopr;
 template <typename T> void swap(mopr<T>&, mopr<T>&);
+template <typename T> bool operator==(const mopr<T>&, const mopr<T>&);
+template <typename T> bool operator!=(const mopr<T>&, const mopr<T>&);
 
+template <typename T> mopr<T> operator+(const mopr<T>&, const mopr<T>&);
+template <typename T> mopr<T> operator+(const mopr<T>&, const opr_prod<T>&);
+template <typename T> mopr<T> operator+(const opr_prod<T>&, const mopr<T>&);
+template <typename T> mopr<T> operator+(const mopr<T>&, const opr<T>&);
+template <typename T> mopr<T> operator+(const opr<T>&, const mopr<T>&);
+template <typename T> mopr<T> operator+(const opr_prod<T>&, const opr_prod<T>&);
+template <typename T> mopr<T> operator+(const opr_prod<T>&, const opr<T>&);
+template <typename T> mopr<T> operator+(const opr<T>&, const opr_prod<T>&);
+//template <typename T> mopr<T> operator+(const opr<T>&, const opr<T>&);
+
+
+template <typename T> mopr<T> operator-(const mopr<T>&, const mopr<T>&);
+template <typename T> mopr<T> operator-(const mopr<T>&, const opr_prod<T>&);
+template <typename T> mopr<T> operator-(const opr_prod<T>&, const mopr<T>&);
+template <typename T> mopr<T> operator-(const mopr<T>&, const opr<T>&);
+template <typename T> mopr<T> operator-(const opr<T>&, const mopr<T>&);
+template <typename T> mopr<T> operator-(const opr_prod<T>&, const opr_prod<T>&);
+template <typename T> mopr<T> operator-(const opr_prod<T>&, const opr<T>&);
+template <typename T> mopr<T> operator-(const opr<T>&, const opr_prod<T>&);
+//template <typename T> mopr<T> operator-(const opr<T>&, const opr<T>&);
 
 // note:
 // zero operator: mat==nullptr
@@ -47,9 +67,9 @@ template <typename T> class opr {
     friend bool operator== <> (const opr<T>&, const opr<T>&);
     friend bool operator!= <> (const opr<T>&, const opr<T>&);
     friend bool operator< <> (const opr<T>&, const opr<T>&);
-    friend opr<T> operator+ <> (const opr<T>&, const opr<T>&);
-    friend opr<T> operator- <> (const opr<T>&, const opr<T>&);
-    friend opr<T> operator* <> (const opr<T>&, const opr<T>&);
+//    friend opr<T> operator+ <> (const opr<T>&, const opr<T>&);
+//    friend opr<T> operator- <> (const opr<T>&, const opr<T>&);
+//    friend opr<T> operator* <> (const opr<T>&, const opr<T>&);
     friend opr<T> operator* <> (const T&, const opr<T>&);
     friend opr<T> operator* <> (const opr<T>&, const T&);
     friend opr<T> normalize <> (const opr<T>&, T&);
@@ -132,7 +152,6 @@ template <typename T> class opr_prod {
     friend opr_prod<T> operator* <> (const opr<T>&, const opr_prod<T>&);
     friend opr_prod<T> operator* <> (const opr_prod<T>&, const T&);
     friend opr_prod<T> operator* <> (const T&, const opr_prod<T>&);
-    
     friend class mopr<T>;
 public:
     // default constructor
@@ -155,7 +174,7 @@ public:
     }
     
     // compound assignment operators
-    opr_prod& operator*=(const opr<T> &rhs);
+    opr_prod& operator*=(opr<T> rhs);
     opr_prod& operator*=(opr_prod<T> rhs); // in this form to avoid self-assignment
     opr_prod& operator*=(const T &rhs);
     
@@ -167,6 +186,8 @@ public:
     
     // question if it is zero operator
     bool q_zero() const;
+    
+    size_t len() const;
     
     // destructor
     ~opr_prod() {}
@@ -183,6 +204,8 @@ private:
 // a linear combination of products of operators
 template <typename T> class mopr {
     friend void swap <> (mopr<T>&, mopr<T>&);
+    friend bool operator== <> (const mopr<T>&, const mopr<T>&);
+    friend bool operator!= <> (const mopr<T>&, const mopr<T>&);
 public:
     // default constructor
     mopr() = default;
@@ -207,9 +230,22 @@ public:
     }
     
     // compound assignment operators
-    mopr& operator+=(const opr<T> &rhs);
-    mopr& operator*=(const opr<T> &rhs);
-    mopr& operator+=(const mopr<T> &rhs);
+    mopr& operator+=(opr<T> rhs);
+    mopr& operator+=(opr_prod<T> rhs);
+    mopr& operator+=(mopr<T> rhs);
+    mopr& operator-=(opr<T> rhs);
+    mopr& operator-=(opr_prod<T> rhs);
+    mopr& operator-=(mopr<T> rhs);
+    mopr& operator*=(opr<T> rhs);
+    mopr& operator*=(opr_prod<T> rhs);
+    mopr& operator*=(mopr<T> rhs);
+    mopr& operator*=(const T &rhs);
+    
+    // simplify, need implementation
+    mopr& simplify();
+    
+    // invert the sign
+    mopr& negative();
     
     // destructor
     ~mopr() {}

@@ -97,7 +97,7 @@ private:
 
 
 
-
+//      BETTER USE SMART POINTERS TO POINT TO THE ORIGINAL BASIS
 // -------------- class for wave functions ---------------
 // Use with caution, may hurt speed when not used properly
 class wavefunction {

@@ -3,9 +3,6 @@
 #include "basis.h"
 #include "operators.h"
 
-// deal with zero operator
-// deal with operator normalization
-
 // ----------------- implementation of class opr (operator) ------------------
 template <typename T>
 opr<T>::opr(const int &site_, const int &orbital_, const bool &fermion_, const std::vector<T> &mat_):
@@ -380,29 +377,29 @@ bool operator<(const opr<T> &lhs, const opr<T> &rhs)
 }
 
 // yes, returning an object is inefficient... how to overcome elegently???
-template <typename T>
-opr<T> operator+(const opr<T> &lhs, const opr<T> &rhs)
-{
-    opr<T> sum = lhs;
-    sum += rhs;
-    return sum;
-}
+//template <typename T>
+//opr<T> operator+(const opr<T> &lhs, const opr<T> &rhs)
+//{
+//    opr<T> sum = lhs;
+//    sum += rhs;
+//    return sum;
+//}
+//
+//template <typename T>
+//opr<T> operator-(const opr<T> &lhs, const opr<T> &rhs)
+//{
+//    opr<T> diff = lhs;
+//    diff -= rhs;
+//    return diff;
+//}
 
-template <typename T>
-opr<T> operator-(const opr<T> &lhs, const opr<T> &rhs)
-{
-    opr<T> diff = lhs;
-    diff -= rhs;
-    return diff;
-}
-
-template <typename T>
-opr<T> operator*(const opr<T> &lhs, const opr<T> &rhs)
-{
-    opr<T> prod = lhs;
-    prod *= rhs;
-    return prod;
-}
+//template <typename T>
+//opr<T> operator*(const opr<T> &lhs, const opr<T> &rhs)
+//{
+//    opr<T> prod = lhs;
+//    prod *= rhs;
+//    return prod;
+//}
 
 template <typename T>
 opr<T> operator*(const T &lhs, const opr<T> &rhs)
@@ -462,14 +459,14 @@ opr_prod<T>::opr_prod(const opr<T> &ele)
 }
 
 template <typename T>
-opr_prod<T> &opr_prod<T>::operator*=(const opr<T> &rhs)
+opr_prod<T> &opr_prod<T>::operator*=(opr<T> rhs)
 {
     if (this->q_zero()) return *this;                  // zero operator self
     T prefactor;
-    auto rhs_new = normalize(rhs, prefactor);
+    rhs = normalize(rhs, prefactor);
     if (this->q_prop_identity()) {                     // itself proportional to identity operator
         coeff *= prefactor;
-        if (std::abs(prefactor) >= opr_precision) mat_prod.push_back(std::move(rhs_new));
+        if (std::abs(prefactor) >= opr_precision) mat_prod.push_back(std::move(rhs));
         return *this;
     }
     if (std::abs(prefactor) < opr_precision) {         // zero operator
@@ -477,16 +474,15 @@ opr_prod<T> &opr_prod<T>::operator*=(const opr<T> &rhs)
         mat_prod.clear();
         return *this;
     }
-    if (rhs_new.q_identity()) {                        // identity operator
+    if (rhs.q_identity()) {                           // identity operator
         coeff *= prefactor;
         return *this;
     }
     auto j = mat_prod.rbegin();
-    std::vector<int> val_rhs = {rhs_new.site, rhs_new.orbital};
+    std::vector<int> val_rhs = {rhs.site, rhs.orbital};
     std::vector<int> val_j   = {j->site, j->orbital};
-    int sgn = 1;
     while (j != mat_prod.rend() && val_rhs < val_j) {
-        if(rhs_new.fermion && j->fermion) sgn *= -1;
+        if(rhs.fermion && j->fermion) prefactor = -prefactor;
         j++;
         if (j != mat_prod.rend()) {
             val_j[0] = j->site;
@@ -494,13 +490,14 @@ opr_prod<T> &opr_prod<T>::operator*=(const opr<T> &rhs)
         }
     }
     if (j == mat_prod.rend() || val_j < val_rhs) { // opr not found
-        coeff *= (prefactor * static_cast<T>(sgn));
-        mat_prod.insert(j.base(), std::move(rhs_new));
+        coeff *= prefactor;
+        mat_prod.insert(j.base(), std::move(rhs));
     } else { // found an operator on same site and same orbital
-        auto opr_prod = (*j) * rhs_new;
+        auto opr_prod(*j);
+        opr_prod *= rhs;
         T prefactor_new;
         (*j) = normalize(opr_prod, prefactor_new);
-        coeff *= prefactor * static_cast<T>(sgn) * prefactor_new;
+        coeff *= (prefactor * prefactor_new);
         if (std::abs(coeff) < opr_precision) { // zero operator
             mat_prod.clear();
         } else if (j->q_identity()) {          // identity operator
@@ -563,6 +560,12 @@ bool opr_prod<T>::q_zero() const
 }
 
 template <typename T>
+size_t opr_prod<T>::len() const
+{
+    return mat_prod.size();
+}
+
+template <typename T>
 void opr_prod<T>::prt() const
 {
     std::cout << mat_prod.size() << " products: "<< std::endl;
@@ -606,7 +609,7 @@ bool operator<(const opr_prod<T> &lhs, const opr_prod<T> &rhs)
     } else if (lhs.q_zero()) {
         return true;
     }
-    if (lhs.mat_prod.size() < rhs.mat_prod.size()) {
+    if (lhs.len() < rhs.len()) {
         return true;
     } else {
         return lhs.mat_prod < rhs.mat_prod;
@@ -674,68 +677,125 @@ mopr<T>::mopr(const opr_prod<T> &ele)
     }
 }
 
-//template <typename T>
-//mopr<T> &mopr<T>::operator+=(const opr<T> &rhs)
-//{
-//    T prefactor;
-//    auto rhs_new = normalize(rhs, prefactor);
-//    if (std::abs(prefactor) < opr_precision) return *this; // adding zero
-//    if (mats.empty()) { // itself zero
-//        coeffs.push_back(prefactor);
-//        mats.push_back(std::list<opr<T>>(1,rhs_new));
-//        return *this;
-//    }
-//    auto it_coeffs = coeffs.begin();
-//    auto it_mats = mats.begin();
-////    std::vector<int> val_rhs = {rhs_new.site, rhs_new.orbital, static_cast<int>(rhs_new.fermion)};
-////    std::vector<int> val_it = {(it_mats->front()).site, (it_mats->front()).orbital, static_cast<int>((it_mats->front()).fermion)};
-//    while (it_mats != mats.end() && it_mats->size() == 1 && it_mats->front() < rhs_new) {
-//        it_coeffs++;
-//        it_mats++;
-////        if (it_mats != mats.end()) {
-////            val_it[0] = (it_mats->front()).site;
-////            val_it[1] = (it_mats->front()).orbital;
-////            val_it[2] = static_cast<int>((it_mats->front()).fermion);
-////        }
-//    }
-//    if (it_mats == mats.end() || it_mats->size() > 1 || rhs_new < it_mats->front()) { // opr not found
-//        coeffs.insert(it_coeffs, prefactor);
-//        mats.insert(it_mats, std::list<opr<T>>(1,rhs_new));
-//    } else { // found an operator on same site, orbital and with same fermionic(bosonic) property
-//        auto opr_sum = (*it_coeffs) * it_mats->front() + prefactor * rhs_new;
-//        rhs_new = normalize(opr_sum, prefactor);
-//        if (std::abs(prefactor) < opr_precision) { // if coefficient becomes zero, delete
-//            coeffs.erase(it_coeffs);
-//            mats.erase(it_mats);
-//        } else {
-//            *it_coeffs = prefactor;
-//            it_mats->front() = std::move(rhs_new);
-//        }
-//    }
-//    return *this;
-//}
-
-
-
-
 template <typename T>
-mopr<T> &mopr<T>::operator*=(const opr<T> &rhs)
+mopr<T> &mopr<T>::operator+=(opr<T> rhs)
 {
-
-    // now that the list of mats may not be ordered by length of sublists, need re-order
-//    auto is_left = [](const std::list<opr<T>> &lhs, const std::list<opr<T>> &rhs)
-//    {
-//        return lhs.size() == rhs.size() ? (lhs < rhs) : (lhs.size() < rhs.size());
-//    };
-//    
+    T prefactor;
+    rhs = normalize(rhs, prefactor);
+    if (std::abs(prefactor) < opr_precision) return *this; // adding zero
+    (*this) += opr_prod<T>(prefactor * rhs);
     return *this;
 }
 
-//template <typename T>
-//mopr<T> &mopr<T>::operator+=(const mopr<T> &rhs)
-//{
-//    
-//}
+template <typename T>
+mopr<T> &mopr<T>::operator+=(opr_prod<T> rhs)
+{
+    if (rhs.q_zero()) return *this; // adding zero
+    if (mats.empty()) {             // itself zero
+        mats.push_back(std::move(rhs));
+        return *this;
+    }
+    auto it = mats.begin();
+    while (it != mats.end() && *it < rhs) it++;
+    if (rhs.len() == 1) {
+        if (it == mats.end() || rhs < *it) {         // rhs not found
+            mats.insert(it, std::move(rhs));
+        } else {                                   // found something on same site, orbital and fermionic property
+            auto opr_sum = it->coeff * (it->mat_prod).front();
+            opr_sum += rhs.coeff * rhs.mat_prod.front();
+            *it = opr_prod<T>(std::move(opr_sum));
+            if (it->q_zero()) mats.erase(it);
+        }
+    } else {
+        mats.insert(it, std::move(rhs));            // leave simplification separately
+    }
+    return *this;
+}
+
+template <typename T>
+mopr<T> &mopr<T>::operator+=(mopr<T> rhs)
+{
+    if (rhs.mats.empty()) return *this;  // adding zero
+    if (mats.empty()) {                  // itself zero
+        swap(*this, rhs);
+        return *this;
+    }
+    for (auto &ele : rhs.mats) (*this) += ele;
+    return *this;
+}
+
+template <typename T>
+mopr<T> &mopr<T>::operator-=(opr<T> rhs)
+{
+    (*this) += rhs.negative();
+    return *this;
+}
+
+template <typename T>
+mopr<T> &mopr<T>::operator-=(opr_prod<T> rhs)
+{
+    (*this) += rhs.negative();
+    return *this;
+}
+
+template <typename T>
+mopr<T> &mopr<T>::operator-=(mopr<T> rhs)
+{
+    (*this) += rhs.negative();
+    return *this;
+}
+
+template <typename T>
+mopr<T> &mopr<T>::operator*=(opr<T> rhs)
+{
+    auto it = mats.begin();
+    while (it != mats.end()) {
+        (*it) *= rhs;
+        if (it->q_zero()) {
+            it = mats.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    return *this;
+}
+
+template <typename T>
+mopr<T> &mopr<T>::operator*=(opr_prod<T> rhs)
+{
+    auto it = mats.begin();
+    while (it != mats.end()) {
+        (*it) *= rhs;
+        if (it->q_zero()) {
+            it = mats.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    return *this;
+}
+
+template <typename T>
+mopr<T> &mopr<T>::operator*=(mopr<T> rhs)
+{
+    for (auto &ele : rhs.mats) (*this) *= ele;
+    return *this;
+}
+
+
+template <typename T>
+mopr<T> &mopr<T>::operator*=(const T &rhs)
+{
+    for (auto &ele : mats) ele *= rhs;
+    return *this;
+}
+
+template <typename T>
+mopr<T> &mopr<T>::negative()
+{
+    for (auto &ele : mats) ele.negative();
+    return *this;
+}
 
 template <typename T>
 void mopr<T>::prt() const
@@ -759,6 +819,18 @@ void swap(mopr<T> &lhs, mopr<T> &rhs)
     swap(lhs.mats, rhs.mats);
 }
 
+template <typename T>
+bool operator==(const mopr<T> &lhs, const mopr<T> &rhs)
+{
+    return lhs.mats == rhs.mats;
+}
+
+template <typename T>
+bool operator!=(const mopr<T> &lhs, const mopr<T> &rhs)
+{
+    return lhs.mats != rhs.mats;
+}
+
 //Explicit instantiation, so the class definition can be put in this file
 template class opr<double>;
 template class opr<std::complex<double>>;
@@ -775,14 +847,14 @@ template bool operator!=(const opr<std::complex<double>>&, const opr<std::comple
 template bool operator<(const opr<double>&, const opr<double>&);
 template bool operator<(const opr<std::complex<double>>&, const opr<std::complex<double>>&);
 
-template opr<double> operator+(const opr<double>&, const opr<double>&);
-template opr<std::complex<double>> operator+(const opr<std::complex<double>>&, const opr<std::complex<double>>&);
+//template opr<double> operator+(const opr<double>&, const opr<double>&);
+//template opr<std::complex<double>> operator+(const opr<std::complex<double>>&, const opr<std::complex<double>>&);
+//
+//template opr<double> operator-(const opr<double>&, const opr<double>&);
+//template opr<std::complex<double>> operator-(const opr<std::complex<double>>&, const opr<std::complex<double>>&);
 
-template opr<double> operator-(const opr<double>&, const opr<double>&);
-template opr<std::complex<double>> operator-(const opr<std::complex<double>>&, const opr<std::complex<double>>&);
-
-template opr<double> operator*(const opr<double>&, const opr<double>&);
-template opr<std::complex<double>> operator*(const opr<std::complex<double>>&, const opr<std::complex<double>>&);
+//template opr<double> operator*(const opr<double>&, const opr<double>&);
+//template opr<std::complex<double>> operator*(const opr<std::complex<double>>&, const opr<std::complex<double>>&);
 
 template opr<double> operator*(const double&, const opr<double>&);
 template opr<std::complex<double>> operator*(const std::complex<double>&, const opr<std::complex<double>>&);
@@ -830,3 +902,7 @@ template class mopr<std::complex<double>>;
 
 template void swap(mopr<double>&, mopr<double>&);
 template void swap(mopr<std::complex<double>>&, mopr<std::complex<double>>&);
+
+template bool operator==(const mopr<double>&, const mopr<double>&);
+template bool operator==(const mopr<std::complex<double>>&, const mopr<std::complex<double>>&);
+
