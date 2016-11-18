@@ -8,10 +8,11 @@ void test_operator();
 
 int main(){
     //test_operator();
-    lil_mat<double> sp_lil(100000000);
+    lil_mat<double> sp_lil(5);
     //sp_lil.prt();
     sp_lil.add(3, 2, 4.0);
     sp_lil.add(3, 4, 0.1);
+    sp_lil.add(3, 4, -0.1);
     sp_lil.prt();
     
     csr_mat<double> sp_csr(sp_lil);

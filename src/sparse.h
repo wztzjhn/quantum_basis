@@ -1,7 +1,7 @@
 #ifndef SPARSE_H
 #define SPARSE_H
 #include <vector>
-#include <list>
+#include <forward_list>
 #include "mkl_interface.h"
 
 // Note: sparse matrices in this code are using zero-based convention
@@ -11,8 +11,8 @@
 static const double sparse_precision = 1e-15;
 
 template <typename T> struct lil_mat_elem {
-    MKL_INT col;
     T val;
+    MKL_INT col;
 };
 
 template <typename T> class lil_mat {
@@ -21,8 +21,10 @@ public:
     lil_mat() = default;
     
     // constructor with the Hilbert space dimension
-    lil_mat(const MKL_INT &n) : dim(n), nnz(n), mat(std::vector<std::list<lil_mat_elem<T>>>(n, std::list<lil_mat_elem<T>>(1)))
+    lil_mat(const MKL_INT &n) : dim(n), nnz(n),
+                                mat(std::vector<std::forward_list<lil_mat_elem<T>>>(n, std::forward_list<lil_mat_elem<T>>(1)))
     {
+        mat.shrink_to_fit();
         for (MKL_INT i = 0; i < n; i++) {
             mat[i].front().col = i;
             mat[i].front().val = 0.0;
@@ -53,7 +55,7 @@ public:
 private:
     MKL_INT dim;    // dimension of the matrix
     MKL_INT nnz;    // number of non-zero entries
-    std::vector<std::list<lil_mat_elem<T>>> mat;
+    std::vector<std::forward_list<lil_mat_elem<T>>> mat;
 };
 
 
