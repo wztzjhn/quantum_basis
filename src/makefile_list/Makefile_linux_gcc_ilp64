@@ -1,0 +1,19 @@
+CXX       = g++
+CPPFLAGS  = -O3 -std=c++11 -Wall -Wextra -Wpadded -DMKL_ILP64 -m64 -isystem ${MKLROOT}/include
+LIBS      = -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl
+
+OBJS      = sparse.o operators.o basis.o main.o
+
+OPTS      = 
+
+EXEC      = ../bin/test.x
+
+
+all: $(OBJS)
+	$(CXX) $(OBJS) $(OPTS) $(LIBS) -o $(EXEC)
+
+%.o: %.cc
+	$(CXX) $(CPPFLAGS)  -c -o $@ $<
+
+clean:
+	$(RM) *.o
