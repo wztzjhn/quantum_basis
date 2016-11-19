@@ -10,18 +10,22 @@
 
 static const double sparse_precision = 1e-15;
 
+template <typename> class csr_mat;
+template <typename T> void csrXvec(const csr_mat<T>&, const std::vector<T>&, std::vector<T>&);
+
 template <typename T> struct lil_mat_elem {
     T val;
     MKL_INT col;
 };
 
 template <typename T> class lil_mat {
+    friend class csr_mat<T>;
 public:
     // default constructor
     lil_mat() = default;
     
     // constructor with the Hilbert space dimension
-    lil_mat(const MKL_INT &n) : dim(n), nnz(n),
+    lil_mat(const MKL_INT &n, bool sym_ = false) : dim(n), nnz(n), sym(sym_),
                                 mat(std::vector<std::forward_list<lil_mat_elem<T>>>(n, std::forward_list<lil_mat_elem<T>>(1)))
     {
         mat.shrink_to_fit();
@@ -55,34 +59,39 @@ public:
 private:
     MKL_INT dim;    // dimension of the matrix
     MKL_INT nnz;    // number of non-zero entries
+    bool sym;       // if storing only upper triangle
     std::vector<std::forward_list<lil_mat_elem<T>>> mat;
 };
 
 
 // 3-array form of csr sparse matrix format, zero baseds
 template <typename T> class csr_mat {
+    friend void csrXvec <> (const csr_mat<T>&, const std::vector<T>&, std::vector<T>&);
 public:
     // default constructor
     csr_mat() = default;
     
     // construcotr from a lil_mat, and if sym_ == true, use only the upper triangle
-    csr_mat(const lil_mat<T> &old, const bool &sym_ = false);
+    csr_mat(const lil_mat<T> &old);
     
     // destructor
     ~csr_mat()
     {
         if(val != nullptr) delete [] val;
-        if(col != nullptr) delete [] col;
-        if(row_ptr != nullptr) delete [] row_ptr;
+        if(ja != nullptr) delete [] ja;
+        if(ia != nullptr) delete [] ia;
     }
+    
+    // print
+    void prt();
     
 private:
     MKL_INT dim;
     MKL_INT nnz;    // number of non-zero entries
     bool sym;       // if storing only upper triangle
     T *val;
-    MKL_INT *col;
-    MKL_INT *row_ptr;
+    MKL_INT *ja;
+    MKL_INT *ia;
 };
 
 

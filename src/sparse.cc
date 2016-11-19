@@ -1,5 +1,6 @@
 #include <complex>
 #include <iostream>
+#include <iomanip>
 #include <cassert>
 #include "sparse.h"
 
@@ -10,6 +11,7 @@ template <typename T>
 void lil_mat<T>::add(const MKL_INT &row, const MKL_INT &col, const T &val)
 {
     assert(row >= 0 && row < mat.size() && col >=0 && col < mat.size());
+    assert(sym ? row <= col : true);
     if (std::abs(val) < sparse_precision) return;
     auto it_prev = mat[row].before_begin();
     auto it_curr = mat[row].begin();
@@ -32,29 +34,74 @@ void lil_mat<T>::add(const MKL_INT &row, const MKL_INT &col, const T &val)
 template <typename T>
 void lil_mat<T>::prt()
 {
+    std::cout << "dim = " << dim << std::endl;
     std::cout << "nnz = " << nnz << std::endl;
-//    for (decltype(mat.size()) i = 0; i < mat.size(); i++) {
-//        std::cout << "--------------------------------" << std::endl;
-//        std::cout << "Row " << i << ": " << std::endl;
-//        for (auto &ele : mat[i]) {
-//            std::cout << "col " << ele.col << ", val = " << ele.val << std::endl;
-//        }
-//    }
+    std::cout << (sym?"Upper triangle":"Full matrix") << std::endl;
+    for (decltype(mat.size()) i = 0; i < mat.size(); i++) {
+        std::cout << "--------------------------------" << std::endl;
+        std::cout << "Row " << i << ": " << std::endl;
+        for (auto &ele : mat[i]) {
+            std::cout << "col " << ele.col << ", val = " << ele.val << std::endl;
+        }
+    }
 }
 
 
 template <typename T>
-csr_mat<T>::csr_mat(const lil_mat<T> &old, const bool &sym_) : dim(old.dimension()), nnz(old.num_nonzero()), sym(sym_)
+csr_mat<T>::csr_mat(const lil_mat<T> &old) : dim(old.dim), nnz(old.nnz), sym(old.sym)
 {
-    assert(old.num_nonzero()>0);
+    assert(old.nnz>0);
     std::cout << "Converting LIL to CSR: " << std::endl;
     std::cout << "# of Row and col:      " << dim << std::endl;
     std::cout << "# of nonzero elements: " << nnz << std::endl;
     std::cout << "# of all elements:     " << static_cast<long long>(dim) * static_cast<long long>(dim) << std::endl;
     std::cout << "Sparsity:              " << static_cast<double>(nnz) / static_cast<double>(dim) / static_cast<double>(dim) << std::endl;
     std::cout << "Matrix usage:          " << (sym?"Upper triangle":"Full") << std::endl;
-    //val = new T[nnz];
+    val = new T[nnz];
+    ja = new MKL_INT[nnz];
+    ia = new MKL_INT[dim+1];
+    MKL_INT counts = 0;
+    for (decltype(dim) i = 0; i < dim; i++) {
+        assert(! old.mat[i].empty()); // at least storing the diagonal element
+        ia[i] = counts;
+        auto it = old.mat[i].begin();
+        while (it != old.mat[i].end()) {
+            assert(old.sym ? i <= it->col : true);
+            ja[counts] = it->col;
+            val[counts] = it->val;
+            ++it;
+            ++counts;
+        }
+    }
+    assert(counts == nnz);
+    ia[dim] = counts;
 }
+
+template <typename T>
+void csr_mat<T>::prt()
+{
+    std::cout << "dim = " << dim << std::endl;
+    std::cout << "nnz = " << nnz << std::endl;
+    std::cout << (sym?"Upper triangle":"Full matrix") << std::endl;
+    for (MKL_INT i = 0; i < nnz; i++) std::cout << std::setw(8) << val[i];
+    std::cout << std::endl;
+    for (MKL_INT i = 0; i < nnz; i++) std::cout << std::setw(8) << ja[i];
+    std::cout << std::endl;
+    for (MKL_INT i = 0; i <= dim; i++) std::cout << std::setw(8) << ia[i];
+    std::cout << std::endl;
+}
+
+template <typename T>
+void csrXvec(const csr_mat<T> &mat, const std::vector<T> &x, std::vector<T> &y)
+{
+    assert(mat.dim == x.size() && x.size() == y.size());
+    if (mat.sym) {
+        csrsymv('u', mat.dim, mat.val, mat.ia, mat.ja, x.data(), y.data());
+    } else {
+        csrgemv('n', mat.dim, mat.val, mat.ia, mat.ja, x.data(), y.data());
+    }
+}
+
 
 // Explicit instantiation
 template struct lil_mat_elem<double>;
@@ -65,3 +112,7 @@ template class lil_mat<std::complex<double>>;
 
 template class csr_mat<double>;
 template class csr_mat<std::complex<double>>;
+
+template void csrXvec(const csr_mat<double>&, const std::vector<double>&, std::vector<double>&);
+template void csrXvec(const csr_mat<std::complex<double>>&, const std::vector<std::complex<double>>&, std::vector<std::complex<double>>&);
+

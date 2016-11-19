@@ -29,4 +29,24 @@ void gemm(const char transa, const char transb, const MKL_INT m, const MKL_INT n
     zgemm(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
 }
 
+
+// sparse blas routines
+inline // double
+void csrgemv(const char transa, const MKL_INT m, const double *a, const MKL_INT *ia, const MKL_INT *ja, const double *x, double *y) {
+    mkl_cspblas_dcsrgemv(&transa, &m, a, ia, ja, x, y);
+}
+inline // complex double
+void csrgemv(const char transa, const MKL_INT m, const std::complex<double> *a, const MKL_INT *ia, const MKL_INT *ja, const std::complex<double> *x, std::complex<double> *y) {
+    mkl_cspblas_zcsrgemv(&transa, &m, a, ia, ja, x, y);
+}
+
+inline // double
+void csrsymv(const char uplo, const MKL_INT m, const double *a, const MKL_INT *ia, const MKL_INT *ja, const double *x, double *y) {
+    mkl_cspblas_dcsrsymv(&uplo, &m, a, ia, ja, x, y);
+}
+inline // complex double
+void csrsymv(const char uplo, const MKL_INT m, const std::complex<double> *a, const MKL_INT *ia, const MKL_INT *ja, const std::complex<double> *x, std::complex<double> *y) {
+    mkl_cspblas_zcsrsymv(&uplo, &m, a, ia, ja, x, y);
+}
+
 #endif

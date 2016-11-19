@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <vector>
 #include "basis.h"
 #include "operators.h"
@@ -8,14 +9,32 @@ void test_operator();
 
 int main(){
     //test_operator();
-    lil_mat<double> sp_lil(5);
-    //sp_lil.prt();
-    sp_lil.add(3, 2, 4.0);
-    sp_lil.add(3, 4, 0.1);
-    sp_lil.add(3, 4, -0.1);
+    lil_mat<double> sp_lil(5,true);
+    sp_lil.prt();
+    sp_lil.add(3,3,11.0);
+    sp_lil.add(2,3,8.0);
+    //sp_lil.add(3,2,10.0);
+    sp_lil.add(0,3,2.0);
+    //sp_lil.add(1,0,3.0);
+    sp_lil.add(1,1,4.0);
+    sp_lil.add(0,0,1.0);
+    sp_lil.add(4,4,12.0);
+    sp_lil.add(2,4,9.0);
+    sp_lil.add(2,2,7.0);
+    //sp_lil.add(2,0,6.0);
+    sp_lil.add(1,3,5.0);
     sp_lil.prt();
     
     csr_mat<double> sp_csr(sp_lil);
+    sp_csr.prt();
+    std::vector<double> x = {1.0, 2.0, 3.0, 4.0, 5.0};
+    std::vector<double> y(5);
+    csrXvec(sp_csr, x, y);
+    std::cout << "y=" << std::endl;
+    for (size_t i = 0; i < y.size(); i++) {
+        std::cout << std::setw(10) << y[i];
+    }
+    std::cout << std::endl;
 }
 
 
