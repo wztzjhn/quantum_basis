@@ -40,6 +40,7 @@ void csrgemv(const char transa, const MKL_INT m, const std::complex<double> *a, 
     mkl_cspblas_zcsrgemv(&transa, &m, a, ia, ja, x, y);
 }
 
+// for symmetric matrix (NOT Hermitian matrix)
 inline // double
 void csrsymv(const char uplo, const MKL_INT m, const double *a, const MKL_INT *ia, const MKL_INT *ja, const double *x, double *y) {
     mkl_cspblas_dcsrsymv(&uplo, &m, a, ia, ja, x, y);
@@ -47,6 +48,20 @@ void csrsymv(const char uplo, const MKL_INT m, const double *a, const MKL_INT *i
 inline // complex double
 void csrsymv(const char uplo, const MKL_INT m, const std::complex<double> *a, const MKL_INT *ia, const MKL_INT *ja, const std::complex<double> *x, std::complex<double> *y) {
     mkl_cspblas_zcsrsymv(&uplo, &m, a, ia, ja, x, y);
+}
+
+// more general function to perform matrix vector product in mkl
+inline // double
+void mkl_csrmv(const char transa, const MKL_INT m, const MKL_INT k, const double alpha, const char *matdescra,
+               const double *val, const MKL_INT *indx, const MKL_INT *pntrb, const MKL_INT *pntre,
+               const double *x, const double beta, double *y) {
+    mkl_dcsrmv(&transa, &m, &k, &alpha, matdescra, val, indx, pntrb, pntre, x, &beta, y);
+}
+inline // complex double
+void mkl_csrmv(const char transa, const MKL_INT m, const MKL_INT k, const std::complex<double> alpha, const char *matdescra,
+               const std::complex<double> *val, const MKL_INT *indx, const MKL_INT *pntrb, const MKL_INT *pntre,
+               const std::complex<double> *x, const std::complex<double> beta, std::complex<double> *y) {
+    mkl_zcsrmv(&transa, &m, &k, &alpha, matdescra, val, indx, pntrb, pntre, x, &beta, y);
 }
 
 #endif

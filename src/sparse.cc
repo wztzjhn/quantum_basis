@@ -96,7 +96,11 @@ void csrXvec(const csr_mat<T> &mat, const std::vector<T> &x, std::vector<T> &y)
 {
     assert(mat.dim == x.size() && x.size() == y.size());
     if (mat.sym) {
-        csrsymv('u', mat.dim, mat.val, mat.ia, mat.ja, x.data(), y.data());
+        char matdescar[7] = "HUNC";
+        // later can be optimized
+        for (MKL_INT j = 0; j < y.size(); j++) y[j] = 0.0; // required by mkl_csrmv
+        mkl_csrmv('n', mat.dim, mat.dim, static_cast<T>(1.0), matdescar,
+                  mat.val, mat.ja, mat.ia, mat.ia + 1, x.data(), static_cast<T>(1.0), y.data());
     } else {
         csrgemv('n', mat.dim, mat.val, mat.ia, mat.ja, x.data(), y.data());
     }

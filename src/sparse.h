@@ -64,7 +64,7 @@ private:
 };
 
 
-// 3-array form of csr sparse matrix format, zero baseds
+// 3-array form of csr sparse matrix format, zero based
 template <typename T> class csr_mat {
     friend void csrXvec <> (const csr_mat<T>&, const std::vector<T>&, std::vector<T>&);
 public:
@@ -73,6 +73,14 @@ public:
     
     // construcotr from a lil_mat, and if sym_ == true, use only the upper triangle
     csr_mat(const lil_mat<T> &old);
+    
+    // explicitly destroy, free space
+    void destroy()
+    {
+        if(val != nullptr) delete [] val;
+        if(ja != nullptr) delete [] ja;
+        if(ia != nullptr) delete [] ia;
+    }
     
     // destructor
     ~csr_mat()
