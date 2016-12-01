@@ -4,12 +4,13 @@
 #include "basis.h"
 #include "operators.h"
 #include "sparse.h"
+#include "lanczos.h"
 
 void test_operator();
 
 int main(){
     //test_operator();
-    lil_mat<std::complex<double>> sp_lil(5,true);
+    lil_mat<std::complex<double>> sp_lil(8,true);
     sp_lil.prt();
     sp_lil.add(3,3,11.0);
     sp_lil.add(2,3,8.0);
@@ -23,18 +24,38 @@ int main(){
     sp_lil.add(2,2,7.0);
     //sp_lil.add(2,0,6.0);
     sp_lil.add(1,3,5.0);
+    sp_lil.add(1,6,5.0);
+    sp_lil.add(1,7,4.0);
+    sp_lil.add(3,6,2.0);
     sp_lil.prt();
     
+    
     csr_mat<std::complex<double>> sp_csr(sp_lil);
+    sp_lil.destroy();
     sp_csr.prt();
-    std::vector<std::complex<double>> x = {1.0, 2.0, 3.0, 4.0, 5.0};
-    std::vector<std::complex<double>> y(5);
-    csrXvec(sp_csr, x, y);
+    
+    std::vector<std::vector<std::complex<double>>> v(8,std::vector<std::complex<double>>(8));
+    double hessenberg[14];
+    std::vector<std::complex<double>> x = {1.0, std::complex<double>(2.3, 3.4), 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
+    double temp =nrm2(8, x.data(), 1);
+    std::cout << "norm of x = " << temp << std::endl;
+    scal(8, 1.0/nrm2(8, x.data(), 1), x.data(), 1);
+    v[0] = x;
+    std::vector<std::complex<double>> y(8);
+    sp_csr.MultMv(x, y);
     std::cout << "y=" << std::endl;
     for (size_t i = 0; i < y.size(); i++) {
         std::cout << std::setw(10) << y[i];
     }
     std::cout << std::endl;
+    
+    lanczos(sp_csr, v, hessenberg);
+    std::cout << "hessenberg: " << std::endl;
+    for (MKL_INT i=0; i < 7; i++) {
+        std::cout << std::setw(15) << hessenberg[i] << std::setw(15) << hessenberg[i+7] << std::endl;
+    }
+    std::cout << std::endl;
+
 }
 
 

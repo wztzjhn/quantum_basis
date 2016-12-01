@@ -78,6 +78,22 @@ csr_mat<T>::csr_mat(const lil_mat<T> &old) : dim(old.dim), nnz(old.nnz), sym(old
 }
 
 template <typename T>
+void csr_mat<T>::MultMv(const std::vector<T> &x, std::vector<T> &y) const
+{
+    assert(dim == x.size() && x.size() == y.size());
+    if (sym) {
+        char matdescar[7] = "HUNC";
+        T zero = static_cast<T>(0.0);
+        T one  = static_cast<T>(1.0);
+        for (MKL_INT j = 0; j < y.size(); j++) y[j] = zero; // required by mkl_csrmv
+        mkl_csrmv('n', dim, dim, one, matdescar,
+                  val, ja, ia, ia + 1, x.data(), one, y.data());
+    } else {
+        csrgemv('n', dim, val, ia, ja, x.data(), y.data());
+    }
+}
+
+template <typename T>
 void csr_mat<T>::prt()
 {
     std::cout << "dim = " << dim << std::endl;
@@ -91,20 +107,20 @@ void csr_mat<T>::prt()
     std::cout << std::endl;
 }
 
-template <typename T>
-void csrXvec(const csr_mat<T> &mat, const std::vector<T> &x, std::vector<T> &y)
-{
-    assert(mat.dim == x.size() && x.size() == y.size());
-    if (mat.sym) {
-        char matdescar[7] = "HUNC";
-        // later can be optimized
-        for (MKL_INT j = 0; j < y.size(); j++) y[j] = 0.0; // required by mkl_csrmv
-        mkl_csrmv('n', mat.dim, mat.dim, static_cast<T>(1.0), matdescar,
-                  mat.val, mat.ja, mat.ia, mat.ia + 1, x.data(), static_cast<T>(1.0), y.data());
-    } else {
-        csrgemv('n', mat.dim, mat.val, mat.ia, mat.ja, x.data(), y.data());
-    }
-}
+//template <typename T>
+//void csrXvec(const csr_mat<T> &mat, const std::vector<T> &x, std::vector<T> &y)
+//{
+//    assert(mat.dim == x.size() && x.size() == y.size());
+//    if (mat.sym) {
+//        char matdescar[7] = "HUNC";
+//        // later can be optimized
+//        for (MKL_INT j = 0; j < y.size(); j++) y[j] = 0.0; // required by mkl_csrmv
+//        mkl_csrmv('n', mat.dim, mat.dim, static_cast<T>(1.0), matdescar,
+//                  mat.val, mat.ja, mat.ia, mat.ia + 1, x.data(), static_cast<T>(1.0), y.data());
+//    } else {
+//        csrgemv('n', mat.dim, mat.val, mat.ia, mat.ja, x.data(), y.data());
+//    }
+//}
 
 
 // Explicit instantiation
@@ -117,6 +133,6 @@ template class lil_mat<std::complex<double>>;
 template class csr_mat<double>;
 template class csr_mat<std::complex<double>>;
 
-template void csrXvec(const csr_mat<double>&, const std::vector<double>&, std::vector<double>&);
-template void csrXvec(const csr_mat<std::complex<double>>&, const std::vector<std::complex<double>>&, std::vector<std::complex<double>>&);
+//template void csrXvec(const csr_mat<double>&, const std::vector<double>&, std::vector<double>&);
+//template void csrXvec(const csr_mat<std::complex<double>>&, const std::vector<std::complex<double>>&, std::vector<std::complex<double>>&);
 

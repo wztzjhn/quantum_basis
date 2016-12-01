@@ -8,10 +8,10 @@
 
 // By default, all diagonal elements are stored, even if they are zero (to be compatible with pardiso)
 
-static const double sparse_precision = 1e-15;
+static const double sparse_precision = 1e-14;
 
 template <typename> class csr_mat;
-template <typename T> void csrXvec(const csr_mat<T>&, const std::vector<T>&, std::vector<T>&);
+//template <typename T> void csrXvec(const csr_mat<T>&, const std::vector<T>&, std::vector<T>&);
 
 template <typename T> struct lil_mat_elem {
     T val;
@@ -66,7 +66,7 @@ private:
 
 // 3-array form of csr sparse matrix format, zero based
 template <typename T> class csr_mat {
-    friend void csrXvec <> (const csr_mat<T>&, const std::vector<T>&, std::vector<T>&);
+//    friend void csrXvec <> (const csr_mat<T>&, const std::vector<T>&, std::vector<T>&);
 public:
     // default constructor
     csr_mat() = default;
@@ -89,6 +89,11 @@ public:
         if(ja != nullptr) delete [] ja;
         if(ia != nullptr) delete [] ia;
     }
+    
+    // matrix vector product
+    void MultMv(const std::vector<T>&, std::vector<T>&) const;
+    
+    MKL_INT dimension() const {return dim; }
     
     // print
     void prt();
