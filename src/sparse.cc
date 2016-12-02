@@ -54,8 +54,9 @@ csr_mat<T>::csr_mat(const lil_mat<T> &old) : dim(old.dim), nnz(old.nnz), sym(old
     std::cout << "Converting LIL to CSR: " << std::endl;
     std::cout << "# of Row and col:      " << dim << std::endl;
     std::cout << "# of nonzero elements: " << nnz << std::endl;
-    std::cout << "# of all elements:     " << static_cast<long long>(dim) * static_cast<long long>(dim) << std::endl;
-    std::cout << "Sparsity:              " << static_cast<double>(nnz) / static_cast<double>(dim) / static_cast<double>(dim) << std::endl;
+    auto capacity= sym ? static_cast<long long>(dim+1) * static_cast<long long>(dim) / 2 : static_cast<long long>(dim) * static_cast<long long>(dim);
+    std::cout << "# of all elements:     " << capacity << std::endl;
+    std::cout << "Sparsity:              " << static_cast<double>(nnz) / capacity << std::endl;
     std::cout << "Matrix usage:          " << (sym?"Upper triangle":"Full") << std::endl;
     val = new T[nnz];
     ja = new MKL_INT[nnz];
@@ -78,20 +79,32 @@ csr_mat<T>::csr_mat(const lil_mat<T> &old) : dim(old.dim), nnz(old.nnz), sym(old
 }
 
 template <typename T>
-void csr_mat<T>::MultMv(const std::vector<T> &x, std::vector<T> &y) const
+void csr_mat<T>::MultMv(const T *x, T *y) const
 {
-    assert(dim == x.size() && x.size() == y.size());
     if (sym) {
         char matdescar[7] = "HUNC";
         T zero = static_cast<T>(0.0);
         T one  = static_cast<T>(1.0);
-        for (MKL_INT j = 0; j < y.size(); j++) y[j] = zero; // required by mkl_csrmv
+        for (MKL_INT j = 0; j < dim; j++) y[j] = zero; // required by mkl_csrmv
         mkl_csrmv('n', dim, dim, one, matdescar,
-                  val, ja, ia, ia + 1, x.data(), one, y.data());
+                  val, ja, ia, ia + 1, x, one, y);
     } else {
-        csrgemv('n', dim, val, ia, ja, x.data(), y.data());
+        csrgemv('n', dim, val, ia, ja, x, y);
     }
 }
+
+// need fix ldb and ldc to make this subroutine work
+//template <typename T>
+//void csr_mat<T>::MultMm(const T *x, T *y, MKL_INT n) const
+//{
+//    T zero = static_cast<T>(0.0);
+//    T one  = static_cast<T>(1.0);
+//    for (MKL_INT j = 0; j < dim * n; j++) y[j] = zero; // required by mkl_csrmm
+//    char matdescar[7] = "HUNC";
+//    matdescar[0] = sym ? 'H' : 'G';
+//    mkl_csrmm('n', dim, n, dim, one, matdescar,
+//              val, ja, ia, ia + 1, x, n, zero, y, n);
+//}
 
 template <typename T>
 void csr_mat<T>::prt()

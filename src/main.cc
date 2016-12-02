@@ -7,9 +7,39 @@
 #include "lanczos.h"
 
 void test_operator();
+void test_csrmm();
+void test_lanczos();
 
 int main(){
     //test_operator();
+    test_csrmm();
+    test_lanczos();
+
+}
+
+void test_csrmm() {
+    lil_mat<std::complex<double>> sp_lil_test(2,true);
+    sp_lil_test.add(0,0,1.0);
+    sp_lil_test.add(0,1,std::complex<double>(2.0,3.0));
+    sp_lil_test.add(1,1,4.5);
+    sp_lil_test.prt();
+    csr_mat<std::complex<double>> sp_csr_test(sp_lil_test);
+    sp_csr_test.prt();
+    std::complex<double> testv1[6], testv2[6];
+    for (MKL_INT i = 0; i < 6; i++) {
+        testv1[i] = std::complex<double>(i,i+1);
+    }
+//    sp_csr_test.MultMm(testv1, testv2,3);
+//    for (MKL_INT i=0; i < 2; i++) {
+//        for (MKL_INT j = 0; j < 3; j++) {
+//            std::cout << std::setw(18) << testv2[i + j * 2];
+//        }
+//        std::cout << std::endl;
+//    }
+//    std::cout << std::endl;
+}
+
+void test_lanczos() {
     lil_mat<std::complex<double>> sp_lil(8,true);
     sp_lil.prt();
     sp_lil.add(3,3,11.0);
@@ -34,28 +64,95 @@ int main(){
     sp_lil.destroy();
     sp_csr.prt();
     
-    std::vector<std::vector<std::complex<double>>> v(8,std::vector<std::complex<double>>(8));
-    double hessenberg[14];
+    MKL_INT k = 5;
+    MKL_INT dim=8;
+    
+    
+    
+    std::vector<std::vector<std::complex<double>>> v(k+1,std::vector<std::complex<double>>(dim));
+    double hessenberg[2*k];
     std::vector<std::complex<double>> x = {1.0, std::complex<double>(2.3, 3.4), 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
-    double temp =nrm2(8, x.data(), 1);
+    double temp =nrm2(dim, x.data(), 1);
     std::cout << "norm of x = " << temp << std::endl;
-    scal(8, 1.0/nrm2(8, x.data(), 1), x.data(), 1);
+    scal(dim, 1.0/nrm2(dim, x.data(), 1), x.data(), 1);
     v[0] = x;
-    std::vector<std::complex<double>> y(8);
-    sp_csr.MultMv(x, y);
+    std::vector<std::complex<double>> y(dim);
+    sp_csr.MultMv(x.data(), y.data());
     std::cout << "y=" << std::endl;
     for (size_t i = 0; i < y.size(); i++) {
         std::cout << std::setw(10) << y[i];
     }
     std::cout << std::endl;
     
-    lanczos(sp_csr, v, hessenberg);
+    double betak;
+    lanczos(sp_csr, v, hessenberg, betak);
     std::cout << "hessenberg: " << std::endl;
-    for (MKL_INT i=0; i < 7; i++) {
-        std::cout << std::setw(15) << hessenberg[i] << std::setw(15) << hessenberg[i+7] << std::endl;
+    for (MKL_INT i=0; i < k; i++) {
+        std::cout << std::setw(12) << hessenberg[i] << std::setw(12) << hessenberg[i+k] << std::endl;
     }
     std::cout << std::endl;
-
+    std::cout << "v: " << std::endl;
+    for (MKL_INT i=0; i<dim; i++) {
+        for (MKL_INT j=0; j < k+1; j++) {
+            std::cout << std::setw(25) << v[j][i];
+        }
+        std::cout << std::endl;
+    }
+    
+    std::cout << std::endl;
+    
+    std::complex<double> *hess= new std::complex<double>[k*k];
+    hess2matform(hessenberg, hess, k);
+    //    for (MKL_INT i=0; i < k; i++) {
+    //        for (MKL_INT j = 0; j < k; j++) {
+    //            std::cout << std::setw(18) << hess[i + j * k];
+    //        }
+    //        std::cout << std::endl;
+    //    }
+    //    std::cout << std::endl;
+    
+    std::complex<double> *vmat = new std::complex<double>[k*dim];
+    std::complex<double> *res = new std::complex<double>[k*dim];
+    for (MKL_INT j = 0; j < k; j++) {
+        for (MKL_INT i = 0; i < dim; i++) {
+            vmat[i + j * dim] = v[j][i];
+        }
+    }
+    std::cout << "v:" << std::endl;
+    for (MKL_INT i=0; i < dim; i++) {
+        for (MKL_INT j = 0; j < k; j++) {
+            std::cout << std::setw(25) << vmat[i + j * dim];
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+    for (MKL_INT j=0; j < k; j++) {
+        sp_csr.MultMv(vmat + j*dim, res + j*dim);
+    }
+    std::cout << "a.v = " << std::endl;
+    for (MKL_INT i=0; i < dim; i++) {
+        for (MKL_INT j = 0; j < k; j++) {
+            std::complex<double> out = std::abs(res[i + j * dim])>1e-12?res[i + j * dim]:0.0;
+            std::cout << std::setw(12) << out;
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+    
+    gemm('n', 'n', dim, k, k, std::complex<double>(-1.0,0), vmat, dim, hess, k, std::complex<double>(1.0,0), res, dim);
+    for (MKL_INT i=0; i < dim; i++) {
+        for (MKL_INT j = 0; j < k; j++) {
+            std::complex<double> out = std::abs(res[i + j * dim])>1e-12?res[i + j * dim]:0.0;
+            std::cout << std::setw(25) << out;
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+    
+    std::cout << "Vextra:" << std::endl;
+    for (MKL_INT i = 0; i < dim; i++) {
+        std::cout << std::setw(12) << betak * v[k][i] << std::endl;
+    }
 }
 
 

@@ -102,4 +102,18 @@ void mkl_csrmv(const char transa, const MKL_INT m, const MKL_INT k, const std::c
     mkl_zcsrmv(&transa, &m, &k, &alpha, matdescra, val, indx, pntrb, pntre, x, &beta, y);
 }
 
+inline // double
+void mkl_csrmm(const char transa, const MKL_INT m, const MKL_INT n, const MKL_INT k, const double alpha, const char *matdescra,
+               const double *val, const MKL_INT *indx, const MKL_INT *pntrb, const MKL_INT *pntre,
+               const double *b, const MKL_INT ldb, const double beta, double *c, const MKL_INT ldc) {
+    mkl_dcsrmm(&transa, &m, &n, &k, &alpha, matdescra, val, indx, pntrb, pntre, b, &ldb, &beta, c, &ldc);
+}
+
+inline // complex double
+void mkl_csrmm(const char transa, const MKL_INT m, const MKL_INT n, const MKL_INT k, const std::complex<double> alpha, const char *matdescra,
+               const std::complex<double> *val, const MKL_INT *indx, const int *pntrb, const int *pntre,
+               const std::complex<double> *b, const MKL_INT ldb, const std::complex<double> beta, std::complex<double> *c, const MKL_INT ldc) {
+    mkl_zcsrmm(&transa, &m, &n, &k, &alpha, matdescra, val, indx, pntrb, pntre, b, &ldb, &beta, c, &ldc);
+}
+
 #endif

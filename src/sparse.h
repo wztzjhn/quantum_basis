@@ -91,7 +91,11 @@ public:
     }
     
     // matrix vector product
-    void MultMv(const std::vector<T>&, std::vector<T>&) const;
+    void MultMv(const T *x, T *y) const;
+    
+    // matrix matrix product, x and y of shape dim * n
+    //void MultMm(const T *x, T *y, MKL_INT n) const;
+    
     
     MKL_INT dimension() const {return dim; }
     
