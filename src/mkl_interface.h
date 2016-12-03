@@ -14,6 +14,17 @@ void axpy(const MKL_INT n, const std::complex<double> alpha, const std::complex<
     zaxpy(&n, &alpha, x, &incx, y, &incy);
 }
 
+
+// blas level 1, y = x
+inline // double
+void copy(const MKL_INT n, const double *x, const MKL_INT incx, double *y, const MKL_INT incy) {
+    dcopy(&n, x, &incx, y, &incy);
+}
+inline // complex double
+void copy(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy) {
+    zcopy(&n, x, &incx, y, &incy);
+}
+
 // blas level 1, Euclidean norm of vector
 inline // double
 double nrm2(const MKL_INT n, const double *x, const MKL_INT incx) {
@@ -44,7 +55,6 @@ inline // double
 double dotc(const MKL_INT n, const double *x, const MKL_INT incx, const double *y, const MKL_INT incy) {
     return ddot(&n, x, &incx, y, &incy);
 }
-
 inline // complex double
 std::complex<double> dotc(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx, const std::complex<double> *y, const MKL_INT incy) {
     std::complex<double> result;
@@ -108,7 +118,6 @@ void mkl_csrmm(const char transa, const MKL_INT m, const MKL_INT n, const MKL_IN
                const double *b, const MKL_INT ldb, const double beta, double *c, const MKL_INT ldc) {
     mkl_dcsrmm(&transa, &m, &n, &k, &alpha, matdescra, val, indx, pntrb, pntre, b, &ldb, &beta, c, &ldc);
 }
-
 inline // complex double
 void mkl_csrmm(const char transa, const MKL_INT m, const MKL_INT n, const MKL_INT k, const std::complex<double> alpha, const char *matdescra,
                const std::complex<double> *val, const MKL_INT *indx, const int *pntrb, const int *pntre,

@@ -48,7 +48,7 @@ void lil_mat<T>::prt()
 
 
 template <typename T>
-csr_mat<T>::csr_mat(const lil_mat<T> &old) : dim(old.dim), nnz(old.nnz), sym(old.sym)
+csr_mat<T>::csr_mat(const lil_mat<T> &old) : dim(old.dim), nnz(old.nnz), mult_count(0), sym(old.sym)
 {
     assert(old.nnz>0);
     std::cout << "Converting LIL to CSR: " << std::endl;
@@ -79,8 +79,9 @@ csr_mat<T>::csr_mat(const lil_mat<T> &old) : dim(old.dim), nnz(old.nnz), sym(old
 }
 
 template <typename T>
-void csr_mat<T>::MultMv(const T *x, T *y) const
+void csr_mat<T>::MultMv(const T *x, T *y)
 {
+    ++mult_count;
     if (sym) {
         char matdescar[7] = "HUNC";
         T zero = static_cast<T>(0.0);

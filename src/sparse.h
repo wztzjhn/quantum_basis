@@ -91,7 +91,7 @@ public:
     }
     
     // matrix vector product
-    void MultMv(const T *x, T *y) const;
+    void MultMv(const T *x, T *y);
     
     // matrix matrix product, x and y of shape dim * n
     //void MultMm(const T *x, T *y, MKL_INT n) const;
@@ -104,8 +104,9 @@ public:
     
 private:
     MKL_INT dim;
-    MKL_INT nnz;    // number of non-zero entries
-    bool sym;       // if storing only upper triangle
+    MKL_INT nnz;        // number of non-zero entries
+    MKL_INT mult_count; // count number of matrix-vector multiplication using this matrix
+    bool sym;           // if storing only upper triangle
     T *val;
     MKL_INT *ja;
     MKL_INT *ia;
