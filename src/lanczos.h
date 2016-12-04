@@ -1,6 +1,11 @@
 #ifndef LANCZOS_H
 #define LANCZOS_H
 #include <vector>
+#include <string>
+#include <complex>
+#include <iostream>
+#include <cassert>
+#include <utility>
 #include "mkl_interface.h"
 #include "sparse.h"
 
@@ -34,10 +39,16 @@ template <typename T>
 void lanczos(MKL_INT k, MKL_INT np, csr_mat<T> &mat, double &rnorm, T resid[],
              T v[], double hessenberg[], const MKL_INT &ldh);
 
-
+// if possible, add a block Arnoldi version here
 
 // transform from band storage to general storage
 template <typename T>
-void hess2matform(double hessenberg[], T mat[], const MKL_INT &k, const MKL_INT &ldh);
+void hess2matform(const double hessenberg[], T mat[], const MKL_INT &m, const MKL_INT &ldh);
+
+// compute eigenvalues (and optionally eigenvectors, stored in s) of hessenberg matrix
+// on entry, hessenberg and s should have the same leading dimension: ldh
+// order = "sm", "lm", "sr", "lr", where 's': small, 'l': large, 'm': magnitude, 'r': real part
+void select_shifts(const double hessenberg[], const MKL_INT &ldh, const MKL_INT &m,
+                   const std::string &order, double ritz[], double s[] = nullptr);
 
 #endif

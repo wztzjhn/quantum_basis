@@ -2,6 +2,15 @@
 #define MKL_INTERFACE_H
 
 #define MKL_Complex16 std::complex<double>
+
+#ifndef lapack_int
+#define lapack_int MKL_INT
+#endif
+
+#ifndef lapack_complex_double
+#define lapack_complex_double   MKL_Complex16
+#endif
+
 #include "mkl.h"
 
 // blas level 1, y = a*x + y
@@ -124,5 +133,35 @@ void mkl_csrmm(const char transa, const MKL_INT m, const MKL_INT n, const MKL_IN
                const std::complex<double> *b, const MKL_INT ldb, const std::complex<double> beta, std::complex<double> *c, const MKL_INT ldc) {
     mkl_zcsrmm(&transa, &m, &n, &k, &alpha, matdescra, val, indx, pntrb, pntre, b, &ldb, &beta, c, &ldc);
 }
+
+
+// lapack computational routine, computes all eigenvalues of a real symmetric tridiagonal matrix using QR algorithm.
+inline // double
+lapack_int sterf(const lapack_int &n, double *d, double *e) {
+    return LAPACKE_dsterf(n, d, e);
+}
+
+// lapack computational routine, computes all eigenvalues and (optionally) eigenvectors of a symmetric/hermitian tridiagonal matrix using the divide and conquer method.
+inline // double
+lapack_int stedc(const int &matrix_layout, const char &compz, const lapack_int &n, double *d, double *e, double *z, const lapack_int &ldz) {
+    return LAPACKE_dstedc(matrix_layout, compz, n, d, e, z, ldz);
+}
+inline // complex double (for the unitary matrix which brings the original matrix to tridiagonal form)
+lapack_int stedc(const int &matrix_layout, const char &compz, const lapack_int &n, double *d, double *e, std::complex<double> *z, const lapack_int &ldz) {
+    return LAPACKE_zstedc(matrix_layout, compz, n, d, e, z, ldz);
+}
+
+
+
+//// lapack symmetric eigenvalue driver routine, using divide and conquer, for band matrix
+//inline // double
+//lapack_int bevd(const int &matrix_layout, const char &jobz, const char &uplo, const lapack_int &n, const lapack_int &kd,
+//                double *ab, const lapack_int &ldab, double *w, double *z, const lapack_int &ldz) {
+//    return LAPACKE_dsbevd(matrix_layout, jobz, uplo, n, kd, ab, ldab, w, z, ldz);
+//}
+//lapack_int bevd(const int &matrix_layout, const char &jobz, const char &uplo, const lapack_int &n, const lapack_int &kd,
+//                std::complex<double> *ab, const lapack_int &ldab, double *w, std::complex<double> *z, const lapack_int &ldz) {
+//    return LAPACKE_zhbevd(matrix_layout, jobz, uplo, n, kd, ab, ldab, w, z, ldz);
+//}
 
 #endif

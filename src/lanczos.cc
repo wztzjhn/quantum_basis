@@ -1,11 +1,9 @@
-#include <complex>
-#include <iostream>
-#include <cassert>
 #include "lanczos.h"
 
 // need further classification:
-// 1. provide an option that no intermidiate v stored, only hessenberg returned
-// 2. ask lanczos to stop when v_m+1 = 0 (ie. lanczos completed before m steps)
+// 1. provide an option that no intermidiate v stored, only hessenberg returned (probably in a separate routine)
+// 2. ask lanczos to restart with a new linearly independent vector when v_m+1 = 0
+// 3. need add DGKS re-orthogonalization
 template <typename T>
 void lanczos(MKL_INT k, MKL_INT np, csr_mat<T> &mat, double &rnorm, T resid[],
              T v[], double hessenberg[], const MKL_INT &ldh)
@@ -49,24 +47,65 @@ void lanczos(MKL_INT k, MKL_INT np, csr_mat<T> &mat, double &rnorm, T resid[],
 
 
 template <typename T>
-void hess2matform(double hessenberg[], T mat[], const MKL_INT &k, const MKL_INT &ldh)
+void hess2matform(const double hessenberg[], T mat[], const MKL_INT &m, const MKL_INT &ldh)
 {
-    assert(k <= ldh);
-    for (MKL_INT j = 0; j < k; j++) {
-        for (MKL_INT i = 0; i < k; i++) {
+    assert(m <= ldh);
+    for (MKL_INT j = 0; j < m; j++) {
+        for (MKL_INT i = 0; i < m; i++) {
             mat[i + j * ldh] = 0.0;
         }
     }
     mat[0] = hessenberg[ldh];
-    if(k > 1) mat[ldh] = hessenberg[1];
-    for (MKL_INT i =1; i < k-1; i++) {
+    if(m > 1) mat[ldh] = hessenberg[1];
+    for (MKL_INT i =1; i < m-1; i++) {
         mat[i + i * ldh]     = hessenberg[i+ldh];
         mat[i + (i-1) * ldh] = hessenberg[i];
         mat[i + (i+1) * ldh] = hessenberg[i+1];
     }
-    if (k > 1) {
-        mat[k-1 + (k-1) * ldh] = hessenberg[ldh + k -1];
-        mat[k-1 + (k-2) * ldh] = hessenberg[k-1];
+    if (m > 1) {
+        mat[m-1 + (m-1) * ldh] = hessenberg[ldh + m -1];
+        mat[m-1 + (m-2) * ldh] = hessenberg[m-1];
+    }
+}
+
+
+void select_shifts(const double hessenberg[], const MKL_INT &ldh, const MKL_INT &m,
+                   const std::string &order, double ritz[], double s[])
+{
+    assert(m>0 && ldh >= m);
+    int info;
+    copy(m, hessenberg + ldh, 1, ritz, 1);
+    std::vector<double> e(m-1);
+    copy(m-1, hessenberg + 1, 1, e.data(), 1);
+    std::vector<double> eigenvecs;
+    if (s == nullptr) {
+        info = sterf(m, ritz, e.data());                                         // ritz rewritten by eigenvalues in ascending order
+    } else {
+        eigenvecs.resize(m*m);
+        info = stedc(LAPACK_COL_MAJOR, 'I', m, ritz, e.data(), eigenvecs.data(), m);
+    }
+    assert(info == 0);
+    std::vector<std::pair<double, MKL_INT>> eigenvals(m);
+    for (decltype(eigenvals.size()) j = 0; j < eigenvals.size(); j++) {
+        eigenvals[j].first = ritz[j];
+        eigenvals[j].second = j;
+    }
+    if (order == "SR" || order == "sr") {        // smallest real part
+        std::sort(eigenvals.begin(), eigenvals.end(),
+                  [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return a.first < b.first; });
+    } else if (order == "LR" || order == "lr") { // largest real part
+        std::sort(eigenvals.begin(), eigenvals.end(),
+                  [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return b.first < a.first; });
+    } else if (order == "SM" || order == "sm") { // smallest magnitude
+        std::sort(eigenvals.begin(), eigenvals.end(),
+                  [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return std::abs(a.first) < std::abs(b.first); });
+    } else if (order == "LM" || order == "lm") { // largest magnitude
+        std::sort(eigenvals.begin(), eigenvals.end(),
+                  [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return std::abs(b.first) < std::abs(a.first); });
+    }
+    for (decltype(eigenvals.size()) j = 0; j < eigenvals.size(); j++) ritz[j] = eigenvals[j].first;
+    if (s != nullptr) {
+        for (MKL_INT j = 0; j < m; j++) copy(m, eigenvecs.data() + m * eigenvals[j].second, 1, s + ldh * j, 1);
     }
 }
 
@@ -76,5 +115,5 @@ template void lanczos(MKL_INT k, MKL_INT np, csr_mat<double> &mat,
 template void lanczos(MKL_INT k, MKL_INT np, csr_mat<std::complex<double>> &mat,
                       double &rnorm, std::complex<double> resid[], std::complex<double> v[], double hessenberg[], const MKL_INT &ldh);
 
-template void hess2matform(double hessenberg[], double mat[], const MKL_INT &k, const MKL_INT &ldh);
-template void hess2matform(double hessenberg[], std::complex<double> mat[], const MKL_INT &k, const MKL_INT &ldh);
+template void hess2matform(const double hessenberg[], double mat[], const MKL_INT &m, const MKL_INT &ldh);
+template void hess2matform(const double hessenberg[], std::complex<double> mat[], const MKL_INT &m, const MKL_INT &ldh);

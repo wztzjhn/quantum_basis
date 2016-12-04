@@ -64,7 +64,7 @@ void test_lanczos() {
     sp_lil.destroy();
     sp_csr.prt();
     
-    MKL_INT k = 1;
+    MKL_INT k = 2;
     MKL_INT dim=8;
     MKL_INT ldh = 15;
     
@@ -117,7 +117,7 @@ void test_lanczos() {
     }
     
     std::cout << "-------------" << std::endl;
-    MKL_INT kinc = 1;
+    MKL_INT kinc = 2;
     k=k+kinc;
     lanczos(k-kinc, kinc, sp_csr, betak, resid, v, hessenberg, ldh);
     hess2matform(hessenberg, hess, k, ldh);
@@ -152,6 +152,21 @@ void test_lanczos() {
         std::cout << std::setw(25) << resid[i] << std::endl;
     }
     
+    std::cout << "eigenval: " << std::endl;
+    std::vector<double> ritz(k);
+    std::vector<double> vecs(k*ldh);
+    select_shifts(hessenberg, ldh, k, "sm", ritz.data());
+    for (MKL_INT j = 0; j < k; j++) {
+        std::cout << std::setw(12) << ritz[j];
+    }
+    std::cout << std::endl;
+//    std::cout << "eigenvec: " << std::endl;
+//    for (MKL_INT i=0; i<k; i++) {
+//        for (MKL_INT j=0; j < k; j++) {
+//            std::cout << std::setw(25) << vecs[i+j*ldh];
+//        }
+//        std::cout << std::endl;
+//    }
     
 }
 
