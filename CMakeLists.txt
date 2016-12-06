@@ -12,6 +12,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g")
 add_definitions(-D_GLIBCXX_DEBUG=1) # libstdc++
 add_definitions(-D_LIBCPP_DEBUG2=1) # libc++
 
+enable_language(Fortran)
+get_filename_component (FORTRAN_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
+set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -Wall -O0 -fcheck=all -mcmodel=large")
+
 
 # -- C++11 -------------------------------------------
 
@@ -40,6 +44,10 @@ include_directories(SYSTEM ${MKL_INCLUDE_DIRS})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
 set(LIBS "-L${MKL_ROOT}/lib -Wl,-rpath,${MKL_ROOT}/lib -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl")
 
+# ARPACK (long term goal: make this option optional)
+include_directories(SYSTEM $HOME/opt/ARPACK)
+set(LIBS "${LIBS} -L$HOME/opt/ARPACK -larpack -L/usr/local/Cellar/gcc/6.2.0/lib/gcc/6 -lgfortran")
+
 # -- BUILD -------------------------------------------
 
 include_directories(src)
@@ -51,8 +59,10 @@ add_subdirectory(src)
 message("")
 message("Configuration results")
 message("---------------------")
-message("C++ compiler        : ${CMAKE_CXX_COMPILER}")
-message("C++ compiler flags  : ${CMAKE_CXX_FLAGS}")
+message("C++ compiler            : ${CMAKE_CXX_COMPILER}")
+message("C++ compiler flags      : ${CMAKE_CXX_FLAGS}")
+message("Fortran compiler        : ${CMAKE_Fortran_COMPILER}")
+message("Fortran compiler flags  : ${CMAKE_Fortran_FLAGS}")
 
 get_property(INC_DIRS DIRECTORY PROPERTY INCLUDE_DIRECTORIES)
 message("LIBS:     ${LIBS}")

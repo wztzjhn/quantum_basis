@@ -1,10 +1,10 @@
 #include <iostream>
 #include <iomanip>
 #include <vector>
-#include "basis.h"
-#include "operators.h"
-#include "sparse.h"
-#include "lanczos.h"
+#include "qbasis.h"
+
+
+
 
 void test_operator();
 void test_csrmm();
@@ -18,6 +18,8 @@ int main(){
 }
 
 void test_csrmm() {
+    using namespace qbasis;
+    
     lil_mat<std::complex<double>> sp_lil_test(2,true);
     sp_lil_test.add(0,0,1.0);
     sp_lil_test.add(0,1,std::complex<double>(2.0,3.0));
@@ -40,6 +42,7 @@ void test_csrmm() {
 }
 
 void test_lanczos() {
+    using namespace qbasis;
     lil_mat<std::complex<double>> sp_lil(8,true);
     sp_lil.prt();
     sp_lil.add(3,3,11.0);
@@ -203,12 +206,13 @@ void test_lanczos() {
     
     
     std::cout << "testing iram:" << std::endl;
-    iram(sp_csr, x.data(), 2, 7, "sr");
+    iram(sp_csr, x.data(), 1, 3, "lr");
     
 }
 
 
 void test_operator(){
+    using namespace qbasis;
     std::vector<std::vector<std::complex<double>>> vec_sigmax = {{0, 1}, {1, 0}};
     std::vector<std::vector<std::complex<double>>> vec_sigmay = {{0, std::complex<double>(0,-1)}, {std::complex<double>(0,1), 0}};
     std::vector<std::vector<std::complex<double>>> vec_sigmaz = {{1, 0}, {0, -1}};

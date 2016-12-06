@@ -9,6 +9,11 @@
 #ifndef qbasis_h
 #define qbasis_h
 
+#include "basis.h"
+#include "operators.h"
+#include "sparse.h"
+#include "lanczos.h"
+
 
 // Note: to include the functions required to call this library
 
