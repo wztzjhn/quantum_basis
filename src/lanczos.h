@@ -51,4 +51,16 @@ void hess2matform(const double hessenberg[], T mat[], const MKL_INT &m, const MK
 void select_shifts(const double hessenberg[], const MKL_INT &ldh, const MKL_INT &m,
                    const std::string &order, double ritz[], double s[] = nullptr);
 
+// --------------------------
+// ideally, here we should use the bulge-chasing algorithm; for this moment, we simply use the less efficient brute force QR factorization
+// --------------------------
+// QR factorization of hessenberg matrix, using np selected eigenvalues from ritz
+// [H, Q] = QR(H, shift1, shift2, ..., shift_np)
+// \tilde{H} = Q_np^T ... Q_1^T H Q_1 ... Q_np
+
+template <typename T>
+void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
+                    double &rnorm, T resid[], T v[], double hessenberg[], const MKL_INT &ldh,
+                    double Q[], const MKL_INT &ldq);
+
 #endif

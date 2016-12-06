@@ -1,4 +1,5 @@
 #include "lanczos.h"
+#include <iomanip>
 
 // need further classification:
 // 1. provide an option that no intermidiate v stored, only hessenberg returned (probably in a separate routine)
@@ -109,6 +110,99 @@ void select_shifts(const double hessenberg[], const MKL_INT &ldh, const MKL_INT 
     }
 }
 
+// when there is time, re-write this subroutine with bulge-chasing
+template <typename T>
+void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
+                    double &rnorm, T resid[], T v[], double hessenberg[], const MKL_INT &ldh,
+                    double Q[], const MKL_INT &ldq)
+{
+    lapack_int info;
+    const T zero = 0.0;
+    const T one = 1.0;
+    MKL_INT k = m - np;
+    assert(np>0 && np < m);
+    std::vector<double> hess_full(m*ldh), hess_qr(m*ldh);
+    std::vector<double> tau(m);
+    for (MKL_INT j = 0; j < m; j++) {                                              // Q = I
+        for (MKL_INT i = 0; i < m; i++) Q[i + j * ldq] = (i == j ? 1.0 : 0.0);
+    }
+    hess2matform(hessenberg, hess_full.data(), m, ldh);
+    for (MKL_INT j = 0; j < np; j++) {
+        std::cout << "QR shift with theta = " << shift[j] << std::endl;
+        hess_qr = hess_full;
+        for (MKL_INT i = 0; i < m; i++) hess_qr[i + i * ldh] -= shift[j];         // H - shift[j] * I
+        info = geqrf(LAPACK_COL_MAJOR, m, m, hess_qr.data(), ldh, tau.data());    // upper triangle of hess_copy represents R, lower + tau represent Q
+        assert(info == 0);
+        info = ormqr(LAPACK_COL_MAJOR, 'L', 'T', m, m, m, hess_qr.data(), ldh,    // H_new = Q^T * H
+                     tau.data(), hess_full.data(), ldh);
+        assert(info == 0);
+        info = ormqr(LAPACK_COL_MAJOR, 'R', 'N', m, m, m, hess_qr.data(), ldh,    // H_new = Q^T * H * Q
+                     tau.data(), hess_full.data(), ldh);
+        assert(info == 0);
+        info = ormqr(LAPACK_COL_MAJOR, 'R', 'N', m, m, m, hess_qr.data(), ldh,    // Q_new = Q_old * Q
+                     tau.data(), Q, ldq);
+        assert(info == 0);
+    }
+    
+    for (MKL_INT j = 0; j < k; j++) hessenberg[j + ldh] = hess_full[j + j * ldh]; // diagonal elements of hessenberg matrix
+    for (MKL_INT j = 1; j < k; j++) hessenberg[j] = hess_full[j + (j-1) * ldh];   // subdiagonal
+    std::vector<T> v_old(dim * m);
+    copy(dim * m, v, 1, v_old.data(), 1);
+    std::vector<T> Q_typeT(m*ldq);
+    for (MKL_INT j = 0; j < m*ldq; j++) Q_typeT[j] = Q[j];
+    gemm('n', 'n', dim, m, m, one, v_old.data(), dim, Q_typeT.data(), ldq, zero, v, dim); // v updated
+    scal(dim, rnorm*Q_typeT[m-1 + ldq*(k-1)], resid, 1);
+    axpy(dim, static_cast<T>(hess_full[k + (k-1)*ldh]), v+k*dim, 1, resid, 1);
+    rnorm = nrm2(dim, resid, 1);                                                  // rnorm updated
+    scal(dim, 1.0 / rnorm, resid, 1);                                             // resid updated
+    
+    
+    
+    
+//    // ------ check here, can be removed --------
+//    std::cout << "---------- Q ---------- " << std::endl;
+//    for (MKL_INT i=0; i < m; i++) {
+//        for (MKL_INT j = 0; j < m; j++) {
+//            double out = std::abs(Q[i + j * ldq])>lanczos_precision?Q[i + j * ldq]:0.0;
+//            std::cout << std::setw(15) << out;
+//        }
+//        std::cout << std::endl;
+//    }
+//    std::cout << std::endl;
+    // ------ check here, can be removed --------
+//    // ------ check here, can be removed --------
+//    std::cout << "---------- Q^T Q ---------- " << std::endl;
+//    std::vector<double> productQ(m*m, 0.0);
+//    gemm('t', 'n', m, m, m, 1.0, Q, ldq, Q, ldq, 0.0, productQ.data(), m);
+//    for (MKL_INT i=0; i < m; i++) {
+//        for (MKL_INT j = 0; j < m; j++) {
+//            double out = std::abs(productQ[i + j * m])>lanczos_precision?productQ[i + j * m]:0.0;
+//            std::cout << std::setw(15) << out;
+//        }
+//        std::cout << std::endl;
+//    }
+//    std::cout << std::endl;
+//    // ------ check here, can be removed --------
+//    // ------ check here, can be removed --------
+//    std::cout << "---------- Q^T H Q ---------- " << std::endl;
+//    hess2matform(hessenberg, hess_qr.data(), m, ldh);
+//    for (MKL_INT j = 0; j < m*m; j++) productQ[j] = 0.0;
+//    gemm('t', 'n', m, m, m, 1.0, Q, ldq, hess_qr.data(), ldh, 0.0, productQ.data(), m);
+//    std::vector<double> productQ2(productQ);
+//    gemm('n', 'n', m, m, m, 1.0, productQ2.data(), m, Q, ldq, 0.0, productQ.data(), m);
+//    for (MKL_INT i=0; i < m; i++) {
+//        for (MKL_INT j = 0; j < m; j++) {
+//            double out = std::abs(productQ[i + j * m])>1e-12?productQ[i + j * m]:0.0;
+//            std::cout << std::setw(15) << out;
+//        }
+//        std::cout << std::endl;
+//    }
+//    std::cout << std::endl;
+//    // ------ check here, can be removed --------
+    
+}
+
+
 // Explicit instantiation
 template void lanczos(MKL_INT k, MKL_INT np, csr_mat<double> &mat,
                       double &rnorm, double resid[], double v[], double hessenberg[], const MKL_INT &ldh);
@@ -117,3 +211,11 @@ template void lanczos(MKL_INT k, MKL_INT np, csr_mat<std::complex<double>> &mat,
 
 template void hess2matform(const double hessenberg[], double mat[], const MKL_INT &m, const MKL_INT &ldh);
 template void hess2matform(const double hessenberg[], std::complex<double> mat[], const MKL_INT &m, const MKL_INT &ldh);
+
+template void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
+                             double &rnorm, double resid[], double v[], double hessenberg[], const MKL_INT &ldh,
+                             double Q[], const MKL_INT &ldq);
+template void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
+                             double &rnorm, std::complex<double> resid[], std::complex<double> v[], double hessenberg[], const MKL_INT &ldh,
+                             double Q[], const MKL_INT &ldq);
+

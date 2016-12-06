@@ -164,4 +164,23 @@ lapack_int stedc(const int &matrix_layout, const char &compz, const lapack_int &
 //    return LAPACKE_zhbevd(matrix_layout, jobz, uplo, n, kd, ab, ldab, w, z, ldz);
 //}
 
+
+// lapack, Computes the QR factorization of a general m-by-n matrix.
+inline // double
+lapack_int geqrf(const int &matrix_layout, const lapack_int &m, const lapack_int &n, double *a, const lapack_int &lda, double *tau) {
+    return LAPACKE_dgeqrf(matrix_layout, m, n, a, lda, tau);
+}
+inline // complex double
+lapack_int geqrf(const int &matrix_layout, const lapack_int &m, const lapack_int &n, std::complex<double> *a, const lapack_int &lda, std::complex<double> *tau) {
+    return LAPACKE_zgeqrf(matrix_layout, m, n, a, lda, tau);
+}
+
+// lapack, Multiplies a real matrix by the orthogonal matrix Q of the QR factorization formed by ?geqrf or ?geqpf.
+inline // double
+lapack_int ormqr(const int &matrix_layout, const char &side, const char &trans,
+                 const lapack_int &m, const lapack_int &n, const lapack_int &k,
+                 const double *a, const lapack_int &lda, const double *tau, double *c, const lapack_int &ldc) {
+    return LAPACKE_dormqr(matrix_layout, side, trans, m, n, k, a, lda, tau, c, ldc);
+}
+
 #endif

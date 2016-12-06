@@ -64,7 +64,7 @@ void test_lanczos() {
     sp_lil.destroy();
     sp_csr.prt();
     
-    MKL_INT k = 2;
+    MKL_INT m = 4;
     MKL_INT dim=8;
     MKL_INT ldh = 15;
     
@@ -80,18 +80,18 @@ void test_lanczos() {
     for (MKL_INT i=0; i<dim; i++) resid[i] = x[i];
     
     double betak = 0.0;
-    lanczos(0, k, sp_csr, betak, resid, v, hessenberg, ldh);
+    lanczos(0, m, sp_csr, betak, resid, v, hessenberg, ldh);
 
     
     std::complex<double> *hess= new std::complex<double>[ldh*ldh];
-    hess2matform(hessenberg, hess, k, ldh);
+    hess2matform(hessenberg, hess, m, ldh);
     std::complex<double> *res = new std::complex<double>[ldh*dim];
-    for (MKL_INT j=0; j < k; j++) {
+    for (MKL_INT j=0; j < m; j++) {
         sp_csr.MultMv(v + j*dim, res + j*dim);
     }
-    gemm('n', 'n', dim, k, k, std::complex<double>(-1.0,0), v, dim, hess, ldh, std::complex<double>(1.0,0), res, dim);
+    gemm('n', 'n', dim, m, m, std::complex<double>(-1.0,0), v, dim, hess, ldh, std::complex<double>(1.0,0), res, dim);
     for (MKL_INT i=0; i < dim; i++) {
-        for (MKL_INT j = 0; j < k; j++) {
+        for (MKL_INT j = 0; j < m; j++) {
             std::complex<double> out = std::abs(res[i + j * dim])>1e-12?res[i + j * dim]:0.0;
             std::cout << std::setw(25) << out;
         }
@@ -105,28 +105,28 @@ void test_lanczos() {
         std::cout << std::setw(12) << betak * resid[i] << std::endl;
     }
     std::cout << "hessenberg: " << std::endl;
-    for (MKL_INT i=0; i < k; i++) {
+    for (MKL_INT i=0; i < m; i++) {
         std::cout << std::setw(12) << hessenberg[i] << std::setw(12) << hessenberg[i+ldh] << std::endl;
     }
     std::cout << "all v: " << std::endl;
     for (MKL_INT i=0; i<dim; i++) {
-        for (MKL_INT j=0; j < k; j++) {
+        for (MKL_INT j=0; j < m; j++) {
             std::cout << std::setw(25) << v[i+j*dim];
         }
         std::cout << std::setw(25) << resid[i] << std::endl;
     }
     
     std::cout << "-------------" << std::endl;
-    MKL_INT kinc = 2;
-    k=k+kinc;
-    lanczos(k-kinc, kinc, sp_csr, betak, resid, v, hessenberg, ldh);
-    hess2matform(hessenberg, hess, k, ldh);
-    for (MKL_INT j=0; j < k; j++) {
+    MKL_INT kinc = 1;
+    m=m+kinc;
+    lanczos(m-kinc, kinc, sp_csr, betak, resid, v, hessenberg, ldh);
+    hess2matform(hessenberg, hess, m, ldh);
+    for (MKL_INT j=0; j < m; j++) {
         sp_csr.MultMv(v + j*dim, res + j*dim);
     }
-    gemm('n', 'n', dim, k, k, std::complex<double>(-1.0,0), v, dim, hess, ldh, std::complex<double>(1.0,0), res, dim);
+    gemm('n', 'n', dim, m, m, std::complex<double>(-1.0,0), v, dim, hess, ldh, std::complex<double>(1.0,0), res, dim);
     for (MKL_INT i=0; i < dim; i++) {
-        for (MKL_INT j = 0; j < k; j++) {
+        for (MKL_INT j = 0; j < m; j++) {
             std::complex<double> out = std::abs(res[i + j * dim])>1e-12?res[i + j * dim]:0.0;
             std::cout << std::setw(25) << out;
         }
@@ -141,23 +141,24 @@ void test_lanczos() {
         std::cout << std::setw(12) << betak * resid[i] << std::endl;
     }
     std::cout << "hessenberg: " << std::endl;
-    for (MKL_INT i=0; i < k; i++) {
-        std::cout << std::setw(12) << hessenberg[i] << std::setw(12) << hessenberg[i+ldh] << std::endl;
+    for (MKL_INT i=0; i < m; i++) {
+        std::cout << std::setw(15) << std::setprecision(10) << hessenberg[i]
+        << std::setw(15) << std::setprecision(10) << hessenberg[i+ldh] << std::endl;
     }
     std::cout << "all v: " << std::endl;
     for (MKL_INT i=0; i<dim; i++) {
-        for (MKL_INT j=0; j < k; j++) {
+        for (MKL_INT j=0; j < m; j++) {
             std::cout << std::setw(25) << v[i+j*dim];
         }
         std::cout << std::setw(25) << resid[i] << std::endl;
     }
     
     std::cout << "eigenval: " << std::endl;
-    std::vector<double> ritz(k);
-    std::vector<double> vecs(k*ldh);
-    select_shifts(hessenberg, ldh, k, "sm", ritz.data());
-    for (MKL_INT j = 0; j < k; j++) {
-        std::cout << std::setw(12) << ritz[j];
+    std::vector<double> ritz(m);
+    std::vector<double> vecs(m*ldh);
+    select_shifts(hessenberg, ldh, m, "sm", ritz.data());
+    for (MKL_INT j = 0; j < m; j++) {
+        std::cout << std::setw(15) << std::setprecision(10) << ritz[j];
     }
     std::cout << std::endl;
 //    std::cout << "eigenvec: " << std::endl;
@@ -167,6 +168,40 @@ void test_lanczos() {
 //        }
 //        std::cout << std::endl;
 //    }
+    
+    std::vector<double> Q(m*m);
+    MKL_INT np = 1;
+    MKL_INT k = m-np;
+    perform_shifts(dim, m, np, ritz.data()+k, betak, resid, v, hessenberg, ldh, Q.data(), m);
+    
+    
+    hess2matform(hessenberg, hess, k, ldh);
+    for (MKL_INT j=0; j < k; j++) {
+        sp_csr.MultMv(v + j*dim, res + j*dim);
+    }
+    gemm('n', 'n', dim, k, k, std::complex<double>(-1.0,0), v, dim, hess, ldh, std::complex<double>(1.0,0), res, dim);
+    for (MKL_INT i=0; i < dim; i++) {
+        for (MKL_INT j = 0; j < k; j++) {
+            std::complex<double> out = std::abs(res[i + j * dim])>1e-12?res[i + j * dim]:0.0;
+            std::cout << std::setw(25) << out;
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+    
+    
+    std::cout << "betak = " << betak << std::endl;
+    std::cout << "Vextra:" << std::endl;
+    for (MKL_INT i = 0; i < dim; i++) {
+        std::cout << std::setw(12) << betak * resid[i] << std::endl;
+    }
+    std::cout << "hessenberg: " << std::endl;
+    for (MKL_INT i=0; i < k; i++) {
+        std::cout << std::setw(15) << std::setprecision(10) << hessenberg[i]
+        << std::setw(15) << std::setprecision(10) << hessenberg[i+ldh] << std::endl;
+    }
+    
+    
     
 }
 
