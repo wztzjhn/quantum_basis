@@ -128,7 +128,7 @@ void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, con
     }
     hess2matform(hessenberg, hess_full.data(), m, ldh);
     for (MKL_INT j = 0; j < np; j++) {
-        std::cout << "QR shift with theta = " << shift[j] << std::endl;
+        //std::cout << "QR shift with theta = " << shift[j] << std::endl;
         hess_qr = hess_full;
         for (MKL_INT i = 0; i < m; i++) hess_qr[i + i * ldh] -= shift[j];         // H - shift[j] * I
         info = geqrf(LAPACK_COL_MAJOR, m, m, hess_qr.data(), ldh, tau.data());    // upper triangle of hess_copy represents R, lower + tau represent Q
@@ -203,6 +203,38 @@ void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, con
 }
 
 
+template <typename T>
+void iram(csr_mat<T> &mat, const T v0[], const MKL_INT &nev, const MKL_INT &ncv,
+          const std::string &order)
+{
+    MKL_INT dim = mat.dimension();
+    std::vector<T> resid(dim, static_cast<T>(0.0)), v(dim*ncv);
+    std::vector<double> hessenberg(ncv*ncv), ritz(ncv), Q(ncv*ncv);
+    MKL_INT np = ncv - nev;
+    
+    double rnorm = nrm2(dim, v0, 1);
+    axpy(dim, 1.0/rnorm, v0, 1, resid.data(), 1);                                 // resid = v0 normalized
+    rnorm = 0.0;
+    lanczos(0, ncv, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv);
+    
+    MKL_INT step = 0, step_max=10;
+    while (step < step_max) {
+        select_shifts(hessenberg.data(), ncv, ncv, order, ritz.data());
+        perform_shifts(dim, ncv, np, ritz.data()+nev, rnorm, resid.data(), v.data(),
+                       hessenberg.data(), ncv, Q.data(), ncv);
+        lanczos(nev, np, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv);
+        for (MKL_INT j = 0; j < nev; j++) {
+            std::cout << std::setw(16) << ritz[j];
+        }
+        std::cout << std::endl;
+        
+        step++;
+    }
+    
+    
+    
+}
+
 // Explicit instantiation
 template void lanczos(MKL_INT k, MKL_INT np, csr_mat<double> &mat,
                       double &rnorm, double resid[], double v[], double hessenberg[], const MKL_INT &ldh);
@@ -219,3 +251,5 @@ template void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT
                              double &rnorm, std::complex<double> resid[], std::complex<double> v[], double hessenberg[], const MKL_INT &ldh,
                              double Q[], const MKL_INT &ldq);
 
+template void iram(csr_mat<double> &mat, const double v0[], const MKL_INT &nev, const MKL_INT &ncv, const std::string &order);
+template void iram(csr_mat<std::complex<double>> &mat, const std::complex<double> v0[], const MKL_INT &nev, const MKL_INT &ncv, const std::string &order);

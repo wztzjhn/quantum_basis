@@ -202,6 +202,8 @@ void test_lanczos() {
     }
     
     
+    std::cout << "testing iram:" << std::endl;
+    iram(sp_csr, x.data(), 2, 7, "sr");
     
 }
 

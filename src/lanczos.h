@@ -57,10 +57,19 @@ void select_shifts(const double hessenberg[], const MKL_INT &ldh, const MKL_INT 
 // QR factorization of hessenberg matrix, using np selected eigenvalues from ritz
 // [H, Q] = QR(H, shift1, shift2, ..., shift_np)
 // \tilde{H} = Q_np^T ... Q_1^T H Q_1 ... Q_np
-
+// \tilde{V} = V Q
 template <typename T>
 void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
                     double &rnorm, T resid[], T v[], double hessenberg[], const MKL_INT &ldh,
                     double Q[], const MKL_INT &ldq);
+
+// implicitly restarted Arnoldi method
+// nev: number of eigenvalues needed
+// ncv: length of each individual lanczos process
+// 2 < nev + 2 <= ncv
+// let's design the output later
+template <typename T>
+void iram(csr_mat<T> &mat, const T v0[], const MKL_INT &nev, const MKL_INT &ncv,
+          const std::string &order);
 
 #endif
