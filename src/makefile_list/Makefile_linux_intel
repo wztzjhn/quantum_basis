@@ -1,6 +1,6 @@
 CXX       = icpc
 CPPFLAGS  = -O3 -std=c++11 -w3 -wd383,981 -isystem ${MKLROOT}/include
-LIBS      = -L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl
+LIBS      = -larmadillo -L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl
 
 OBJS      = lanczos.o sparse.o operators.o basis.o main.o
 

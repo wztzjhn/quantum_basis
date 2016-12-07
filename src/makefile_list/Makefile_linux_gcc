@@ -1,6 +1,6 @@
 CXX       = g++
-CPPFLAGS  = -O3 -std=c++11 -Wall -Wextra -Wpadded -m64 -isystem ${MKLROOT}/include
-LIBS      = -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl
+CPPFLAGS  = -O0 -g -std=c++11 -Wall -Wextra -Wpadded -m64 -isystem ${MKLROOT}/include
+LIBS      = -larmadillo -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl
 
 OBJS      = lanczos.o sparse.o operators.o basis.o main.o
 

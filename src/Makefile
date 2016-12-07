@@ -1,6 +1,6 @@
 CXX       = g++
-CPPFLAGS  = -O3 -std=c++11 -Wall -Wextra -Wpadded -isystem /usr/local/Cellar/boost/1.62.0/include -m64 -isystem ${MKLROOT}/include
-LIBS      = -L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl
+CPPFLAGS  = -O2 -std=c++11 -Wall -Wextra -Wpadded -isystem /usr/local/Cellar/boost/1.62.0/include -m64 -isystem ${MKLROOT}/include -isystem /usr/local/include
+LIBS      = -L/usr/local/lib -larmadillo -L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl
 
 OBJS      = lanczos.o sparse.o operators.o basis.o main.o
 

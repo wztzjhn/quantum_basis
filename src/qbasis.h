@@ -9,6 +9,7 @@
 #ifndef qbasis_h
 #define qbasis_h
 
+#include <armadillo>
 #include "basis.h"
 #include "operators.h"
 #include "sparse.h"

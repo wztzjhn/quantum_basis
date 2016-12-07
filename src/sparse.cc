@@ -29,7 +29,7 @@ namespace qbasis {
             mat[row].insert_after(it_prev,{val,col});
         }
     }
-    
+
     template <typename T>
     void lil_mat<T>::prt()
     {
@@ -44,10 +44,10 @@ namespace qbasis {
             }
         }
     }
-    
-    
+
+
     template <typename T>
-    csr_mat<T>::csr_mat(const lil_mat<T> &old) : dim(old.dim), nnz(old.nnz), mult_count(0), sym(old.sym)
+    csr_mat<T>::csr_mat(const lil_mat<T> &old) : dim(old.dim), nnz(old.nnz), sym(old.sym)
     {
         assert(old.nnz>0);
         std::cout << "Converting LIL to CSR: " << std::endl;
@@ -76,11 +76,10 @@ namespace qbasis {
         assert(counts == nnz);
         ia[dim] = counts;
     }
-    
+
     template <typename T>
-    void csr_mat<T>::MultMv(const T *x, T *y)
+    void csr_mat<T>::MultMv(const T *x, T *y) const
     {
-        ++mult_count;
         if (sym) {
             char matdescar[7] = "HUNC";
             T zero = static_cast<T>(0.0);
@@ -92,7 +91,7 @@ namespace qbasis {
             csrgemv('n', dim, val, ia, ja, x, y);
         }
     }
-    
+
     // need fix ldb and ldc to make this subroutine work
     //template <typename T>
     //void csr_mat<T>::MultMm(const T *x, T *y, MKL_INT n) const
@@ -105,7 +104,7 @@ namespace qbasis {
     //    mkl_csrmm('n', dim, n, dim, one, matdescar,
     //              val, ja, ia, ia + 1, x, n, zero, y, n);
     //}
-    
+
     template <typename T>
     void csr_mat<T>::prt()
     {
@@ -119,7 +118,44 @@ namespace qbasis {
         for (MKL_INT i = 0; i <= dim; i++) std::cout << std::setw(8) << ia[i];
         std::cout << std::endl;
     }
-    
+
+    template <typename T>
+    void csr_mat<T>::to_arma(arma::SpMat<T> &csc_sparse)
+    {
+        MKL_INT job[7];
+        for (MKL_INT j = 0; j < 7; j++) job[j] = 0;
+        job[5] = 1;
+        std::vector<T> acsc(nnz);
+        std::vector<MKL_INT> aj1(nnz), ai1(dim+1);
+        MKL_INT info;
+        mkl_csrcsc(job, dim, val, ja, ia, acsc.data(), aj1.data(), ai1.data(), &info);
+        std::cout << "~~~~~ Destructing csr formats! ~~~~~" << std::endl;
+        destroy();
+        arma::uvec row_ind(nnz), col_ptr(dim+1);
+        for (MKL_INT j = 0; j < nnz; j++) row_ind(j) = aj1[j];
+        for (MKL_INT j = 0; j < dim + 1; j++) col_ptr(j) = ai1[j];
+        aj1.clear(); aj1.shrink_to_fit();
+        ai1.clear(); ai1.shrink_to_fit();
+        arma::Col<T> csc_vals(acsc);
+        acsc.clear(); acsc.shrink_to_fit();
+        csc_sparse = arma::SpMat<T>(row_ind, col_ptr, csc_vals, dim, dim);
+        row_ind.clear(); col_ptr.clear(); csc_vals.clear();
+        csc_sparse.print();
+        if (sym) {
+            auto diag = arma::diagmat(csc_sparse);
+            csc_sparse += (csc_sparse.t() - diag);
+        }
+        std::cout << "haha" << std::endl;
+
+        //checking
+        arma::Col<T> arma_eigval;
+        arma::Col<T> arma_eigvec;
+        csc_sparse.print();
+        auto info2 = eigen_by_arma(arma_eigval, arma_eigvec, csc_sparse, 1, "sr");
+        std::cout << "ha2" << std::endl;
+
+    }
+
     //template <typename T>
     //void csrXvec(const csr_mat<T> &mat, const std::vector<T> &x, std::vector<T> &y)
     //{
@@ -134,21 +170,20 @@ namespace qbasis {
     //        csrgemv('n', mat.dim, mat.val, mat.ia, mat.ja, x.data(), y.data());
     //    }
     //}
-    
-    
+
+
     // Explicit instantiation
     template struct lil_mat_elem<double>;
     template struct lil_mat_elem<std::complex<double>>;
-    
+
     template class lil_mat<double>;
     template class lil_mat<std::complex<double>>;
-    
+
     template class csr_mat<double>;
     template class csr_mat<std::complex<double>>;
-    
+
     //template void csrXvec(const csr_mat<double>&, const std::vector<double>&, std::vector<double>&);
     //template void csrXvec(const csr_mat<std::complex<double>>&, const std::vector<std::complex<double>>&, std::vector<std::complex<double>>&);
-    
+
 
 }
-

@@ -2,12 +2,15 @@
 #include <iomanip>
 
 namespace qbasis {
+    
+    
+    
     // need further classification:
     // 1. provide an option that no intermidiate v stored, only hessenberg returned (probably in a separate routine)
     // 2. ask lanczos to restart with a new linearly independent vector when v_m+1 = 0
     // 3. need add DGKS re-orthogonalization
     template <typename T>
-    void lanczos(MKL_INT k, MKL_INT np, csr_mat<T> &mat, double &rnorm, T resid[],
+    void lanczos(MKL_INT k, MKL_INT np, const csr_mat<T> &mat, double &rnorm, T resid[],
                  T v[], double hessenberg[], const MKL_INT &ldh)
     {
         MKL_INT dim = mat.dimension();
@@ -46,8 +49,8 @@ namespace qbasis {
         rnorm = nrm2(dim, vpt[m], 1);
         scal(dim, 1.0 / rnorm, vpt[m], 1);                                            // v[k]
     }
-    
-    
+
+
     template <typename T>
     void hess2matform(const double hessenberg[], T mat[], const MKL_INT &m, const MKL_INT &ldh)
     {
@@ -69,8 +72,8 @@ namespace qbasis {
             mat[m-1 + (m-2) * ldh] = hessenberg[m-1];
         }
     }
-    
-    
+
+
     void select_shifts(const double hessenberg[], const MKL_INT &ldh, const MKL_INT &m,
                        const std::string &order, double ritz[], double s[])
     {
@@ -110,7 +113,7 @@ namespace qbasis {
             for (MKL_INT j = 0; j < m; j++) copy(m, eigenvecs.data() + m * eigenvals[j].second, 1, s + ldh * j, 1);
         }
     }
-    
+
     // when there is time, re-write this subroutine with bulge-chasing
     template <typename T>
     void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
@@ -144,7 +147,7 @@ namespace qbasis {
                          tau.data(), Q, ldq);
             assert(info == 0);
         }
-        
+
         for (MKL_INT j = 0; j < k; j++) hessenberg[j + ldh] = hess_full[j + j * ldh]; // diagonal elements of hessenberg matrix
         for (MKL_INT j = 1; j < k; j++) hessenberg[j] = hess_full[j + (j-1) * ldh];   // subdiagonal
         std::vector<T> v_old(dim * m);
@@ -156,10 +159,10 @@ namespace qbasis {
         axpy(dim, static_cast<T>(hess_full[k + (k-1)*ldh]), v+k*dim, 1, resid, 1);
         rnorm = nrm2(dim, resid, 1);                                                  // rnorm updated
         scal(dim, 1.0 / rnorm, resid, 1);                                             // resid updated
-        
-        
-        
-        
+
+
+
+
         //    // ------ check here, can be removed --------
         //    std::cout << "---------- Q ---------- " << std::endl;
         //    for (MKL_INT i=0; i < m; i++) {
@@ -200,64 +203,88 @@ namespace qbasis {
         //    }
         //    std::cout << std::endl;
         //    // ------ check here, can be removed --------
-        
+
     }
-    
-    
+
+
     template <typename T>
     void iram(csr_mat<T> &mat, const T v0[], const MKL_INT &nev, const MKL_INT &ncv,
-              const std::string &order)
+              const std::string &order, double eigenvals[], T eigenvecs[], double tol[],
+              const bool &use_arma)
     {
-        MKL_INT cnt0 = mat.mult_cnt();
         MKL_INT dim = mat.dimension();
-        std::vector<T> resid(dim, static_cast<T>(0.0)), v(dim*ncv);
-        std::vector<double> hessenberg(ncv*ncv), ritz(ncv), Q(ncv*ncv);
         MKL_INT np = ncv - nev;
-        
-        double rnorm = nrm2(dim, v0, 1);
-        axpy(dim, 1.0/rnorm, v0, 1, resid.data(), 1);                                 // resid = v0 normalized
-        rnorm = 0.0;
-        lanczos(0, ncv, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv);
-        
-        MKL_INT step = 0, step_max=10;
-        //std::cout << "# of Matrix * Vector operations: " << mat.mult_cnt() - cnt0 << std::endl;
-        while (step < step_max) {
-            select_shifts(hessenberg.data(), ncv, ncv, order, ritz.data());
-            perform_shifts(dim, ncv, np, ritz.data()+nev, rnorm, resid.data(), v.data(),
-                           hessenberg.data(), ncv, Q.data(), ncv);
-            lanczos(nev, np, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv);
-            for (MKL_INT j = 0; j < nev; j++) {
-                std::cout << std::setw(16) << ritz[j];
-            }
-            std::cout << std::endl;
-            //std::cout << "# of Matrix * Vector operations: " << mat.mult_cnt() - cnt0 << std::endl;
+
+        arma::SpMat<T> sp_csc;
+
+        if (use_arma) {
+            std::cout << "Using armadillo..." << std::endl;
+            mat.to_arma(sp_csc);
+            std::cout << "bench1" << std::endl;
+            sp_csc.print();
             
-            step++;
+            arma::Col<T> arma_eigval;
+            arma::Mat<T> arma_eigvec;
+            auto info = eigen_by_arma(arma_eigval, arma_eigvec, sp_csc, nev, order.data());
+            std::cout << "arma_info = " << info << std::endl;
+            for (MKL_INT j = 0; j < nev; j++) eigenvals[j] = std::abs(arma_eigval(j));
+            //  for (MKL_INT j = 0; j < nev; j++) {
+            //      for (MKL_INT i = 0; i < dim; i++) {
+            //          //std::cout << "(" << i << "," << j << ")" << arma_eigvec(i,j) << std::endl;
+            //          eigenvecs[i + j * dim] = arma_eigvec(i,j);   // note, we have to verify if armadillo produce real eigvecs for real symmetric matrix
+            //      }
+            //  }
+            std::cout << "eigenvals: " << std::endl;
+            for (MKL_INT j = 0; j < nev; j++) std::cout << eigenvals[j] << std::endl;
+
+
+
+        } else {                                                                       // hand-coded arpack
+            std::vector<T> resid(dim, static_cast<T>(0.0)), v(dim*ncv);
+            std::vector<double> hessenberg(ncv*ncv), ritz(ncv), Q(ncv*ncv);
+            double rnorm = nrm2(dim, v0, 1);
+            axpy(dim, 1.0/rnorm, v0, 1, resid.data(), 1);                              // resid = v0 normalized
+            rnorm = 0.0;
+            lanczos(0, ncv, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv);
+
+            MKL_INT step = 0, step_max=10;
+            while (step < step_max) {
+                select_shifts(hessenberg.data(), ncv, ncv, order, ritz.data());
+                perform_shifts(dim, ncv, np, ritz.data()+nev, rnorm, resid.data(), v.data(),
+                               hessenberg.data(), ncv, Q.data(), ncv);
+                lanczos(nev, np, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv);
+                for (MKL_INT j = 0; j < nev; j++) {
+                    std::cout << std::setw(16) << ritz[j];
+                }
+                std::cout << std::endl;
+                step++;
+            }
         }
-        
-        //std::cout << "# of Matrix * Vector operations: " << mat.mult_cnt() - cnt0 << std::endl;
-        
-        
+
+
     }
-    
+
     // Explicit instantiation
-    template void lanczos(MKL_INT k, MKL_INT np, csr_mat<double> &mat,
+    template void lanczos(MKL_INT k, MKL_INT np, const csr_mat<double> &mat,
                           double &rnorm, double resid[], double v[], double hessenberg[], const MKL_INT &ldh);
-    template void lanczos(MKL_INT k, MKL_INT np, csr_mat<std::complex<double>> &mat,
+    template void lanczos(MKL_INT k, MKL_INT np, const csr_mat<std::complex<double>> &mat,
                           double &rnorm, std::complex<double> resid[], std::complex<double> v[], double hessenberg[], const MKL_INT &ldh);
-    
+
     template void hess2matform(const double hessenberg[], double mat[], const MKL_INT &m, const MKL_INT &ldh);
     template void hess2matform(const double hessenberg[], std::complex<double> mat[], const MKL_INT &m, const MKL_INT &ldh);
-    
+
     template void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
                                  double &rnorm, double resid[], double v[], double hessenberg[], const MKL_INT &ldh,
                                  double Q[], const MKL_INT &ldq);
     template void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
                                  double &rnorm, std::complex<double> resid[], std::complex<double> v[], double hessenberg[], const MKL_INT &ldh,
                                  double Q[], const MKL_INT &ldq);
-    
-    template void iram(csr_mat<double> &mat, const double v0[], const MKL_INT &nev, const MKL_INT &ncv, const std::string &order);
-    template void iram(csr_mat<std::complex<double>> &mat, const std::complex<double> v0[], const MKL_INT &nev, const MKL_INT &ncv, const std::string &order);
+
+    template void iram(csr_mat<double> &mat, const double v0[], const MKL_INT &nev, const MKL_INT &ncv,
+                       const std::string &order, double eigenvals[], double eigenvecs[], double tol[],
+                       const bool &use_arma);
+    template void iram(csr_mat<std::complex<double>> &mat, const std::complex<double> v0[], const MKL_INT &nev, const MKL_INT &ncv,
+                       const std::string &order, double eigenvals[], std::complex<double> eigenvecs[], double tol[],
+                       const bool &use_arma);
 
 }
-

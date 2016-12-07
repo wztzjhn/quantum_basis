@@ -17,6 +17,7 @@ namespace qbasis {
     
     static const double lanczos_precision = 1e-14;
     
+    
     // m = k + np step of Lanczos
     // v of length m+1, hessenberg matrix of size m*m (m-step Lanczos)
     // after decomposition, mat * v[0:m-1] = v[0:m-1] * hessenberg + rnorm * resid * e_m^T,
@@ -38,7 +39,7 @@ namespace qbasis {
     //                    ..  ..  ..    b[k-1]
     //                          b[k-1]  a[k-1]
     template <typename T>
-    void lanczos(MKL_INT k, MKL_INT np, csr_mat<T> &mat, double &rnorm, T resid[],
+    void lanczos(MKL_INT k, MKL_INT np, const csr_mat<T> &mat, double &rnorm, T resid[],
                  T v[], double hessenberg[], const MKL_INT &ldh);
     
     // if possible, add a block Arnoldi version here
@@ -72,7 +73,8 @@ namespace qbasis {
     // let's design the output later
     template <typename T>
     void iram(csr_mat<T> &mat, const T v0[], const MKL_INT &nev, const MKL_INT &ncv,
-              const std::string &order);
+              const std::string &order, double eigenvals[], T eigenvecs[], double tol[],
+              const bool &use_arma = true);
 }
 
 #endif
