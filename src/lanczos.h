@@ -6,6 +6,7 @@
 #include <iostream>
 #include <cassert>
 #include <utility>
+#include <algorithm>
 #include "mkl_interface.h"
 #include "sparse.h"
 
@@ -70,11 +71,10 @@ namespace qbasis {
     // nev: number of eigenvalues needed
     // ncv: length of each individual lanczos process
     // 2 < nev + 2 <= ncv
-    // let's design the output later
+    // when not using arpack++, we can modify the property of mat to be const
     template <typename T>
-    void iram(csr_mat<T> &mat, const T v0[], const MKL_INT &nev, const MKL_INT &ncv,
-              const std::string &order, double eigenvals[], T eigenvecs[], double tol[],
-              const bool &use_arma = true);
+    void iram(csr_mat<T> &mat, T v0[], const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
+              const std::string &order, double eigenvals[], T eigenvecs[], const bool &use_arpack = true);
 }
 
 #endif

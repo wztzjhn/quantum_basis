@@ -130,7 +130,7 @@ namespace qbasis {
     }
     inline // complex double
     void mkl_csrmm(const char transa, const MKL_INT m, const MKL_INT n, const MKL_INT k, const std::complex<double> alpha, const char *matdescra,
-                   const std::complex<double> *val, const MKL_INT *indx, const int *pntrb, const int *pntre,
+                   const std::complex<double> *val, const MKL_INT *indx, const MKL_INT *pntrb, const MKL_INT *pntre,
                    const std::complex<double> *b, const MKL_INT ldb, const std::complex<double> beta, std::complex<double> *c, const MKL_INT ldc) {
         mkl_zcsrmm(&transa, &m, &n, &k, &alpha, matdescra, val, indx, pntrb, pntre, b, &ldb, &beta, c, &ldc);
     }

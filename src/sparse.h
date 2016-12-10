@@ -2,7 +2,6 @@
 #define SPARSE_H
 #include <vector>
 #include <forward_list>
-#include <armadillo>
 #include "mkl_interface.h"
 
 namespace qbasis {
@@ -11,19 +10,6 @@ namespace qbasis {
     // By default, all diagonal elements are stored, even if they are zero (to be compatible with pardiso)
 
     static const double sparse_precision = 1e-14;
-
-    inline // double
-    bool eigen_by_arma(arma::Col<double> &eigval, arma::Mat<double> &eigvec,
-                       const arma::SpMat<double> &X, const arma::uword n_eigvals, const char* form)
-    {
-        return arma::eigs_sym(eigval, eigvec, X, n_eigvals, form);
-    }
-    inline // complex double
-    bool eigen_by_arma(arma::Col<std::complex<double>> &eigval, arma::Mat<std::complex<double>> &eigvec,
-                       const arma::SpMat<std::complex<double>> &X, const arma::uword n_eigvals, const char* form)
-    {
-        return arma::eigs_gen(eigval, eigvec, X, n_eigvals, form);
-    }
     
     template <typename> class csr_mat;
     //template <typename T> void csrXvec(const csr_mat<T>&, const std::vector<T>&, std::vector<T>&);
@@ -116,6 +102,7 @@ namespace qbasis {
 
         // matrix vector product
         void MultMv(const T *x, T *y) const;
+        void MultMv(T *x, T *y);  // to be compatible with arpack++
 
         // matrix matrix product, x and y of shape dim * n
         //void MultMm(const T *x, T *y, MKL_INT n) const;
@@ -125,9 +112,6 @@ namespace qbasis {
 
         // print
         void prt();
-
-        // transform to armadillo sparse matrix, written in dirty way, discard when the handed coded lanczos become stable
-        void to_arma(arma::SpMat<T> &csc_sparse);
 
     private:
         MKL_INT dim;

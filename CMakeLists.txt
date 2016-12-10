@@ -34,18 +34,25 @@ find_package(Boost 1.56.0 REQUIRED)
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 
 #MKL
-find_package(MKL)
+find_package(MKL REQUIRED)
 include_directories(SYSTEM ${MKL_INCLUDE_DIRS})
 #temporarily use this ugly way
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
-set(LIBS "-L${MKL_ROOT}/lib -Wl,-rpath,${MKL_ROOT}/lib -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl")
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  set(LIBS "-L${MKL_ROOT}/lib -Wl,-rpath,${MKL_ROOT}/lib -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl")
+elseif(CMAKE_COMPILER_IS_GNUCXX AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+  set(LIBS "-L${MKL_ROOT}/lib -Wl,-rpath,${MKL_ROOT}/lib -lmkl_gf_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl")
+endif()
 
-# Armadillo
-find_package(Armadillo)
-#find_package(Armadillo 7.500.0 REQUIRED CONFIG
-#             PATHS "/usr/local" "$ENV{ARMA_ROOT}" NO_SYSTEM_ENVIRONMENT_PATH)
-include_directories(SYSTEM ${ARMADILLO_INCLUDE_DIRS})
-set(LIBS ${LIBS} ${ARMADILLO_LIBRARIES})
+
+#ARPACK
+find_package(ARPACK REQUIRED)
+if (ARPACK_FOUND)
+  include_directories(SYSTEM ${ARPACK_INCLUDE_DIRS})
+  include_directories(SYSTEM ${ARPACK_INCLUDE_DIRS}/../examples/areig)
+  set(LIBS ${LIBS} ${ARPACK_LIBRARIES})
+  add_definitions(-DWITH_ARPACK)
+endif()
 
 # -- BUILD -------------------------------------------
 
@@ -58,8 +65,12 @@ add_subdirectory(src)
 message("")
 message("Configuration results")
 message("---------------------")
-message("C++ compiler            : ${CMAKE_CXX_COMPILER}")
-message("C++ compiler flags      : ${CMAKE_CXX_FLAGS}")
+message("Operating System          : ${CMAKE_SYSTEM_NAME}")
+message("C++ compiler              : ${CMAKE_CXX_COMPILER}")
+message("C++ compiler id           : ${CMAKE_CXX_COMPILER_ID}")
+message("C++ compiler flags        : ${CMAKE_CXX_FLAGS}")
+message("CMAKE_COMPILER_IS_GNUCXX? : ${CMAKE_COMPILER_IS_GNUCXX}")
+
 
 get_property(INC_DIRS DIRECTORY PROPERTY INCLUDE_DIRECTORIES)
 message("LIBS:     ${LIBS}")

@@ -6,17 +6,36 @@
 void test_operator();
 void test_csrmm();
 void test_lanczos();
+//void test_arma();
 
 int main(){
     //test_operator();
-    test_csrmm();
+    //test_csrmm();
     test_lanczos();
-
+    //test_arma();
 }
+
+
+//void test_arma() {
+//    arma::cx_vec eigval_pre;
+//    arma::SpMat<std::complex<double>> sp_csc(8,8);
+//	sp_csc(0,0) = 1;
+//	sp_csc(3,0) = 2;
+//	sp_csc += sp_csc.t() - arma::diagmat(sp_csc);
+//	sp_csc.print();
+//    
+//    std::cout << "wwww" << std::endl;
+//    auto info = arma::eigs_gen(eigval_pre,sp_csc,1);
+//    std::cout << "xxxx" << std::endl;
+//    eigval_pre.print();
+//    std::cout << "     +2.562 expected." << std::endl;
+//   
+//}
+
 
 void test_csrmm() {
     using namespace qbasis;
-
+    
     lil_mat<std::complex<double>> sp_lil_test(2,true);
     sp_lil_test.add(0,0,1.0);
     sp_lil_test.add(0,1,std::complex<double>(2.0,3.0));
@@ -28,14 +47,14 @@ void test_csrmm() {
     for (MKL_INT i = 0; i < 6; i++) {
         testv1[i] = std::complex<double>(i,i+1);
     }
-//    sp_csr_test.MultMm(testv1, testv2,3);
-//    for (MKL_INT i=0; i < 2; i++) {
-//        for (MKL_INT j = 0; j < 3; j++) {
-//            std::cout << std::setw(18) << testv2[i + j * 2];
-//        }
-//        std::cout << std::endl;
-//    }
-//    std::cout << std::endl;
+    //    sp_csr_test.MultMm(testv1, testv2,3);
+    //    for (MKL_INT i=0; i < 2; i++) {
+    //        for (MKL_INT j = 0; j < 3; j++) {
+    //            std::cout << std::setw(18) << testv2[i + j * 2];
+    //        }
+    //        std::cout << std::endl;
+    //    }
+    //    std::cout << std::endl;
 }
 
 void test_lanczos() {
@@ -44,180 +63,169 @@ void test_lanczos() {
     sp_lil.prt();
     sp_lil.add(3,3,11.0);
     sp_lil.add(2,3,8.0);
-    //sp_lil.add(3,2,10.0);
     sp_lil.add(0,3,2.0);
-    //sp_lil.add(1,0,3.0);
     sp_lil.add(1,1,4.0);
     sp_lil.add(0,0,1.0);
     sp_lil.add(4,4,12.0);
     sp_lil.add(2,4,std::complex<double>(9.0, 2.0));
     sp_lil.add(2,2,7.0);
-    //sp_lil.add(2,0,6.0);
     sp_lil.add(1,3,5.0);
     sp_lil.add(1,6,5.0);
     sp_lil.add(1,7,4.0);
     sp_lil.add(3,6,2.0);
-    sp_lil.prt();
-
-
+    //sp_lil.prt();
+    
+    
     csr_mat<std::complex<double>> sp_csr(sp_lil);
     sp_lil.destroy();
     sp_csr.prt();
-
-//    arma::SpMat<std::complex<double>> sp_csc;
-//    sp_csr.to_arma(sp_csc);
-//    sp_csc.print();
-//
-//    arma::cx_vec eigval;
-//    arma::cx_mat eigvec;
-//    arma::eigs_gen(eigval, eigvec, sp_csc, 3, "sr");
-//    eigval.print();
-
-    MKL_INT m = 4;
+    
     MKL_INT dim=8;
+    MKL_INT m = 4;
     MKL_INT ldh = 15;
-
-
-
+    std::vector<std::complex<double>> x = {1.0, std::complex<double>(2.3, 3.4), 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
+    
+    
     std::complex<double> *v = new std::complex<double>[dim*dim];
     std::complex<double> *resid = new std::complex<double>[dim];
     double hessenberg[2*ldh];
-    std::vector<std::complex<double>> x = {1.0, std::complex<double>(2.3, 3.4), 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
-    double temp =nrm2(dim, x.data(), 1);
+    
+    double temp =qbasis::nrm2(dim, x.data(), 1);
     std::cout << "norm of x = " << temp << std::endl;
-    scal(dim, 1.0/nrm2(dim, x.data(), 1), x.data(), 1);
+    qbasis::scal(dim, 1.0/qbasis::nrm2(dim, x.data(), 1), x.data(), 1);
     for (MKL_INT i=0; i<dim; i++) resid[i] = x[i];
-
+    
     double betak = 0.0;
     lanczos(0, m, sp_csr, betak, resid, v, hessenberg, ldh);
-
-
+    
+    
     std::complex<double> *hess= new std::complex<double>[ldh*ldh];
     hess2matform(hessenberg, hess, m, ldh);
     std::complex<double> *res = new std::complex<double>[ldh*dim];
     for (MKL_INT j=0; j < m; j++) {
-        sp_csr.MultMv(v + j*dim, res + j*dim);
+    sp_csr.MultMv(v + j*dim, res + j*dim);
     }
     gemm('n', 'n', dim, m, m, std::complex<double>(-1.0,0), v, dim, hess, ldh, std::complex<double>(1.0,0), res, dim);
     for (MKL_INT i=0; i < dim; i++) {
-        for (MKL_INT j = 0; j < m; j++) {
-            std::complex<double> out = std::abs(res[i + j * dim])>1e-12?res[i + j * dim]:0.0;
-            std::cout << std::setw(25) << out;
-        }
-        std::cout << std::endl;
+    for (MKL_INT j = 0; j < m; j++) {
+    std::complex<double> out = std::abs(res[i + j * dim])>1e-12?res[i + j * dim]:0.0;
+    std::cout << std::setw(25) << out;
     }
     std::cout << std::endl;
-
+    }
+    std::cout << std::endl;
+    
     std::cout << "betak = " << betak << std::endl;
     std::cout << "Vextra:" << std::endl;
     for (MKL_INT i = 0; i < dim; i++) {
-        std::cout << std::setw(12) << betak * resid[i] << std::endl;
+    std::cout << std::setw(12) << betak * resid[i] << std::endl;
     }
     std::cout << "hessenberg: " << std::endl;
     for (MKL_INT i=0; i < m; i++) {
-        std::cout << std::setw(12) << hessenberg[i] << std::setw(12) << hessenberg[i+ldh] << std::endl;
+    std::cout << std::setw(12) << hessenberg[i] << std::setw(12) << hessenberg[i+ldh] << std::endl;
     }
     std::cout << "all v: " << std::endl;
     for (MKL_INT i=0; i<dim; i++) {
-        for (MKL_INT j=0; j < m; j++) {
-            std::cout << std::setw(25) << v[i+j*dim];
-        }
-        std::cout << std::setw(25) << resid[i] << std::endl;
+    for (MKL_INT j=0; j < m; j++) {
+    std::cout << std::setw(25) << v[i+j*dim];
     }
-
+    std::cout << std::setw(25) << resid[i] << std::endl;
+    }
+    
     std::cout << "-------------" << std::endl;
     MKL_INT kinc = 1;
     m=m+kinc;
     lanczos(m-kinc, kinc, sp_csr, betak, resid, v, hessenberg, ldh);
     hess2matform(hessenberg, hess, m, ldh);
     for (MKL_INT j=0; j < m; j++) {
-        sp_csr.MultMv(v + j*dim, res + j*dim);
+    sp_csr.MultMv(v + j*dim, res + j*dim);
     }
     gemm('n', 'n', dim, m, m, std::complex<double>(-1.0,0), v, dim, hess, ldh, std::complex<double>(1.0,0), res, dim);
     for (MKL_INT i=0; i < dim; i++) {
-        for (MKL_INT j = 0; j < m; j++) {
-            std::complex<double> out = std::abs(res[i + j * dim])>1e-12?res[i + j * dim]:0.0;
-            std::cout << std::setw(25) << out;
-        }
-        std::cout << std::endl;
+    for (MKL_INT j = 0; j < m; j++) {
+    std::complex<double> out = std::abs(res[i + j * dim])>1e-12?res[i + j * dim]:0.0;
+    std::cout << std::setw(25) << out;
     }
     std::cout << std::endl;
-
-
+    }
+    std::cout << std::endl;
+    
+    
     std::cout << "betak = " << betak << std::endl;
     std::cout << "Vextra:" << std::endl;
     for (MKL_INT i = 0; i < dim; i++) {
-        std::cout << std::setw(12) << betak * resid[i] << std::endl;
+    std::cout << std::setw(12) << betak * resid[i] << std::endl;
     }
     std::cout << "hessenberg: " << std::endl;
     for (MKL_INT i=0; i < m; i++) {
-        std::cout << std::setw(15) << std::setprecision(10) << hessenberg[i]
-        << std::setw(15) << std::setprecision(10) << hessenberg[i+ldh] << std::endl;
+    std::cout << std::setw(15) << std::setprecision(10) << hessenberg[i]
+    << std::setw(15) << std::setprecision(10) << hessenberg[i+ldh] << std::endl;
     }
     std::cout << "all v: " << std::endl;
     for (MKL_INT i=0; i<dim; i++) {
-        for (MKL_INT j=0; j < m; j++) {
-            std::cout << std::setw(25) << v[i+j*dim];
-        }
-        std::cout << std::setw(25) << resid[i] << std::endl;
+    for (MKL_INT j=0; j < m; j++) {
+    std::cout << std::setw(25) << v[i+j*dim];
     }
-
+    std::cout << std::setw(25) << resid[i] << std::endl;
+    }
+    
     std::cout << "eigenval: " << std::endl;
     std::vector<double> ritz(m);
     std::vector<double> vecs(m*ldh);
     select_shifts(hessenberg, ldh, m, "sm", ritz.data());
     for (MKL_INT j = 0; j < m; j++) {
-        std::cout << std::setw(15) << std::setprecision(10) << ritz[j];
+    std::cout << std::setw(15) << std::setprecision(10) << ritz[j];
     }
     std::cout << std::endl;
-//    std::cout << "eigenvec: " << std::endl;
-//    for (MKL_INT i=0; i<k; i++) {
-//        for (MKL_INT j=0; j < k; j++) {
-//            std::cout << std::setw(25) << vecs[i+j*ldh];
-//        }
-//        std::cout << std::endl;
-//    }
-
+    //    std::cout << "eigenvec: " << std::endl;
+    //    for (MKL_INT i=0; i<k; i++) {
+    //        for (MKL_INT j=0; j < k; j++) {
+    //            std::cout << std::setw(25) << vecs[i+j*ldh];
+    //        }
+    //        std::cout << std::endl;
+    //    }
+    
     std::vector<double> Q(m*m);
     MKL_INT np = 1;
     MKL_INT k = m-np;
     perform_shifts(dim, m, np, ritz.data()+k, betak, resid, v, hessenberg, ldh, Q.data(), m);
-
-
+    
+    
     hess2matform(hessenberg, hess, k, ldh);
     for (MKL_INT j=0; j < k; j++) {
-        sp_csr.MultMv(v + j*dim, res + j*dim);
+    sp_csr.MultMv(v + j*dim, res + j*dim);
     }
     gemm('n', 'n', dim, k, k, std::complex<double>(-1.0,0), v, dim, hess, ldh, std::complex<double>(1.0,0), res, dim);
     for (MKL_INT i=0; i < dim; i++) {
-        for (MKL_INT j = 0; j < k; j++) {
-            std::complex<double> out = std::abs(res[i + j * dim])>1e-12?res[i + j * dim]:0.0;
-            std::cout << std::setw(25) << out;
-        }
-        std::cout << std::endl;
+    for (MKL_INT j = 0; j < k; j++) {
+    std::complex<double> out = std::abs(res[i + j * dim])>1e-12?res[i + j * dim]:0.0;
+    std::cout << std::setw(25) << out;
     }
     std::cout << std::endl;
-
-
+    }
+    std::cout << std::endl;
+    
+    
     std::cout << "betak = " << betak << std::endl;
     std::cout << "Vextra:" << std::endl;
     for (MKL_INT i = 0; i < dim; i++) {
-        std::cout << std::setw(12) << betak * resid[i] << std::endl;
+    std::cout << std::setw(12) << betak * resid[i] << std::endl;
     }
     std::cout << "hessenberg: " << std::endl;
     for (MKL_INT i=0; i < k; i++) {
-        std::cout << std::setw(15) << std::setprecision(10) << hessenberg[i]
-        << std::setw(15) << std::setprecision(10) << hessenberg[i+ldh] << std::endl;
+    std::cout << std::setw(15) << std::setprecision(10) << hessenberg[i]
+    << std::setw(15) << std::setprecision(10) << hessenberg[i+ldh] << std::endl;
     }
-
-
+    
+    
     std::cout << "testing iram:" << std::endl;
-    MKL_INT nev = 1, ncv = 3;
+    MKL_INT nev = 2, ncv = 5, nconv;
     std::vector<double> eigenvals(nev), tol(nev);
     std::vector<std::complex<double>> eigenvecs(nev * dim);
-    iram(sp_csr, x.data(), nev, ncv, "lr", eigenvals.data(), eigenvecs.data(), tol.data(), true);
-
+    iram(sp_csr, x.data(), nev, ncv, nconv, "sr", eigenvals.data(), eigenvecs.data(), true);
 }
+
+
 
 
 void test_operator(){

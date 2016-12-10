@@ -1,4 +1,5 @@
 #include "lanczos.h"
+#include "areig.h"
 #include <iomanip>
 
 namespace qbasis {
@@ -206,38 +207,52 @@ namespace qbasis {
 
     }
 
+    // interface to arpack++
+    void call_arpack(csr_mat<double> &mat, double v0[],
+                     const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
+                     const std::string &order, double eigenvals[], double eigenvecs[])
+    {
+        ARSymStdEig<double, csr_mat<double>>
+            prob(mat.dimension(), nev, &mat, &csr_mat<double>::MultMv, order, ncv, 0.0, 0, v0);
+        prob.EigenValVectors(eigenvecs, eigenvals);
+        nconv = prob.ConvergedEigenvalues();
+    }
+    void call_arpack(csr_mat<std::complex<double>> &mat, std::complex<double> v0[],
+                     const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
+                     const std::string &order, double eigenvals[], std::complex<double> eigenvecs[])
+    {
+        std::complex<double> *eigenvals_copy = new std::complex<double>[nev];
+        ARCompStdEig<double, csr_mat<std::complex<double>>> prob(mat.dimension(), nev, &mat,
+                                                                 &csr_mat<std::complex<double>>::MultMv,
+                                                                 order, ncv, 0.0, 0, v0);
+        std::cout << "bench1" << std::endl;
+        prob.EigenValVectors(eigenvecs, eigenvals_copy);
+        std::cout << "bench2" << std::endl;
+        nconv = prob.ConvergedEigenvalues();
+        for (MKL_INT j = 0; j < nconv; j++) {
+            assert(std::abs(eigenvals_copy[j].imag()) < lanczos_precision);
+            eigenvals[j] = eigenvals_copy[j].real();
+        }
+        delete [] eigenvals_copy;
+    }
 
     template <typename T>
-    void iram(csr_mat<T> &mat, const T v0[], const MKL_INT &nev, const MKL_INT &ncv,
-              const std::string &order, double eigenvals[], T eigenvecs[], double tol[],
-              const bool &use_arma)
+    void iram(csr_mat<T> &mat, T v0[], const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
+              const std::string &order, double eigenvals[], T eigenvecs[], const bool &use_arpack)
     {
         MKL_INT dim = mat.dimension();
         MKL_INT np = ncv - nev;
 
-        arma::SpMat<T> sp_csc;
+//        arma::SpMat<T> sp_csc;
 
-        if (use_arma) {
-            std::cout << "Using armadillo..." << std::endl;
-            mat.to_arma(sp_csc);
-            std::cout << "bench1" << std::endl;
-            sp_csc.print();
+        if (use_arpack) {
+            std::string order_cap(order);
+            std::transform(order_cap.begin(), order_cap.end(), order_cap.begin(), ::toupper);
+            call_arpack(mat, v0, nev, ncv, nconv, order_cap, eigenvals, eigenvecs);
+            for (MKL_INT j = 0; j < nconv; j++) {
+                std::cout << "j = " << j << ", E_j = " << eigenvals[j] << std::endl;
+            }
             
-            arma::Col<T> arma_eigval;
-            arma::Mat<T> arma_eigvec;
-            auto info = eigen_by_arma(arma_eigval, arma_eigvec, sp_csc, nev, order.data());
-            std::cout << "arma_info = " << info << std::endl;
-            for (MKL_INT j = 0; j < nev; j++) eigenvals[j] = std::abs(arma_eigval(j));
-            //  for (MKL_INT j = 0; j < nev; j++) {
-            //      for (MKL_INT i = 0; i < dim; i++) {
-            //          //std::cout << "(" << i << "," << j << ")" << arma_eigvec(i,j) << std::endl;
-            //          eigenvecs[i + j * dim] = arma_eigvec(i,j);   // note, we have to verify if armadillo produce real eigvecs for real symmetric matrix
-            //      }
-            //  }
-            std::cout << "eigenvals: " << std::endl;
-            for (MKL_INT j = 0; j < nev; j++) std::cout << eigenvals[j] << std::endl;
-
-
 
         } else {                                                                       // hand-coded arpack
             std::vector<T> resid(dim, static_cast<T>(0.0)), v(dim*ncv);
@@ -280,11 +295,13 @@ namespace qbasis {
                                  double &rnorm, std::complex<double> resid[], std::complex<double> v[], double hessenberg[], const MKL_INT &ldh,
                                  double Q[], const MKL_INT &ldq);
 
-    template void iram(csr_mat<double> &mat, const double v0[], const MKL_INT &nev, const MKL_INT &ncv,
-                       const std::string &order, double eigenvals[], double eigenvecs[], double tol[],
-                       const bool &use_arma);
-    template void iram(csr_mat<std::complex<double>> &mat, const std::complex<double> v0[], const MKL_INT &nev, const MKL_INT &ncv,
-                       const std::string &order, double eigenvals[], std::complex<double> eigenvecs[], double tol[],
-                       const bool &use_arma);
+    template void iram(csr_mat<double> &mat, double v0[],
+                       const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
+                       const std::string &order, double eigenvals[], double eigenvecs[],
+                       const bool &use_arpack);
+    template void iram(csr_mat<std::complex<double>> &mat, std::complex<double> v0[],
+                       const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
+                       const std::string &order, double eigenvals[], std::complex<double> eigenvecs[],
+                       const bool &use_arpack);
 
 }
