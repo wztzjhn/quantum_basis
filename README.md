@@ -4,5 +4,6 @@ basis of condensed matter quantum lattice problems, for usage in exact diagonali
 under development, not ready for practical use yet
 
 
-Note: using an modified version of arpack++ to be compatible with MKL. To download:
+Note: using a modified version of arpack++ to be compatible with MKL. To download:
+
 git clone git@github.com:wztzjhn/arpackpp.git
