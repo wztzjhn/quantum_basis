@@ -225,9 +225,7 @@ namespace qbasis {
         ARCompStdEig<double, csr_mat<std::complex<double>>> prob(mat.dimension(), nev, &mat,
                                                                  &csr_mat<std::complex<double>>::MultMv,
                                                                  order, ncv, 0.0, 0, v0);
-        std::cout << "bench1" << std::endl;
         prob.EigenValVectors(eigenvecs, eigenvals_copy);
-        std::cout << "bench2" << std::endl;
         nconv = prob.ConvergedEigenvalues();
         for (MKL_INT j = 0; j < nconv; j++) {
             assert(std::abs(eigenvals_copy[j].imag()) < lanczos_precision);
@@ -243,8 +241,6 @@ namespace qbasis {
         MKL_INT dim = mat.dimension();
         MKL_INT np = ncv - nev;
 
-//        arma::SpMat<T> sp_csc;
-
         if (use_arpack) {
             std::string order_cap(order);
             std::transform(order_cap.begin(), order_cap.end(), order_cap.begin(), ::toupper);
@@ -252,7 +248,6 @@ namespace qbasis {
             for (MKL_INT j = 0; j < nconv; j++) {
                 std::cout << "j = " << j << ", E_j = " << eigenvals[j] << std::endl;
             }
-            
 
         } else {                                                                       // hand-coded arpack
             std::vector<T> resid(dim, static_cast<T>(0.0)), v(dim*ncv);

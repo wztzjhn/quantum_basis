@@ -32,7 +32,7 @@ namespace qbasis {
     }
 
     template <typename T>
-    void lil_mat<T>::prt()
+    void lil_mat<T>::prt() const
     {
         std::cout << "dim = " << dim << std::endl;
         std::cout << "nnz = " << nnz << std::endl;
@@ -63,7 +63,7 @@ namespace qbasis {
         ia = new MKL_INT[dim+1];
         MKL_INT counts = 0;
         for (decltype(dim) i = 0; i < dim; i++) {
-            assert(! old.mat[i].empty()); // at least storing the diagonal element
+            assert(! old.mat[i].empty());                                        // at least storing the diagonal element
             ia[i] = counts;
             auto it = old.mat[i].begin();
             while (it != old.mat[i].end()) {
@@ -76,6 +76,28 @@ namespace qbasis {
         }
         assert(counts == nnz);
         ia[dim] = counts;
+        
+        if (! sym) {                                                             // check if matrix is hermitian
+            for (decltype(dim) row = 0; row < dim; row++) {
+                for (decltype(dim) j = ia[row]; j < ia[row+1]; j++) {            // check for each element in current row
+                    auto col = ja[j];
+                    if(row == col) continue;
+                    auto i = ia[col];
+                    while (i < ia[col+1] && ja[i] != row) i++;                   // until it's conjugate found
+                    if (i == ia[col+1] || std::abs(val[j] - std::conj(val[i])) > sparse_precision) {
+                        std::cout << "Hermitian check failed!!!" << std::endl;
+                        std::cout << "(row, col)    = (" << row << ", " << col << ")" << std::endl;
+                        std::cout << "mat(row, col) = " << val[j] << std::endl;
+                        if (i == ia[col+1]) {
+                            std::cout << "mat(col, row) NOT found!" << std::endl;
+                        } else {
+                            std::cout << "mat(col, row) = " << val[i] << std::endl;
+                        }
+                        std::exit(99);
+                    }
+                }
+            }
+        }
     }
 
     
@@ -124,7 +146,7 @@ namespace qbasis {
     //}
 
     template <typename T>
-    void csr_mat<T>::prt()
+    void csr_mat<T>::prt() const
     {
         std::cout << "dim = " << dim << std::endl;
         std::cout << "nnz = " << nnz << std::endl;

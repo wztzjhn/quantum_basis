@@ -55,7 +55,9 @@ namespace qbasis {
         MKL_INT num_nonzero() const { return nnz; }
 
         // print
-        void prt();
+        void prt() const;
+        
+        void use_full_matrix() {sym = false; }
 
     private:
         MKL_INT dim;    // dimension of the matrix
@@ -111,7 +113,7 @@ namespace qbasis {
         MKL_INT dimension() const {return dim; }
 
         // print
-        void prt();
+        void prt() const;
 
     private:
         MKL_INT dim;
