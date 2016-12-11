@@ -8,10 +8,10 @@
 namespace qbasis {
     // ----------------- implementation of basis ------------------
     basis_elem::basis_elem(const int &n_sites, const bool &fermion_, const int &dim_local_):
-    dim_local(static_cast<short>(dim_local_)),
-    bits_per_site(static_cast<short>(ceil(log2(static_cast<double>(dim_local_)) - 1e-9))),
-    fermion(fermion_),
-    bits(static_cast<DBitSet::size_type>(n_sites * bits_per_site)) {};
+        dim_local(static_cast<short>(dim_local_)),
+        bits_per_site(static_cast<short>(ceil(log2(static_cast<double>(dim_local_)) - 1e-9))),
+        fermion(fermion_),
+        bits(static_cast<DBitSet::size_type>(n_sites * bits_per_site)) {};
     
     basis_elem::basis_elem(const int &n_sites, const std::string &s)
     {
@@ -62,6 +62,22 @@ namespace qbasis {
         lhs.bits.swap(rhs.bits);
     }
     
+    bool operator<(const basis_elem &lhs, const basis_elem &rhs)
+    {
+        assert(lhs.dim_local == rhs.dim_local);
+        assert(lhs.bits_per_site == rhs.bits_per_site);
+        assert(lhs.fermion == rhs.fermion);
+        return (lhs.bits < rhs.bits);
+    }
+    
+    bool operator==(const basis_elem &lhs, const basis_elem &rhs)
+    {
+        assert(lhs.dim_local == rhs.dim_local);
+        assert(lhs.bits_per_site == rhs.bits_per_site);
+        assert(lhs.fermion == rhs.fermion);
+        return (lhs.bits == rhs.bits);
+    }
+    
     
     // ----------------- implementation of mbasis ------------------
     mbasis_elem::mbasis_elem(const int &n_sites, std::initializer_list<std::string> lst)
@@ -98,7 +114,20 @@ namespace qbasis {
         swap(lhs.mbits, rhs.mbits);
     }
     
+    bool operator<(const mbasis_elem &lhs, const mbasis_elem &rhs)
+    {
+        return (lhs.mbits < rhs.mbits);
+    }
     
+    bool operator==(const mbasis_elem &lhs, const mbasis_elem &rhs)
+    {
+        return (lhs.mbits == rhs.mbits);
+    }
+    
+    
+    
+    
+    // ----------------- implementation of wavefunction ------------------
     
     void swap(wavefunction &lhs, wavefunction &rhs)
     {

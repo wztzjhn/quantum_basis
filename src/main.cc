@@ -2,7 +2,7 @@
 #include <iomanip>
 
 
-
+void test_basis();
 void test_operator();
 
 void test_lanczos();
@@ -12,13 +12,30 @@ void test_iram();
 int main(){
     test_lanczos();
     test_iram();
+    test_basis();
     //test_operator();
     
     
 
 }
 
-
+void test_basis() {
+    std::cout << "--------- test basis ---------" << std::endl;
+    qbasis::basis_elem ele1(9, "spin-1");
+    qbasis::basis_elem ele2(ele1);
+    ele2.flip();
+    ele1.prt();
+    ele2.prt();
+    std::cout << "ele1 < ele2  ? " << (ele1 < ele2) << std::endl;
+    std::cout << "ele1 == ele2 ? " << (ele1 == ele2) << std::endl;
+    std::cout << std::endl;
+    
+    qbasis::mbasis_elem mele1(9, {"spin-1/2", "spin-1"});
+    qbasis::mbasis_elem mele2(9, {"spin-1/2", "spin-1"});
+    mele1.test();
+    std::cout << "mele1 == mele2 ? " << (mele1 == mele2) << std::endl;
+    
+}
 
 void test_lanczos() {
     std::cout << "--------- test lanczos ---------" << std::endl;
@@ -148,6 +165,11 @@ void test_iram()
     for (MKL_INT j = 0; j < nconv; j++) {
         std::cout << "sigma[" << j << "] = " << std::setprecision(9) << eigenvals[j] << std::endl;
     }
+    assert(std::abs(std::abs(eigenvecs[0]) - 0.0949047) < 0.000001);
+    assert(std::abs(std::abs(eigenvecs[1]) - 0.5984956) < 0.000001);
+    assert(std::abs(std::abs(eigenvecs[2]) - 0.3237924) < 0.000001);
+    assert(std::abs(std::abs(eigenvecs[7]) - 0.4520759) < 0.000001);
+    std::cout << std::endl << std::endl;
 }
 
 

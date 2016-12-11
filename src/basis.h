@@ -10,10 +10,22 @@ namespace qbasis {
     // the startup cost of boost::dynamic_bitset is around 40 Bytes
     using DBitSet = boost::dynamic_bitset<>;
     
+    
+    // forward declarations
+    class basis_elem;
+    bool operator<(const basis_elem&, const basis_elem&);
+    bool operator==(const basis_elem&, const basis_elem&);
+    
+    class mbasis_elem;
+    bool operator<(const mbasis_elem&, const mbasis_elem&);
+    bool operator==(const mbasis_elem&, const mbasis_elem&);
+    
     // ---------------- fundamental class for basis elements ------------------
     // for given number of sites, store the bits for a single orbital
     class basis_elem {
         friend void swap(basis_elem &lhs, basis_elem &rhs);
+        friend bool operator<(const basis_elem&, const basis_elem&);
+        friend bool operator==(const basis_elem&, const basis_elem&);
     public:
         // default constructor
         basis_elem() = default;
@@ -28,11 +40,11 @@ namespace qbasis {
         
         // copy constructor
         basis_elem(const basis_elem& old):
-        dim_local(old.dim_local), bits_per_site(old.bits_per_site), fermion(old.fermion), bits(old.bits) {}
+            dim_local(old.dim_local), bits_per_site(old.bits_per_site), fermion(old.fermion), bits(old.bits) {}
         
         // move constructor
         basis_elem(basis_elem &&old) noexcept :
-        dim_local(old.dim_local), bits_per_site(old.bits_per_site), fermion(old.fermion), bits(std::move(old.bits)) {}
+            dim_local(old.dim_local), bits_per_site(old.bits_per_site), fermion(old.fermion), bits(std::move(old.bits)) {}
         
         // copy assignment constructor and move assignment constructor, using "swap and copy"
         basis_elem& operator=(basis_elem old)
@@ -64,6 +76,8 @@ namespace qbasis {
     // for given number of sites, and several orbitals, store the vectors of bits
     class mbasis_elem {
         friend void swap(mbasis_elem&, mbasis_elem&);
+        friend bool operator<(const mbasis_elem&, const mbasis_elem&);
+        friend bool operator==(const mbasis_elem&, const mbasis_elem&);
     public:
         // default constructor
         mbasis_elem() = default;
