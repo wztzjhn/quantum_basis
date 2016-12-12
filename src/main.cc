@@ -40,7 +40,7 @@ void test_basis() {
 void test_lanczos() {
     std::cout << "--------- test lanczos ---------" << std::endl;
     MKL_INT dim=8;
-    MKL_INT m = 4;
+    MKL_INT m = 6;
     MKL_INT ldh = 15;
     
     qbasis::lil_mat<std::complex<double>> sp_lil(8,true);

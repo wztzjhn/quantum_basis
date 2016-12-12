@@ -16,7 +16,7 @@ namespace qbasis {
     
     // By default, all diagonal elements are stored, even if they are zero (to be compatible with pardiso, if used in future)
     
-    static const double lanczos_precision = 1e-14;
+    static const double lanczos_precision = 1e-12;
     
     
     // m = k + np step of Lanczos
@@ -41,7 +41,7 @@ namespace qbasis {
     //                          b[k-1]  a[k-1]
     template <typename T>
     void lanczos(MKL_INT k, MKL_INT np, const csr_mat<T> &mat, double &rnorm, T resid[],
-                 T v[], double hessenberg[], const MKL_INT &ldh);
+                 T v[], double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps = true);
     
     // if possible, add a block Arnoldi version here
     

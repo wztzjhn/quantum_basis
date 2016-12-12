@@ -12,43 +12,51 @@ namespace qbasis {
     // 3. need add DGKS re-orthogonalization
     template <typename T>
     void lanczos(MKL_INT k, MKL_INT np, const csr_mat<T> &mat, double &rnorm, T resid[],
-                 T v[], double hessenberg[], const MKL_INT &ldh)
+                 T v[], double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps)
     {
         MKL_INT dim = mat.dimension();
         MKL_INT m   = k + np;
         assert(m <= ldh && k >= 0 && k < dim && np >=0 && np < dim);
-        assert(m < dim);                                                              // # of orthogonal vectors: at most dim
-        assert(std::abs(nrm2(dim, resid, 1) - 1.0) < lanczos_precision);              // normalized
+        assert(m < dim);                                                          // # of orthogonal vectors: at most dim
+        assert(std::abs(nrm2(dim, resid, 1) - 1.0) < lanczos_precision);          // normalized
         if (np == 0) return;
-        std::vector<T*> vpt(m+1);
-        for (MKL_INT j = 0; j < m; j++) vpt[j] = &v[j*dim];                           // pointers of v_0, v_1, ..., v_m
+        std::vector<T*> vpt(m+1);                                                 // pointers of v_0, v_1, ..., v_m
+        if (MemoSteps) {                                                          // v has m cols
+            for (MKL_INT j = 0; j < m; j++) vpt[j] = &v[j*dim];
+        } else {                                                                  // v has only 3 cols
+            MKL_INT cnt = 0;
+            for (MKL_INT j = 0; j < m; j++, cnt = (++cnt) % 3) {
+                vpt[j] = &v[cnt*dim];
+                std::cout << "cnt = " << cnt << std::endl;
+            }
+        }
         vpt[m] = resid;
-        copy(dim, resid, 1, vpt[k], 1);                                               // v_k = resid
-        hessenberg[k] = rnorm;                                                        // beta_k = rnorm
-        if (k == 0 && m > 1) {                                                        // prepare at least 2 vectors to start
+        copy(dim, resid, 1, vpt[k], 1);                                           // v_k = resid
+        hessenberg[k] = rnorm;                                                    // beta_k = rnorm
+        if (k == 0 && m > 1) {                                                    // prepare at least 2 vectors to start
             assert(std::abs(hessenberg[0]) < lanczos_precision);
-            mat.MultMv(vpt[0], vpt[1]);                                               // w_0, not orthogonal to v[0] yet
-            hessenberg[ldh] = std::real(dotc(dim, vpt[0], 1, vpt[1], 1));             // alpha[0]
-            axpy(dim, -hessenberg[ldh], vpt[0], 1, vpt[1], 1);                        // w_0, orthogonal but not normalized yet
-            hessenberg[1] = nrm2(dim, vpt[1], 1);                                     // beta[1]
-            scal(dim, 1.0 / hessenberg[1], vpt[1], 1);                                // v[1]
+            mat.MultMv(vpt[0], vpt[1]);                                           // w_0, not orthogonal to v[0] yet
+            hessenberg[ldh] = std::real(dotc(dim, vpt[0], 1, vpt[1], 1));         // alpha[0]
+            axpy(dim, -hessenberg[ldh], vpt[0], 1, vpt[1], 1);                    // w_0, orthogonal but not normalized yet
+            hessenberg[1] = nrm2(dim, vpt[1], 1);                                 // beta[1]
+            scal(dim, 1.0 / hessenberg[1], vpt[1], 1);                            // v[1]
             ++k;
             --np;
         }
         for (MKL_INT j = k; j < m-1; j++) {
             mat.MultMv(vpt[j], vpt[j+1]);
-            axpy(dim, -hessenberg[j], vpt[j-1], 1, vpt[j+1], 1);                      // w_j
-            hessenberg[ldh+j] = std::real(dotc(dim, vpt[j], 1, vpt[j+1], 1));         // alpha[j]
-            axpy(dim, -hessenberg[ldh+j], vpt[j], 1, vpt[j+1], 1);                    // w_j
-            hessenberg[j+1] = nrm2(dim, vpt[j+1], 1);                                 // beta[j+1]
-            scal(dim, 1.0 / hessenberg[j+1], vpt[j+1], 1);                            // v[j+1]
+            axpy(dim, -hessenberg[j], vpt[j-1], 1, vpt[j+1], 1);                  // w_j
+            hessenberg[ldh+j] = std::real(dotc(dim, vpt[j], 1, vpt[j+1], 1));     // alpha[j]
+            axpy(dim, -hessenberg[ldh+j], vpt[j], 1, vpt[j+1], 1);                // w_j
+            hessenberg[j+1] = nrm2(dim, vpt[j+1], 1);                             // beta[j+1]
+            scal(dim, 1.0 / hessenberg[j+1], vpt[j+1], 1);                        // v[j+1]
         }
         mat.MultMv(vpt[m-1], vpt[m]);
         if(m > 1) axpy(dim, -hessenberg[m-1], vpt[m-2], 1, vpt[m], 1);
-        hessenberg[ldh+m-1] = std::real(dotc(dim, vpt[m-1], 1, vpt[m], 1));           // alpha[k-1]
-        axpy(dim, -hessenberg[ldh+m-1], vpt[m-1], 1, vpt[m], 1);                      // w_{k-1}
+        hessenberg[ldh+m-1] = std::real(dotc(dim, vpt[m-1], 1, vpt[m], 1));       // alpha[k-1]
+        axpy(dim, -hessenberg[ldh+m-1], vpt[m-1], 1, vpt[m], 1);                  // w_{k-1}
         rnorm = nrm2(dim, vpt[m], 1);
-        scal(dim, 1.0 / rnorm, vpt[m], 1);                                            // v[k]
+        scal(dim, 1.0 / rnorm, vpt[m], 1);                                        // v[k]
     }
 
 
@@ -276,9 +284,11 @@ namespace qbasis {
 
     // Explicit instantiation
     template void lanczos(MKL_INT k, MKL_INT np, const csr_mat<double> &mat,
-                          double &rnorm, double resid[], double v[], double hessenberg[], const MKL_INT &ldh);
+                          double &rnorm, double resid[], double v[],
+                          double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps);
     template void lanczos(MKL_INT k, MKL_INT np, const csr_mat<std::complex<double>> &mat,
-                          double &rnorm, std::complex<double> resid[], std::complex<double> v[], double hessenberg[], const MKL_INT &ldh);
+                          double &rnorm, std::complex<double> resid[], std::complex<double> v[],
+                          double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps);
 
     template void hess2matform(const double hessenberg[], double mat[], const MKL_INT &m, const MKL_INT &ldh);
     template void hess2matform(const double hessenberg[], std::complex<double> mat[], const MKL_INT &m, const MKL_INT &ldh);
