@@ -3,13 +3,14 @@
 #include <string>
 #include <vector>
 #include <complex>
+#include <utility>
 #include <initializer_list>
 #include <boost/dynamic_bitset.hpp>
+#include "operators.h"
 
 namespace qbasis {
     // the startup cost of boost::dynamic_bitset is around 40 Bytes
     using DBitSet = boost::dynamic_bitset<>;
-    
     
     // forward declarations
     class basis_elem;
@@ -20,18 +21,27 @@ namespace qbasis {
     bool operator<(const mbasis_elem&, const mbasis_elem&);
     bool operator==(const mbasis_elem&, const mbasis_elem&);
     
+    template <typename> class wavefunction;
+    template <typename T> void swap(wavefunction<T>&, wavefunction<T>&);
+    
+    template <typename> class opr;
+    
     // ---------------- fundamental class for basis elements ------------------
     // for given number of sites, store the bits for a single orbital
     class basis_elem {
         friend void swap(basis_elem &lhs, basis_elem &rhs);
         friend bool operator<(const basis_elem&, const basis_elem&);
         friend bool operator==(const basis_elem&, const basis_elem&);
+        template <typename X> friend class opr;                                   // all instances of any type is a friend of basis_elem
     public:
         // default constructor
         basis_elem() = default;
         
-        // constructor with total number of sites, and local dimension of Hilbert space
-        basis_elem(const int &n_sites, const bool &fermion_, const int &dim_local_);
+        // constructor (initializer for all site to be the 0th state)
+        // with total number of sites, local dimension of Hilbert space,
+        // and Nfermion is the fermion density operator (single site)
+        basis_elem(const int &n_sites, const int &dim_local_);                              // boson
+        basis_elem(const int &n_sites, const int &dim_local_, const opr<double> &Nfermion); // fermion
         
         // constructor from total number of sites and a given name.
         // current choices:
@@ -39,12 +49,15 @@ namespace qbasis {
         basis_elem(const int &n_sites, const std::string &s);
         
         // copy constructor
-        basis_elem(const basis_elem& old):
-            dim_local(old.dim_local), bits_per_site(old.bits_per_site), fermion(old.fermion), bits(old.bits) {}
+        basis_elem(const basis_elem& old);
         
         // move constructor
         basis_elem(basis_elem &&old) noexcept :
-            dim_local(old.dim_local), bits_per_site(old.bits_per_site), fermion(old.fermion), bits(std::move(old.bits)) {}
+            dim_local(old.dim_local), bits_per_site(old.bits_per_site),
+            odd_fermion(old.odd_fermion), bits(std::move(old.bits))
+        {
+            old.odd_fermion = nullptr;
+        }
         
         // copy assignment constructor and move assignment constructor, using "swap and copy"
         basis_elem& operator=(basis_elem old)
@@ -54,18 +67,32 @@ namespace qbasis {
         }
         
         // destructor
-        ~basis_elem() {}
+        ~basis_elem() {
+            if(odd_fermion != nullptr) delete [] odd_fermion;
+        }
         
         int total_sites() const;
-        int local_dimension() const { return dim_local; }
+        
+        bool q_fermion() const {return (odd_fermion != nullptr); }
+        
+        short local_dimension() const { return dim_local; }
+        
+        // read out the status of a particular site
+        // storage order: site0, site1, site2, ..., site(N-1)
+        short siteRead(const int &site) const;
+        
+        void siteWrite(const int &site, const short &val);                               // boson
+        void siteWrite(const int &site, const short &val, const opr<double> &Nfermion);  // fermion
+        
         void prt() const;
         
-        basis_elem& flip();
+        // remember to change odd_fermion[site]
+        //basis_elem& flip();
         
     private:
         short dim_local;
         short bits_per_site;
-        bool fermion;
+        bool *odd_fermion;    // an array specifying if there are odd # of fermions on each site; when == nullptr -> boson
         DBitSet bits;
     };
     
@@ -115,33 +142,35 @@ namespace qbasis {
     //      BETTER USE SMART POINTERS TO POINT TO THE ORIGINAL BASIS
     // -------------- class for wave functions ---------------
     // Use with caution, may hurt speed when not used properly
-    class wavefunction {
-        friend void swap(wavefunction&, wavefunction&);
+    template <typename T> class wavefunction {
+        friend void swap <> (wavefunction<T> &, wavefunction<T> &);
     public:
         // default constructor
         wavefunction() = default;
         
         // copy constructor
-        wavefunction(const wavefunction &old) : elements(old.elements), coeffs(old.coeffs) {}
+        wavefunction(const wavefunction<T> &old) : elements(old.elements) {}
         
         // move constructor
-        wavefunction(wavefunction &&old) noexcept : elements(std::move(old.elements)), coeffs(std::move(old.coeffs)) {}
+        wavefunction(wavefunction<T> &&old) noexcept : elements(std::move(old.elements)) {}
         
         // copy assignment constructor and move assignment constructor, using "swap and copy"
-        wavefunction& operator=(wavefunction old)
+        wavefunction& operator=(wavefunction<T> old)
         {
             swap(*this, old);
             return *this;
         }
         
-        //destructor
+        // destructor
         ~wavefunction() {}
+        
+        // check if sorted
+        bool sorted() const;
         
     private:
         // store an array of basis elements, and their corresponding coefficients
         // note: there should not be any dulplicated elements
-        std::vector<mbasis_elem> elements;
-        std::vector<std::complex<double>> coeffs;
+        std::vector<std::pair<mbasis_elem, T>> elements;
     };
     
 }

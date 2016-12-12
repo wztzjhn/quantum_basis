@@ -88,6 +88,13 @@ namespace qbasis {
     }
     
     template <typename T>
+    opr<T> &opr<T>::change_site(const int &site_)
+    {
+        site = site_;
+        return *this;
+    }
+    
+    template <typename T>
     bool opr<T>::q_identity() const
     {
         T prefactor;
@@ -1001,7 +1008,7 @@ namespace qbasis {
     }
     
     
-    //Explicit instantiation, so the class definition can be put in this file
+    // Explicit instantiation, so the class definition can be put in this file
     template class opr<double>;
     template class opr<std::complex<double>>;
     

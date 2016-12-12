@@ -74,6 +74,7 @@ namespace qbasis {
         friend opr<T> normalize <> (const opr<T>&, T&);
         friend class opr_prod<T>;
         friend class mopr<T>;
+        friend class basis_elem;
         
     public:
         // default constructor
@@ -103,6 +104,15 @@ namespace qbasis {
         
         // invert the sign
         opr& negative();
+        
+        // change site index
+        opr& change_site(const int &site_);
+        
+        // question if it is identity operator
+        bool q_diagonal() const
+        {
+            return diagonal;
+        }
         
         // question if it is identity operator
         bool q_identity() const;

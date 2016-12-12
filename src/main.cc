@@ -23,7 +23,7 @@ void test_basis() {
     std::cout << "--------- test basis ---------" << std::endl;
     qbasis::basis_elem ele1(9, "spin-1");
     qbasis::basis_elem ele2(ele1);
-    ele2.flip();
+    ele2.siteWrite(0, 2);
     ele1.prt();
     ele2.prt();
     std::cout << "ele1 < ele2  ? " << (ele1 < ele2) << std::endl;
@@ -67,6 +67,7 @@ void test_lanczos() {
     sp_lil.add(7,1,4.0);
     sp_lil.add(6,3,2.0);
     qbasis::csr_mat<std::complex<double>> sp_csr_full(sp_lil);
+    sp_lil.destroy();
 
     std::vector<std::complex<double>> x = {1.0, std::complex<double>(2.3, 3.4), 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
     qbasis::scal(dim, 1.0/qbasis::nrm2(dim, x.data(), 1), x.data(), 1);
