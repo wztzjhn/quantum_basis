@@ -5,18 +5,20 @@
 void test_basis();
 void test_operator();
 
-void test_lanczos();
+void test_lanczos_memoAll();
 void test_iram();
 
 
 int main(){
-    test_lanczos();
+    test_lanczos_memoAll();
     test_iram();
     test_basis();
     //test_operator();
     
-    
-
+    bool a = 3;
+    bool b = 4;
+    std::cout << (a == b) << std::endl;
+    std::cout << sizeof(bool) << std::endl;
 }
 
 void test_basis() {
@@ -37,7 +39,7 @@ void test_basis() {
     
 }
 
-void test_lanczos() {
+void test_lanczos_memoAll() {
     std::cout << "--------- test lanczos ---------" << std::endl;
     MKL_INT dim=8;
     MKL_INT m = 6;

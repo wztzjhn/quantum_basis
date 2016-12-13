@@ -6,7 +6,7 @@
 namespace qbasis {
     // ----------------- implementation of class opr (operator) ------------------
     template <typename T>
-    opr<T>::opr(const int &site_, const int &orbital_, const bool &fermion_, const std::vector<T> &mat_):
+    opr<T>::opr(const MKL_INT &site_, const MKL_INT &orbital_, const bool &fermion_, const std::vector<T> &mat_):
     site(site_), orbital(orbital_), dim(mat_.size()), fermion(fermion_), diagonal(true)
     {
         if (mat_.empty() ||
@@ -19,7 +19,7 @@ namespace qbasis {
     }
     
     template <typename T>
-    opr<T>::opr(const int &site_, const int &orbital_, const bool &fermion_, const std::vector<std::vector<T>> &mat_):
+    opr<T>::opr(const MKL_INT &site_, const MKL_INT &orbital_, const bool &fermion_, const std::vector<std::vector<T>> &mat_):
     site(site_), orbital(orbital_), dim(mat_.size()), fermion(fermion_), diagonal(false)
     {
         assert(mat_.empty() || (mat_.size() == mat_[0].size()));
@@ -88,7 +88,7 @@ namespace qbasis {
     }
     
     template <typename T>
-    opr<T> &opr<T>::change_site(const int &site_)
+    opr<T> &opr<T>::change_site(const MKL_INT &site_)
     {
         site = site_;
         return *this;
@@ -461,8 +461,8 @@ namespace qbasis {
             return *this;
         }
         auto j = mat_prod.rbegin();
-        std::vector<int> val_rhs = {rhs.site, rhs.orbital};
-        std::vector<int> val_j   = {j->site, j->orbital};
+        std::vector<MKL_INT> val_rhs = {rhs.site, rhs.orbital};
+        std::vector<MKL_INT> val_j   = {j->site, j->orbital};
         while (j != mat_prod.rend() && val_rhs < val_j) {
             if(rhs.fermion && j->fermion) prefactor = -prefactor;
             j++;
@@ -541,7 +541,7 @@ namespace qbasis {
     }
     
     template <typename T>
-    size_t opr_prod<T>::len() const
+    MKL_INT opr_prod<T>::len() const
     {
         return mat_prod.size();
     }

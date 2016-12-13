@@ -27,7 +27,6 @@ namespace qbasis {
             MKL_INT cnt = 0;
             for (MKL_INT j = 0; j < m; j++, cnt = (++cnt) % 3) {
                 vpt[j] = &v[cnt*dim];
-                std::cout << "cnt = " << cnt << std::endl;
             }
         }
         vpt[m] = resid;

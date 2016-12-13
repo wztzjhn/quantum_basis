@@ -10,7 +10,13 @@ namespace qbasis {
     static const double opr_precision = 1e-12; // used as the threshold value in comparison
     
     // forward declarations
+    class basis_elem;
+    class mbasis_elem;
+    template <typename> class wavefunction;
     template <typename> class opr;
+    template <typename> class opr_prod;
+    template <typename> class mopr;
+    
     template <typename T> void swap(opr<T>&, opr<T>&);
     template <typename T> bool operator==(const opr<T>&, const opr<T>&);
     template <typename T> bool operator!=(const opr<T>&, const opr<T>&);
@@ -19,7 +25,6 @@ namespace qbasis {
     template <typename T> opr<T> operator*(const opr<T>&, const T&);
     template <typename T> opr<T> normalize(const opr<T>&, T&); // sum_{i,j} mat[i,j]^2 == dim; the 1st nonzero element (in memory) be real positive
     
-    template <typename> class opr_prod;
     template <typename T> void swap(opr_prod<T>&, opr_prod<T>&);
     template <typename T> bool operator==(const opr_prod<T>&, const opr_prod<T>&);
     template <typename T> bool operator!=(const opr_prod<T>&, const opr_prod<T>&);
@@ -31,7 +36,6 @@ namespace qbasis {
     template <typename T> opr_prod<T> operator*(const T&, const opr_prod<T>&);
     template <typename T> opr_prod<T> operator*(const opr<T>&, const opr<T>&);       // cast up
     
-    template <typename> class mopr;
     template <typename T> void swap(mopr<T>&, mopr<T>&);
     template <typename T> bool operator==(const mopr<T>&, const mopr<T>&);
     template <typename T> bool operator!=(const mopr<T>&, const mopr<T>&);
@@ -59,6 +63,13 @@ namespace qbasis {
     template <typename T> mopr<T> operator*(const mopr<T>&, const opr<T>&);
     template <typename T> mopr<T> operator*(const opr<T>&, const mopr<T>&);
     
+    template <typename T> wavefunction<T> operator*(const opr<T>&, const mbasis_elem&);
+    template <typename T> wavefunction<T> operator*(const opr_prod<T>&, const mbasis_elem&);
+    template <typename T> wavefunction<T> operator*(const opr_prod<T>&, const wavefunction<T>&);
+    template <typename T> wavefunction<T> operator*(const mopr<T>&, const mbasis_elem&);
+    template <typename T> wavefunction<T> operator*(const mopr<T>&, const wavefunction<T>&);
+    template <typename T> wavefunction<T> operator*(const mopr<T>&, const mbasis_elem&);
+    template <typename T> wavefunction<T> operator*(const mopr<T>&, const wavefunction<T>&);
     // note:
     // zero operator: mat==nullptr
     
@@ -75,16 +86,21 @@ namespace qbasis {
         friend class opr_prod<T>;
         friend class mopr<T>;
         friend class basis_elem;
+        friend class mbasis_elem;
+        //friend T operator* <> (const opr<T>&, const basis_elem&);
+        //friend T operator* <> (const opr<T>&, const mbasis_elem&);
+        //friend T operator* <> (const opr_prod<T>&, const mbasis_elem&);
+        friend wavefunction<T> operator* <> (const opr<T>&, const mbasis_elem&);
         
     public:
         // default constructor
         opr() = default;
         
         // constructor from diagonal elements
-        opr(const int &site_, const int &orbital_, const bool &fermion_, const std::vector<T> &mat_);
+        opr(const MKL_INT &site_, const MKL_INT &orbital_, const bool &fermion_, const std::vector<T> &mat_);
         
         // constructor from a matrix
-        opr(const int &site_, const int &orbital_, const bool &fermion_, const std::vector<std::vector<T>> &mat_);
+        opr(const MKL_INT &site_, const MKL_INT &orbital_, const bool &fermion_, const std::vector<std::vector<T>> &mat_);
         
         // copy constructor
         opr(const opr<T> &old);
@@ -106,7 +122,7 @@ namespace qbasis {
         opr& negative();
         
         // change site index
-        opr& change_site(const int &site_);
+        opr& change_site(const MKL_INT &site_);
         
         // question if it is identity operator
         bool q_diagonal() const
@@ -135,12 +151,12 @@ namespace qbasis {
         void prt() const;
         
     private:
-        int site;      // site No.
-        int orbital;   // orbital No.
-        size_t dim;    // number of rows(columns) of the matrix
-        bool fermion;  // fermion or not
-        bool diagonal; // diagonal in matrix form
-        T *mat;        // matrix form, or diagonal elements if diagonal
+        MKL_INT site;      // site No.
+        MKL_INT orbital;   // orbital No.
+        MKL_INT dim;       // number of rows(columns) of the matrix
+        bool fermion;      // fermion or not
+        bool diagonal;     // diagonal in matrix form
+        T *mat;            // matrix form, or diagonal elements if diagonal
     };
     
     
@@ -162,6 +178,10 @@ namespace qbasis {
         friend opr_prod<T> operator* <> (const T&, const opr_prod<T>&);
         friend opr_prod<T> operator* <> (const opr<T>&, const opr<T>&);
         friend class mopr<T>;
+        friend class mbasis_elem;
+        //friend T operator* <> (const opr_prod<T>&, const mbasis_elem&);
+        friend wavefunction<T> operator* <> (const opr_prod<T>&, const mbasis_elem&);
+        friend wavefunction<T> operator* <> (const opr_prod<T>&, const wavefunction<T>&);
     public:
         // default constructor
         opr_prod() = default;
@@ -196,7 +216,7 @@ namespace qbasis {
         // question if it is zero operator
         bool q_zero() const;
         
-        size_t len() const;
+        MKL_INT len() const;
         
         // destructor
         ~opr_prod() {}
@@ -238,7 +258,8 @@ namespace qbasis {
         friend mopr<T> operator* <> (const opr_prod<T>&, const mopr<T>&);
         friend mopr<T> operator* <> (const mopr<T>&, const opr<T>&);
         friend mopr<T> operator* <> (const opr<T>&, const mopr<T>&);
-        
+        friend wavefunction<T> operator* <> (const mopr<T>&, const mbasis_elem&);
+        friend wavefunction<T> operator* <> (const mopr<T>&, const wavefunction<T>&);
     public:
         // default constructor
         mopr() = default;
@@ -274,7 +295,7 @@ namespace qbasis {
         mopr& operator*=(mopr<T> rhs);
         mopr& operator*=(const T &rhs);
         
-        opr_prod<T>& operator[](size_t n)
+        opr_prod<T>& operator[](MKL_INT n)
         {
             assert(! mats.empty());
             auto it = mats.begin();
@@ -282,7 +303,7 @@ namespace qbasis {
             return *it;
         }
         
-        const opr_prod<T>& operator[](size_t n) const
+        const opr_prod<T>& operator[](MKL_INT n) const
         {
             assert(! mats.empty());
             auto it = mats.begin();
@@ -299,6 +320,8 @@ namespace qbasis {
         
         // destructor
         ~mopr() {}
+        
+        bool q_zero() const {return mats.empty(); }
         
         void prt() const;
         
