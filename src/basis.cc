@@ -1,9 +1,6 @@
-#include <vector>
-#include <iostream>
 #include <cmath>
-#include <cassert>
-#include <utility>
-#include "basis.h"
+#include <iostream>
+#include "qbasis.h"
 
 namespace qbasis {
     // ----------------- implementation of basis ------------------
@@ -187,7 +184,7 @@ namespace qbasis {
     void mbasis_elem::test() const
     {
         std::cout << "total sites: " << mbasis_elem::total_sites() << std::endl;
-        
+        std::cout << "heho" << std::endl;
     }
     
     void swap(mbasis_elem &lhs, mbasis_elem &rhs)

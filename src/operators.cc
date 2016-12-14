@@ -1,7 +1,6 @@
-#include <iostream>
 #include <algorithm>
-#include "basis.h"
-#include "operators.h"
+#include <iostream>
+#include "qbasis.h"
 
 namespace qbasis {
     // ----------------- implementation of class opr (operator) ------------------

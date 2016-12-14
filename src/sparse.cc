@@ -1,8 +1,6 @@
-#include <complex>
 #include <iostream>
 #include <iomanip>
-#include <cassert>
-#include "sparse.h"
+#include "qbasis.h"
 
 namespace qbasis {
     // --------- implementation of class lil (list of list sparse matrix data structure) ----------

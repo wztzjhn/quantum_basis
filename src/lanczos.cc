@@ -1,7 +1,8 @@
-#include "lanczos.h"
-#include "areig.h"
+#include <iostream>
 #include <iomanip>
-
+#include <algorithm>
+#include "qbasis.h"
+#include "areig.h"
 namespace qbasis {
     
     

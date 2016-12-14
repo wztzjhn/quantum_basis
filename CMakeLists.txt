@@ -1,19 +1,30 @@
 cmake_minimum_required(VERSION 2.8)
 
 project(qbasis)
+set(QBASIS_VERSION 0.1.0)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 
 # -- COMPILE OPTIONS -------------------------------------------
+set(INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
+set(INSTALL_INCLUDE_DIR include CACHE PATH "Installation directory for header files")
+set(INSTALL_CMAKE_DIR lib/CMake/qbasis CACHE PATH "Installation directory for CMake files")
+
+# Make relative paths absolute (needed later on)
+foreach(p LIB BIN INCLUDE CMAKE)
+  set(var INSTALL_${p}_DIR)
+  if(NOT IS_ABSOLUTE "${${var}}")
+    set(${var} "${CMAKE_INSTALL_PREFIX}/${${var}}")
+  endif()
+endforeach()
+
 
 # Performance/debug options
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g")
 add_definitions(-D_GLIBCXX_DEBUG=1) # libstdc++
 add_definitions(-D_LIBCPP_DEBUG2=1) # libc++
 
-
-# -- C++11 -------------------------------------------
 
 # C++11
 include(CheckCXXCompilerFlag)
@@ -26,6 +37,12 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
 endif()
 
+# Mac fixes
+if (APPLE)
+  cmake_policy(SET CMP0042 NEW) # @rpath
+  #set(LIBS ${LIBS} "-framework Accelerate")
+  #set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY "libc++")
+endif()
 
 # -- DEPENDENCIES -------------------------------------------
 
@@ -44,7 +61,6 @@ elseif(CMAKE_COMPILER_IS_GNUCXX AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
   set(LIBS "-L${MKL_ROOT}/lib -Wl,-rpath,${MKL_ROOT}/lib -lmkl_gf_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl")
 endif()
 
-
 #ARPACK
 find_package(ARPACK REQUIRED)
 if (ARPACK_FOUND)
@@ -55,9 +71,40 @@ if (ARPACK_FOUND)
 endif()
 
 # -- BUILD -------------------------------------------
-
-include_directories(src)
+include_directories(
+  "${PROJECT_SOURCE_DIR}"   # to find src/qbasis.h
+  "${PROJECT_BINARY_DIR}")
 add_subdirectory(src)
+
+# -- INSTALLATION -------------------------------------------
+
+# Generate qbasisTargets.cmake suitable for use by downstreams
+export(TARGETS qbasis FILE "${PROJECT_BINARY_DIR}/qbasisTargets.cmake")
+
+# Register the build-tree with a global CMake-registry
+export(PACKAGE qbasis)
+
+
+# Create the FooBarConfig.cmake and FooBarConfigVersion files
+file(RELATIVE_PATH REL_INCLUDE_DIR "${INSTALL_CMAKE_DIR}"
+   "${INSTALL_INCLUDE_DIR}")
+# ... for the build tree
+set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/src")
+configure_file(qbasisConfig.cmake.in "${PROJECT_BINARY_DIR}/qbasisConfig.cmake" @ONLY)
+# ... for the install tree
+set(CONF_INCLUDE_DIRS "${INSTALL_INCLUDE_DIR}")
+configure_file(qbasisConfig.cmake.in "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/qbasisConfig.cmake" @ONLY)
+# ... for both
+configure_file(qbasisConfigVersion.cmake.in "${PROJECT_BINARY_DIR}/qbasisConfigVersion.cmake" @ONLY)
+
+# Install qbasisConfig.cmake and qbasisConfigVersion.cmake
+install(FILES
+  "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/qbasisConfig.cmake"
+  "${PROJECT_BINARY_DIR}/qbasisConfigVersion.cmake"
+  DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev)
+
+# Install qbasisTargets.cmake
+install(EXPORT qbasisTargets DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev)
 
 
 # -- REPORT -------------------------------------------
@@ -70,7 +117,6 @@ message("C++ compiler              : ${CMAKE_CXX_COMPILER}")
 message("C++ compiler id           : ${CMAKE_CXX_COMPILER_ID}")
 message("C++ compiler flags        : ${CMAKE_CXX_FLAGS}")
 message("CMAKE_COMPILER_IS_GNUCXX? : ${CMAKE_COMPILER_IS_GNUCXX}")
-
 
 get_property(INC_DIRS DIRECTORY PROPERTY INCLUDE_DIRECTORIES)
 message("LIBS:     ${LIBS}")
