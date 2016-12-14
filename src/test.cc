@@ -9,6 +9,7 @@ void test_operator();
 
 void test_lanczos_memoAll();
 void test_iram();
+void test_cfraction();
 
 
 int main(){
@@ -17,10 +18,24 @@ int main(){
     test_basis();
     //test_operator();
     
-    bool a = 3;
-    bool b = 4;
-    std::cout << (a == b) << std::endl;
-    std::cout << sizeof(bool) << std::endl;
+    test_cfraction();
+}
+
+void test_cfraction() {
+    std::vector<double> a(1000,2.0), b(1000,1.0);
+    a[0] = 1.0;
+    std::cout << "len =   5, sqrt(2) = " << qbasis::continued_fraction(a.data(), b.data(), 5) << std::endl;
+    std::cout << "len =  10, sqrt(2) = " << qbasis::continued_fraction(a.data(), b.data(), 10) << std::endl;
+    std::cout << "len =  50, sqrt(2) = " << qbasis::continued_fraction(a.data(), b.data(), 50) << std::endl;
+    
+    a[0] = 3.0;
+    for (MKL_INT j = 1; j < a.size(); j++) {
+        a[j] = 6.0;
+        b[j] = (2.0 * j - 1.0) * (2.0 * j - 1.0);
+    }
+    std::cout << "len =   5, pi = " << qbasis::continued_fraction(a.data(), b.data(), 5) << std::endl;
+    std::cout << "len =  10, pi = " << qbasis::continued_fraction(a.data(), b.data(), 10) << std::endl;
+    std::cout << "len =  50, pi = " << qbasis::continued_fraction(a.data(), b.data(), 50) << std::endl;
 }
 
 void test_basis() {
