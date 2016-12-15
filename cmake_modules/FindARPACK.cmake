@@ -21,6 +21,7 @@ ELSE(ARPACK_INCLUDE_DIRS)
       /usr/local/lib
       /opt/lib
       $ENV{HOME}/installs/lib
+      $ENV{HOME}/opt/ARPACK
     )
     
     FIND_PATH(ARPACK_INCLUDE_DIR argeig.h ${TRIAL_PATHS})

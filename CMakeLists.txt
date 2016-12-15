@@ -21,7 +21,7 @@ endforeach()
 
 
 # Performance/debug options
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -gdwarf-3")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -gdwarf-3 -lgfortran")
 add_definitions(-D_GLIBCXX_DEBUG=1) # libstdc++
 add_definitions(-D_LIBCPP_DEBUG2=1) # libc++
 
