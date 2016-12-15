@@ -451,7 +451,7 @@ namespace qbasis {
     {
         if (lhs.q_zero()) return wavefunction<T>();                                // zero operator
         wavefunction<T> res;
-        for (auto it = lhs.mats.begin(); it < lhs.mats.end(); it++)
+        for (auto it = lhs.mats.begin(); it != lhs.mats.end(); it++)
             res += ( (*it) * rhs );
         return res;
     }
@@ -497,6 +497,9 @@ namespace qbasis {
     
     template wavefunction<double> operator*(const opr_prod<double> &lhs, const wavefunction<double> &rhs);
     template wavefunction<std::complex<double>> operator*(const opr_prod<std::complex<double>> &lhs, const wavefunction<std::complex<double>> &rhs);
+    
+    template wavefunction<double> operator*(const mopr<double>&, const mbasis_elem&);
+    template wavefunction<std::complex<double>> operator*(const mopr<std::complex<double>>&, const mbasis_elem&);
     
     template wavefunction<double> operator*(const mopr<double> &lhs, const wavefunction<double> &rhs);
     template wavefunction<std::complex<double>> operator*(const mopr<std::complex<double>> &lhs, const wavefunction<std::complex<double>> &rhs);

@@ -265,18 +265,20 @@ namespace qbasis {
             rnorm = 0.0;
             lanczos(0, ncv, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv);
 
-            MKL_INT step = 0, step_max=10;
+            MKL_INT step = 0, step_max=100;
             while (step < step_max) {
                 select_shifts(hessenberg.data(), ncv, ncv, order, ritz.data());
                 perform_shifts(dim, ncv, np, ritz.data()+nev, rnorm, resid.data(), v.data(),
                                hessenberg.data(), ncv, Q.data(), ncv);
                 lanczos(nev, np, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv);
-                for (MKL_INT j = 0; j < nev; j++) {
-                    std::cout << std::setw(16) << ritz[j];
-                }
-                std::cout << std::endl;
+//                for (MKL_INT j = 0; j < nev; j++) {
+//                    std::cout << std::setw(16) << ritz[j];
+//                }
+                std::cout << "ritz0 = " << ritz[0] << std::endl;
                 step++;
             }
+            nconv = 1;
+            eigenvals[0] = ritz[0];
         }
 
 

@@ -302,6 +302,24 @@ namespace qbasis {
         // destructor
         ~wavefunction() {}
         
+        std::pair<mbasis_elem, T>& operator[](MKL_INT n)
+        {
+            assert(n < size());
+            assert(! elements.empty());
+            auto it = elements.begin();
+            for (decltype(n) i = 0; i < n; i++) ++it;
+            return *it;
+        }
+        
+        const std::pair<mbasis_elem, T>& operator[](MKL_INT n) const
+        {
+            assert(n < size());
+            assert(! elements.empty());
+            auto it = elements.begin();
+            for (decltype(n) i = 0; i < n; i++) ++it;
+            return *it;
+        }
+        
         // add one element
         wavefunction& operator+=(std::pair<mbasis_elem, T> ele);
         
@@ -313,6 +331,8 @@ namespace qbasis {
         
         // check if sorted
         bool sorted() const;
+        
+        MKL_INT size() const {return static_cast<MKL_INT>(elements.size()); }
         
     private:
         // store an array of basis elements, and their corresponding coefficients
