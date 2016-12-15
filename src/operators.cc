@@ -774,6 +774,10 @@ namespace qbasis {
     template <typename T>
     mopr<T> &mopr<T>::operator*=(const T &rhs)
     {
+        if (std::abs(rhs) < opr_precision) {
+            mats.clear();
+            return *this;
+        }
         for (auto &ele : mats) ele *= rhs;
         return *this;
     }
@@ -1006,6 +1010,22 @@ namespace qbasis {
         return prod;
     }
     
+    template <typename T>
+    mopr<T> operator*(const T &lhs, const mopr<T> &rhs)
+    {
+        mopr<T> prod(rhs);
+        prod *= lhs;
+        return prod;
+    }
+    
+    template <typename T>
+    mopr<T> operator*(const mopr<T> &lhs, const T &rhs)
+    {
+        mopr<T> prod(lhs);
+        prod *= rhs;
+        return prod;
+    }
+    
     
     // Explicit instantiation, so the class definition can be put in this file
     template class opr<double>;
@@ -1144,6 +1164,12 @@ namespace qbasis {
     
     template mopr<double> operator*(const opr<double>&, const mopr<double>&);
     template mopr<std::complex<double>> operator*(const opr<std::complex<double>>&, const mopr<std::complex<double>>&);
+    
+    template mopr<double> operator*(const double&, const mopr<double>&);
+    template mopr<std::complex<double>> operator*(const std::complex<double>&, const mopr<std::complex<double>>&);
+    
+    template mopr<double> operator*(const mopr<double>&, const double&);
+    template mopr<std::complex<double>> operator*(const mopr<std::complex<double>>&, const std::complex<double>&);
 
 }
 

@@ -49,30 +49,60 @@ namespace qbasis {
         assert(site >= 0 && site < total_sites());
         MKL_INT bits_bgn = bits_per_site * site;
         MKL_INT bits_end = bits_bgn + bits_per_site;
-        MKL_INT res = bits[bits_bgn];
-        for (auto j = bits_bgn + 1; j < bits_end; j++) res = res + res + bits[j];
+        MKL_INT res = bits[bits_end - 1];
+        for (auto j = bits_end - 2; j >= bits_bgn; j--) res = res + res + bits[j];
         return res;
     }
     
-    void basis_elem::siteWrite(const MKL_INT &site, const MKL_INT &val)
+    basis_elem &basis_elem::siteWrite(const MKL_INT &site, const MKL_INT &val)
     {
         assert(val >= 0 && val < local_dimension());
         MKL_INT bits_bgn = bits_per_site * site;
+        MKL_INT bits_end = bits_bgn + bits_per_site;
         auto temp = val;
-        for (MKL_INT j = bits_bgn + bits_per_site - 1; j >= bits_bgn; j--) {
+        for (MKL_INT j = bits_bgn; j < bits_end; j++) {
             bits[j] = temp % 2;
             temp /= 2;
         }
+        return *this;
+    }
+    
+    bool basis_elem::q_maximized() const
+    {
+        if (std::pow(2, bits_per_site) == dim_local) {
+            return bits.all();
+        } else {
+            for (MKL_INT site = 0; site < total_sites(); site++) {
+                if (siteRead(site) != dim_local) return false;
+            }
+            return true;
+        }
+    }
+    
+    basis_elem &basis_elem::increment()
+    {
+        assert(! q_maximized());
+        if (std::pow(2, bits_per_site) == dim_local) {     // no waste bit
+            for(MKL_INT loop = 0; loop < bits.size(); ++loop)
+            {
+                if ((bits[loop] ^= 0x1) == 0x1) break;
+            }
+        } else {
+            auto val = siteRead(0) + 1;
+            MKL_INT site = 0;
+            while (val >= dim_local && site < total_sites()) {
+                siteWrite(site, val - dim_local);
+                val = siteRead(++site) + 1;
+            }
+            assert(site < total_sites());
+            siteWrite(site, val);
+        }
+        return *this;
     }
     
     void basis_elem::prt() const
     {
-        std::cout << basis_elem::total_sites() << " sites * "
-            << bits_per_site << " bits/site = "
-            << bits.size() << " bits." << std::endl;
-        std::cout << "local Hibert space: " << basis_elem::dim_local << std::endl;
-        std::cout << "number of bits on: " << bits.count() << std::endl;
-        std::cout << bits << std::endl;
+        std::cout << bits;
     }
     
 //    basis_elem& basis_elem::flip()    // remember to change odd_fermion[site]
@@ -105,6 +135,11 @@ namespace qbasis {
         assert(lhs.bits_per_site == rhs.bits_per_site);
         assert(lhs.q_fermion() == rhs.q_fermion());
         return (lhs.bits == rhs.bits);
+    }
+    
+    bool operator!=(const basis_elem &lhs, const basis_elem &rhs)
+    {
+        return (! (lhs == rhs));
     }
     
     
@@ -167,6 +202,34 @@ namespace qbasis {
         }
     }
     
+    bool mbasis_elem::q_maximized() const
+    {
+        for (MKL_INT orb = 0; orb < total_orbitals(); orb++) {
+            if (! mbits[orb].q_maximized()) return false;
+        }
+        return true;
+    }
+    
+    mbasis_elem &mbasis_elem::increment()
+    {
+        assert(! q_maximized());
+        for (MKL_INT orb = total_orbitals() - 1; orb >= 0; orb--) {
+            if (mbits[orb].q_maximized()) {
+                mbits[orb].reset();
+            } else {
+                mbits[orb].increment();
+                break;
+            }
+        }
+        return *this;
+    }
+    
+    mbasis_elem &mbasis_elem::reset()
+    {
+        for(auto it = mbits.begin(); it != mbits.end(); it++) it->reset();
+        return *this;
+    }
+    
     MKL_INT mbasis_elem::total_sites() const
     {
         assert(! mbits.empty());
@@ -181,10 +244,17 @@ namespace qbasis {
     
     
     
-    void mbasis_elem::test() const
+    void mbasis_elem::prt() const
     {
-        std::cout << "total sites: " << mbasis_elem::total_sites() << std::endl;
-        std::cout << "heho" << std::endl;
+        if (total_orbitals() == 1) {
+            mbits[0].prt();
+        } else {
+            for (MKL_INT j = 0; j < total_orbitals(); j++) {
+                mbits[j].prt();
+                std::cout << ", ";
+            }
+        }
+        
     }
     
     void swap(mbasis_elem &lhs, mbasis_elem &rhs)
@@ -201,6 +271,11 @@ namespace qbasis {
     bool operator==(const mbasis_elem &lhs, const mbasis_elem &rhs)
     {
         return (lhs.mbits == rhs.mbits);
+    }
+    
+    bool operator!=(const mbasis_elem &lhs, const mbasis_elem &rhs)
+    {
+        return (! (lhs == rhs));
     }
     
     
@@ -292,6 +367,10 @@ namespace qbasis {
     
     // ----------------- implementation of operator * wavefunction ------------
 
+    // example of sign count (spin fermion model):
+    // site 0: one fermion, site 1: 0 fermion, site 2: one fermion, site 3: one fermion
+    // |psi> = f_0^\dagger f_2^\dagger f_3^\dagger |0>
+    // f_1^\dagger |psi> = - f_0^\dagger f_1^\dagger f_2^\dagger f_3^\dagger |0>
     template <typename T>
     wavefunction<T> operator*(const opr<T> &lhs, const mbasis_elem &rhs)
     {

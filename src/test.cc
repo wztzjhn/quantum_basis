@@ -42,6 +42,7 @@ void test_basis() {
     std::cout << "--------- test basis ---------" << std::endl;
     qbasis::basis_elem ele1(9, "spin-1");
     qbasis::basis_elem ele2(ele1);
+    ele1.siteWrite(7, 1);
     ele2.siteWrite(0, 2);
     ele1.prt();
     ele2.prt();
@@ -51,7 +52,7 @@ void test_basis() {
     
     qbasis::mbasis_elem mele1(9, {"spin-1/2", "spin-1"});
     qbasis::mbasis_elem mele2(9, {"spin-1/2", "spin-1"});
-    mele1.test();
+    mele1.prt();
     std::cout << "mele1 == mele2 ? " << (mele1 == mele2) << std::endl;
     
 }

@@ -53,15 +53,15 @@ namespace qbasis {
     
     bool operator<(const basis_elem&, const basis_elem&);
     bool operator==(const basis_elem&, const basis_elem&);
+    bool operator!=(const basis_elem&, const basis_elem&);
     
     bool operator<(const mbasis_elem&, const mbasis_elem&);
     bool operator==(const mbasis_elem&, const mbasis_elem&);
+    bool operator!=(const mbasis_elem&, const mbasis_elem&);
     
     template <typename T> void swap(wavefunction<T>&, wavefunction<T>&);
     template <typename T> wavefunction<T> operator*(const wavefunction<T>&, const T&);
     template <typename T> wavefunction<T> operator*(const T&, const wavefunction<T>&);
-    
-    
     
     
     // the following originally from operators.h
@@ -110,6 +110,8 @@ namespace qbasis {
     template <typename T> mopr<T> operator*(const opr_prod<T>&, const mopr<T>&);
     template <typename T> mopr<T> operator*(const mopr<T>&, const opr<T>&);
     template <typename T> mopr<T> operator*(const opr<T>&, const mopr<T>&);
+    template <typename T> mopr<T> operator*(const mopr<T>&, const T&);
+    template <typename T> mopr<T> operator*(const T&, const mopr<T>&);
 
     // opr * | orb0, orb1, ..., ORB, ... > = | orb0, orb1, ..., opr*ORB, ... >, fermionic sign has to be computed when traversing orbitals
     template <typename T> wavefunction<T> operator*(const opr<T>&, const mbasis_elem&);
@@ -140,9 +142,7 @@ namespace qbasis {
         friend void swap(basis_elem &lhs, basis_elem &rhs);
         friend bool operator<(const basis_elem&, const basis_elem&);
         friend bool operator==(const basis_elem&, const basis_elem&);
-        //template <typename T> friend class opr;                                   // all instances of any type is a friend of basis_elem
-        //template <typename T> friend T operator* (const opr<T>&, const mbasis_elem&);
-        //template <typename T> friend T operator* (const opr_prod<T>&, const mbasis_elem&);
+        friend bool operator!=(const basis_elem&, const basis_elem&);
         template <typename T> friend wavefunction<T> operator*(const opr<T>&, const mbasis_elem&);
     public:
         // default constructor
@@ -179,17 +179,23 @@ namespace qbasis {
         // destructor
         ~basis_elem() {}
         
-        MKL_INT total_sites() const;
-        
-        bool q_fermion() const {return (! Nfermion_map.empty()); }
-        
+        // a few basic properties
         MKL_INT local_dimension() const { return static_cast<MKL_INT>(dim_local); }
+        MKL_INT total_sites() const;
+        bool q_fermion() const {return (! Nfermion_map.empty()); }
+        bool q_maximized() const;
         
         // read out the status of a particular site
         // storage order: site0, site1, site2, ..., site(N-1)
         MKL_INT siteRead(const MKL_INT &site) const;
         
-        void siteWrite(const MKL_INT &site, const MKL_INT &val);
+        basis_elem& siteWrite(const MKL_INT &site, const MKL_INT &val);
+        
+        // change basis_elem to the next available state
+        basis_elem& increment();
+        
+        // reset bits to 0
+        basis_elem& reset() {bits.reset(); return *this; }
         
         void prt() const;
         
@@ -239,15 +245,24 @@ namespace qbasis {
         // destructor
         ~mbasis_elem() {}
         
+        // a few basic properties
+        MKL_INT total_sites() const;
+        MKL_INT total_orbitals() const;
+        bool q_maximized() const;
+        
+        // change mbasis_elem to the next available state
+        mbasis_elem& increment();
+        
+        // reset all bits to 0 in all orbitals
+        mbasis_elem& reset();
+        
         double diagonal_operator(const opr<double>& lhs) const;
         std::complex<double> diagonal_operator(const opr<std::complex<double>>& lhs) const;
         
         double diagonal_operator(const opr_prod<double>& lhs) const;
         std::complex<double> diagonal_operator(const opr_prod<std::complex<double>>& lhs) const;
         
-        MKL_INT total_sites() const;
-        MKL_INT total_orbitals() const;
-        void test() const;
+        void prt() const;
         
     private:
         // store an array of basis elements, for multi-orbital site (or unit cell)
@@ -496,6 +511,8 @@ namespace qbasis {
         friend mopr<T> operator* <> (const opr_prod<T>&, const mopr<T>&);
         friend mopr<T> operator* <> (const mopr<T>&, const opr<T>&);
         friend mopr<T> operator* <> (const opr<T>&, const mopr<T>&);
+        friend mopr<T> operator* <> (const mopr<T>&, const T&);
+        friend mopr<T> operator* <> (const T&, const mopr<T>&);
         friend wavefunction<T> operator* <> (const mopr<T>&, const mbasis_elem&);
         friend wavefunction<T> operator* <> (const mopr<T>&, const wavefunction<T>&);
     public:
@@ -535,6 +552,7 @@ namespace qbasis {
         
         opr_prod<T>& operator[](MKL_INT n)
         {
+            assert(n < size());
             assert(! mats.empty());
             auto it = mats.begin();
             for (decltype(n) i = 0; i < n; i++) ++it;
@@ -543,12 +561,14 @@ namespace qbasis {
         
         const opr_prod<T>& operator[](MKL_INT n) const
         {
+            assert(n < size());
             assert(! mats.empty());
             auto it = mats.begin();
             for (decltype(n) i = 0; i < n; i++) ++it;
             return *it;
         }
         
+        MKL_INT size() const {return static_cast<MKL_INT>(mats.size()); }
         
         // simplify, need implementation
         mopr& simplify();

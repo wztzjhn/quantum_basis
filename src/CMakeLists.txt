@@ -1,5 +1,6 @@
 set(QBASIS_SRC
   measure.cc
+  model.cc
   lanczos.cc
   sparse.cc
   operators.cc
