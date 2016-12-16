@@ -102,7 +102,7 @@ namespace qbasis {
         std::vector<std::pair<double, MKL_INT>> eigenvals(m);
         for (decltype(eigenvals.size()) j = 0; j < eigenvals.size(); j++) {
             eigenvals[j].first = ritz[j];
-            eigenvals[j].second = j;
+            eigenvals[j].second = static_cast<MKL_INT>(j);
         }
         if (order == "SR" || order == "sr") {        // smallest real part
             std::sort(eigenvals.begin(), eigenvals.end(),
@@ -263,14 +263,14 @@ namespace qbasis {
             double rnorm = nrm2(dim, v0, 1);
             axpy(dim, 1.0/rnorm, v0, 1, resid.data(), 1);                              // resid = v0 normalized
             rnorm = 0.0;
-            lanczos(0, ncv, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv);
+            lanczos(0, ncv, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv, true);
 
             MKL_INT step = 0, step_max=100;
             while (step < step_max) {
                 select_shifts(hessenberg.data(), ncv, ncv, order, ritz.data());
                 perform_shifts(dim, ncv, np, ritz.data()+nev, rnorm, resid.data(), v.data(),
                                hessenberg.data(), ncv, Q.data(), ncv);
-                lanczos(nev, np, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv);
+                lanczos(nev, np, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv, true);
 //                for (MKL_INT j = 0; j < nev; j++) {
 //                    std::cout << std::setw(16) << ritz[j];
 //                }

@@ -6,7 +6,7 @@ namespace qbasis {
     // ----------------- implementation of class opr (operator) ------------------
     template <typename T>
     opr<T>::opr(const MKL_INT &site_, const MKL_INT &orbital_, const bool &fermion_, const std::vector<T> &mat_):
-    site(site_), orbital(orbital_), dim(mat_.size()), fermion(fermion_), diagonal(true)
+    site(site_), orbital(orbital_), dim(static_cast<MKL_INT>(mat_.size())), fermion(fermion_), diagonal(true)
     {
         if (mat_.empty() ||
             std::all_of(mat_.begin(), mat_.end(), [](const T &a){ return std::abs(a) < opr_precision; })) {
@@ -19,7 +19,7 @@ namespace qbasis {
     
     template <typename T>
     opr<T>::opr(const MKL_INT &site_, const MKL_INT &orbital_, const bool &fermion_, const std::vector<std::vector<T>> &mat_):
-    site(site_), orbital(orbital_), dim(mat_.size()), fermion(fermion_), diagonal(false)
+    site(site_), orbital(orbital_), dim(static_cast<MKL_INT>(mat_.size())), fermion(fermion_), diagonal(false)
     {
         assert(mat_.empty() || (mat_.size() == mat_[0].size()));
         if (mat_.empty()) {
@@ -542,7 +542,7 @@ namespace qbasis {
     template <typename T>
     MKL_INT opr_prod<T>::len() const
     {
-        return mat_prod.size();
+        return static_cast<MKL_INT>(mat_prod.size());
     }
     
     template <typename T>

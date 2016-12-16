@@ -291,7 +291,9 @@ namespace qbasis {
         } else {
             auto it = elements.begin();
             while (it != elements.end() && it->first < ele.first) it++;
-            if(ele.first == it->first) {
+            if (it == elements.end()) {
+                elements.insert(it, std::move(ele));
+            } else if(ele.first == it->first) {
                 it->second += ele.second;
                 if (std::abs(it->second) < opr_precision) elements.erase(it);
             } else {
@@ -470,6 +472,9 @@ namespace qbasis {
     // Explicit instantiation
     template class wavefunction<double>;
     template class wavefunction<std::complex<double>>;
+    
+    template void swap(wavefunction<double>&, wavefunction<double>&);
+    template void swap(wavefunction<std::complex<double>>&, wavefunction<std::complex<double>>&);
     
     template wavefunction<double> operator*(const wavefunction<double>&, const double&);
     template wavefunction<std::complex<double>> operator*(const wavefunction<std::complex<double>>&, const std::complex<double>&);
