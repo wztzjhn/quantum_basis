@@ -125,7 +125,7 @@ namespace qbasis {
     
     
     
-    
+    MKL_INT int_pow(const MKL_INT &base, const MKL_INT &index);
     
     
     

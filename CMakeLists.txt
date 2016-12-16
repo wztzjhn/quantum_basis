@@ -23,7 +23,7 @@ endforeach()
 
 
 # Performance/debug options
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -gdwarf-3 -lgfortran")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -gdwarf-3")
 add_definitions(-D_GLIBCXX_DEBUG=1) # libstdc++
 add_definitions(-D_LIBCPP_DEBUG2=1) # libc++
 
@@ -70,6 +70,9 @@ if (ARPACK_FOUND)
   include_directories(SYSTEM ${ARPACK_INCLUDE_DIRS}/../examples/areig)
   set(LIBS ${LIBS} ${ARPACK_LIBRARIES})
   add_definitions(-DWITH_ARPACK)
+  if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lgfortran")
+  endif()
 endif()
 
 # -- BUILD -------------------------------------------

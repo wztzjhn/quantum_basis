@@ -67,9 +67,17 @@ namespace qbasis {
         return *this;
     }
     
+    MKL_INT int_pow(const MKL_INT &base, const MKL_INT &index)
+    {
+        assert(index >= 0);
+        MKL_INT res = 1;
+        for (MKL_INT j = 0; j < index; j++) res *= base;
+        return res;
+    }
+    
     bool basis_elem::q_maximized() const
     {
-        if (std::pow(2, bits_per_site) == dim_local) {
+        if (int_pow(2, bits_per_site) == dim_local) {
             return bits.all();
         } else {
             for (MKL_INT site = 0; site < total_sites(); site++) {
@@ -82,7 +90,7 @@ namespace qbasis {
     basis_elem &basis_elem::increment()
     {
         assert(! q_maximized());
-        if (std::pow(2, bits_per_site) == dim_local) {     // no waste bit
+        if (int_pow(2, bits_per_site) == dim_local) {     // no waste bit
             for(MKL_INT loop = 0; loop < bits.size(); ++loop)
             {
                 if ((bits[loop] ^= 0x1) == 0x1) break;
