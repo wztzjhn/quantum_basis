@@ -93,7 +93,7 @@ namespace qbasis {
         copy(m-1, hessenberg + 1, 1, e.data(), 1);
         std::vector<double> eigenvecs;
         if (s == nullptr) {
-            info = sterf(m, ritz, e.data());                                         // ritz rewritten by eigenvalues in ascending order
+            info = sterf(m, ritz, e.data());               // ritz rewritten by eigenvalues in ascending order
         } else {
             eigenvecs.resize(m*m);
             info = stedc(LAPACK_COL_MAJOR, 'I', m, ritz, e.data(), eigenvecs.data(), m);
@@ -104,10 +104,10 @@ namespace qbasis {
             eigenvals[j].first = ritz[j];
             eigenvals[j].second = static_cast<MKL_INT>(j);
         }
-        if (order == "SR" || order == "sr") {        // smallest real part
+        if (order == "SR" || order == "sr" || order == "SA" || order == "sa") {      // smallest real part
             std::sort(eigenvals.begin(), eigenvals.end(),
                       [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return a.first < b.first; });
-        } else if (order == "LR" || order == "lr") { // largest real part
+        } else if (order == "LR" || order == "lr" || order == "LA" || order == "la") { // largest real part
             std::sort(eigenvals.begin(), eigenvals.end(),
                       [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return b.first < a.first; });
         } else if (order == "SM" || order == "sm") { // smallest magnitude
@@ -251,12 +251,37 @@ namespace qbasis {
 
         if (use_arpack) {
             std::string order_cap(order);
+            std::vector<T> eigenvecs_copy(nev*dim);
             std::transform(order_cap.begin(), order_cap.end(), order_cap.begin(), ::toupper);
-            call_arpack(mat, v0, nev, ncv, nconv, order_cap, eigenvals, eigenvecs);
+            call_arpack(mat, v0, nev, ncv, nconv, order_cap, eigenvals, eigenvecs_copy.data());
+            // sort the arpack eigenvals
+            assert(nconv > 0);
+            std::vector<std::pair<double, MKL_INT>> eigenvals_copy(nconv);
+            for (MKL_INT j = 0; j < nconv; j++) {
+                eigenvals_copy[j].first = eigenvals[j];
+                eigenvals_copy[j].second = j;
+            }
+            if (order == "SR" || order == "sr" || order == "SA" || order == "sa") {      // smallest real part
+                std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
+                          [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return a.first < b.first; });
+            } else if (order == "LR" || order == "lr" || order == "LA" || order == "la") { // largest real part
+                std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
+                          [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return b.first < a.first; });
+            } else if (order == "SM" || order == "sm") { // smallest magnitude
+                std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
+                          [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return std::abs(a.first) < std::abs(b.first); });
+            } else if (order == "LM" || order == "lm") { // largest magnitude
+                std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
+                          [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return std::abs(b.first) < std::abs(a.first); });
+            }
+            for (decltype(eigenvals_copy.size()) j = 0; j < eigenvals_copy.size(); j++)
+                eigenvals[j] = eigenvals_copy[j].first;
             for (MKL_INT j = 0; j < nconv; j++) {
                 std::cout << "j = " << j << ", E_j = " << eigenvals[j] << std::endl;
             }
-
+            // sort the arpack eigenvecs
+            for (MKL_INT j = 0; j < nconv; j++)
+                copy(dim, eigenvecs_copy.data() + dim * eigenvals_copy[j].second, 1, eigenvecs + dim * j, 1);
         } else {                                                                       // hand-coded arpack
             std::vector<T> resid(dim, static_cast<T>(0.0)), v(dim*ncv);
             std::vector<double> hessenberg(ncv*ncv), ritz(ncv), Q(ncv*ncv);
