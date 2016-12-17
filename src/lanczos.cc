@@ -32,7 +32,7 @@ namespace qbasis {
         }
         vpt[m] = resid;
         copy(dim, resid, 1, vpt[k], 1);                                           // v_k = resid
-        hessenberg[k] = rnorm;                                                    // beta_k = rnorm
+        if(k > 0) hessenberg[k] = rnorm;                                          // beta_k = rnorm
         if (k == 0 && m > 1) {                                                    // prepare at least 2 vectors to start
             assert(std::abs(hessenberg[0]) < lanczos_precision);
             mat.MultMv(vpt[0], vpt[1]);                                           // w_0, not orthogonal to v[0] yet

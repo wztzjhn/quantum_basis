@@ -38,6 +38,7 @@ namespace qbasis {
 //  ----------------------------------------------------------------------------
     // the startup cost of boost::dynamic_bitset is around 40 Bytes
     using DBitSet = boost::dynamic_bitset<>;
+    static const double pi = 3.141592653589793238462643;
     static const double opr_precision = 1e-12; // used as the threshold value in comparison
     static const double sparse_precision = 1e-14;
     static const double lanczos_precision = 1e-12;
@@ -285,6 +286,7 @@ namespace qbasis {
         
         // constructor from an element
         wavefunction(const mbasis_elem &old) : elements(1, std::pair<mbasis_elem, T>(old, static_cast<T>(1.0))) {}
+        wavefunction(mbasis_elem &&old)      : elements(1, std::pair<mbasis_elem, T>(old, static_cast<T>(1.0))) {}
         
         // copy constructor
         wavefunction(const wavefunction<T> &old) : elements(old.elements) {}

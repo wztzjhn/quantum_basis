@@ -1,8 +1,8 @@
 CXX       = g++
-CPPFLAGS  = -O2 -g -std=c++11 -Wall -Wextra -m64 -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
-LIBS      = -L${HOME}/installs/lib -larpack -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl
+CPPFLAGS  = -O3 -std=c++11 -Wall -Wextra -m64 -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
+LIBS      = -L${HOME}/installs/lib -larpack -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl
 
-OBJS      = lanczos.o sparse.o operators.o basis.o main.o
+OBJS      = measure.o lanczos.o sparse.o operators.o basis.o
 
 OPTS      = 
 
@@ -10,10 +10,19 @@ EXEC      = ../bin/test.x
 
 
 all: $(OBJS)
+	ar rvs libqbasis.a $(OBJS)
+
+test: $(OBJS) test.o
 	$(CXX) $(OBJS) $(OPTS) $(LIBS) -o $(EXEC)
+
+libqbasis.a: $(OBJS)
+	ar rvs libqbasis.a $(OBJS)
+
+install: libqbasis.a
+	$(RM) ${HOME}/installs/lib/libqbasis.*; cp libqbasis.a ${HOME}/installs/lib; cp qbasis.h ${HOME}/installs/include
 
 %.o: %.cc
 	$(CXX) $(CPPFLAGS)  -c -o $@ $<
 
 clean:
-	$(RM) *.o
+	$(RM) *.o *.a

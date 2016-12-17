@@ -387,13 +387,14 @@ namespace qbasis {
         wavefunction<T> res;
         assert(lhs.dim == rhs.mbits[lhs.orbital].local_dimension());
         MKL_INT col = rhs.mbits[lhs.orbital].siteRead(lhs.site);
+        MKL_INT displacement = col * lhs.dim;
         if (lhs.diagonal) {
             assert(! lhs.fermion);
             if (std::abs(lhs.mat[col]) > opr_precision)
                 res += std::pair<mbasis_elem, T>(rhs, lhs.mat[col]);
         } else {
             MKL_INT sgn = 0;
-            if (lhs.fermion) {                                                    // count # of fermions traversed by this operator
+            if (lhs.fermion) {                         // count # of fermions traversed by this operator
                 for (MKL_INT orb_cnt = 0; orb_cnt < lhs.orbital; orb_cnt++) {
                     if (rhs.mbits[orb_cnt].q_fermion()) {
                         auto &ele = rhs.mbits[orb_cnt];
@@ -410,7 +411,7 @@ namespace qbasis {
                 }
             }
             for (MKL_INT row = 0; row < lhs.dim; row++) {
-                auto coeff = (sgn == 0 ? lhs.mat[row + col * lhs.dim] : (-lhs.mat[row + col * lhs.dim]));
+                auto coeff = (sgn == 0 ? lhs.mat[row + displacement] : (-lhs.mat[row + displacement]));
                 if (std::abs(coeff) > opr_precision) {
                     mbasis_elem state_new(rhs);
                     state_new.mbits[lhs.orbital].siteWrite(lhs.site, row);
