@@ -15,6 +15,9 @@ target_link_libraries(qbasis ${LIBS})
 add_executable(test.x test.cc ${QBASIS_SRC})
 target_link_libraries(test.x ${LIBS})
 
+add_executable(xxz.x chain_xxz.cc ${QBASIS_SRC})
+target_link_libraries(xxz.x ${LIBS})
+
 set_target_properties(qbasis PROPERTIES PUBLIC_HEADER "${QBASIS_INCLUDE}")
 
 # Add the qbasis library and headers to the "export-set"

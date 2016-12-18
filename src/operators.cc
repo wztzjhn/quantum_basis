@@ -491,23 +491,23 @@ namespace qbasis {
     template <typename T>
     opr_prod<T> &opr_prod<T>::operator*=(opr_prod<T> rhs)
     {
-        if (this->q_zero()) return *this;                   // zero operator self
-        if (this->q_prop_identity()) {                      // itself proportional to identity operator
+        if (this->q_zero()) return *this;             // zero operator self
+        if (this->q_prop_identity()) {                // itself proportional to identity operator
             (*this) = rhs;
             return *this;
         }
-        if (rhs.q_zero()) {                                 // zero operator
+        if (rhs.q_zero()) {                           // zero operator
             coeff = static_cast<T>(0.0);
             mat_prod.clear();
             return *this;
         }
-        if (rhs.q_prop_identity()) {                        // proportional to identity operator
+        if (rhs.q_prop_identity()) {                  // proportional to identity operator
             coeff *= rhs.coeff;
             return *this;
         }
         coeff *= rhs.coeff;
         for (auto &ele : rhs.mat_prod) {
-            (*this) *= ele;                                 // speed slower in this way, but safer; optimize later if needed
+            (*this) *= ele;                           // speed slower in this way, but safer; optimize later if needed
             if (this->q_zero()) break;
         }
         return *this;

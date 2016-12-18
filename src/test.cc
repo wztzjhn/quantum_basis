@@ -95,6 +95,7 @@ void test_lanczos_memoAll() {
     std::complex<double> *v_up = new std::complex<double>[dim*dim];
     std::complex<double> *resid_up = new std::complex<double>[dim];
     double hessenberg_up[2*ldh];
+    hessenberg_up[0] = 0.0;
     double betak_up = 0.0;
     for (MKL_INT i=0; i<dim; i++) resid_up[i] = x[i];
     
@@ -128,6 +129,7 @@ void test_lanczos_memoAll() {
     std::complex<double> *v_full = new std::complex<double>[dim*dim];
     std::complex<double> *resid_full = new std::complex<double>[dim];
     double hessenberg_full[2*ldh];
+    hessenberg_full[0] = 0.0;
     double betak_full = 0.0;
     for (MKL_INT i=0; i<dim; i++) resid_full[i] = x[i];
     
