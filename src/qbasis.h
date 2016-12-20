@@ -795,10 +795,16 @@ namespace qbasis {
               const std::string &order, double eigenvals[], T eigenvecs[], const bool &use_arpack = true);
     
     
+//  ---------------part 5: Routines to construct Hamiltonian -------------------
+//  ----------------------------------------------------------------------------
+    
+    
+    template <typename T>
+    MKL_INT binary_search(const std::vector<T> &basis_all, const T &val);
     
     
     
-//  ---------------------------part 5: Measurements ----------------------------
+//  ---------------------------part 6: Measurements ----------------------------
 //  ----------------------------------------------------------------------------
     //             b1
     // a0 +  ---------------

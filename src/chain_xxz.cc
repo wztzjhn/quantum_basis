@@ -9,21 +9,6 @@
 // S_i^+ = ( 0  1 )     S_i^- = ( 0  0 )      S_i^z = (0.5   0 )
 //         ( 0  0 )             ( 1  0 )              (0  -0.5 )
 
-MKL_INT binary_find(const std::vector<qbasis::mbasis_elem> &basis_all, const qbasis::mbasis_elem &val)
-{
-    MKL_INT low = 0;
-    MKL_INT high = basis_all.size() - 1;
-    MKL_INT mid;
-    while(low <= high) {
-		mid = (low + high) / 2;
-		if (val == basis_all[mid]) return mid;
-		else if (val < basis_all[mid]) high = mid - 1;
-		else low = mid + 1;
-	}
-	assert(false);
-	return -1;
-}
-
 
 void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT &step);
 
@@ -195,7 +180,7 @@ void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT 
         //std::cout << "intermediate state size = " << intermediate_state.size() << std::endl;
         for (MKL_INT cnt = 0; cnt < intermediate_state.size(); cnt++) {
             auto &ele_new = intermediate_state[cnt];
-            MKL_INT i = binary_find(basis_all, ele_new.first);
+            MKL_INT i = qbasis::binary_search(basis_all, ele_new.first);
             if (i <= j) {
                 matrix_lil.add(i, j, ele_new.second);
             }
@@ -258,7 +243,7 @@ void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT 
             auto intermediate_state = SxQ * basis_all[j];
             for (MKL_INT cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele = intermediate_state[cnt];
-                MKL_INT i = binary_find(basis_all, ele.first);
+                MKL_INT i = qbasis::binary_search(basis_all, ele.first);
                 phi0_x[i] += eigenvecs[j] * ele.second;
             }
             //        std::cout << "----state " << j << " -------" << std::endl;
@@ -281,7 +266,7 @@ void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT 
             auto intermediate_state = SyQ * basis_all[j];
             for (MKL_INT cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele = intermediate_state[cnt];
-                MKL_INT i = binary_find(basis_all, ele.first);
+                MKL_INT i = qbasis::binary_search(basis_all, ele.first);
                 phi0_y[i] += eigenvecs[j] * ele.second;
             }
         }
@@ -300,7 +285,7 @@ void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT 
             auto intermediate_state = SzQ * basis_all[j];
             for (MKL_INT cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele = intermediate_state[cnt];
-                MKL_INT i = binary_find(basis_all, ele.first);
+                MKL_INT i = qbasis::binary_search(basis_all, ele.first);
                 phi0_z[i] += eigenvecs[j] * ele.second;
             }
         }
