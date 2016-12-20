@@ -369,7 +369,7 @@ namespace qbasis {
         
     public:
         // default constructor
-        opr() = default;
+        opr() : mat(nullptr) {}
         
         // constructor from diagonal elements
         opr(const MKL_INT &site_, const MKL_INT &orbital_, const bool &fermion_, const std::vector<T> &mat_);

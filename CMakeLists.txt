@@ -24,11 +24,11 @@ endforeach()
 
 # Performance/debug options
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -gdwarf-3")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -g -gdwarf-3")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -gdwarf-3 -debug all -traceback -fstack-security-check")
 else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -g -Wall -Wextra")
 endif()
 add_definitions(-D_GLIBCXX_DEBUG=1) # libstdc++
 add_definitions(-D_LIBCPP_DEBUG2=1) # libc++
@@ -62,12 +62,12 @@ include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 find_package(MKL REQUIRED)
 include_directories(SYSTEM ${MKL_INCLUDE_DIRS})
 #temporarily use this ugly way
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
 #mac clang
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
-  set(LIBS "-L${MKL_ROOT}/lib -Wl,-rpath,${MKL_ROOT}/lib -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl")
-  #set(LIBS "-L${MKL_ROOT}/lib -Wl,-rpath,${MKL_ROOT}/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl")
+  #set(LIBS "-L${MKL_ROOT}/lib -Wl,-rpath,${MKL_ROOT}/lib -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl")
+  set(LIBS "-L${MKL_ROOT}/lib -Wl,-rpath,${MKL_ROOT}/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl")
 #mac gcc
 elseif(CMAKE_COMPILER_IS_GNUCXX AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")

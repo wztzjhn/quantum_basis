@@ -28,7 +28,12 @@
 *.out
 *.app
 *.x
+
+# Folders
 xbuild
 build
+results
+
+# Other files
 checking.nb
 simle_lanczos.nb

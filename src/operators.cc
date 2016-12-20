@@ -62,8 +62,9 @@ namespace qbasis {
     
     template <typename T>
     opr<T>::opr(opr<T> &&old) noexcept :
-    site(old.site), orbital(old.orbital), dim(old.dim), fermion(old.fermion), diagonal(old.diagonal), mat(old.mat)
+    site(old.site), orbital(old.orbital), dim(old.dim), fermion(old.fermion), diagonal(old.diagonal)
     {
+        mat = old.mat;
         old.mat = nullptr;
     }
     
@@ -686,7 +687,9 @@ namespace qbasis {
         auto it = mats.begin();
         while (it != mats.end() && *it < rhs) it++;
         if (rhs.len() == 1) {
-            if (it == mats.end() || rhs < *it) {         // rhs not found
+            if (it == mats.end()) {         // rhs not found
+                mats.insert(it, std::move(rhs));
+            } else if(rhs < *it) {          // rhs not found
                 mats.insert(it, std::move(rhs));
             } else {                                   // found something on same site, orbital and fermionic property
                 auto opr_sum = it->coeff * (it->mat_prod).front();
