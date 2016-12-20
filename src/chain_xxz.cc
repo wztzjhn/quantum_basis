@@ -78,7 +78,6 @@ qbasis::mopr<std::complex<double>> Sz_Q(const MKL_INT &Lx, const double &Q)
 
 
 void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT &step) {
-    std::cout << "bench1" << std::endl;
     // define the basic operators: S+, S-, Sz
     std::vector<std::vector<std::complex<double>>> Splus(2,std::vector<std::complex<double>>(2));
     std::vector<std::vector<std::complex<double>>> Sminus(2,std::vector<std::complex<double>>(2));
@@ -99,7 +98,6 @@ void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT 
     Sz[0] = 0.5;
     Sz[1] = -0.5;
     
-    //std::cout << "bench2" << std::endl;
     // create Hamiltonian for xxz model on a chain
     qbasis::mopr<std::complex<double>> Hamiltonian_xx, Hamiltonian_z;
     for (MKL_INT i = 0; i < Lx; i++) {
@@ -111,32 +109,15 @@ void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT 
         qbasis::opr<std::complex<double>> siz(i,0,false,Sz);
         qbasis::opr<std::complex<double>> sjz(j,0,false,Sz);
         qbasis::opr<std::complex<double>> six(i,0,false,Sx);
-//        std::cout << "bench2.1" << std::endl;
-//        std::cout << "i,j: " << i << ", " << j << std::endl;
-//        auto temp1 = sip * sjm;
-//        std::cout << "bench2.2" << std::endl;
-//        auto temp2 = sim * sjp;
-//        std::cout << "bench2.3" << std::endl;
-//        auto temp3 = temp1 + temp2;
-//        std::cout << "bench2.4" << std::endl;
-//        //temp3 *= std::complex<double>(0.5,0.0);
-//        //temp3 = std::complex<double>(0.5,0.0) * temp3;
-//        std::cout << "bench2.5" << std::endl;
-//        Hamiltonian_xx += temp3;
         Hamiltonian_xx += std::complex<double>(0.5,0.0) * (sip * sjm + sim * sjp);
         if (i % 2 == 0) {
             Hamiltonian_xx  += std::complex<double>(-h, 0.0) * six;
         } else {
             Hamiltonian_xx  += std::complex<double>( h, 0.0) * six;
         }
-        //std::cout << "bench2.6" << std::endl;
         Hamiltonian_z  += std::complex<double>(Delta,0.0) * (siz * sjz);
-        
-        
-        //std::cout << "bench2.7" << std::endl;
     }
     
-    //std::cout << "bench3" << std::endl;
     // create the basis, without any symmetry, this part later can be parallelized in the library
     MKL_INT dim_all = qbasis::int_pow(2, Lx);
     std::cout << "dim_all = " << dim_all << std::endl;
@@ -165,7 +146,7 @@ void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT 
         std::cout << "yes it is already sorted." << std::endl << std::endl;
     }
     
-    // generating Hamiltonian matrix, remember to only only upper triangle later
+    // generating Hamiltonian matrix, using only upper triangle later
     // the generation process can be parallelized
     std::cout << "Generating Hamiltonian..." << std::endl;
     qbasis::lil_mat<std::complex<double>> matrix_lil(dim_all, true);
@@ -177,7 +158,6 @@ void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT 
         }
         // non-diagonal part
         qbasis::wavefunction<std::complex<double>> intermediate_state = Hamiltonian_xx * basis_all[j];
-        //std::cout << "intermediate state size = " << intermediate_state.size() << std::endl;
         for (MKL_INT cnt = 0; cnt < intermediate_state.size(); cnt++) {
             auto &ele_new = intermediate_state[cnt];
             MKL_INT i = qbasis::binary_search(basis_all, ele_new.first);
@@ -189,8 +169,6 @@ void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT 
     qbasis::csr_mat<std::complex<double>> matrix_csr(matrix_lil);
     matrix_lil.destroy();
     std::cout << "Hamiltonian generated." << std::endl << std::endl;
-    //matrix_csr.prt();
-    
     
     // run Lanczos to obtain eigenvals
     MKL_INT nev = 5, ncv = 15;
@@ -205,11 +183,7 @@ void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT 
     qbasis::iram(matrix_csr, v0.data(), nev, ncv, nconv, "sr", eigenvals.data(), eigenvecs.data());
     std::cout << "E0  = " << eigenvals[0] << std::endl;
     std::cout << "Gap = " << eigenvals[1] - eigenvals[0] << std::endl;
-    assert(eigenvals[1] - eigenvals[0] > qbasis::lanczos_precision); // first only consider when the system is gapped
-//    std::cout << "Eigenvector: " << std::endl;
-//    for (MKL_INT j = 0; j < dim_all; j++) {
-//        std::cout << eigenvecs[j] << std::endl;
-//    }
+    assert(eigenvals[1] - eigenvals[0] > qbasis::lanczos_precision); // first only consider when the system is gapped (at least finite size gap)
     std::cout << std::endl;
     
 
@@ -227,13 +201,11 @@ void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT 
     fout << "Gap\t" << eigenvals[1] - eigenvals[0] << std::endl << std::endl;
     
     
-    // later change Q into a loop
     for (MKL_INT m = 0; m <= Lx; m++) {
         double Q = 2.0 * qbasis::pi * m / static_cast<double>(Lx);
         auto SxQ = Sx_Q(Lx, Q);
         auto SyQ = Sy_Q(Lx, Q);
         auto SzQ = Sz_Q(Lx, Q);
-        //SxQ.prt();
         
         // obtain the new starting vector |phi_0_x> = S^x(-q) |varphi_0>
         std::cout << "Generating S^x(-q) | varphi_0 >, with q = " << Q << std::endl;
@@ -246,10 +218,6 @@ void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT 
                 MKL_INT i = qbasis::binary_search(basis_all, ele.first);
                 phi0_x[i] += eigenvecs[j] * ele.second;
             }
-            //        std::cout << "----state " << j << " -------" << std::endl;
-            //        for (MKL_INT jj = 0; jj < dim_all; jj++) {
-            //            std::cout << "phi0_x[" << jj << "] = " << phi0_x[jj] << std::endl;
-            //        }
         }
         double phi0_x_nrm2 = qbasis::nrm2(dim_all, phi0_x.data(), 1);
         double phi0_x_nrm2_copy;
@@ -356,17 +324,7 @@ void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT 
         }
         fout << std::endl;
     }
-    
-    
-    
     fout.close();
-    
-    
-    
-    
-    
-    
-    
     std::cout << "------" << std::endl;
     
 }

@@ -878,10 +878,18 @@ namespace qbasis {
     double dotc(const MKL_INT n, const double *x, const MKL_INT incx, const double *y, const MKL_INT incy) {
         return ddot(&n, x, &incx, y, &incy);
     }
+    // comment 1: zdotc is a problematic function in lapack, when returning std::complex
+    // comment 2: with my own version of dotc, it will slow things down without parallelization, need fix later
     inline // complex double
     std::complex<double> dotc(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx, const std::complex<double> *y, const MKL_INT incy) {
-        std::complex<double> result;
-        zdotc(&result, &n, x, &incx, y, &incy);
+        std::complex<double> result(0.0, 0.0);
+        const std::complex<double> *xpt = x;
+        const std::complex<double> *ypt = y;
+        for (MKL_INT j = 0; j < n; j++) {
+            result += std::conj(*xpt) * (*ypt);
+            xpt += incx;
+            ypt += incy;
+        }
         return result;
     }
     

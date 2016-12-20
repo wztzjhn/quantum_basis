@@ -10,6 +10,7 @@ void test_operator();
 void test_lanczos_memoAll();
 void test_iram();
 void test_cfraction();
+void test_dotc();
 
 
 int main(){
@@ -19,6 +20,20 @@ int main(){
     //test_operator();
     
     test_cfraction();
+    test_dotc();
+    
+    
+}
+
+void test_dotc() {
+    std::vector<std::complex<double>> x(2), y(2);
+    x[0] = std::complex<double>(1.0,2.0);
+    x[1] = std::complex<double>(2.0,3.0);
+    y[0] = std::complex<double>(2.0,-2.0);
+    y[1] = std::complex<double>(-5.0,7.0);
+    std::complex<double> z = qbasis::dotc(2, x.data(), 1, y.data(), 1);
+    std::cout << "z = " << z << std::endl;
+    assert(std::abs(z - std::complex<double>(9.0,23.0)) < qbasis::lanczos_precision);
 }
 
 void test_cfraction() {
