@@ -819,6 +819,60 @@ namespace qbasis {
     template <typename T>
     MKL_INT binary_search(const std::vector<T> &basis_all, const T &val);
     
+    template <typename T> class model {
+    public:
+        model() = default;
+        
+        ~model() {}
+        
+        void add_diagonal_Ham(const opr<T> &rhs)      { Ham_diag += rhs; }
+        void add_diagonal_Ham(const opr_prod<T> &rhs) { Ham_diag += rhs; }
+        void add_diagonal_Ham(const mopr<T> &rhs)     { Ham_diag += rhs; }
+        
+        void add_offdiagonal_Ham(const opr<T> &rhs)      { Ham_off_diag += rhs; }
+        void add_offdiagonal_Ham(const opr_prod<T> &rhs) { Ham_off_diag += rhs; }
+        void add_offdiagonal_Ham(const mopr<T> &rhs)     { Ham_off_diag += rhs; }
+        
+        void enumerate_basis_all(); // naive way of enumerating all possible basis state
+        
+        void sort_basis_all();
+        
+        void generate_Ham_sparse_all(const bool &upper_triangle = true); // generate the full Hamiltonian in sparse matrix format
+        
+        void locate_E0(const MKL_INT &nev = 5, const MKL_INT &ncv = 15);
+        
+        void locate_Emax(const MKL_INT &nev = 5, const MKL_INT &ncv = 15);
+        
+        
+        double energy_min() { return E0; }
+        double energy_max() { return Emax; }
+        double energy_gap() { return gap; }
+        
+        MKL_INT dim_all;
+        MKL_INT dim_repr;
+        
+        // add basis_repr later
+        std::vector<qbasis::mbasis_elem> basis_all;
+        
+        csr_mat<T> HamMat_csr;
+        
+        std::vector<double> eigenvals;
+        std::vector<T> eigenvecs;
+        
+        
+        
+        
+        // later add conserved quantum operators and corresponding quantum numbers
+        // later add measurement operators
+    
+    private:
+        mopr<T> Ham_diag;
+        mopr<T> Ham_off_diag;
+        double Emax;
+        double E0;
+        double gap;
+    };
+    
     
     
 //  ---------------------------part 6: Measurements ----------------------------
