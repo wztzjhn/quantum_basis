@@ -5,8 +5,24 @@
 namespace qbasis {
     // --------- implementation of class lil (list of list sparse matrix data structure) ----------
     template <typename T>
+    lil_mat<T>::lil_mat(const MKL_INT &n, bool sym_) :
+        dim(n), nnz(n), sym(sym_),
+        mat(std::vector<std::forward_list<lil_mat_elem<T>>>(n, std::forward_list<lil_mat_elem<T>>(1)))
+    {
+        mtx = new std::mutex[n];
+        mat.shrink_to_fit();
+        for (MKL_INT i = 0; i < n; i++) {
+            mtx[i].unlock();
+            mat[i].front().col = i;
+            mat[i].front().val = 0.0;
+        }
+    }
+    
+    
+    template <typename T>
     void lil_mat<T>::add(const MKL_INT &row, const MKL_INT &col, const T &val)
     {
+        std::lock_guard<std::mutex> lck(mtx[row]);
         assert(row >= 0 && row < static_cast<MKL_INT>(mat.size()) &&
                col >=0 && col < static_cast<MKL_INT>(mat.size()));
         assert(sym ? row <= col : true);
@@ -98,6 +114,37 @@ namespace qbasis {
         }
     }
 
+    template <typename T>
+    csr_mat<T>::csr_mat(const csr_mat<T> &old) :
+        dim(old.dim), nnz(old.nnz), sym(old.sym)
+    {
+        if (nnz > 0) {
+            val = new T[nnz];
+            ja  = new MKL_INT[nnz];
+            ia  = new MKL_INT[dim+1];
+            for (MKL_INT j = 0; j < nnz; j++) {
+                val[j] = old.val[j];
+                ja[j]  = old.ja[j];
+            }
+            for (MKL_INT j = 0; j < dim + 1; j++) {
+                ia[j]  = old.ia[j];
+            }
+        } else {
+            val = nullptr;
+            ja  = nullptr;
+            ia  = nullptr;
+        }
+    }
+    template <typename T>
+    csr_mat<T>::csr_mat(csr_mat<T> &&old) noexcept :
+        dim(old.dim), nnz(old.nnz), sym(old.sym),
+        val(old.val), ja(old.ja), ia(old.ia)
+    {
+        old.val = nullptr;
+        old.ja  = nullptr;
+        old.ia  = nullptr;
+    }
+    
     
     template <typename T>
     void csr_mat<T>::MultMv(const T *x, T *y) const
@@ -157,6 +204,17 @@ namespace qbasis {
         std::cout << std::endl;
     }
 
+    template <typename T>
+    void swap(csr_mat<T> &lhs, csr_mat<T> &rhs)
+    {
+        using std::swap;
+        swap(lhs.dim, rhs.dim);
+        swap(lhs.nnz, rhs.nnz);
+        swap(lhs.sym, rhs.sym);
+        swap(lhs.val, rhs.val);
+        swap(lhs.ja,  rhs.ja);
+        swap(lhs.ia,  rhs.ia);
+    }
     
     // Explicit instantiation
     template struct lil_mat_elem<double>;
@@ -168,8 +226,7 @@ namespace qbasis {
     template class csr_mat<double>;
     template class csr_mat<std::complex<double>>;
 
-    //template void csrXvec(const csr_mat<double>&, const std::vector<double>&, std::vector<double>&);
-    //template void csrXvec(const csr_mat<std::complex<double>>&, const std::vector<std::complex<double>>&, std::vector<std::complex<double>>&);
-
+    template void swap(csr_mat<double>&, csr_mat<double>&);
+    template void swap(csr_mat<std::complex<double>>&, csr_mat<std::complex<double>>&);
 
 }

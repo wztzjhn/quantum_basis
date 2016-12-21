@@ -26,6 +26,7 @@
 #include <forward_list>
 #include <utility>
 #include <initializer_list>
+#include <mutex>
 #include <cassert>
 
 #include <boost/dynamic_bitset.hpp>
@@ -123,7 +124,7 @@ namespace qbasis {
     template <typename T> wavefunction<T> operator*(const mopr<T>&, const wavefunction<T>&);
     
     
-    
+    template <typename T> void swap(csr_mat<T>&, csr_mat<T>&);
     
     
     MKL_INT int_pow(const MKL_INT &base, const MKL_INT &index);
@@ -629,15 +630,7 @@ namespace qbasis {
         lil_mat() = default;
         
         // constructor with the Hilbert space dimension
-        lil_mat(const MKL_INT &n, bool sym_ = false) : dim(n), nnz(n), sym(sym_),
-        mat(std::vector<std::forward_list<lil_mat_elem<T>>>(n, std::forward_list<lil_mat_elem<T>>(1)))
-        {
-            mat.shrink_to_fit();
-            for (MKL_INT i = 0; i < n; i++) {
-                mat[i].front().col = i;
-                mat[i].front().val = 0.0;
-            }
-        }
+        lil_mat(const MKL_INT &n, bool sym_ = false);
         
         // add one element
         void add(const MKL_INT &row, const MKL_INT &col, const T &val);
@@ -648,10 +641,20 @@ namespace qbasis {
         {
             mat.clear();
             mat.shrink_to_fit();
+            if (mtx != nullptr) {
+                delete [] mtx;
+                mtx = nullptr;
+            }
         }
         
         // destructor
-        ~lil_mat() {};
+        ~lil_mat()
+        {
+            if (mtx != nullptr) {
+                delete [] mtx;
+                mtx = nullptr;
+            }
+        }
         
         MKL_INT dimension() const { return dim; }
         
@@ -666,16 +669,30 @@ namespace qbasis {
         MKL_INT dim;    // dimension of the matrix
         MKL_INT nnz;    // number of non-zero entries
         bool sym;       // if storing only upper triangle
+        std::mutex *mtx; // mutex for adding elements in parallel
         std::vector<std::forward_list<lil_mat_elem<T>>> mat;
     };
     
     
     // 3-array form of csr sparse matrix format, zero based
     template <typename T> class csr_mat {
-        //    friend void csrXvec <> (const csr_mat<T>&, const std::vector<T>&, std::vector<T>&);
+        friend void swap <> (csr_mat<T>&, csr_mat<T>&);
     public:
         // default constructor
-        csr_mat() = default;
+        csr_mat() : val(nullptr), ja(nullptr), ia(nullptr) {}
+        
+        // copy constructor
+        csr_mat(const csr_mat<T> &old);
+        
+        // move constructor
+        csr_mat(csr_mat<T> &&old) noexcept;
+        
+        // copy assignment constructor and move assignment constructor, using "swap and copy"
+        csr_mat& operator=(csr_mat<T> old)
+        {
+            swap(*this, old);
+            return *this;
+        }
         
         // construcotr from a lil_mat, and if sym_ == true, use only the upper triangle
         csr_mat(const lil_mat<T> &old);
