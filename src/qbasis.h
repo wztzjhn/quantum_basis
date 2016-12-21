@@ -26,12 +26,11 @@
 #include <forward_list>
 #include <utility>
 #include <initializer_list>
-#include <mutex>
 #include <cassert>
 
 #include <boost/dynamic_bitset.hpp>
 #include "mkl.h"
-
+#include <omp.h>
 
 namespace qbasis {
 
@@ -52,6 +51,8 @@ namespace qbasis {
     template <typename> class opr_prod;
     template <typename> class mopr;
     template <typename> class csr_mat;
+    //class threads_pool;
+    template <typename> class model;
     
     bool operator<(const basis_elem&, const basis_elem&);
     bool operator==(const basis_elem&, const basis_elem&);
@@ -627,6 +628,7 @@ namespace qbasis {
         friend class csr_mat<T>;
     public:
         // default constructor
+        //lil_mat() : mtx(nullptr) {}
         lil_mat() = default;
         
         // constructor with the Hilbert space dimension
@@ -641,24 +643,26 @@ namespace qbasis {
         {
             mat.clear();
             mat.shrink_to_fit();
-            if (mtx != nullptr) {
-                delete [] mtx;
-                mtx = nullptr;
-            }
+//            if (mtx != nullptr) {
+//                delete [] mtx;
+//                mtx = nullptr;
+//            }
         }
         
         // destructor
         ~lil_mat()
         {
-            if (mtx != nullptr) {
-                delete [] mtx;
-                mtx = nullptr;
-            }
+//            if (mtx != nullptr) {
+//                delete [] mtx;
+//                mtx = nullptr;
+//            }
         }
         
         MKL_INT dimension() const { return dim; }
         
         MKL_INT num_nonzero() const { return nnz; }
+        
+        bool q_sym() { return sym; }
         
         // print
         void prt() const;
@@ -669,7 +673,7 @@ namespace qbasis {
         MKL_INT dim;    // dimension of the matrix
         MKL_INT nnz;    // number of non-zero entries
         bool sym;       // if storing only upper triangle
-        std::mutex *mtx; // mutex for adding elements in parallel
+        //std::mutex *mtx; // mutex for adding elements in parallel
         std::vector<std::forward_list<lil_mat_elem<T>>> mat;
     };
     
@@ -819,7 +823,13 @@ namespace qbasis {
     template <typename T>
     MKL_INT binary_search(const std::vector<T> &basis_all, const T &val);
     
+//    template <typename T>
+//    MKL_INT generate_Ham_all_AtRow(model<T> &model0,
+//                                   threads_pool &jobs);   // for multi-threading
+    
     template <typename T> class model {
+//        friend MKL_INT generate_Ham_all_AtRow <> (model<T> &,
+//                                                  threads_pool &);
     public:
         model() = default;
         
@@ -837,7 +847,7 @@ namespace qbasis {
         
         void sort_basis_all();
         
-        void generate_Ham_sparse_all(const bool &upper_triangle = true); // generate the full Hamiltonian in sparse matrix format
+        void generate_Ham_all_sparse(const bool &upper_triangle = true); // generate the full Hamiltonian in sparse matrix format
         
         void locate_E0(const MKL_INT &nev = 5, const MKL_INT &ncv = 15);
         
@@ -871,6 +881,9 @@ namespace qbasis {
         double Emax;
         double E0;
         double gap;
+        // lil_mat<T> HamMat_lil;   // only for internal temporaty use
+        
+        
     };
     
     
@@ -893,6 +906,37 @@ namespace qbasis {
 
 
 
+
+////  ----------------------------- threading ------------------------------------
+////  ----------------------------------------------------------------------------
+//namespace qbasis {
+//    class threads_pool {
+//    public:
+//        threads_pool() = delete;
+//        
+//        threads_pool(const MKL_INT &len) {
+//            assert(len > 0);
+//            for (MKL_INT j = len-1; j >= 0; j++) queue.push_front(j);
+//        }
+//        
+//        MKL_INT get_job() {
+//            std::lock_guard<std::mutex> lck(mtx);
+//            if (queue.empty()) {
+//                return -1;
+//            } else {
+//                MKL_INT res = queue.front();
+//                queue.pop_front();
+//                return res;
+//            }
+//        }
+//        
+//        bool q_empty() { return queue.empty(); }
+//        
+//    private:
+//        std::mutex mtx;
+//        std::forward_list<MKL_INT> queue;
+//    };
+//}
 
 
 //  -------------------------  interface to mkl library ------------------------

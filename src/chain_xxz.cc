@@ -128,7 +128,7 @@ void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT 
     xxz.sort_basis_all();
     
     // generating Hamiltonian matrix, using only upper triangle
-    xxz.generate_Ham_sparse_all(true);
+    xxz.generate_Ham_all_sparse(true);
     
     
     // run Lanczos to obtain eigenvals

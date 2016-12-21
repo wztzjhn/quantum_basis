@@ -56,12 +56,42 @@ namespace qbasis {
     inline double conjugate(const double &rhs) { return rhs; }
     inline std::complex<double> conjugate(const std::complex<double> &rhs) { return std::conj(rhs); }
     
+//    template <typename T>
+//    MKL_INT generate_Ham_all_AtRow(model<T> &model0, threads_pool &jobs)
+//    {
+//        MKL_INT row = jobs.get_job();
+//        while (row >= 0) {
+//            // diagonal part:
+//            for (MKL_INT cnt = 0; cnt < model0.Ham_diag.size(); cnt++)
+//                model0.HamMat_lil.add(row, row, model0.basis_all[row].diagonal_operator(model0.Ham_diag[cnt]));
+//            // non-diagonal part:
+//            qbasis::wavefunction<T> intermediate_state = model0.Ham_off_diag * model0.basis_all[row];
+//            for (MKL_INT cnt = 0; cnt < intermediate_state.size(); cnt++) {
+//                auto &ele_new = intermediate_state[cnt];
+//                MKL_INT j = binary_search(model0.basis_all, ele_new.first);       // < j | H | i > obtained
+//                if (model0.HamMat_lil.q_sym()) {
+//                    if (row <= j) model0.HamMat_lil.add(row, j, conjugate(ele_new.second));
+//                } else {
+//                    model0.HamMat_lil.add(row, j, conjugate(ele_new.second));
+//                }
+//            }
+//            row = jobs.get_job();
+//        }
+//        return 0;
+//    }
+//    template MKL_INT generate_Ham_all_AtRow(model<double> &model0, threads_pool &jobs);
+//    template MKL_INT generate_Ham_all_AtRow(model<std::complex<double>> &model0, threads_pool &jobs);
+    
+
+    
+    
+    
     template <typename T>
-    void model<T>::generate_Ham_sparse_all(const bool &upper_triangle)
+    void model<T>::generate_Ham_all_sparse(const bool &upper_triangle)
     {
-        // the generation process can be parallelized
         std::cout << "Generating Hamiltonian Matrix..." << std::endl;
-        qbasis::lil_mat<T> matrix_lil(dim_all, upper_triangle);
+        lil_mat<T> matrix_lil(dim_all, upper_triangle);
+        #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim_all; i++) {
             for (MKL_INT cnt = 0; cnt < Ham_diag.size(); cnt++)                        // diagonal part:
                 matrix_lil.add(i, i, basis_all[i].diagonal_operator(Ham_diag[cnt]));

@@ -28,7 +28,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND "${CMAKE_SYSTEM_NAME}" STREQU
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -gdwarf-3 -debug all -traceback -fstack-security-check")
 else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -Wall -Wextra")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -g -Wall -Wextra")
 endif()
 add_definitions(-D_GLIBCXX_DEBUG=1) # libstdc++
 add_definitions(-D_LIBCPP_DEBUG2=1) # libc++
@@ -50,6 +50,14 @@ if (APPLE)
   cmake_policy(SET CMP0042 NEW) # @rpath
   #set(LIBS ${LIBS} "-framework Accelerate")
   #set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY "libc++")
+endif()
+
+# Add openmp if Linux platform
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+  if(CMAKE_COMPILER_IS_GNUCXX)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+    set(LIBS ${LIBS} "-fopenmp")
+  endif()
 endif()
 
 # -- DEPENDENCIES -------------------------------------------

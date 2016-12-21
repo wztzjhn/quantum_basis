@@ -9,10 +9,10 @@ namespace qbasis {
         dim(n), nnz(n), sym(sym_),
         mat(std::vector<std::forward_list<lil_mat_elem<T>>>(n, std::forward_list<lil_mat_elem<T>>(1)))
     {
-        mtx = new std::mutex[n];
+        //mtx = new std::mutex[n];
         mat.shrink_to_fit();
         for (MKL_INT i = 0; i < n; i++) {
-            mtx[i].unlock();
+            //mtx[i].unlock();
             mat[i].front().col = i;
             mat[i].front().val = 0.0;
         }
@@ -22,7 +22,7 @@ namespace qbasis {
     template <typename T>
     void lil_mat<T>::add(const MKL_INT &row, const MKL_INT &col, const T &val)
     {
-        std::lock_guard<std::mutex> lck(mtx[row]);
+        //std::lock_guard<std::mutex> lck(mtx[row]);
         assert(row >= 0 && row < static_cast<MKL_INT>(mat.size()) &&
                col >=0 && col < static_cast<MKL_INT>(mat.size()));
         assert(sym ? row <= col : true);
@@ -37,9 +37,11 @@ namespace qbasis {
             it_curr->val += val;
             if (row != col && std::abs(it_curr->val) < sparse_precision) {
                 mat[row].erase_after(it_prev);
+                #pragma omp atomic
                 --nnz;
             }
         } else {
+            #pragma omp atomic
             ++nnz;
             mat[row].insert_after(it_prev,{val,col});
         }
