@@ -257,6 +257,7 @@ namespace qbasis {
             swap(mat, mat_new); // now mat points to the correct memory
             delete [] mat_new;  // release original memroy from mat
         }
+        this->simplify();
         return *this;
     }
     
@@ -538,6 +539,16 @@ namespace qbasis {
     bool opr_prod<T>::q_zero() const
     {
         return std::abs(coeff) < opr_precision ? true : false;
+    }
+    
+    template <typename T>
+    bool opr_prod<T>::q_diagonal() const
+    {
+        if (q_zero()) return true;
+        for (auto it = mat_prod.begin(); it != mat_prod.end(); it++) {
+            if (! it->q_diagonal()) return false;
+        }
+        return true;
     }
     
     template <typename T>

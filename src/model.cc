@@ -46,9 +46,9 @@ namespace qbasis {
         if (! sorted) {
             std::cout << "sorting basis..." << std::endl;
             std::sort(basis_all.begin(), basis_all.end());
-            std::cout << "sorting finished." << std::endl << std::endl;
+            std::cout << "sorting finished." << std::endl;
         } else {
-            std::cout << "yes it is already sorted." << std::endl << std::endl;
+            std::cout << "yes it is already sorted." << std::endl;
         }
     }
     
@@ -56,40 +56,20 @@ namespace qbasis {
     inline double conjugate(const double &rhs) { return rhs; }
     inline std::complex<double> conjugate(const std::complex<double> &rhs) { return std::conj(rhs); }
     
-//    template <typename T>
-//    MKL_INT generate_Ham_all_AtRow(model<T> &model0, threads_pool &jobs)
-//    {
-//        MKL_INT row = jobs.get_job();
-//        while (row >= 0) {
-//            // diagonal part:
-//            for (MKL_INT cnt = 0; cnt < model0.Ham_diag.size(); cnt++)
-//                model0.HamMat_lil.add(row, row, model0.basis_all[row].diagonal_operator(model0.Ham_diag[cnt]));
-//            // non-diagonal part:
-//            qbasis::wavefunction<T> intermediate_state = model0.Ham_off_diag * model0.basis_all[row];
-//            for (MKL_INT cnt = 0; cnt < intermediate_state.size(); cnt++) {
-//                auto &ele_new = intermediate_state[cnt];
-//                MKL_INT j = binary_search(model0.basis_all, ele_new.first);       // < j | H | i > obtained
-//                if (model0.HamMat_lil.q_sym()) {
-//                    if (row <= j) model0.HamMat_lil.add(row, j, conjugate(ele_new.second));
-//                } else {
-//                    model0.HamMat_lil.add(row, j, conjugate(ele_new.second));
-//                }
-//            }
-//            row = jobs.get_job();
-//        }
-//        return 0;
-//    }
-//    template MKL_INT generate_Ham_all_AtRow(model<double> &model0, threads_pool &jobs);
-//    template MKL_INT generate_Ham_all_AtRow(model<std::complex<double>> &model0, threads_pool &jobs);
-    
-
-    
-    
-    
     template <typename T>
     void model<T>::generate_Ham_all_sparse(const bool &upper_triangle)
     {
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) {
+                int nthreads = omp_get_num_threads();
+                std::cout << "Number of threads = " << nthreads << std::endl;
+            }
+        }
         std::cout << "Generating Hamiltonian Matrix..." << std::endl;
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
         lil_mat<T> matrix_lil(dim_all, upper_triangle);
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim_all; i++) {
@@ -109,14 +89,19 @@ namespace qbasis {
         }
         HamMat_csr = csr_mat<T>(matrix_lil);
         matrix_lil.destroy();
-        std::cout << "Hamiltonian generated." << std::endl << std::endl;
+        std::cout << "Hamiltonian generated." << std::endl;
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
     
     template <typename T>
     void model<T>::locate_E0(const MKL_INT &nev, const MKL_INT &ncv)
     {
         assert(ncv > nev + 1);
-        MKL_INT nconv;
+        std::cout << "Calculating ground state..." << std::endl;
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
         std::vector<T> v0(HamMat_csr.dimension(), 1.0);
         eigenvals.resize(nev);
         eigenvecs.resize(HamMat_csr.dimension() * nev);
@@ -126,13 +111,18 @@ namespace qbasis {
         gap = eigenvals[1] - eigenvals[0];
         std::cout << "E0   = " << eigenvals[0] << std::endl;
         std::cout << "Gap  = " << eigenvals[1] - eigenvals[0] << std::endl;
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
     
     template <typename T>
     void model<T>::locate_Emax(const MKL_INT &nev, const MKL_INT &ncv)
     {
         assert(ncv > nev + 1);
-        MKL_INT nconv;
+        std::cout << "Calculating highest energy state..." << std::endl;
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
         std::vector<T> v0(HamMat_csr.dimension(), 1.0);
         eigenvals.resize(nev);
         eigenvecs.resize(HamMat_csr.dimension() * nev);
@@ -140,7 +130,55 @@ namespace qbasis {
         assert(nconv > 0);
         Emax = eigenvals[0];
         std::cout << "Emax = " << eigenvals[0] << std::endl;
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
+    
+    template <typename T>
+    void model<T>::moprXeigenvec(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col)
+    {
+        assert(which_col >= 0 && which_col < nconv);
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        if (HamMat_csr.dimension() == dim_all) {
+            MKL_INT base = dim_all * which_col;
+            
+            #pragma omp parallel for schedule(dynamic,16)
+            for (MKL_INT j = 0; j < dim_all; j++) {
+                if (std::abs(eigenvecs[base + j]) < lanczos_precision) continue;
+                std::vector<MKL_INT> indices;
+                std::vector<T> values;
+                for (MKL_INT cnt_opr = 0; cnt_opr < lhs.size(); cnt_opr++) {
+                    auto &A = lhs[cnt_opr];
+                    auto temp = eigenvecs[base + j];
+                    if (A.q_diagonal()) {
+                        indices.push_back(j);
+                        values.push_back(temp * basis_all[j].diagonal_operator(A));
+                    } else {
+                        auto intermediate_state = A * basis_all[j];
+                        for (MKL_INT cnt = 0; cnt < intermediate_state.size(); cnt++) {
+                            auto &ele = intermediate_state[cnt];
+                            indices.push_back(binary_search(basis_all, ele.first));
+                            values.push_back(temp * ele.second);
+                        }
+                    }
+                }
+                #pragma omp critical
+                {
+                    for (decltype(indices.size()) cnt = 0; cnt < indices.size(); cnt++)
+                        vec_new[indices[cnt]] += values[cnt];
+                }
+            }
+            
+        } else {
+            std::cout << "not implemented yet" << std::endl;
+        }
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+    }
+    
     
     // Explicit instantiation
     template MKL_INT binary_search(const std::vector<qbasis::mbasis_elem> &basis_all, const qbasis::mbasis_elem &val);

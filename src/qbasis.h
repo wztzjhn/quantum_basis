@@ -26,11 +26,18 @@
 #include <forward_list>
 #include <utility>
 #include <initializer_list>
+#include <chrono>
 #include <cassert>
-
 #include <boost/dynamic_bitset.hpp>
 #include "mkl.h"
+
+#ifdef _OPENMP
 #include <omp.h>
+#else
+#define omp_get_thread_num() 0
+#define omp_get_num_threads() 0
+#endif
+
 
 namespace qbasis {
 
@@ -490,6 +497,9 @@ namespace qbasis {
         // question if it is proportional to identity operator
         bool q_prop_identity() const;
         
+        // question if each opr is diagonal
+        bool q_diagonal() const;
+        
         // question if it is zero operator
         bool q_zero() const;
         
@@ -853,6 +863,7 @@ namespace qbasis {
         
         void locate_Emax(const MKL_INT &nev = 5, const MKL_INT &ncv = 15);
         
+        void moprXeigenvec(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col = 0);
         
         double energy_min() { return E0; }
         double energy_max() { return Emax; }
@@ -861,12 +872,14 @@ namespace qbasis {
         MKL_INT dim_all;
         MKL_INT dim_repr;
         
+        
+        
         // add basis_repr later
         std::vector<qbasis::mbasis_elem> basis_all;
         
         csr_mat<T> HamMat_csr;
         
-        std::vector<double> eigenvals;
+        
         std::vector<T> eigenvecs;
         
         
@@ -878,9 +891,11 @@ namespace qbasis {
     private:
         mopr<T> Ham_diag;
         mopr<T> Ham_off_diag;
+        std::vector<double> eigenvals;
         double Emax;
         double E0;
         double gap;
+        MKL_INT nconv;
         // lil_mat<T> HamMat_lil;   // only for internal temporaty use
         
         
@@ -904,39 +919,6 @@ namespace qbasis {
     
 }
 
-
-
-
-////  ----------------------------- threading ------------------------------------
-////  ----------------------------------------------------------------------------
-//namespace qbasis {
-//    class threads_pool {
-//    public:
-//        threads_pool() = delete;
-//        
-//        threads_pool(const MKL_INT &len) {
-//            assert(len > 0);
-//            for (MKL_INT j = len-1; j >= 0; j++) queue.push_front(j);
-//        }
-//        
-//        MKL_INT get_job() {
-//            std::lock_guard<std::mutex> lck(mtx);
-//            if (queue.empty()) {
-//                return -1;
-//            } else {
-//                MKL_INT res = queue.front();
-//                queue.pop_front();
-//                return res;
-//            }
-//        }
-//        
-//        bool q_empty() { return queue.empty(); }
-//        
-//    private:
-//        std::mutex mtx;
-//        std::forward_list<MKL_INT> queue;
-//    };
-//}
 
 
 //  -------------------------  interface to mkl library ------------------------
