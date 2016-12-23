@@ -25,9 +25,9 @@ namespace qbasis {
         if (MemoSteps) {                                                          // v has m cols
             for (MKL_INT j = 0; j < m; j++) vpt[j] = &v[j*dim];
         } else {                                                                  // v has only 3 cols
-            MKL_INT cnt = 0;
-            for (MKL_INT j = 0; j < m; j++, cnt = (++cnt) % 3) {
+            for (MKL_INT j = 0, cnt = 0; j < m; j++) {
                 vpt[j] = &v[cnt*dim];
+                cnt = (cnt + 1) % 3;
             }
         }
         vpt[m] = resid;

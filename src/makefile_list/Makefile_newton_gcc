@@ -1,0 +1,25 @@
+CXX       = g++
+CPPFLAGS  = -O2 -std=c++11 -Wall -Wextra -m64 -fopenmp -isystem /data/apps/boost/1.59/include -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
+LIBS      = -L${HOME}/opt/ARPACK -larpack -lgfortran -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -fopenmp
+
+OBJS      = model.o measure.o lanczos.o sparse.o operators.o basis.o
+
+OPTS      = 
+
+EXEC      = ../bin/chain_xxz.x
+
+
+all: $(OBJS) chain_xxz.o
+	$(CXX) $(OBJS) chain_xxz.o $(OPTS) $(LIBS) -o $(EXEC)
+
+libqbasis.a: $(OBJS)
+	ar rvs libqbasis.a $(OBJS)
+
+install: libqbasis.a
+	$(RM) ${HOME}/installs/lib/libqbasis.*; cp libqbasis.a ${HOME}/installs/lib; cp qbasis.h ${HOME}/installs/include
+
+%.o: %.cc
+	$(CXX) $(CPPFLAGS)  -c -o $@ $<
+
+clean:
+	$(RM) *.o *.a

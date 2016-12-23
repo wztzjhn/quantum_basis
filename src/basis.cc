@@ -91,7 +91,7 @@ namespace qbasis {
     {
         assert(! q_maximized());
         if (int_pow(2, bits_per_site) == dim_local) {     // no waste bit
-            for(MKL_INT loop = 0; loop < bits.size(); ++loop)
+            for(decltype(bits.size()) loop = 0; loop < bits.size(); ++loop)
             {
                 if ((bits[loop] ^= 0x1) == 0x1) break;
             }

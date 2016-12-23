@@ -36,8 +36,8 @@ namespace qbasis {
                 mat = nullptr;
             } else {
                 mat = new T[dim * dim];
-                for (decltype(mat_.size()) j = 0; j < dim; j++) {
-                    for (decltype(mat_.size()) i = 0; i < dim; i++) {
+                for (MKL_INT j = 0; j < dim; j++) {
+                    for (MKL_INT i = 0; i < dim; i++) {
                         // column major order
                         mat[i + j * dim] = mat_[i][j];
                     }
