@@ -52,14 +52,6 @@ if (APPLE)
   #set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY "libc++")
 endif()
 
-# Add openmp if Linux platform
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
-  if(CMAKE_COMPILER_IS_GNUCXX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
-    set(LIBS ${LIBS} "-fopenmp")
-  endif()
-endif()
-
 # -- DEPENDENCIES -------------------------------------------
 
 # Boost
@@ -101,11 +93,17 @@ find_package(ARPACK REQUIRED)
 if (ARPACK_FOUND)
   include_directories(SYSTEM ${ARPACK_INCLUDE_DIRS})
   include_directories(SYSTEM ${ARPACK_INCLUDE_DIRS}/../examples/areig)
-  set(LIBS ${LIBS} ${ARPACK_LIBRARIES})
+  set(LIBS "${LIBS} ${ARPACK_LIBRARIES}")
   add_definitions(-DWITH_ARPACK)
   if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lgfortran")
   endif()
+endif()
+
+# Add openmp if Linux platform
+if(CMAKE_COMPILER_IS_GNUCXX)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+  set(LIBS ${LIBS} "-fopenmp")
 endif()
 
 # -- BUILD -------------------------------------------

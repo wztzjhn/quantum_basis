@@ -33,6 +33,7 @@
 xbuild
 build
 results
+bin
 
 # Other files
 checking.nb
