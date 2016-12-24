@@ -21,6 +21,8 @@ namespace qbasis {
         assert(m < dim);                                                          // # of orthogonal vectors: at most dim
         assert(std::abs(nrm2(dim, resid, 1) - 1.0) < lanczos_precision);          // normalized
         if (np == 0) return;
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
         std::vector<T*> vpt(m+1);                                                 // pointers of v_0, v_1, ..., v_m
         if (MemoSteps) {                                                          // v has m cols
             for (MKL_INT j = 0; j < m; j++) vpt[j] = &v[j*dim];
@@ -57,6 +59,9 @@ namespace qbasis {
         axpy(dim, -hessenberg[ldh+m-1], vpt[m-1], 1, vpt[m], 1);                  // w_{k-1}
         rnorm = nrm2(dim, vpt[m], 1);
         scal(dim, 1.0 / rnorm, vpt[m], 1);                                        // v[k]
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
 
 
@@ -217,16 +222,17 @@ namespace qbasis {
 
     // interface to arpack++
     void call_arpack(csr_mat<double> &mat, double v0[],
-                     const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
+                     const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv, MKL_INT &niter,
                      const std::string &order, double eigenvals[], double eigenvecs[])
     {
         ARSymStdEig<double, csr_mat<double>>
             prob(mat.dimension(), nev, &mat, &csr_mat<double>::MultMv, order, ncv, 0.0, 0, v0);
         prob.EigenValVectors(eigenvecs, eigenvals);
         nconv = prob.ConvergedEigenvalues();
+        niter = prob.GetIter();
     }
     void call_arpack(csr_mat<std::complex<double>> &mat, std::complex<double> v0[],
-                     const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
+                     const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv, MKL_INT &niter,
                      const std::string &order, double eigenvals[], std::complex<double> eigenvecs[])
     {
         std::complex<double> *eigenvals_copy = new std::complex<double>[nev];
@@ -235,6 +241,7 @@ namespace qbasis {
                                                                  order, ncv, 0.0, 0, v0);
         prob.EigenValVectors(eigenvecs, eigenvals_copy);
         nconv = prob.ConvergedEigenvalues();
+        niter = prob.GetIter();
         for (MKL_INT j = 0; j < nconv; j++) {
             assert(std::abs(eigenvals_copy[j].imag()) < lanczos_precision);
             eigenvals[j] = eigenvals_copy[j].real();
@@ -248,12 +255,13 @@ namespace qbasis {
     {
         MKL_INT dim = mat.dimension();
         MKL_INT np = ncv - nev;
+        MKL_INT niter;
 
         if (use_arpack) {
             std::string order_cap(order);
             std::vector<T> eigenvecs_copy(nev*dim);
             std::transform(order_cap.begin(), order_cap.end(), order_cap.begin(), ::toupper);
-            call_arpack(mat, v0, nev, ncv, nconv, order_cap, eigenvals, eigenvecs_copy.data());
+            call_arpack(mat, v0, nev, ncv, nconv, niter, order_cap, eigenvals, eigenvecs_copy.data());
             // sort the arpack eigenvals
             assert(nconv > 0);
             std::vector<std::pair<double, MKL_INT>> eigenvals_copy(nconv);
@@ -276,6 +284,7 @@ namespace qbasis {
             }
             for (decltype(eigenvals_copy.size()) j = 0; j < eigenvals_copy.size(); j++)
                 eigenvals[j] = eigenvals_copy[j].first;
+            std::cout << "Number of Arnoldi iterations: " << niter << std::endl;
             for (MKL_INT j = 0; j < nconv; j++) {
                 std::cout << "j = " << j << ", E_j = " << eigenvals[j] << std::endl;
             }
