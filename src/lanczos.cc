@@ -284,7 +284,7 @@ namespace qbasis {
             }
             for (decltype(eigenvals_copy.size()) j = 0; j < eigenvals_copy.size(); j++)
                 eigenvals[j] = eigenvals_copy[j].first;
-            std::cout << "Number of Arnoldi iterations: " << niter << std::endl;
+            std::cout << "Number of implicit restarts: " << niter << std::endl;
             for (MKL_INT j = 0; j < nconv; j++) {
                 std::cout << "j = " << j << ", E_j = " << eigenvals[j] << std::endl;
             }
