@@ -11,7 +11,7 @@ void test_lanczos_memoAll();
 void test_iram();
 void test_cfraction();
 void test_dotc();
-
+void test_lattice();
 
 int main(){
     test_lanczos_memoAll();
@@ -21,7 +21,22 @@ int main(){
     
     test_cfraction();
     test_dotc();
+    test_lattice();
     
+}
+
+void test_lattice() {
+    qbasis::lattice square("square",{3,4});
+    MKL_INT i = 1, j = 2;
+    MKL_INT sub = 0;
+    MKL_INT site = 10;
+    for (MKL_INT site = 0; site < square.total_sites(); site++) {
+        square.site2coor(i, j, sub, site);
+        std::cout << "(" << i << "," << j << "," << sub << ") : " << site << std::endl;
+        MKL_INT site2;
+        square.coor2site(i, j, sub, site2);
+        assert(site == site2);
+    }
     
 }
 

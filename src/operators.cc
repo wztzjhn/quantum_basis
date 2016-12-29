@@ -804,6 +804,16 @@ namespace qbasis {
     }
     
     template <typename T>
+    bool mopr<T>::q_diagonal() const
+    {
+        if (q_zero()) return true;
+        for (auto it = mats.begin(); it != mats.end(); it++) {
+            if (! it->q_diagonal()) return false;
+        }
+        return true;
+    }
+    
+    template <typename T>
     void mopr<T>::prt() const
     {
         std::cout << "terms: " << mats.size() << std::endl;

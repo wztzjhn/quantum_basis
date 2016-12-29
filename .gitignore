@@ -35,6 +35,7 @@ build
 results
 bin
 performance_test
+src/examples
 
 # Other files
 checking.nb

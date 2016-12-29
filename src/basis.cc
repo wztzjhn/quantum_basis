@@ -30,6 +30,9 @@ namespace qbasis {
         } else if (s == "spin-1") {
             dim_local = 3;
             Nfermion_map = std::vector<int>();
+        } else if (s == "dimer") {
+            dim_local = 4;
+            Nfermion_map = std::vector<int>();
         }
         bits_per_site = static_cast<short>(ceil(log2(static_cast<double>(dim_local)) - 1e-9));
         bits = DBitSet(static_cast<DBitSet::size_type>(n_sites * bits_per_site));
@@ -159,6 +162,20 @@ namespace qbasis {
         mbits.shrink_to_fit();
         //std::cout << "size after shrink: " << mbits.capacity() << std::endl;
     }
+    
+    MKL_INT mbasis_elem::siteRead(const MKL_INT &site, const MKL_INT &orbital) const
+    {
+        assert(orbital < total_orbitals());
+        return mbits[orbital].siteRead(site);
+    }
+    
+    mbasis_elem &mbasis_elem::siteWrite(const MKL_INT &site, const MKL_INT &orbital, const MKL_INT &val)
+    {
+        assert(orbital < total_orbitals());
+        mbits[orbital].siteWrite(site, val);
+        return *this;
+    }
+    
     
     double mbasis_elem::diagonal_operator(const opr<double>& lhs) const
     {

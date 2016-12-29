@@ -267,6 +267,10 @@ namespace qbasis {
         // reset all bits to 0 in all orbitals
         mbasis_elem& reset();
         
+        MKL_INT siteRead(const MKL_INT &site, const MKL_INT &orbital) const;
+        
+        mbasis_elem& siteWrite(const MKL_INT &site, const MKL_INT &orbital, const MKL_INT &val);
+        
         double diagonal_operator(const opr<double>& lhs) const;
         std::complex<double> diagonal_operator(const opr<std::complex<double>>& lhs) const;
         
@@ -616,6 +620,9 @@ namespace qbasis {
         
         bool q_zero() const {return mats.empty(); }
         
+        // question if each opr_prod is diagonal
+        bool q_diagonal() const;
+        
         void prt() const;
         
         
@@ -827,7 +834,39 @@ namespace qbasis {
               const std::string &order, double eigenvals[], T eigenvecs[], const bool &use_arpack = true);
     
     
-//  ---------------part 5: Routines to construct Hamiltonian -------------------
+//  ----------------------------- part 5: Lattices  ----------------------------
+//  ----------------------------------------------------------------------------
+    class lattice {
+    public:
+        
+        // constructor from particular requirements. e.g. square, triangular...
+        lattice(const std::string &name, const std::string &bc_, std::initializer_list<MKL_INT> lens);
+        
+        // coordinates <-> site indices
+        void coor2site(const MKL_INT &i, const MKL_INT &j, const MKL_INT &sub, MKL_INT &site);
+        void site2coor(MKL_INT &i, MKL_INT &j, MKL_INT &sub, const MKL_INT &site);
+        
+        
+        
+        MKL_INT dimension() { return dim; }
+        MKL_INT total_sites() { return Nsites; }
+        MKL_INT Lx() { return L[0]; }
+        MKL_INT Ly() { assert(L.size() > 1); return L[1]; }
+        MKL_INT Lz() { assert(L.size() > 2); return L[2]; }
+        
+    private:
+        MKL_INT dim;
+        MKL_INT num_sub;
+        std::vector<std::vector<double>> a; // real space basis
+        std::vector<std::vector<double>> b; // momentum space basis
+        std::string bc;                     // boundary condition
+        std::vector<MKL_INT> L;             // linear size in each dimension
+        MKL_INT Nsites;
+        
+    };
+    
+    
+//  ---------------part 6: Routines to construct Hamiltonian -------------------
 //  ----------------------------------------------------------------------------
     
     
@@ -846,8 +885,8 @@ namespace qbasis {
         
         ~model() {}
         
-        void add_diagonal_Ham(const opr<T> &rhs)      { Ham_diag += rhs; }
-        void add_diagonal_Ham(const opr_prod<T> &rhs) { Ham_diag += rhs; }
+        void add_diagonal_Ham(const opr<T> &rhs)      { assert(rhs.q_diagonal()); Ham_diag += rhs; }
+        void add_diagonal_Ham(const opr_prod<T> &rhs) { assert(rhs.q_diagonal()); Ham_diag += rhs; }
         void add_diagonal_Ham(const mopr<T> &rhs)     { Ham_diag += rhs; }
         
         void add_offdiagonal_Ham(const opr<T> &rhs)      { Ham_off_diag += rhs; }
@@ -883,7 +922,8 @@ namespace qbasis {
         
         std::vector<T> eigenvecs;
         
-        
+        void prt_Ham_diag() { Ham_diag.prt(); }
+        void prt_Ham_offdiag() { Ham_off_diag.prt(); }
         
         
         // later add conserved quantum operators and corresponding quantum numbers
@@ -904,7 +944,7 @@ namespace qbasis {
     
     
     
-//  ---------------------------part 6: Measurements ----------------------------
+//  ---------------------------part 7: Measurements ----------------------------
 //  ----------------------------------------------------------------------------
     //             b1
     // a0 +  ---------------
