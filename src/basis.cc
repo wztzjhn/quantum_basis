@@ -111,6 +111,25 @@ namespace qbasis {
         return *this;
     }
     
+    basis_elem &basis_elem::translate(const std::vector<MKL_INT> &plan, MKL_INT &sgn)
+    {
+        if (! q_fermion()) {
+            sgn = 0;
+        } else {
+            std::cout << "Fermionic translation not implemented yet!" << std::endl;
+            assert(false);
+        }
+        assert(plan.size() == total_sites());
+        auto res = *this;
+        for (MKL_INT site = 0; site < total_sites(); site++) {
+            MKL_INT bits_bgn1 = bits_per_site * site;
+            MKL_INT bits_bgn2 = bits_per_site * plan[site];
+            for (MKL_INT j = 0; j < bits_per_site; j++) res.bits[bits_bgn2+j] = bits[bits_bgn1+j];
+        }
+        swap(*this, res);
+        return *this;
+    }
+    
     void basis_elem::prt() const
     {
         std::cout << bits;
@@ -245,6 +264,16 @@ namespace qbasis {
                 mbits[orb].increment();
                 break;
             }
+        }
+        return *this;
+    }
+    
+    mbasis_elem &mbasis_elem::translate(const std::vector<MKL_INT> &plan, MKL_INT &sgn) {
+        sgn = 0;
+        for (auto it = mbits.begin(); it != mbits.end(); it++) {
+            MKL_INT sgn0;
+            it->translate(plan, sgn0);
+            sgn = (sgn + sgn0) % 2;
         }
         return *this;
     }

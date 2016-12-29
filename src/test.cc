@@ -26,10 +26,9 @@ int main(){
 }
 
 void test_lattice() {
-    qbasis::lattice square("square",{3,4});
+    qbasis::lattice square("square","pbc",{3,4});
     MKL_INT i = 1, j = 2;
     MKL_INT sub = 0;
-    MKL_INT site = 10;
     for (MKL_INT site = 0; site < square.total_sites(); site++) {
         square.site2coor(i, j, sub, site);
         std::cout << "(" << i << "," << j << "," << sub << ") : " << site << std::endl;
@@ -38,6 +37,10 @@ void test_lattice() {
         assert(site == site2);
     }
     
+    auto plan = square.translation_plan(-2, 2);
+    for (MKL_INT j = 0; j < square.total_sites(); j++) {
+        std::cout << j << " -> " << plan[j] << std::endl;
+    }
 }
 
 void test_dotc() {

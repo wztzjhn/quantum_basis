@@ -6,18 +6,22 @@
 namespace qbasis {
 
     template <typename T>
-    MKL_INT binary_search(const std::vector<T> &some_basis, const T &val)
+    MKL_INT binary_search(const std::vector<T> &array, const T &val,
+                          const MKL_INT &bgn, const MKL_INT &end)
     {
-        MKL_INT low = 0;
-        MKL_INT high = some_basis.size() - 1;
+        if(array.size() == 0 && bgn == end) return -1;            // not found
+        assert(bgn < end);
+        assert(bgn >= 0 && bgn < array.size());
+        assert(end > 0 && end <= array.size());
+        MKL_INT low  = bgn;
+        MKL_INT high = end - 1;
         MKL_INT mid;
         while(low <= high) {
             mid = (low + high) / 2;
-            if (val == some_basis[mid]) return mid;
-            else if (val < some_basis[mid]) high = mid - 1;
+            if (val == array[mid]) return mid;
+            else if (val < array[mid]) high = mid - 1;
             else low = mid + 1;
         }
-        assert(false);
         return -1;
     }
     
@@ -80,7 +84,8 @@ namespace qbasis {
             qbasis::wavefunction<T> intermediate_state = Ham_off_diag * basis_all[i];  // non-diagonal part:
             for (MKL_INT cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele_new = intermediate_state[cnt];
-                MKL_INT j = binary_search(basis_all, ele_new.first);                   // < j | H | i > obtained
+                MKL_INT j = binary_search(basis_all, ele_new.first, 0, dim_all);       // < j | H | i > obtained
+                assert(j != -1);
                 if (upper_triangle) {
                     if (i <= j) matrix_lil.add(i, j, conjugate(ele_new.second));
                 } else {
@@ -166,7 +171,7 @@ namespace qbasis {
                         auto intermediate_state = A * basis_all[j];
                         for (MKL_INT cnt = 0; cnt < intermediate_state.size(); cnt++) {
                             auto &ele = intermediate_state[cnt];
-                            values.push_back(std::pair<MKL_INT, T>(binary_search(basis_all, ele.first), temp * ele.second));
+                            values.push_back(std::pair<MKL_INT, T>(binary_search(basis_all, ele.first, 0, dim_all), temp * ele.second));
                         }
                     }
                 }
@@ -227,7 +232,8 @@ namespace qbasis {
     
     
     // Explicit instantiation
-    template MKL_INT binary_search(const std::vector<qbasis::mbasis_elem> &basis_all, const qbasis::mbasis_elem &val);
+    template MKL_INT binary_search(const std::vector<qbasis::mbasis_elem> &array, const qbasis::mbasis_elem &val,
+                                   const MKL_INT &bgn, const MKL_INT &end);
     
     template class model<double>;
     template class model<std::complex<double>>;

@@ -1,7 +1,7 @@
 #include "qbasis.h"
 
 namespace qbasis {
-    // ----------------- implementation of basis ------------------
+    // ----------------- implementation of lattice ------------------
     lattice::lattice(const std::string &name, const std::string &bc_, std::initializer_list<MKL_INT> lens) : bc(bc_)
     {
         if (name == "square") {
@@ -45,6 +45,18 @@ namespace qbasis {
         auto temp = (site - sub) / num_sub;  // temp == i + j * L[0]
         i = temp % L[0];
         j = (temp - i) / L[0];
+    }
+    
+    
+    // note: later for 1D, we can directly translate the bits
+    std::vector<MKL_INT> lattice::translation_plan(const MKL_INT &d1, const MKL_INT &d2) {
+        std::vector<MKL_INT> result(total_sites());
+        MKL_INT m, n, sub;
+        for (MKL_INT site = 0; site < total_sites(); site++) {
+            site2coor(m, n, sub, site);
+            coor2site(m+d1, n+d2, sub, result[site]);
+        }
+        return result;
     }
     
 }
