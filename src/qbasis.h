@@ -29,6 +29,7 @@
 #include <chrono>
 #include <cassert>
 #include <boost/dynamic_bitset.hpp>
+#include <boost/math/special_functions/binomial.hpp>
 #include "mkl.h"
 
 #ifdef _OPENMP
@@ -271,9 +272,10 @@ namespace qbasis {
         // a few basic properties
         MKL_INT total_sites() const;
         MKL_INT total_orbitals() const;
+        MKL_INT local_dimension() const;
         bool q_maximized() const;
         
-        // return a vector of length dim_local1 + dim_local2 + ..., reporting # of each state
+        // a direct product of the statistics of all orbitals, size: dim_orb1 * dim_orb2 * ...
         std::vector<MKL_INT> statistics() const;
         
         // change mbasis_elem to the next available state

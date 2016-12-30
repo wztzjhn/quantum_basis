@@ -270,10 +270,14 @@ namespace qbasis {
     }
     
     std::vector<MKL_INT> mbasis_elem::statistics() const {
-        std::vector<MKL_INT> results;
-        for (MKL_INT j = 0; j < total_orbitals(); j++) {
-            auto temp = mbits[j].statistics();
-            results.insert(results.end(), temp.begin(), temp.end());
+        std::vector<MKL_INT> results(local_dimension(),0);
+        for (MKL_INT site = 0; site < total_sites(); site++) {
+            MKL_INT idx = 0;
+            for (MKL_INT orb = total_orbitals() - 1; orb > 0; orb--)
+                idx = (idx + mbits[orb].siteRead(site)) * mbits[orb-1].local_dimension();
+            idx += mbits[0].siteRead(site);
+            //assert(idx >= 0 && idx < local_dimension());
+            results[idx]++;
         }
         return results;
     }
@@ -326,7 +330,15 @@ namespace qbasis {
         return static_cast<MKL_INT>(mbits.size());
     }
     
-    
+    MKL_INT mbasis_elem::local_dimension() const
+    {
+        assert(! mbits.empty());
+        MKL_INT res = 1;
+        for (decltype(mbits.size()) j = 0; j < mbits.size(); j++) {
+            res *= mbits[j].local_dimension();
+        }
+        return res;
+    }
     
     void mbasis_elem::prt() const
     {

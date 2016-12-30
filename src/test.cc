@@ -23,6 +23,7 @@ int main(){
     test_dotc();
     test_lattice();
     
+    std::cout << boost::math::binomial_coefficient<double>(10, 2) << std::endl;
 }
 
 void test_lattice() {
