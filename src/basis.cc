@@ -137,6 +137,14 @@ namespace qbasis {
         return *this;
     }
     
+    basis_elem &basis_elem::translate(const qbasis::lattice &latt, const std::vector<MKL_INT> &disp, MKL_INT &sgn)
+    {
+        assert(latt.dimension() == disp.size());
+        auto plan = latt.translation_plan(disp);
+        translate(plan, sgn);
+        return *this;
+    }
+    
     void basis_elem::prt() const
     {
         std::cout << bits;
@@ -291,6 +299,12 @@ namespace qbasis {
             it->translate(plan, sgn0);
             sgn = (sgn + sgn0) % 2;
         }
+        return *this;
+    }
+    
+    mbasis_elem &mbasis_elem::translate(const qbasis::lattice &latt, const std::vector<MKL_INT> &disp, MKL_INT &sgn) {
+        auto plan = latt.translation_plan(disp);
+        translate(plan, sgn);
         return *this;
     }
     

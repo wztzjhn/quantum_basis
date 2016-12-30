@@ -5,12 +5,10 @@
 #include "areig.h"
 namespace qbasis {
     
-    
-    
     // need further classification:
-    // 1. provide an option that no intermidiate v stored, only hessenberg returned (probably in a separate routine)
-    // 2. ask lanczos to restart with a new linearly independent vector when v_m+1 = 0
-    // 3. need add DGKS re-orthogonalization
+    // 1. ask lanczos to restart with a new linearly independent vector when v_m+1 = 0
+    // 2. need add DGKS re-orthogonalization (when MemoSteps == true)
+    // 3. add partial and selective re-orthogonalization (when MemoSteps == false)
     template <typename T>
     void lanczos(MKL_INT k, MKL_INT np, const csr_mat<T> &mat, double &rnorm, T resid[],
                  T v[], double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps)
