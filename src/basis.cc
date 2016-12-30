@@ -111,6 +111,13 @@ namespace qbasis {
         return *this;
     }
     
+    std::vector<MKL_INT> basis_elem::statistics() const
+    {
+        std::vector<MKL_INT> results(dim_local,0);
+        for (MKL_INT site = 0; site < total_sites(); site++) results[siteRead(site)]++;
+        return results;
+    }
+    
     basis_elem &basis_elem::translate(const std::vector<MKL_INT> &plan, MKL_INT &sgn)
     {
         if (! q_fermion()) {
@@ -252,6 +259,15 @@ namespace qbasis {
             if (! mbits[orb].q_maximized()) return false;
         }
         return true;
+    }
+    
+    std::vector<MKL_INT> mbasis_elem::statistics() const {
+        std::vector<MKL_INT> results;
+        for (MKL_INT j = 0; j < total_orbitals(); j++) {
+            auto temp = mbits[j].statistics();
+            results.insert(results.end(), temp.begin(), temp.end());
+        }
+        return results;
     }
     
     mbasis_elem &mbasis_elem::increment()

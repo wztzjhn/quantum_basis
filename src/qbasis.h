@@ -61,6 +61,7 @@ namespace qbasis {
     template <typename> class csr_mat;
     //class threads_pool;
     template <typename> class model;
+    class lattice;
     
     bool operator<(const basis_elem&, const basis_elem&);
     bool operator==(const basis_elem&, const basis_elem&);
@@ -202,6 +203,9 @@ namespace qbasis {
         
         basis_elem& siteWrite(const MKL_INT &site, const MKL_INT &val);
         
+        // return a vector of length dim_local, reporting # of each state
+        std::vector<MKL_INT> statistics() const;
+        
         // change basis_elem to the next available state
         basis_elem& increment();
         
@@ -267,6 +271,9 @@ namespace qbasis {
         MKL_INT total_sites() const;
         MKL_INT total_orbitals() const;
         bool q_maximized() const;
+        
+        // return a vector of length dim_local1 + dim_local2 + ..., reporting # of each state
+        std::vector<MKL_INT> statistics() const;
         
         // change mbasis_elem to the next available state
         mbasis_elem& increment();
@@ -853,17 +860,24 @@ namespace qbasis {
         lattice(const std::string &name, const std::string &bc_, std::initializer_list<MKL_INT> lens);
         
         // coordinates <-> site indices
-        void coor2site(const MKL_INT &i, const MKL_INT &j, const MKL_INT &sub, MKL_INT &site);
-        void site2coor(MKL_INT &i, MKL_INT &j, MKL_INT &sub, const MKL_INT &site);
+        // 1D: site = i * num_sub + sub
+        // 2D: site = (i + j * L[0]) * num_sub + sub
+        // 3D: site = (i + j * L[0] + k * L[0] * L[1]) * num_sub + sub
+        void coor2site(const std::vector<MKL_INT> &coor, const MKL_INT &sub, MKL_INT &site) const;
+        void site2coor(std::vector<MKL_INT> &coor, MKL_INT &sub, const MKL_INT &site) const;
         
         // return a vector containing the positions of each site after translation
-        std::vector<MKL_INT> translation_plan(const MKL_INT &d1, const MKL_INT &d2);
+        std::vector<MKL_INT> translation_plan(const std::vector<MKL_INT> &disp) const;
         
-        MKL_INT dimension() { return dim; }
-        MKL_INT total_sites() { return Nsites; }
-        MKL_INT Lx() { return L[0]; }
-        MKL_INT Ly() { assert(L.size() > 1); return L[1]; }
-        MKL_INT Lz() { assert(L.size() > 2); return L[2]; }
+        MKL_INT dimension() const {
+            return dim;
+        }
+        MKL_INT total_sites() const {
+            return Nsites;
+        }
+        MKL_INT Lx() const { return L[0]; }
+        MKL_INT Ly() const { assert(L.size() > 1); return L[1]; }
+        MKL_INT Lz() const { assert(L.size() > 2); return L[2]; }
         
     private:
         MKL_INT dim;

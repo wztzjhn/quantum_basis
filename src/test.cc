@@ -26,18 +26,18 @@ int main(){
 }
 
 void test_lattice() {
-    qbasis::lattice square("square","pbc",{3,4});
-    MKL_INT i = 1, j = 2;
+    qbasis::lattice square("square","pbc",{3,3});
+    std::vector<MKL_INT> coor = {1,2};
     MKL_INT sub = 0;
     for (MKL_INT site = 0; site < square.total_sites(); site++) {
-        square.site2coor(i, j, sub, site);
-        std::cout << "(" << i << "," << j << "," << sub << ") : " << site << std::endl;
+        square.site2coor(coor, sub, site);
+        std::cout << "(" << coor[0] << "," << coor[1] << "," << sub << ") : " << site << std::endl;
         MKL_INT site2;
-        square.coor2site(i, j, sub, site2);
+        square.coor2site(coor, sub, site2);
         assert(site == site2);
     }
     
-    auto plan = square.translation_plan(-2, 2);
+    auto plan = square.translation_plan(std::vector<MKL_INT>{2, 1});
     for (MKL_INT j = 0; j < square.total_sites(); j++) {
         std::cout << j << " -> " << plan[j] << std::endl;
     }
@@ -76,18 +76,30 @@ void test_basis() {
     qbasis::basis_elem ele1(9, "spin-1");
     qbasis::basis_elem ele2(ele1);
     ele1.siteWrite(7, 1);
+    ele1.siteWrite(5, 1);
     ele2.siteWrite(0, 2);
-    ele1.prt();
-    ele2.prt();
+    ele1.prt(); std::cout << std::endl;
+    ele2.prt(); std::cout << std::endl;
     std::cout << "ele1 < ele2  ? " << (ele1 < ele2) << std::endl;
     std::cout << "ele1 == ele2 ? " << (ele1 == ele2) << std::endl;
-    std::cout << std::endl;
+    
+    auto stats = ele1.statistics();
+    for (MKL_INT j = 0; j < stats.size(); j++) {
+        std::cout << "stat " << j << ", count = " << stats[j] << std::endl;
+    }
     
     qbasis::mbasis_elem mele1(9, {"spin-1/2", "spin-1"});
     qbasis::mbasis_elem mele2(9, {"spin-1/2", "spin-1"});
     mele1.prt();
+    std::cout << std::endl;
     std::cout << "mele1 == mele2 ? " << (mele1 == mele2) << std::endl;
+    mele1.siteWrite(3, 1, 2);
+    auto stats2 = mele1.statistics();
+    for (MKL_INT j = 0; j < stats2.size(); j++) {
+        std::cout << "stat " << j << ", count = " << stats2[j] << std::endl;
+    }
     
+    std::cout << std::endl;
 }
 
 void test_lanczos_memoAll() {

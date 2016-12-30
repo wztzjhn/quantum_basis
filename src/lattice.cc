@@ -26,37 +26,43 @@ namespace qbasis {
         }
     }
     
-    void lattice::coor2site(const MKL_INT &i, const MKL_INT &j, const MKL_INT &sub, MKL_INT &site) {
-        assert(dim == 2);
+    void lattice::coor2site(const std::vector<MKL_INT> &coor, const MKL_INT &sub, MKL_INT &site) const {
+        assert(coor.size() == dim);
         assert(sub >= 0 && sub < num_sub);
-        MKL_INT i2 = i;
-        MKL_INT j2 = j;
-        while(i2 < 0) i2 += L[0];
-        while(j2 < 0) j2 += L[1];
-        while(i2 >= L[0]) i2 -= L[0];
-        while(j2 >= L[1]) j2 -= L[1];
-        site = ( i2 + j2 * L[0] ) * num_sub + sub;
+        auto coor2 = coor;
+        for (MKL_INT j = 0; j < dim; j++) {
+            while(coor2[j] < 0) coor2[j] += L[j];
+            while(coor2[j] >= L[j]) coor2[j] -= L[j];
+        }
+        site = 0;
+        for (MKL_INT j = dim - 1; j > 0; j--) site = (site + coor2[j]) * L[j-1];
+        site = (site + coor2[0]) * num_sub + sub;
     }
     
-    void lattice::site2coor(MKL_INT &i, MKL_INT &j, MKL_INT &sub, const MKL_INT &site) {
-        assert(dim == 2);
+    void lattice::site2coor(std::vector<MKL_INT> &coor, MKL_INT &sub, const MKL_INT &site) const {
         assert(site >= 0 && site < Nsites);
+        coor.resize(dim);
         sub = site % num_sub;
-        auto temp = (site - sub) / num_sub;  // temp == i + j * L[0]
-        i = temp % L[0];
-        j = (temp - i) / L[0];
+        auto temp = (site - sub) / num_sub;  // temp == i + j * L[0] + k * L[0] * L[1] + ...
+        for (MKL_INT n = 0; n < dim - 1; n++) {
+            coor[n] = temp % L[n];
+            temp = (temp - coor[n]) / L[n];
+        }
+        coor[dim-1] = temp;
     }
     
-    
-    // note: later for 1D, we can directly translate the bits
-    std::vector<MKL_INT> lattice::translation_plan(const MKL_INT &d1, const MKL_INT &d2) {
+    std::vector<MKL_INT> lattice::translation_plan(const std::vector<MKL_INT> &disp) const {
+        assert(disp.size() == dim);
         std::vector<MKL_INT> result(total_sites());
-        MKL_INT m, n, sub;
+        std::vector<MKL_INT> coor(dim), temp(dim);
+        MKL_INT sub;
         for (MKL_INT site = 0; site < total_sites(); site++) {
-            site2coor(m, n, sub, site);
-            coor2site(m+d1, n+d2, sub, result[site]);
+            site2coor(coor, sub, site);
+            for (MKL_INT j = 0; j < dim; j++) temp[j] = coor[j] + disp[j];
+            coor2site(temp,sub,result[site]);
         }
         return result;
     }
+    
     
 }
