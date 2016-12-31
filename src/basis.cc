@@ -253,6 +253,35 @@ namespace qbasis {
         }
     }
     
+    double mbasis_elem::diagonal_operator(const mopr<double>& lhs) const
+    {
+        if (lhs.q_zero()) {
+            return 0.0;
+        } else {
+            double res = 0.0;
+            for (MKL_INT j = 0; j < lhs.size(); j++) {
+                auto op = lhs[j];
+                res += diagonal_operator(op);
+            }
+            return res;
+        }
+    }
+    
+    std::complex<double> mbasis_elem::diagonal_operator(const mopr<std::complex<double> > &lhs) const
+    {
+        if (lhs.q_zero()) {
+            return 0.0;
+        } else {
+            std::complex<double> res = 0.0;
+            for (MKL_INT j = 0; j < lhs.size(); j++) {
+                auto op = lhs[j];
+                res += diagonal_operator(op);
+            }
+            return res;
+        }
+    }
+    
+    
     bool mbasis_elem::q_maximized() const
     {
         for (MKL_INT orb = 0; orb < total_orbitals(); orb++) {

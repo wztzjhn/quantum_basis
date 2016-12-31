@@ -41,6 +41,29 @@ namespace qbasis {
     }
     
     template <typename T>
+    MKL_INT binary_search(const std::vector<T> &array, const T &val,
+                          const MKL_INT &bgn, const MKL_INT &end)
+    {
+        if(array.size() == 0 && bgn == end) return -1;            // not found
+        assert(bgn < end);
+        assert(bgn >= 0 && bgn < array.size());
+        assert(end > 0 && end <= array.size());
+        MKL_INT low  = bgn;
+        MKL_INT high = end - 1;
+        MKL_INT mid;
+        while(low <= high) {
+            mid = (low + high) / 2;
+            if (val == array[mid]) return mid;
+            else if (val < array[mid]) high = mid - 1;
+            else low = mid + 1;
+        }
+        return -1;
+    }
+    template MKL_INT binary_search(const std::vector<qbasis::mbasis_elem> &array, const qbasis::mbasis_elem &val,
+                                   const MKL_INT &bgn, const MKL_INT &end);
+    
+    
+    template <typename T>
     T continued_fraction(T a[], T b[], const MKL_INT &len)
     {
         T res = static_cast<T>(0.0);

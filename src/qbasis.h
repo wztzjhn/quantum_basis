@@ -305,6 +305,9 @@ namespace qbasis {
         double diagonal_operator(const opr_prod<double>& lhs) const;
         std::complex<double> diagonal_operator(const opr_prod<std::complex<double>>& lhs) const;
         
+        double diagonal_operator(const mopr<double>& lhs) const;
+        std::complex<double> diagonal_operator(const mopr<std::complex<double>>& lhs) const;
+        
         void prt() const;
         
     private:
@@ -910,15 +913,6 @@ namespace qbasis {
 //  ---------------part 6: Routines to construct Hamiltonian -------------------
 //  ----------------------------------------------------------------------------
     
-    // note: end means the position which has already passed the last element
-    template <typename T>
-    MKL_INT binary_search(const std::vector<T> &array, const T &val,
-                          const MKL_INT &bgn, const MKL_INT &end);
-    
-//    template <typename T>
-//    MKL_INT generate_Ham_all_AtRow(model<T> &model0,
-//                                   threads_pool &jobs);   // for multi-threading
-    
     template <typename T> class model {
 //        friend MKL_INT generate_Ham_all_AtRow <> (model<T> &,
 //                                                  threads_pool &);
@@ -929,7 +923,7 @@ namespace qbasis {
         
         void add_diagonal_Ham(const opr<T> &rhs)      { assert(rhs.q_diagonal()); Ham_diag += rhs; }
         void add_diagonal_Ham(const opr_prod<T> &rhs) { assert(rhs.q_diagonal()); Ham_diag += rhs; }
-        void add_diagonal_Ham(const mopr<T> &rhs)     { Ham_diag += rhs; }
+        void add_diagonal_Ham(const mopr<T> &rhs)     { assert(rhs.q_diagonal()); Ham_diag += rhs; }
         
         void add_offdiagonal_Ham(const opr<T> &rhs)      { Ham_off_diag += rhs; }
         void add_offdiagonal_Ham(const opr_prod<T> &rhs) { Ham_off_diag += rhs; }
@@ -1005,6 +999,10 @@ namespace qbasis {
     // the other way around
     std::vector<MKL_INT> dynamic_base(const MKL_INT &total, const std::vector<MKL_INT> &base);
     
+    // note: end means the position which has already passed the last element
+    template <typename T>
+    MKL_INT binary_search(const std::vector<T> &array, const T &val,
+                          const MKL_INT &bgn, const MKL_INT &end);
     
     //             b1
     // a0 +  ---------------
