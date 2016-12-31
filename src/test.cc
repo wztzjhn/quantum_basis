@@ -95,12 +95,22 @@ void test_basis() {
     std::cout << std::endl;
     std::cout << "mele1 == mele2 ? " << (mele1 == mele2) << std::endl;
     mele1.siteWrite(3, 1, 2);
+    mele1.siteWrite(2, 1, 2);
+    mele1.siteWrite(1, 0, 1);
+    mele2 = mele1;
     auto stats2 = mele1.statistics();
     for (MKL_INT j = 0; j < stats2.size(); j++) {
         std::cout << "stat " << j << ", count = " << stats2[j] << std::endl;
     }
     
+    qbasis::lattice square("square","pbc",{3,3});
+    MKL_INT sgn;
+    mele1.translate(square, std::vector<MKL_INT>{1,2}, sgn);
+    std::cout << "translational equiv?: " << qbasis::trans_equiv(mele1, mele2, square) << std::endl;
+    
     std::cout << std::endl;
+    
+    
 }
 
 void test_lanczos_memoAll() {

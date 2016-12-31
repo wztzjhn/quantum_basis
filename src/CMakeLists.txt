@@ -6,6 +6,7 @@ set(QBASIS_SRC
   sparse.cc
   operators.cc
   basis.cc
+  miscellaneous.cc
 )
 
 set(QBASIS_INCLUDE qbasis.h)

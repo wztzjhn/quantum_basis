@@ -29,14 +29,15 @@ namespace qbasis {
     void lattice::coor2site(const std::vector<MKL_INT> &coor, const MKL_INT &sub, MKL_INT &site) const {
         assert(coor.size() == dim);
         assert(sub >= 0 && sub < num_sub);
-        auto coor2 = coor;
-        for (MKL_INT j = 0; j < dim; j++) {
-            while(coor2[j] < 0) coor2[j] += L[j];
-            while(coor2[j] >= L[j]) coor2[j] -= L[j];
+        std::vector<MKL_INT> coor2 = {sub};
+        std::vector<MKL_INT> base = {num_sub};
+        coor2.insert(coor2.end(), coor.begin(), coor.end());
+        base.insert(base.end(), L.begin(), L.end());
+        for (MKL_INT j = 0; j <= dim; j++) {
+            while(coor2[j] < 0) coor2[j] += base[j];
+            while(coor2[j] >= base[j]) coor2[j] -= base[j];
         }
-        site = 0;
-        for (MKL_INT j = dim - 1; j > 0; j--) site = (site + coor2[j]) * L[j-1];
-        site = (site + coor2[0]) * num_sub + sub;
+        site = dynamic_base(coor2, base);
     }
     
     void lattice::site2coor(std::vector<MKL_INT> &coor, MKL_INT &sub, const MKL_INT &site) const {

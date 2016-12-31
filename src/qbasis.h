@@ -71,6 +71,7 @@ namespace qbasis {
     bool operator<(const mbasis_elem&, const mbasis_elem&);
     bool operator==(const mbasis_elem&, const mbasis_elem&);
     bool operator!=(const mbasis_elem&, const mbasis_elem&);
+    bool trans_equiv(const mbasis_elem&, const mbasis_elem&, const lattice&);   // computational heavy, use with caution
     
     template <typename T> void swap(wavefunction<T>&, wavefunction<T>&);
     template <typename T> wavefunction<T> operator*(const wavefunction<T>&, const T&);
@@ -138,7 +139,7 @@ namespace qbasis {
     template <typename T> void swap(csr_mat<T>&, csr_mat<T>&);
     
     
-    MKL_INT int_pow(const MKL_INT &base, const MKL_INT &index);
+    
     
     
     
@@ -242,6 +243,7 @@ namespace qbasis {
         friend void swap(mbasis_elem&, mbasis_elem&);
         friend bool operator<(const mbasis_elem&, const mbasis_elem&);
         friend bool operator==(const mbasis_elem&, const mbasis_elem&);
+        friend bool trans_equiv(const mbasis_elem&, const mbasis_elem&, const lattice&);
         //template <typename T> friend class opr;
         //template <typename T> friend T operator* (const opr<T>&, const mbasis_elem&);
         //template <typename T> friend T operator* (const opr_prod<T>&, const mbasis_elem&);
@@ -976,6 +978,24 @@ namespace qbasis {
     
 //  ---------------------------part 7: Measurements ----------------------------
 //  ----------------------------------------------------------------------------
+    
+    
+    
+
+    
+//  --------------------------- Miscellaneous stuff ----------------------------
+//  ----------------------------------------------------------------------------
+    
+    // calculate base^index, in the case both are integers
+    MKL_INT int_pow(const MKL_INT &base, const MKL_INT &index);
+    
+    // given two arrays: num & base, get the result of:
+    // num[0] + num[1] * base[0] + num[2] * base[0] * base[1] + num[3] * base[0] * base[1] * base[2] + ...
+    MKL_INT dynamic_base(const std::vector<MKL_INT> &num, const std::vector<MKL_INT> &base);
+    // the other way around
+    std::vector<MKL_INT> dynamic_base(const MKL_INT &total, const std::vector<MKL_INT> &base);
+    
+    
     //             b1
     // a0 +  ---------------
     //                b2

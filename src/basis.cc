@@ -70,14 +70,6 @@ namespace qbasis {
         return *this;
     }
     
-    MKL_INT int_pow(const MKL_INT &base, const MKL_INT &index)
-    {
-        assert(index >= 0);
-        MKL_INT res = 1;
-        for (MKL_INT j = 0; j < index; j++) res *= base;
-        return res;
-    }
-    
     bool basis_elem::q_maximized() const
     {
         if (int_pow(2, bits_per_site) == dim_local) {
@@ -271,13 +263,12 @@ namespace qbasis {
     
     std::vector<MKL_INT> mbasis_elem::statistics() const {
         std::vector<MKL_INT> results(local_dimension(),0);
+        std::vector<MKL_INT> state(total_orbitals());
+        std::vector<MKL_INT> base(total_orbitals());
+        for (MKL_INT orb = 0; orb < total_orbitals(); orb++) base[orb] = mbits[orb].local_dimension();
         for (MKL_INT site = 0; site < total_sites(); site++) {
-            MKL_INT idx = 0;
-            for (MKL_INT orb = total_orbitals() - 1; orb > 0; orb--)
-                idx = (idx + mbits[orb].siteRead(site)) * mbits[orb-1].local_dimension();
-            idx += mbits[0].siteRead(site);
-            //assert(idx >= 0 && idx < local_dimension());
-            results[idx]++;
+            for (MKL_INT orb = 0; orb < total_orbitals(); orb++) state[orb] = mbits[orb].siteRead(site);
+            results[dynamic_base(state, base)]++;
         }
         return results;
     }
@@ -374,7 +365,90 @@ namespace qbasis {
         return (! (lhs == rhs));
     }
     
-    
+    bool trans_equiv(const mbasis_elem &lhs, const mbasis_elem &rhs, const lattice &latt)
+    {
+        auto statis  = lhs.statistics();
+        auto statis2 = rhs.statistics();
+        if (statis != statis2) return false;
+        std::vector<std::pair<MKL_INT,MKL_INT>> statis_temp(statis.size());
+        for (decltype(statis_temp.size()) j = 0; j < statis_temp.size(); j++) {
+            statis_temp[j].first = j;
+            statis_temp[j].second = statis[j];
+            //std::cout << "stat [" << j << "] = " << statis[j] << std::endl;
+        }
+        std::sort(statis_temp.begin(), statis_temp.end(),
+                  [](const std::pair<MKL_INT,MKL_INT> &a, const std::pair<MKL_INT,MKL_INT> &b){ return a.second < b.second; });
+//        for (decltype(stat.size()) j = 0; j < stat.size(); j++) {
+//            std::cout << "stat[" << stat[j].first << "] = " << stat[j].second << std::endl;
+//        }
+        MKL_INT min_idx = 0;
+        while (statis_temp[min_idx].second < 1) min_idx++;
+        assert(min_idx < statis_temp.size());
+        if (min_idx == statis_temp.size() - 1) return true;     // if every site in the same state
+        min_idx = statis_temp[min_idx].first;
+        MKL_INT num_sites_smart = statis[min_idx];
+//        std::cout << "min (but 0): " << std::endl;
+//        std::cout << "statis[" << min_idx << "]=" << num_sites_smart << std::endl;
+        
+        std::vector<MKL_INT> base(lhs.total_orbitals());
+        for (MKL_INT orb = 0; orb < base.size(); orb++) base[orb] = lhs.mbits[orb].local_dimension();
+        auto state_smart = dynamic_base(min_idx, base);
+        
+        MKL_INT site_lhs_smart;
+        std::vector<MKL_INT> sites_rhs_smart(statis[min_idx]);
+        
+        // nomenclature:
+        // state_smart: an array containing the states in each orbital, and we want to locate which sites have this state
+        // num_sites_smart: a # representing how many sites have this state
+        // site_lhs_smart:  (any) one site from lhs, which has state_smart
+        // sites_rhs_smart: all sites from rhs, which have state_smart
+        
+        for (MKL_INT site = 0; site < lhs.total_sites(); site++) {                // search for site_lhs_smart
+            MKL_INT flag = 1;
+            for (MKL_INT orb = 0; orb < lhs.total_orbitals(); orb++) {
+                if (lhs.mbits[orb].siteRead(site) != state_smart[orb]) {
+                    flag = 0;
+                    break;
+                }
+            }
+            if (flag) {                       // a matching site found
+                site_lhs_smart = site;
+                break;
+            }
+        }
+        MKL_INT cnt = 0;
+        for (MKL_INT site = 0; site < rhs.total_sites(); site++) {                // search for sites_rhs_smart
+            MKL_INT flag = 1;
+            for (MKL_INT orb = 0; orb < rhs.total_orbitals(); orb++) {
+                if (rhs.mbits[orb].siteRead(site) != state_smart[orb]) {
+                    flag = 0;
+                    break;
+                }
+            }
+            if (flag) {                       // a matching site found
+                sites_rhs_smart[cnt] = site;
+                cnt++;
+            }
+            if (cnt >= num_sites_smart) break;
+        }
+        
+        // now we want to translate rhs to compare to lhs
+        std::vector<MKL_INT> coor_lhs_smart(latt.dimension()), coor_rhs_smart(latt.dimension());
+        MKL_INT sub_lhs_smart, sub_rhs_smart;
+        latt.site2coor(coor_lhs_smart, sub_lhs_smart, site_lhs_smart);
+        for (MKL_INT cnt = 0; cnt < num_sites_smart; cnt++) {
+            latt.site2coor(coor_rhs_smart, sub_rhs_smart, sites_rhs_smart[cnt]);
+            if (sub_lhs_smart != sub_rhs_smart) continue;         // no way to shift to a different sublattice
+            std::vector<MKL_INT> disp(latt.dimension());
+            for (MKL_INT j = 0; j < latt.dimension(); j++)
+                disp[j] = coor_lhs_smart[j] - coor_rhs_smart[j];
+            auto rhs_new = rhs;
+            MKL_INT sgn;
+            rhs_new.translate(latt, disp, sgn);
+            if (lhs == rhs_new) return true;
+        }
+        return false;
+    }
     
     
     // ----------------- implementation of wavefunction ------------------
