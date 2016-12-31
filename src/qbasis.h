@@ -74,8 +74,13 @@ namespace qbasis {
     bool trans_equiv(const mbasis_elem&, const mbasis_elem&, const lattice&);   // computational heavy, use with caution
     
     template <typename T> void swap(wavefunction<T>&, wavefunction<T>&);
+    template <typename T> wavefunction<T> operator+(const wavefunction<T>&, const wavefunction<T>&);
+    
     template <typename T> wavefunction<T> operator*(const wavefunction<T>&, const T&);
     template <typename T> wavefunction<T> operator*(const T&, const wavefunction<T>&);
+    template <typename T> wavefunction<T> operator*(const mbasis_elem&, const T&);
+    template <typename T> wavefunction<T> operator*(const T&, const mbasis_elem&);
+    
     
     
     // the following originally from operators.h
@@ -361,6 +366,7 @@ namespace qbasis {
         
         // add one element
         wavefunction& operator+=(std::pair<mbasis_elem, T> ele);
+        wavefunction& operator+=(const mbasis_elem &ele);
         
         // add a wave function
         wavefunction& operator+=(wavefunction<T> rhs);
@@ -370,8 +376,12 @@ namespace qbasis {
         
         // check if sorted
         bool sorted() const;
+        // check if sorted and there are no dulplicated terms
+        bool sorted_fully() const;
         
         MKL_INT size() const {return static_cast<MKL_INT>(elements.size()); }
+        
+        void prt() const;
         
     private:
         // store an array of basis elements, and their corresponding coefficients

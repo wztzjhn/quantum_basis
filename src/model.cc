@@ -116,11 +116,11 @@ namespace qbasis {
         assert(nconv > 1);
         E0 = eigenvals[0];
         gap = eigenvals[1] - eigenvals[0];
-        std::cout << "E0   = " << eigenvals[0] << std::endl;
-        std::cout << "Gap  = " << eigenvals[1] - eigenvals[0] << std::endl;
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+        std::cout << "E0   = " << E0 << std::endl;
+        std::cout << "Gap  = " << gap << std::endl;
     }
     
     template <typename T>
@@ -136,10 +136,10 @@ namespace qbasis {
         qbasis::iram(HamMat_csr, v0.data(), nev, ncv, nconv, "lr", eigenvals.data(), eigenvecs.data());
         assert(nconv > 0);
         Emax = eigenvals[0];
-        std::cout << "Emax = " << eigenvals[0] << std::endl;
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+        std::cout << "Emax = " << Emax << std::endl;
     }
     
     template <typename T>

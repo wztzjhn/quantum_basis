@@ -474,6 +474,13 @@ namespace qbasis {
     }
     
     template <typename T>
+    wavefunction<T> &wavefunction<T>::operator+=(const mbasis_elem &ele)
+    {
+        (*this) += std::pair<mbasis_elem, T>(ele, static_cast<T>(1.0));
+        return *this;
+    }
+    
+    template <typename T>
     wavefunction<T> &wavefunction<T>::operator+=(wavefunction<T> rhs)
     {
         if (rhs.elements.empty()) return *this;  // adding zero
@@ -500,7 +507,7 @@ namespace qbasis {
     template <typename T>
     bool wavefunction<T>::sorted() const
     {
-        if (elements.size() == 0) return true;
+        if (elements.size() == 0 || elements.size() == 1) return true;
         bool check = true;
         auto it = elements.begin();
         auto it_prev = it++;
@@ -515,10 +522,61 @@ namespace qbasis {
     }
     
     template <typename T>
+    bool wavefunction<T>::sorted_fully() const
+    {
+        if (elements.size() == 0 || elements.size() == 1) return true;
+        bool check = true;
+        auto it = elements.begin();
+        auto it_prev = it++;
+        while (it != elements.end()) {
+            if (! (it_prev->first < it->first)) {
+                check = false;
+                break;
+            }
+            it_prev = it++;
+        }
+        return check;
+    }
+    
+    template <typename T>
+    void wavefunction<T>::prt() const
+    {
+        for (auto &ele : elements) {
+            std::cout << "coeff: " << ele.second << std::endl;
+            ele.first.prt();
+            std::cout << std::endl;
+        }
+    }
+    
+    template <typename T>
     void swap(wavefunction<T> &lhs, wavefunction<T> &rhs)
     {
         using std::swap;
         swap(lhs.elements, rhs.elements);
+    }
+    
+    template <typename T>
+    wavefunction<T> operator+(const wavefunction<T> &lhs, const wavefunction<T> &rhs)
+    {
+        wavefunction<T> sum = lhs;
+        sum += rhs;
+        return sum;
+    }
+    
+    template <typename T>
+    wavefunction<T> operator*(const mbasis_elem &lhs, const T &rhs)
+    {
+        wavefunction<T> prod;
+        prod += std::pair<mbasis_elem, T>(lhs, rhs);
+        return prod;
+    }
+    
+    template <typename T>
+    wavefunction<T> operator*(const T &lhs, const mbasis_elem &rhs)
+    {
+        wavefunction<T> prod;
+        prod += std::pair<mbasis_elem, T>(rhs, lhs);
+        return prod;
     }
     
     template <typename T>
@@ -646,6 +704,15 @@ namespace qbasis {
     
     template void swap(wavefunction<double>&, wavefunction<double>&);
     template void swap(wavefunction<std::complex<double>>&, wavefunction<std::complex<double>>&);
+    
+    template wavefunction<double> operator+(const wavefunction<double>&, const wavefunction<double>&);
+    template wavefunction<std::complex<double>> operator+(const wavefunction<std::complex<double>>&, const wavefunction<std::complex<double>>&);
+    
+    template wavefunction<double> operator*(const mbasis_elem&, const double&);
+    template wavefunction<std::complex<double>> operator*(const mbasis_elem&, const std::complex<double>&);
+    
+    template wavefunction<double> operator*(const double&, const mbasis_elem&);
+    template wavefunction<std::complex<double>> operator*(const std::complex<double>&, const mbasis_elem&);
     
     template wavefunction<double> operator*(const wavefunction<double>&, const double&);
     template wavefunction<std::complex<double>> operator*(const wavefunction<std::complex<double>>&, const std::complex<double>&);

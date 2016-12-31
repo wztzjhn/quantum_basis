@@ -12,6 +12,7 @@ void test_iram();
 void test_cfraction();
 void test_dotc();
 void test_lattice();
+void test_dimer();
 
 int main(){
     test_lanczos_memoAll();
@@ -23,7 +24,61 @@ int main(){
     test_dotc();
     test_lattice();
     
-    std::cout << boost::math::binomial_coefficient<double>(10, 2) << std::endl;
+    test_dimer();
+    
+    //std::cout << boost::math::binomial_coefficient<double>(10, 2) << std::endl;
+    
+    //std::cout << qbasis::dynamic_base(std::vector<MKL_INT>{1,2,3}, std::vector<MKL_INT>{2,3,5}) << std::endl;
+}
+
+void test_dimer() {
+    qbasis::mbasis_elem basis_uu(2, {"spin-1/2"});
+    qbasis::mbasis_elem basis_dd(2, {"spin-1/2"});
+    basis_dd.siteWrite(0, 0, 1);
+    basis_dd.siteWrite(1, 0, 1);
+    qbasis::mbasis_elem basis_ud(2, {"spin-1/2"});
+    basis_ud.siteWrite(1, 0, 1);
+    qbasis::mbasis_elem basis_du(2, {"spin-1/2"});
+    basis_du.siteWrite(0, 0, 1);
+    // define the basic operators: S+, S-, Sz
+    std::vector<std::vector<std::complex<double>>> Sx(2,std::vector<std::complex<double>>(2));
+    std::vector<std::vector<std::complex<double>>> Sy(2,std::vector<std::complex<double>>(2));
+    std::vector<std::complex<double>> Sz(2);
+    Sx[0][0] = 0.0;
+    Sx[0][1] = 0.5;
+    Sx[1][0] = 0.5;
+    Sx[1][1] = 0.0;
+    Sy[0][0] = 0.0;
+    Sy[0][1] = std::complex<double>(0.0, -0.5);
+    Sy[1][0] = std::complex<double>(0.0,  0.5);
+    Sy[1][1] = 0.0;
+    Sz[0] = 0.5;
+    Sz[1] = -0.5;
+    qbasis::opr<std::complex<double>> s0x(0,0,false,Sx);
+    qbasis::opr<std::complex<double>> s0y(0,0,false,Sy);
+    qbasis::opr<std::complex<double>> s0z(0,0,false,Sz);
+    qbasis::opr<std::complex<double>> s1x(1,0,false,Sx);
+    qbasis::opr<std::complex<double>> s1y(1,0,false,Sy);
+    qbasis::opr<std::complex<double>> s1z(1,0,false,Sz);
+    auto Ham = s0x * s1x + s0y * s1y + s0z * s1z;
+    
+    qbasis::wavefunction<std::complex<double>> singlet(  std::complex<double>( 1.0/sqrt(2.0)) * basis_ud
+                                                       + std::complex<double>(-1.0/sqrt(2.0)) * basis_du);
+    qbasis::wavefunction<std::complex<double>> triplet_z(  std::complex<double>(1.0/sqrt(2.0)) * basis_ud
+                                                         + std::complex<double>(1.0/sqrt(2.0)) * basis_du);
+    qbasis::wavefunction<std::complex<double>> triplet_u(basis_uu);
+    qbasis::wavefunction<std::complex<double>> triplet_d(basis_dd);
+    qbasis::wavefunction<std::complex<double>> triplet_x(  std::complex<double>(-1.0/sqrt(2.0)) * basis_uu
+                                                         + std::complex<double>( 1.0/sqrt(2.0)) * basis_dd);
+    qbasis::wavefunction<std::complex<double>> triplet_y(  std::complex<double>(0.0, 1.0/sqrt(2.0)) * basis_uu
+                                                         + std::complex<double>(0.0, 1.0/sqrt(2.0)) * basis_dd);
+    auto res0 = s0x * singlet;
+    auto res1 = s0x * triplet_x;
+    auto res2 = s0x * triplet_y;
+    auto res3 = s0x * triplet_z;
+    res0.prt();
+    
+    
 }
 
 void test_lattice() {
@@ -42,6 +97,7 @@ void test_lattice() {
     for (MKL_INT j = 0; j < square.total_sites(); j++) {
         std::cout << j << " -> " << plan[j] << std::endl;
     }
+    std::cout << std::endl;
 }
 
 void test_dotc() {
