@@ -483,7 +483,7 @@ namespace qbasis {
             coeff *= (prefactor * prefactor_new);
             if (std::abs(coeff) < opr_precision) { // zero operator
                 mat_prod.clear();
-            } else if (j->q_identity()) {          // identity operator
+            } else if (mat_prod.size() > 1 && j->q_identity()) {          // identity operator
                 mat_prod.erase(--(j.base()));
             }
         }
