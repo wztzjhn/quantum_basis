@@ -201,8 +201,10 @@ namespace qbasis {
         // a few basic properties
         MKL_INT local_dimension() const { return static_cast<MKL_INT>(dim_local); }
         MKL_INT total_sites() const;
-        bool q_fermion() const {return (! Nfermion_map.empty()); }
+        bool q_fermion() const { return (! Nfermion_map.empty()); }
+        bool q_zero() const { return bits.none(); }
         bool q_maximized() const;
+        bool q_same_state_all_site() const;
         
         // read out the status of a particular site
         // storage order: site0, site1, site2, ..., site(N-1)
@@ -280,6 +282,7 @@ namespace qbasis {
         MKL_INT total_sites() const;
         MKL_INT total_orbitals() const;
         MKL_INT local_dimension() const;
+        bool q_zero() const;
         bool q_maximized() const;
         
         // a direct product of the statistics of all orbitals, size: dim_orb1 * dim_orb2 * ...
@@ -291,6 +294,9 @@ namespace qbasis {
         // translate the basis according to the given plan, or directly according to the displacement on a lattice
         mbasis_elem& translate(const std::vector<MKL_INT> &plan, MKL_INT &sgn);
         mbasis_elem& translate(const lattice &latt, const std::vector<MKL_INT> &disp, MKL_INT &sgn);
+        
+        // change to a basis element which is the minimal among its translational equivalents
+        mbasis_elem& translate_to_minimal_state(const lattice &latt, std::vector<MKL_INT> &disp_vec);
         
         // reset all bits to 0 in all orbitals
         mbasis_elem& reset();
@@ -891,9 +897,13 @@ namespace qbasis {
         MKL_INT dimension() const {
             return dim;
         }
+        
         MKL_INT total_sites() const {
             return Nsites;
         }
+        
+        std::vector<MKL_INT> Linear_size() const { return L; }
+        
         MKL_INT Lx() const { return L[0]; }
         MKL_INT Ly() const { assert(L.size() > 1); return L[1]; }
         MKL_INT Lz() const { assert(L.size() > 2); return L[2]; }

@@ -82,6 +82,15 @@ namespace qbasis {
         }
     }
     
+    bool basis_elem::q_same_state_all_site() const
+    {
+        if (total_sites() <= 1) return true;
+        for (MKL_INT j = 1; j < total_sites(); j++) {
+            if (siteRead(j-1) != siteRead(j)) return false;
+        }
+        return true;
+    }
+    
     basis_elem &basis_elem::increment()
     {
         assert(! q_maximized());
@@ -281,6 +290,13 @@ namespace qbasis {
         }
     }
     
+    bool mbasis_elem::q_zero() const
+    {
+        for (MKL_INT orb = 0; orb < total_orbitals(); orb++) {
+            if (! mbits[orb].q_zero()) return false;
+        }
+        return true;
+    }
     
     bool mbasis_elem::q_maximized() const
     {
@@ -329,6 +345,49 @@ namespace qbasis {
     mbasis_elem &mbasis_elem::translate(const qbasis::lattice &latt, const std::vector<MKL_INT> &disp, MKL_INT &sgn) {
         auto plan = latt.translation_plan(disp);
         translate(plan, sgn);
+        return *this;
+    }
+    
+    mbasis_elem &mbasis_elem::translate_to_minimal_state(const qbasis::lattice &latt, std::vector<MKL_INT> &disp_vec) {
+        assert(latt.total_sites() == total_sites());
+        MKL_INT orb_smart = 0;
+        while (orb_smart < total_orbitals() && mbits[orb_smart].q_same_state_all_site()) orb_smart++;
+        if (orb_smart == total_orbitals()) return *this; // if every site in the same state
+        
+        auto statis  = mbits[orb_smart].statistics();
+        MKL_INT state_smart = 0;
+        while (statis[state_smart] == 0) state_smart++;
+        assert(state_smart < mbits[orb_smart].local_dimension() && statis[state_smart] > 0);
+        
+        // following nomenclature of trans_equiv()
+        MKL_INT num_sites_smart = statis[state_smart];
+        std::vector<MKL_INT> sites_smart;
+        for (MKL_INT site = 0; site < mbits[orb_smart].total_sites(); site++) {                // search for sites_smart
+            if (mbits[orb_smart].siteRead(site) == state_smart) sites_smart.push_back(site);
+            if (sites_smart.size() >= num_sites_smart) break;
+        }
+        assert(sites_smart.size() == num_sites_smart);
+        
+        // now we want to translate site_smart to the highest site, to minimize the state in < comparison
+        std::vector<MKL_INT> coor_smart(latt.dimension());
+        MKL_INT sub_smart;
+        auto state_min = *this;
+        auto linear_size = latt.Linear_size();
+        std::vector<MKL_INT> disp(latt.dimension(),0);
+        disp_vec = disp;
+        for (MKL_INT cnt = 0; cnt < num_sites_smart; cnt++) {
+            latt.site2coor(coor_smart, sub_smart, sites_smart[cnt]);
+            for (MKL_INT j = 0; j < latt.dimension(); j++)
+                disp[j] = linear_size[j] - 1 - coor_smart[j];
+            auto state_new = *this;
+            MKL_INT sgn;
+            state_new.translate(latt, disp, sgn);
+            if(state_new < state_min) {
+                state_min = state_new;
+                disp_vec = disp;
+            }
+        }
+        swap(state_min, *this);
         return *this;
     }
     
@@ -396,6 +455,7 @@ namespace qbasis {
     
     bool trans_equiv(const mbasis_elem &lhs, const mbasis_elem &rhs, const lattice &latt)
     {
+        assert(latt.total_sites() == lhs.total_sites());
         auto statis  = lhs.statistics();
         auto statis2 = rhs.statistics();
         if (statis != statis2) return false;
