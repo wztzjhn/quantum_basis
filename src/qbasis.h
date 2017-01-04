@@ -35,9 +35,9 @@
 #ifdef _OPENMP
 #include <omp.h>
 #else
-#define omp_get_thread_num() 0
-#define omp_get_num_threads() 0
-#define omp_get_num_procs() 0
+#define omp_get_thread_num() -1
+#define omp_get_num_threads() -1
+#define omp_get_num_procs() -1
 #endif
 
 
@@ -973,8 +973,9 @@ namespace qbasis {
         
         csr_mat<T> HamMat_csr;
         
-        
+        std::vector<double> eigenvals;
         std::vector<T> eigenvecs;
+        MKL_INT nconv;
         
         void prt_Ham_diag() { Ham_diag.prt(); }
         void prt_Ham_offdiag() { Ham_off_diag.prt(); }
@@ -985,11 +986,11 @@ namespace qbasis {
     
     private:
         
-        std::vector<double> eigenvals;
+        
         double Emax;
         double E0;
         double gap;
-        MKL_INT nconv;
+        
         // lil_mat<T> HamMat_lil;   // only for internal temporaty use
         
         

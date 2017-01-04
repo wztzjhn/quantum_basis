@@ -2,18 +2,27 @@ CXX       = g++-5
 CPPFLAGS  = -O2 -std=c++11 -Wall -Wextra -Wpadded -m64 -fopenmp -isystem /usr/local/Cellar/boost/1.62.0/include -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
 LIBS      = -L/usr/local/lib -larpack -L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -fopenmp
 
-OBJS      = model.o measure.o lanczos.o sparse.o operators.o basis.o chain_xxz.o
+OBJS      = lattice.o miscellaneous.o model.o measure.o lanczos.o sparse.o operators.o basis.o
 
 OPTS      = 
 
-EXEC      = ../bin/xxz.x
+EXEC      =
 
 
-all: $(OBJS)
-	$(CXX) $(OBJS) $(OPTS) $(LIBS) -o $(EXEC)
+test: $(OBJS) test.o
+	$(CXX) $(OBJS) test.o $(OPTS) $(LIBS) -o ../bin/test.x
+
+xxz: $(OBJS) chain_xxz.o
+	$(CXX) $(OBJS) chain_xxz.o $(OPTS) $(LIBS) -o ../bin/xxz.x
+
+libqbasis.a: $(OBJS)
+	ar rvs libqbasis.a $(OBJS)
+
+install: libqbasis.a
+	$(RM) ${HOME}/installs/lib/libqbasis.*; cp libqbasis.a ${HOME}/installs/lib; cp qbasis.h ${HOME}/installs/include
 
 %.o: %.cc
 	$(CXX) $(CPPFLAGS)  -c -o $@ $<
 
 clean:
-	$(RM) *.o
+	$(RM) *.o *.a
