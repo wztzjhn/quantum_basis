@@ -151,6 +151,16 @@ namespace qbasis {
         std::cout << bits;
     }
     
+    void basis_elem::prt_nonzero() const
+    {
+        for (MKL_INT j = 0; j < total_sites(); j++) {
+            auto st = siteRead(j);
+            if (st != 0) {
+                std::cout << "site " << j << ", state " << st << std::endl;
+            }
+        }
+    }
+    
 //    basis_elem& basis_elem::flip()    // remember to change odd_fermion[site]
 //    {
 //        bits.flip();
@@ -348,7 +358,7 @@ namespace qbasis {
         return *this;
     }
     
-    mbasis_elem &mbasis_elem::translate_to_minimal_state(const qbasis::lattice &latt, std::vector<MKL_INT> &disp_vec) {
+    mbasis_elem &mbasis_elem::translate_to_unique_state(const qbasis::lattice &latt, std::vector<MKL_INT> &disp_vec) {
         assert(latt.total_sites() == total_sites());
         MKL_INT orb_smart = 0;
         while (orb_smart < total_orbitals() && mbits[orb_smart].q_same_state_all_site()) orb_smart++;
@@ -356,6 +366,11 @@ namespace qbasis {
         
         auto statis  = mbits[orb_smart].statistics();
         MKL_INT state_smart = 0;
+        if (latt.boundary() == "pbc" || latt.boundary() == "PBC") {
+            state_smart = 0;
+        } else if (latt.boundary() == "obc" || latt.boundary() == "OBC") {
+            state_smart = 1;
+        }
         while (statis[state_smart] == 0) state_smart++;
         assert(state_smart < mbits[orb_smart].local_dimension() && statis[state_smart] > 0);
         
@@ -368,26 +383,63 @@ namespace qbasis {
         }
         assert(sites_smart.size() == num_sites_smart);
         
-        // now we want to translate site_smart to the highest site, to minimize the state in < comparison
-        std::vector<MKL_INT> coor_smart(latt.dimension());
-        MKL_INT sub_smart;
-        auto state_min = *this;
-        auto linear_size = latt.Linear_size();
-        std::vector<MKL_INT> disp(latt.dimension(),0);
-        disp_vec = disp;
-        for (MKL_INT cnt = 0; cnt < num_sites_smart; cnt++) {
-            latt.site2coor(coor_smart, sub_smart, sites_smart[cnt]);
-            for (MKL_INT j = 0; j < latt.dimension(); j++)
-                disp[j] = linear_size[j] - 1 - coor_smart[j];
-            auto state_new = *this;
-            MKL_INT sgn;
-            state_new.translate(latt, disp, sgn);
-            if(state_new < state_min) {
-                state_min = state_new;
-                disp_vec = disp;
+        if (latt.boundary() == "pbc" || latt.boundary() == "PBC") {
+            // now we want to translate site_smart to the highest site, to minimize the state in < comparison
+            std::vector<MKL_INT> coor_smart(latt.dimension());
+            MKL_INT sub_smart;
+            auto state_min = *this;
+            auto linear_size = latt.Linear_size();
+            std::vector<MKL_INT> disp(latt.dimension(),0);
+            disp_vec = disp;
+            for (MKL_INT cnt = 0; cnt < num_sites_smart; cnt++) {
+                latt.site2coor(coor_smart, sub_smart, sites_smart[cnt]);
+                for (MKL_INT j = 0; j < latt.dimension(); j++)
+                    disp[j] = linear_size[j] - 1 - coor_smart[j];
+                auto state_new = *this;
+                MKL_INT sgn;
+                state_new.translate(latt, disp, sgn);
+                if(state_new < state_min) {
+                    state_min = state_new;
+                    disp_vec = disp;
+                }
             }
+            swap(state_min, *this);
+        } else if (latt.boundary() == "obc" || latt.boundary() == "OBC") {
+            std::vector<MKL_INT> lowest_coors(latt.dimension());
+            MKL_INT sub0;
+            latt.site2coor(lowest_coors, sub0, sites_smart[0]);
+            //this->prt(); std::cout << std::endl;
+            std::vector<MKL_INT> highest_coors = lowest_coors;
+            
+            for (MKL_INT site = 0; site < latt.total_sites(); site++) {
+                std::vector<MKL_INT> coor(latt.dimension());
+                MKL_INT sub;
+                latt.site2coor(coor, sub, site);
+                std::vector<MKL_INT> temp(total_orbitals());
+                for (MKL_INT orb = 0; orb < total_orbitals(); orb++) temp[orb] = siteRead(site, orb);
+                if (std::any_of(temp.begin(), temp.end(), [](MKL_INT a){return a != 0; })) {
+                    for (MKL_INT dim = 0; dim < latt.dimension(); dim++) {
+                        if (coor[dim] < lowest_coors[dim]) lowest_coors[dim] = coor[dim];
+                        if (coor[dim] > highest_coors[dim]) highest_coors[dim] = coor[dim];
+                    }
+                }
+            }
+            
+            disp_vec.resize(latt.dimension());
+            MKL_INT sgn;
+            for (MKL_INT dim = 0; dim < latt.dimension(); dim++) {
+                assert(lowest_coors[dim] >= 0 && lowest_coors[dim] < latt.Linear_size()[dim]);
+                assert(highest_coors[dim] >= 0 && highest_coors[dim] < latt.Linear_size()[dim]);
+                assert(lowest_coors[dim] <= highest_coors[dim]);
+                disp_vec[dim] = (latt.Linear_size()[dim] - 1 - highest_coors[dim] - lowest_coors[dim])/2;
+                if (lowest_coors[dim] + disp_vec[dim]
+                    > latt.Linear_size()[dim] - 1 - (highest_coors[dim] + disp_vec[dim])) {
+                    disp_vec[dim]--;
+                }
+            }
+            this->translate(latt, disp_vec, sgn);
+            
         }
-        swap(state_min, *this);
         return *this;
     }
     
@@ -429,7 +481,14 @@ namespace qbasis {
                 std::cout << ", ";
             }
         }
-        
+    }
+    
+    void mbasis_elem::prt_nonzero() const
+    {
+        for (MKL_INT j = 0; j < total_orbitals(); j++) {
+            std::cout << "orb " << j << std::endl;
+            mbits[j].prt_nonzero();
+        }
     }
     
     void swap(mbasis_elem &lhs, mbasis_elem &rhs)
@@ -521,6 +580,37 @@ namespace qbasis {
             if (cnt >= num_sites_smart) break;
         }
         
+        // later we can change it to be a more general consition
+        // for obc, restrict the translation possibility: only local state 0 can be shifted outside boundary
+        std::vector<MKL_INT> coor0(latt.dimension());
+        MKL_INT sub0;
+        latt.site2coor(coor0, sub0, sites_rhs_smart[0]);
+        std::vector<std::vector<MKL_INT>> extremal_coors(latt.dimension(), std::vector<MKL_INT>(2));
+        for (MKL_INT dim = 0; dim < latt.dimension(); dim++) {
+            extremal_coors[dim][0] = coor0[dim];
+            extremal_coors[dim][1] = coor0[dim];
+        }
+        if (latt.boundary() == "obc" || latt.boundary() == "OBC") {
+            for (MKL_INT site = 0; site < latt.total_sites(); site++) {
+                std::vector<MKL_INT> coor(latt.dimension());
+                MKL_INT sub;
+                latt.site2coor(coor, sub, site);
+                std::vector<MKL_INT> temp(rhs.total_orbitals());
+                for (MKL_INT orb = 0; orb < rhs.total_orbitals(); orb++) temp[orb] = rhs.siteRead(site, orb);
+                if (std::any_of(temp.begin(), temp.end(), [](MKL_INT a){return a != 0; })) {
+                    for (MKL_INT dim = 0; dim < latt.dimension(); dim++) {
+                        if (coor[dim] < extremal_coors[dim][0]) extremal_coors[dim][0] = coor[dim];
+                        if (coor[dim] > extremal_coors[dim][1]) extremal_coors[dim][1] = coor[dim];
+                    }
+                }
+            }
+        }
+        for (MKL_INT dim = 0; dim < latt.dimension(); dim++) {
+            assert(extremal_coors[dim][0] >= 0 && extremal_coors[dim][0] < latt.Linear_size()[dim]);
+            assert(extremal_coors[dim][1] >= 0 && extremal_coors[dim][1] < latt.Linear_size()[dim]);
+            assert(extremal_coors[dim][0] <= extremal_coors[dim][1]);
+        }
+        
         // now we want to translate rhs to compare to lhs
         std::vector<MKL_INT> coor_lhs_smart(latt.dimension()), coor_rhs_smart(latt.dimension());
         MKL_INT sub_lhs_smart, sub_rhs_smart;
@@ -529,8 +619,20 @@ namespace qbasis {
             latt.site2coor(coor_rhs_smart, sub_rhs_smart, sites_rhs_smart[cnt]);
             if (sub_lhs_smart != sub_rhs_smart) continue;         // no way to shift to a different sublattice
             std::vector<MKL_INT> disp(latt.dimension());
-            for (MKL_INT j = 0; j < latt.dimension(); j++)
-                disp[j] = coor_lhs_smart[j] - coor_rhs_smart[j];
+            bool flag = false;
+            for (MKL_INT dim = 0; dim < latt.dimension(); dim++) {
+                disp[dim] = coor_lhs_smart[dim] - coor_rhs_smart[dim];
+                if (latt.boundary() == "obc" || latt.boundary() == "OBC") {      // should not cross boundary
+                    if (disp[dim] > 0 && extremal_coors[dim][1] + disp[dim] >= latt.Linear_size()[dim]) {
+                        flag = true;
+                        break;
+                    } else if (disp[dim] < 0 && extremal_coors[dim][0] + disp[dim] < 0) {
+                        flag = true;
+                        break;
+                    }
+                }
+            }
+            if (flag) continue;
             auto rhs_new = rhs;
             MKL_INT sgn;
             rhs_new.translate(latt, disp, sgn);
@@ -633,6 +735,16 @@ namespace qbasis {
         for (auto &ele : elements) {
             std::cout << "coeff: " << ele.second << std::endl;
             ele.first.prt();
+            std::cout << std::endl;
+        }
+    }
+    
+    template <typename T>
+    void wavefunction<T>::prt_nonzero() const
+    {
+        for (auto &ele : elements) {
+            std::cout << "coeff: " << ele.second << std::endl;
+            ele.first.prt_nonzero();
             std::cout << std::endl;
         }
     }

@@ -230,6 +230,7 @@ namespace qbasis {
         basis_elem& reset() {bits.reset(); return *this; }
         
         void prt() const;
+        void prt_nonzero() const;
         
         // remember to change odd_fermion[site]
         //basis_elem& flip();
@@ -295,8 +296,8 @@ namespace qbasis {
         mbasis_elem& translate(const std::vector<MKL_INT> &plan, MKL_INT &sgn);
         mbasis_elem& translate(const lattice &latt, const std::vector<MKL_INT> &disp, MKL_INT &sgn);
         
-        // change to a basis element which is the minimal among its translational equivalents
-        mbasis_elem& translate_to_minimal_state(const lattice &latt, std::vector<MKL_INT> &disp_vec);
+        // change to a basis element which is the unique (fully determined by the lattice and its state) among its translational equivalents
+        mbasis_elem& translate_to_unique_state(const lattice &latt, std::vector<MKL_INT> &disp_vec);
         
         // reset all bits to 0 in all orbitals
         mbasis_elem& reset();
@@ -315,6 +316,7 @@ namespace qbasis {
         std::complex<double> diagonal_operator(const mopr<std::complex<double>>& lhs) const;
         
         void prt() const;
+        void prt_nonzero() const;
         
     private:
         // store an array of basis elements, for multi-orbital site (or unit cell)
@@ -391,6 +393,7 @@ namespace qbasis {
         MKL_INT size() const {return static_cast<MKL_INT>(elements.size()); }
         
         void prt() const;
+        void prt_nonzero() const;
         
     private:
         // store an array of basis elements, and their corresponding coefficients
@@ -893,6 +896,10 @@ namespace qbasis {
         
         // return a vector containing the positions of each site after translation
         std::vector<MKL_INT> translation_plan(const std::vector<MKL_INT> &disp) const;
+        
+        std::string boundary() const {
+            return bc;
+        }
         
         MKL_INT dimension() const {
             return dim;
