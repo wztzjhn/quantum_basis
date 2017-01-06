@@ -780,7 +780,11 @@ namespace qbasis {
     template <typename T>
     mopr<T> &mopr<T>::operator*=(mopr<T> rhs)
     {
-        for (auto &ele : rhs.mats) (*this) *= ele;
+        mopr<T> sum;
+        for (auto &ele : rhs.mats) {
+            sum += (*this) * ele;
+        }
+        swap(*this, sum);
         return *this;
     }
     
