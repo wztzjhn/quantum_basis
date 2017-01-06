@@ -385,10 +385,16 @@ namespace qbasis {
         // multiply by a constant
         wavefunction& operator*=(const T &rhs);
         
+        // simplify
+        wavefunction& simplify();
+        
         // check if sorted
         bool sorted() const;
         // check if sorted and there are no dulplicated terms
         bool sorted_fully() const;
+        
+        // check if zero
+        bool q_zero() const { return elements.empty(); }
         
         MKL_INT size() const {return static_cast<MKL_INT>(elements.size()); }
         

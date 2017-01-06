@@ -696,6 +696,33 @@ namespace qbasis {
     }
     
     template <typename T>
+    wavefunction<T> &wavefunction<T>::simplify()
+    {
+        if (! this->sorted()) {
+            elements.sort([](const std::pair<mbasis_elem, T> &lhs, const std::pair<mbasis_elem, T> &rhs){return lhs.first < rhs.first; });
+        }
+        auto it = elements.begin();
+        auto it_prev = it++;
+        while (it != elements.end()) {  // combine all terms
+            if (it->first == it_prev->first) {
+                it_prev->second += it->second;
+                it = elements.erase(it);
+            } else {
+                it_prev = it++;
+            }
+        }
+        it = elements.begin();
+        while (it != elements.end()) { // remove all zero terms
+            if (std::abs(it->second) < opr_precision) {
+                it = elements.erase(it);
+            } else {
+                it++;
+            }
+        }
+        return *this;
+    }
+    
+    template <typename T>
     bool wavefunction<T>::sorted() const
     {
         if (elements.size() == 0 || elements.size() == 1) return true;

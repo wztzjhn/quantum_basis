@@ -804,6 +804,31 @@ namespace qbasis {
     }
     
     template <typename T>
+    mopr<T> &mopr<T>::simplify()
+    {
+        mats.sort();
+        auto it = mats.begin();
+        auto it_prev = it++;
+        while (it != mats.end()) {  // combine all terms
+            if(it->len() == it_prev->len() && it->mat_prod == it_prev->mat_prod) {
+                it_prev->coeff += it->coeff;
+                it = mats.erase(it);
+            } else {
+                it_prev = it++;
+            }
+        }
+        it = mats.begin();
+        while (it != mats.end()) { // remove all zero terms
+            if (std::abs(it->coeff) < opr_precision) {
+                it = mats.erase(it);
+            } else {
+                it++;
+            }
+        }
+        return *this;
+    }
+    
+    template <typename T>
     bool mopr<T>::q_diagonal() const
     {
         if (q_zero()) return true;
