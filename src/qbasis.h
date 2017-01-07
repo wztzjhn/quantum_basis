@@ -393,6 +393,9 @@ namespace qbasis {
         // check if sorted and there are no dulplicated terms
         bool sorted_fully() const;
         
+        // for \sum_i \alpha_i * element[i], return \sum_i |\alpha_i|^2
+        double amplitude();
+        
         // check if zero
         bool q_zero() const { return elements.empty(); }
         

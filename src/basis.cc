@@ -757,6 +757,18 @@ namespace qbasis {
     }
     
     template <typename T>
+    double wavefunction<T>::amplitude()
+    {
+        if (q_zero()) return 0.0;
+        simplify();
+        double res = 0.0;
+        for (auto it = elements.begin(); it != elements.end(); it++) {
+            res += std::norm(it->second);
+        }
+        return res;
+    }
+    
+    template <typename T>
     void wavefunction<T>::prt() const
     {
         for (auto &ele : elements) {
