@@ -119,7 +119,7 @@ namespace qbasis {
         return results;
     }
     
-    basis_elem &basis_elem::translate(const std::vector<MKL_INT> &plan, MKL_INT &sgn)
+    basis_elem &basis_elem::transform(const std::vector<MKL_INT> &plan, MKL_INT &sgn)
     {
         if (! q_fermion()) {
             sgn = 0;
@@ -142,7 +142,7 @@ namespace qbasis {
     {
         assert(latt.dimension() == disp.size());
         auto plan = latt.translation_plan(disp);
-        translate(plan, sgn);
+        transform(plan, sgn);
         return *this;
     }
     
@@ -342,19 +342,43 @@ namespace qbasis {
         return *this;
     }
     
-    mbasis_elem &mbasis_elem::translate(const std::vector<MKL_INT> &plan, MKL_INT &sgn) {
+    mbasis_elem &mbasis_elem::transform(const std::vector<MKL_INT> &plan, MKL_INT &sgn) {
         sgn = 0;
         for (auto it = mbits.begin(); it != mbits.end(); it++) {
             MKL_INT sgn0;
-            it->translate(plan, sgn0);
+            it->transform(plan, sgn0);
             sgn = (sgn + sgn0) % 2;
         }
         return *this;
     }
     
+    mbasis_elem &mbasis_elem::transform(const std::vector<std::vector<std::pair<MKL_INT, MKL_INT>>> &plan, MKL_INT &sgn) {
+        sgn = 0;
+        
+        // implement fermionic transformation later
+        assert(std::none_of(mbits.begin(), mbits.end(), [](basis_elem x){ return x.q_fermion(); }));
+        assert(plan.size() == mbits.size());
+        assert(plan[0].size() == total_sites());
+        
+        auto res = *this;
+        
+        for (MKL_INT orb1 = 0; orb1 < total_orbitals(); orb1++) {
+            for (MKL_INT site1 = 0; site1 < total_sites(); site1++) {
+                auto site2 = plan[orb1][site1].first;
+                auto orb2  = plan[orb1][site1].second;
+                assert(mbits[orb1].local_dimension() == mbits[orb2].local_dimension());
+                MKL_INT bits_bgn1 = mbits[orb1].bits_per_site * site1;
+                MKL_INT bits_bgn2 = mbits[orb2].bits_per_site * site2;
+                for (MKL_INT j = 0; j < mbits[orb1].bits_per_site; j++) res.mbits[orb2].bits[bits_bgn2+j] = mbits[orb1].bits[bits_bgn1+j];
+            }
+        }
+        swap(res, *this);
+        return *this;
+    }
+    
     mbasis_elem &mbasis_elem::translate(const qbasis::lattice &latt, const std::vector<MKL_INT> &disp, MKL_INT &sgn) {
         auto plan = latt.translation_plan(disp);
-        translate(plan, sgn);
+        transform(plan, sgn);
         return *this;
     }
     
