@@ -65,5 +65,26 @@ namespace qbasis {
         return result;
     }
     
+    std::vector<MKL_INT> lattice::c4_rotation_plan() const {
+        assert(dim == 2);
+        assert(L[0] == L[1]);
+        assert(std::abs(a[0][0] * a[1][0] + a[0][1] * a[1][1]) < opr_precision); // basis orthogonal
+        std::vector<MKL_INT> result(total_sites());
+        std::vector<MKL_INT> coor(dim), temp(dim);
+        MKL_INT sub;
+        
+        // currently only the simplest case implemented: one sublattice. More complicated cases come later
+        assert(num_sub == 1);
+        if (num_sub == 1) {
+            for (MKL_INT site = 0; site < total_sites(); site++) {
+                site2coor(coor, sub, site);
+                temp[0] = L[1] - 1 - coor[1];
+                temp[1] = coor[0];
+                coor2site(temp, sub, result[site]);
+            }
+        }
+        return result;
+    }
+    
     
 }

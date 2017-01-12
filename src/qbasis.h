@@ -914,6 +914,11 @@ namespace qbasis {
         // return a vector containing the positions of each site after translation
         std::vector<MKL_INT> translation_plan(const std::vector<MKL_INT> &disp) const;
         
+        // return a vector containing the positions of each site after c2 (180) or c4 (90) rotation
+        std::vector<MKL_INT> c2_rotation_plan() const;
+        std::vector<MKL_INT> c4_rotation_plan() const;
+        std::vector<MKL_INT> reflection_plan() const;
+        
         std::string boundary() const {
             return bc;
         }
