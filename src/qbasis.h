@@ -48,6 +48,7 @@ namespace qbasis {
     // the startup cost of boost::dynamic_bitset is around 40 Bytes
     using DBitSet = boost::dynamic_bitset<>;
     static const double pi = 3.141592653589793238462643;
+    // later let's combine these three as a unified name "precision"
     static const double opr_precision = 1e-12; // used as the threshold value in comparison
     static const double sparse_precision = 1e-14;
     static const double lanczos_precision = 1e-12;
@@ -139,6 +140,9 @@ namespace qbasis {
     template <typename T> wavefunction<T> operator*(const opr_prod<T>&, const wavefunction<T>&);
     template <typename T> wavefunction<T> operator*(const mopr<T>&, const mbasis_elem&);
     template <typename T> wavefunction<T> operator*(const mopr<T>&, const wavefunction<T>&);
+    
+    // mopr * {a list of mbasis} -->> {a new list of mbasis}
+    template <typename T> void gen_mbasis_by_mopr(const mopr<T>&, std::list<mbasis_elem>&);
     
     
     template <typename T> void swap(csr_mat<T>&, csr_mat<T>&);

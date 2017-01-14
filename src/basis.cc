@@ -665,6 +665,44 @@ namespace qbasis {
         return false;
     }
     
+    template <typename T> void gen_mbasis_by_mopr(const mopr<T> &Ham, std::list<mbasis_elem> &basis)
+    {
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        std::list<mbasis_elem> basis_new;
+        
+        #pragma omp parallel for schedule(dynamic,1)
+        for (MKL_INT j = 0; j < basis.size(); j++) {
+            std::list<mbasis_elem> temp;
+            auto it = basis.begin();
+            std::advance(it, j);
+            auto phi0 = *it;
+            auto states_new = Ham * phi0;
+            for (MKL_INT cnt = 0; cnt < states_new.size(); cnt++) {
+                if (states_new[cnt].first != phi0) temp.push_back(states_new[cnt].first);
+            }
+            #pragma omp critical
+            basis_new.splice(basis_new.end(), temp);
+        }
+        std::cout << "mbasis size: " << basis.size() << " -> " << (basis.size() + basis_new.size()) << "(dulp) -> ";
+        basis.splice(basis.end(),basis_new);
+        
+        basis.sort();
+        auto it = basis.begin();
+        auto it_prev = it++;
+        while (it != basis.end()) {
+            if (*it == *it_prev) {
+                it = basis.erase(it);
+            } else {
+                it_prev = it++;
+            }
+        }
+        std::cout << basis.size() << ". (";
+        end   = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s)" << std::endl;
+    }
+    
     
     // ----------------- implementation of wavefunction ------------------
     template <typename T>
@@ -963,6 +1001,9 @@ namespace qbasis {
     }
     
     // Explicit instantiation
+    template void gen_mbasis_by_mopr(const mopr<double> &Ham, std::list<mbasis_elem> &basis);
+    template void gen_mbasis_by_mopr(const mopr<std::complex<double>> &Ham, std::list<mbasis_elem> &basis);
+    
     template class wavefunction<double>;
     template class wavefunction<std::complex<double>>;
     
