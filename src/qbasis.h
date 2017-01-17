@@ -494,6 +494,9 @@ namespace qbasis {
         // simplify the structure if possible
         opr& simplify();
         
+        // fermions not implemented yet
+        opr& transform(const std::vector<MKL_INT> &plan);
+        
         // compound assignment operators
         opr& operator+=(const opr<T> &rhs);
         opr& operator-=(const opr<T> &rhs);
@@ -564,6 +567,8 @@ namespace qbasis {
         
         // invert the sign
         opr_prod& negative();
+        
+        opr_prod& transform(const std::vector<MKL_INT> &plan);
         
         // question if it is proportional to identity operator
         bool q_prop_identity() const;
@@ -680,6 +685,8 @@ namespace qbasis {
         
         // invert the sign
         mopr& negative();
+        
+        mopr& transform(const std::vector<MKL_INT> &plan);
         
         // destructor
         ~mopr() {}
@@ -904,6 +911,7 @@ namespace qbasis {
 //  ----------------------------------------------------------------------------
     class lattice {
     public:
+        lattice() = default;
         
         // constructor from particular requirements. e.g. square, triangular...
         lattice(const std::string &name, const std::string &bc_, std::initializer_list<MKL_INT> lens);

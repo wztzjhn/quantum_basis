@@ -170,6 +170,13 @@ namespace qbasis {
     }
     
     template <typename T>
+    opr<T> &opr<T>::transform(const std::vector<MKL_INT> &plan)
+    {
+        site = plan[site];
+        return *this;
+    }
+    
+    template <typename T>
     opr<T> &opr<T>::operator+=(const opr<T> &rhs)
     {
         if (rhs.mat == nullptr) return *this;
@@ -530,6 +537,23 @@ namespace qbasis {
     }
     
     template <typename T>
+    opr_prod<T> &opr_prod<T>::transform(const std::vector<MKL_INT> &plan)
+    {
+        if (q_zero()) return *this;
+        
+        // for fermions, there can be an overall sign
+        for (auto it = mat_prod.begin(); it != mat_prod.end(); it++) {
+            assert(! it->fermion);
+            it->site = plan[it->site];
+        }
+        
+        mat_prod.sort([](const opr<T> &lhs, const opr<T> &rhs)
+                      { std::vector<MKL_INT> a = {lhs.site, lhs.orbital}, b={rhs.site, rhs.orbital}; return a < b; });
+        
+        return *this;
+    }
+    
+    template <typename T>
     bool opr_prod<T>::q_prop_identity() const // ask this question without simplifying the operator products
     {
         return (std::abs(coeff) >= opr_precision && mat_prod.empty()) ? true : false;
@@ -829,6 +853,13 @@ namespace qbasis {
                 it++;
             }
         }
+        return *this;
+    }
+    
+    template <typename T>
+    mopr<T> &mopr<T>::transform(const std::vector<MKL_INT> &plan)
+    {
+        for (auto &ele: mats) ele.transform(plan);
         return *this;
     }
     
