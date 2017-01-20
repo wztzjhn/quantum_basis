@@ -931,6 +931,13 @@ namespace qbasis {
         std::vector<MKL_INT> c4_rotation_plan() const;
         std::vector<MKL_INT> reflection_plan() const;
         
+        // combine two plans
+        std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> plan_product(const std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> &lhs,
+                                                                          const std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> &rhs) const;
+        
+        // inverse of a transformation
+        std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> plan_inverse(const std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> &old) const;
+        
         std::string boundary() const {
             return bc;
         }

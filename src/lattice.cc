@@ -87,4 +87,38 @@ namespace qbasis {
     }
     
     
+    std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> lattice::plan_product(const std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> &lhs,
+                                                                               const std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> &rhs) const {
+        assert(lhs.size() == rhs.size());
+        assert(lhs[0].size() == rhs[0].size() && lhs[0].size() == total_sites());
+        MKL_INT orb_tot = lhs.size();
+        MKL_INT site_tot = lhs[0].size();
+        std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> res(orb_tot, std::vector<std::pair<MKL_INT,MKL_INT>>(site_tot));
+        for (MKL_INT orb0 = 0; orb0 < orb_tot; orb0++) {
+            for (MKL_INT site0 = 0; site0 < site_tot; site0++) {
+                auto site1 = rhs[orb0][site0].first;
+                auto orb1  = rhs[orb0][site0].second;
+                res[orb0][site0] = lhs[orb1][site1];
+            }
+        }
+        return res;
+    }
+    
+    std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> lattice::plan_inverse(const std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> &old) const {
+        assert(old[0].size() == total_sites());
+        MKL_INT orb_tot = old.size();
+        MKL_INT site_tot = old[0].size();
+        std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> res(orb_tot, std::vector<std::pair<MKL_INT,MKL_INT>>(site_tot));
+        for (MKL_INT orb0 = 0; orb0 < orb_tot; orb0++) {
+            for (MKL_INT site0 = 0; site0 < site_tot; site0++) {
+                auto site1 = old[orb0][site0].first;
+                auto orb1  = old[orb0][site0].second;
+                res[orb1][site1].first = site0;
+                res[orb1][site1].second = orb0;
+            }
+        }
+        return res;
+        
+    }
+    
 }
