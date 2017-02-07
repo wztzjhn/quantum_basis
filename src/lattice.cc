@@ -23,6 +23,25 @@ namespace qbasis {
                 it_arg++;
             }
             Nsites = L[0] * L[1];
+        } else if (name == "triangular") {
+            assert(lens.size() == 2);
+            dim = 2;
+            num_sub = 1;
+            a = std::vector<std::vector<double>>(2, std::vector<double>(2, 0.0));
+            b = a;
+            a[0][0] = 1.0; a[0][1] = 0.0;
+            a[1][0] = 0.5; a[1][1] = 0.5 * sqrt(3.0);
+            b[0][0] = 2.0 * pi; b[0][1] = -2.0 * pi / sqrt(3.0);
+            b[1][0] = 0.0; b[1][1] = 4.0 * pi / sqrt(3.0);
+            L = std::vector<MKL_INT>(dim);
+            auto it_arg = lens.begin();
+            auto it_L   = L.begin();
+            while(it_arg != lens.end()) {
+                *it_L = *it_arg;
+                it_L++;
+                it_arg++;
+            }
+            Nsites = L[0] * L[1];
         }
     }
     

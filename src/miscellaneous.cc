@@ -61,6 +61,8 @@ namespace qbasis {
     }
     template MKL_INT binary_search(const std::vector<qbasis::mbasis_elem> &array, const qbasis::mbasis_elem &val,
                                    const MKL_INT &bgn, const MKL_INT &end);
+    template MKL_INT binary_search(const std::vector<MKL_INT> &array, const MKL_INT &val,
+                                   const MKL_INT &bgn, const MKL_INT &end);
     
     
     template <typename T>

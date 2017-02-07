@@ -1012,6 +1012,8 @@ namespace qbasis {
         // add basis_repr later
         std::vector<qbasis::mbasis_elem> basis_all;
         
+        std::vector<T> basis_coeff;
+        
         csr_mat<T> HamMat_csr;
         
         std::vector<double> eigenvals;
