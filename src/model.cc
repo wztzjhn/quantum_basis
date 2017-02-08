@@ -141,6 +141,7 @@ namespace qbasis {
     void model<T>::moprXeigenvec(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col)
     {
         assert(which_col >= 0 && which_col < nconv);
+        for (MKL_INT j = 0; j < HamMat_csr.dimension(); j++) vec_new[j] = 0.0;
 //        // leave these lines for a while, for openmp debugging purpose
 //        static MKL_INT debug_flag = 0;
 //        std::vector<std::list<MKL_INT>> jobid_list(100);
