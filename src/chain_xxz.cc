@@ -10,7 +10,7 @@
 //         ( 0  0 )             ( 1  0 )              (0  -0.5 )
 
 
-void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT &step);
+void run(const MKL_INT &Lx, const MKL_INT &pbc, const double &Delta, const double &h, const MKL_INT &step);
 
 int main() {
     MKL_INT Lx;
@@ -27,7 +27,7 @@ int main() {
     std::cout << "h = " << h << std::endl;
     MKL_INT step = 150;
     
-    pbc(Lx, Delta, h, step);
+    run(Lx, 1, Delta, h, step);
     
 }
 
@@ -77,7 +77,7 @@ qbasis::mopr<std::complex<double>> Sz_Q(const MKL_INT &Lx, const double &Q)
 }
 
 
-void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT &step) {
+void run(const MKL_INT &Lx, const MKL_INT &pbc, const double &Delta, const double &h, const MKL_INT &step) {
     // define the basic operators: S+, S-, Sz
     std::vector<std::vector<std::complex<double>>> Splus(2,std::vector<std::complex<double>>(2));
     std::vector<std::vector<std::complex<double>>> Sminus(2,std::vector<std::complex<double>>(2));
@@ -101,6 +101,13 @@ void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT 
     // create Hamiltonian for xxz model on a chain
     qbasis::model<std::complex<double>> xxz;
     for (MKL_INT i = 0; i < Lx; i++) {
+        qbasis::opr<std::complex<double>> six(i,0,false,Sx);
+        if (i % 2 == 0) {
+            xxz.add_offdiagonal_Ham(std::complex<double>(-h, 0.0) * six);
+        } else {
+            xxz.add_offdiagonal_Ham(std::complex<double>( h, 0.0) * six);
+        }
+        if (pbc == 0 && i == Lx-1) break;
         MKL_INT j = (i < Lx-1 ? i+1 : 0);
         qbasis::opr<std::complex<double>> sip(i,0,false,Splus);
         qbasis::opr<std::complex<double>> sim(i,0,false,Sminus);
@@ -108,13 +115,7 @@ void pbc(const MKL_INT &Lx, const double &Delta, const double &h, const MKL_INT 
         qbasis::opr<std::complex<double>> sjm(j,0,false,Sminus);
         qbasis::opr<std::complex<double>> siz(i,0,false,Sz);
         qbasis::opr<std::complex<double>> sjz(j,0,false,Sz);
-        qbasis::opr<std::complex<double>> six(i,0,false,Sx);
         xxz.add_offdiagonal_Ham(std::complex<double>(0.5,0.0) * (sip * sjm + sim * sjp));
-        if (i % 2 == 0) {
-            xxz.add_offdiagonal_Ham(std::complex<double>(-h, 0.0) * six);
-        } else {
-            xxz.add_offdiagonal_Ham(std::complex<double>( h, 0.0) * six);
-        }
         xxz.add_diagonal_Ham(std::complex<double>(Delta,0.0) * (siz * sjz));
     }
     
