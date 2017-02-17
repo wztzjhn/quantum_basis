@@ -76,7 +76,7 @@ namespace qbasis {
             return bits.all();
         } else {
             for (MKL_INT site = 0; site < total_sites(); site++) {
-                if (siteRead(site) != dim_local) return false;
+                if (siteRead(site) != dim_local - 1) return false;
             }
             return true;
         }
