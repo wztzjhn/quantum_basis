@@ -16,6 +16,32 @@ namespace qbasis {
         }
     }
     
+    // need further optimization!
+    template <typename T>
+    void model<T>::enumerate_basis_conserve(const MKL_INT &n_sites, std::initializer_list<std::string> lst,
+                                            const mopr<std::complex<double>> &conserve, const double &val)
+    {
+        std::list<qbasis::mbasis_elem> basis_temp;
+        auto GS = mbasis_elem(n_sites,lst);
+        GS.reset();
+        auto state_new = GS;
+        
+        MKL_INT cnt = 0;
+        while (! state_new.q_maximized()) {
+            auto temp = state_new.diagonal_operator(conserve);
+            if (std::abs(temp - val) < 1e-5) basis_temp.push_back(state_new);
+            state_new.increment();
+            cnt++;
+        }
+        
+        auto temp = state_new.diagonal_operator(conserve);
+        if (std::abs(temp - val) < 1e-5) basis_temp.push_back(state_new);
+        
+        dim_all = basis_temp.size();
+        basis_all.clear();
+        for (auto & ele : basis_temp) basis_all.push_back(ele);
+    }
+    
     template <typename T>
     void model<T>::sort_basis_all()
     {

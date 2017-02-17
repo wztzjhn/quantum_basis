@@ -988,6 +988,8 @@ namespace qbasis {
         void add_offdiagonal_Ham(const mopr<T> &rhs)     { Ham_off_diag += rhs; }
         
         void enumerate_basis_all(); // naive way of enumerating all possible basis state
+        void enumerate_basis_conserve(const MKL_INT &n_sites, std::initializer_list<std::string> lst,
+                                      const mopr<std::complex<double>> &conserve, const double &val);
         
         void sort_basis_all();
         
