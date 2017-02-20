@@ -46,7 +46,7 @@ namespace qbasis {
     }
     
     void lattice::coor2site(const std::vector<MKL_INT> &coor, const MKL_INT &sub, MKL_INT &site) const {
-        assert(coor.size() == dim);
+        assert(static_cast<MKL_INT>(coor.size()) == dim);
         assert(sub >= 0 && sub < num_sub);
         std::vector<MKL_INT> coor2 = {sub};
         std::vector<MKL_INT> base = {num_sub};
@@ -72,7 +72,7 @@ namespace qbasis {
     }
     
     std::vector<MKL_INT> lattice::translation_plan(const std::vector<MKL_INT> &disp) const {
-        assert(disp.size() == dim);
+        assert(static_cast<MKL_INT>(disp.size()) == dim);
         std::vector<MKL_INT> result(total_sites());
         std::vector<MKL_INT> coor(dim), temp(dim);
         MKL_INT sub;
@@ -109,7 +109,7 @@ namespace qbasis {
     std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> lattice::plan_product(const std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> &lhs,
                                                                                const std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> &rhs) const {
         assert(lhs.size() == rhs.size());
-        assert(lhs[0].size() == rhs[0].size() && lhs[0].size() == total_sites());
+        assert(lhs[0].size() == rhs[0].size() && static_cast<MKL_INT>(lhs[0].size()) == total_sites());
         MKL_INT orb_tot = lhs.size();
         MKL_INT site_tot = lhs[0].size();
         std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> res(orb_tot, std::vector<std::pair<MKL_INT,MKL_INT>>(site_tot));
@@ -124,7 +124,7 @@ namespace qbasis {
     }
     
     std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> lattice::plan_inverse(const std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> &old) const {
-        assert(old[0].size() == total_sites());
+        assert(static_cast<MKL_INT>(old[0].size()) == total_sites());
         MKL_INT orb_tot = old.size();
         MKL_INT site_tot = old[0].size();
         std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> res(orb_tot, std::vector<std::pair<MKL_INT,MKL_INT>>(site_tot));

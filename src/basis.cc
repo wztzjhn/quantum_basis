@@ -127,7 +127,7 @@ namespace qbasis {
             std::cout << "Fermionic translation not implemented yet!" << std::endl;
             assert(false);
         }
-        assert(plan.size() == total_sites());
+        assert(static_cast<MKL_INT>(plan.size()) == total_sites());
         auto res = *this;
         for (MKL_INT site = 0; site < total_sites(); site++) {
             MKL_INT bits_bgn1 = bits_per_site * site;
@@ -140,7 +140,7 @@ namespace qbasis {
     
     basis_elem &basis_elem::translate(const qbasis::lattice &latt, const std::vector<MKL_INT> &disp, MKL_INT &sgn)
     {
-        assert(latt.dimension() == disp.size());
+        assert(latt.dimension() == static_cast<MKL_INT>(disp.size()));
         auto plan = latt.translation_plan(disp);
         transform(plan, sgn);
         return *this;
@@ -358,7 +358,7 @@ namespace qbasis {
         // implement fermionic transformation later
         assert(std::none_of(mbits.begin(), mbits.end(), [](basis_elem x){ return x.q_fermion(); }));
         assert(plan.size() == mbits.size());
-        assert(plan[0].size() == total_sites());
+        assert(static_cast<MKL_INT>(plan[0].size()) == total_sites());
         
         auto res = *this;
         
@@ -403,9 +403,9 @@ namespace qbasis {
         std::vector<MKL_INT> sites_smart;
         for (MKL_INT site = 0; site < mbits[orb_smart].total_sites(); site++) {                // search for sites_smart
             if (mbits[orb_smart].siteRead(site) == state_smart) sites_smart.push_back(site);
-            if (sites_smart.size() >= num_sites_smart) break;
+            if (static_cast<MKL_INT>(sites_smart.size()) >= num_sites_smart) break;
         }
-        assert(sites_smart.size() == num_sites_smart);
+        assert(static_cast<MKL_INT>(sites_smart.size()) == num_sites_smart);
         
         if (latt.boundary() == "pbc" || latt.boundary() == "PBC") {
             // now we want to translate site_smart to the highest site, to minimize the state in < comparison
@@ -555,15 +555,15 @@ namespace qbasis {
 //        }
         MKL_INT min_idx = 0;
         while (statis_temp[min_idx].second < 1) min_idx++;
-        assert(min_idx < statis_temp.size());
-        if (min_idx == statis_temp.size() - 1) return true;     // if every site in the same state
+        assert(min_idx < static_cast<MKL_INT>(statis_temp.size()));
+        if (min_idx == static_cast<MKL_INT>(statis_temp.size()) - 1) return true;     // if every site in the same state
         min_idx = statis_temp[min_idx].first;
         MKL_INT num_sites_smart = statis[min_idx];
 //        std::cout << "min (but 0): " << std::endl;
 //        std::cout << "statis[" << min_idx << "]=" << num_sites_smart << std::endl;
         
         std::vector<MKL_INT> base(lhs.total_orbitals());
-        for (MKL_INT orb = 0; orb < base.size(); orb++) base[orb] = lhs.mbits[orb].local_dimension();
+        for (MKL_INT orb = 0; orb < static_cast<MKL_INT>(base.size()); orb++) base[orb] = lhs.mbits[orb].local_dimension();
         auto state_smart = dynamic_base(min_idx, base);
         
         MKL_INT site_lhs_smart;
@@ -672,7 +672,7 @@ namespace qbasis {
         std::list<mbasis_elem> basis_new;
         
         #pragma omp parallel for schedule(dynamic,1)
-        for (MKL_INT j = 0; j < basis.size(); j++) {
+        for (MKL_INT j = 0; j < static_cast<MKL_INT>(basis.size()); j++) {
             std::list<mbasis_elem> temp;
             auto it = basis.begin();
             std::advance(it, j);

@@ -46,8 +46,8 @@ namespace qbasis {
     {
         if(array.size() == 0 && bgn == end) return -1;            // not found
         assert(bgn < end);
-        assert(bgn >= 0 && bgn < array.size());
-        assert(end > 0 && end <= array.size());
+        assert(bgn >= 0 && bgn < static_cast<MKL_INT>(array.size()));
+        assert(end > 0 && end <= static_cast<MKL_INT>(array.size()));
         MKL_INT low  = bgn;
         MKL_INT high = end - 1;
         MKL_INT mid;
