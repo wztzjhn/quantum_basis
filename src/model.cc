@@ -252,6 +252,37 @@ namespace qbasis {
         
     }
     
+    template <typename T>
+    T model<T>::measure(const mopr<T> &lhs, const MKL_INT &which_col)
+    {
+        assert(which_col >= 0 && which_col < nconv);
+        if (HamMat_csr.dimension() == dim_all) {
+            MKL_INT base = dim_all * which_col;
+            std::vector<T> vec_new(dim_all);
+            moprXeigenvec(lhs, vec_new.data(), which_col);
+            return dotc(dim_all, eigenvecs.data() + base, 1, vec_new.data(), 1);
+        } else {
+            std::cout << "not implemented yet" << std::endl;
+            return static_cast<T>(0.0);
+        }
+    }
+    
+    template <typename T>
+    T model<T>::measure(const mopr<T> &lhs1, const mopr<T> &lhs2, const MKL_INT &which_col)
+    {
+        assert(which_col >= 0 && which_col < nconv);
+        if (HamMat_csr.dimension() == dim_all) {
+            std::vector<T> vec_new1(dim_all);
+            std::vector<T> vec_new2(dim_all);
+            moprXeigenvec(lhs1, vec_new1.data(), which_col);
+            moprXeigenvec(lhs2, vec_new2.data(), which_col);
+            return dotc(dim_all, vec_new1.data(), 1, vec_new2.data(), 1);
+        } else {
+            std::cout << "not implemented yet" << std::endl;
+            return static_cast<T>(0.0);
+        }
+    }
+    
     
     // Explicit instantiation
     template class model<double>;

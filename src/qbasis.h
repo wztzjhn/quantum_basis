@@ -999,7 +999,12 @@ namespace qbasis {
         
         void locate_Emax(const MKL_INT &nev = 5, const MKL_INT &ncv = 15);
         
+        // lhs | phi >
         void moprXeigenvec(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col = 0);
+        // < phi | lhs | phi >
+        T measure(const mopr<T> &lhs, const MKL_INT &which_col=0);
+        // < phi | lhs1^\dagger lhs2 | phi >
+        T measure(const mopr<T> &lhs1, const mopr<T> &lhs2, const MKL_INT &which_col=0);
         
         double energy_min() { return E0; }
         double energy_max() { return Emax; }
