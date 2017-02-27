@@ -494,6 +494,9 @@ namespace qbasis {
         // simplify the structure if possible
         opr& simplify();
         
+        // take Hermitian conjugate
+        opr& dagger();
+        
         // fermions not implemented yet
         opr& transform(const std::vector<MKL_INT> &plan);
         
@@ -1057,6 +1060,9 @@ namespace qbasis {
     
 //  --------------------------- Miscellaneous stuff ----------------------------
 //  ----------------------------------------------------------------------------
+    
+    inline double conjugate(const double &rhs) { return rhs; }
+    inline std::complex<double> conjugate(const std::complex<double> &rhs) { return std::conj(rhs); }
     
     // calculate base^index, in the case both are integers
     MKL_INT int_pow(const MKL_INT &base, const MKL_INT &index);

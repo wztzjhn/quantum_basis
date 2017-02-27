@@ -13,6 +13,7 @@ void test_cfraction();
 void test_dotc();
 void test_lattice();
 void test_dimer();
+void test_Hubbard();
 
 int main(){
     test_lanczos_memoAll();
@@ -25,6 +26,8 @@ int main(){
     test_lattice();
     
     test_dimer();
+    
+    test_Hubbard();
     
     //std::cout << boost::math::binomial_coefficient<double>(10, 2) << std::endl;
     
@@ -77,7 +80,7 @@ void test_dimer() {
     auto res2 = s0x * triplet_y;
     auto res3 = s0x * triplet_z;
     res0.prt();
-    
+    std::cout << std::endl << std::endl;
     
 }
 
@@ -497,6 +500,30 @@ void test_operator(){
 
 
 
-
-
 }
+
+void test_Hubbard() {
+    auto c_up = std::vector<std::vector<std::complex<double>>>(4,std::vector<std::complex<double>>(4, 0.0));
+    auto c_dn = std::vector<std::vector<std::complex<double>>>(4,std::vector<std::complex<double>>(4, 0.0));
+    c_up[0][1] = std::complex<double>(1.0,0.0);
+    c_up[2][3] = std::complex<double>(1.0,0.0);
+    c_dn[0][2] = std::complex<double>(1.0,0.0);
+    c_dn[1][3] = std::complex<double>(-1.0,0.0);
+    
+    auto c_up_site0 = qbasis::opr<std::complex<double>>(0,0,true,c_up);
+    auto c_dn_site0 = qbasis::opr<std::complex<double>>(0,0,true,c_dn);
+    auto c_up_site1 = qbasis::opr<std::complex<double>>(1,0,true,c_up);
+    auto c_dn_site1 = qbasis::opr<std::complex<double>>(1,0,true,c_dn);
+    
+    auto c_up_dg_site0 = c_up_site0.dagger();
+    auto c_dn_dg_site0 = c_dn_site0.dagger();
+    auto c_up_dg_site1 = c_up_site1.dagger();
+    auto c_dn_dg_site1 = c_dn_site1.dagger();
+    c_up_dg_site0.prt(); std::cout << std::endl;
+    c_dn_dg_site0.prt(); std::cout << std::endl;
+    
+    //auto n_up_site0 = c_up_dg_site0 * c_up_site0;
+    //n_up_site0.prt();
+    
+}
+

@@ -64,9 +64,6 @@ namespace qbasis {
     }
     
     
-    inline double conjugate(const double &rhs) { return rhs; }
-    inline std::complex<double> conjugate(const std::complex<double> &rhs) { return std::conj(rhs); }
-    
     template <typename T>
     void model<T>::generate_Ham_all_sparse(const bool &upper_triangle)
     {

@@ -170,6 +170,22 @@ namespace qbasis {
     }
     
     template <typename T>
+    opr<T> &opr<T>::dagger()
+    {
+        if (mat == nullptr || diagonal) return *this;
+        T* mat_new = new T[dim*dim];
+        for (MKL_INT j = 0; j < dim; j++) {
+            for (MKL_INT i = 0; i < dim; i++) {
+                mat_new[i + j * dim] = conjugate(mat[j + i * dim]);
+            }
+        }
+        using std::swap;
+        swap(mat, mat_new);
+        delete [] mat_new;
+        return *this;
+    }
+    
+    template <typename T>
     opr<T> &opr<T>::transform(const std::vector<MKL_INT> &plan)
     {
         site = plan[site];
