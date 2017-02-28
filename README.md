@@ -1,7 +1,5 @@
 # quantum_basis
-Under development, not ready for practical use yet.
-
-Basis of condensed matter quantum lattice problems, for usage in exact diagonalization (ED). The code is designed to be used for any bosonic or fermionic problem, as long as the user can provide the matrix form of the elementary operators of the Hamiltonian.
+Basis of condensed matter quantum lattice problems, for usage in exact diagonalization (ED) and beyond. The code is designed for any general bosonic or fermionic problem (or a mix of both), as long as the user can provide the matrix form of the elementary operators of the Hamiltonian.
 
 Dependencies:
 
