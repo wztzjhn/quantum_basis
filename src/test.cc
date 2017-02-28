@@ -14,6 +14,7 @@ void test_dotc();
 void test_lattice();
 void test_dimer();
 void test_Hubbard();
+void test_tJ();
 
 int main(){
     test_lanczos_memoAll();
@@ -28,6 +29,8 @@ int main(){
     test_dimer();
     
     test_Hubbard();
+    
+    test_tJ();
     
     //std::cout << boost::math::binomial_coefficient<double>(10, 2) << std::endl;
     
@@ -498,11 +501,15 @@ void test_operator(){
 //    pauli_new.prt();
 
 
-
-
 }
 
+// test Hubbard chain
 void test_Hubbard() {
+    std::cout << "testing Hubbard chain." << std::endl;
+    MKL_INT Nsites = 7;
+    double U = 12.3;
+    MKL_INT total_fermion = 5; // half-filling
+    
     auto c_up = std::vector<std::vector<std::complex<double>>>(4,std::vector<std::complex<double>>(4, 0.0));
     auto c_dn = std::vector<std::vector<std::complex<double>>>(4,std::vector<std::complex<double>>(4, 0.0));
     c_up[0][1] = std::complex<double>(1.0,0.0);
@@ -510,20 +517,151 @@ void test_Hubbard() {
     c_dn[0][2] = std::complex<double>(1.0,0.0);
     c_dn[1][3] = std::complex<double>(-1.0,0.0);
     
-    auto c_up_site0 = qbasis::opr<std::complex<double>>(0,0,true,c_up);
-    auto c_dn_site0 = qbasis::opr<std::complex<double>>(0,0,true,c_dn);
-    auto c_up_site1 = qbasis::opr<std::complex<double>>(1,0,true,c_up);
-    auto c_dn_site1 = qbasis::opr<std::complex<double>>(1,0,true,c_dn);
+    qbasis::mopr<std::complex<double>> Nfermion;
+    qbasis::model<std::complex<double>> Hubbard;
     
-    auto c_up_dg_site0 = c_up_site0.dagger();
-    auto c_dn_dg_site0 = c_dn_site0.dagger();
-    auto c_up_dg_site1 = c_up_site1.dagger();
-    auto c_dn_dg_site1 = c_dn_site1.dagger();
-    c_up_dg_site0.prt(); std::cout << std::endl;
-    c_dn_dg_site0.prt(); std::cout << std::endl;
+    for (MKL_INT i = 0; i < Nsites; i++) {
+        auto c_up_i    = qbasis::opr<std::complex<double>>(i,0,true,c_up);
+        auto c_dn_i    = qbasis::opr<std::complex<double>>(i,0,true,c_dn);
+        auto c_up_dg_i = c_up_i; c_up_dg_i.dagger();
+        auto c_dn_dg_i = c_dn_i; c_dn_dg_i.dagger();
+        auto n_up_i    = c_up_dg_i * c_up_i;
+        auto n_dn_i    = c_dn_dg_i * c_dn_i;
+        
+        MKL_INT j = (i < Nsites - 1) ? (i+1) : 0;
+        auto c_up_j    = qbasis::opr<std::complex<double>>(j,0,true,c_up);
+        auto c_dn_j    = qbasis::opr<std::complex<double>>(j,0,true,c_dn);
+        auto c_up_dg_j = c_up_j; c_up_dg_j.dagger();
+        auto c_dn_dg_j = c_dn_j; c_dn_dg_j.dagger();
+        
+        Hubbard.add_offdiagonal_Ham(std::complex<double>(-1.0,0.0) * ( c_up_dg_i * c_up_j ));
+        Hubbard.add_offdiagonal_Ham(std::complex<double>(-1.0,0.0) * ( c_up_dg_j * c_up_i ));
+        Hubbard.add_offdiagonal_Ham(std::complex<double>(-1.0,0.0) * ( c_dn_dg_i * c_dn_j ));
+        Hubbard.add_offdiagonal_Ham(std::complex<double>(-1.0,0.0) * ( c_dn_dg_j * c_dn_i ));
+        Hubbard.add_diagonal_Ham(std::complex<double>(U,0.0) * (n_up_i * n_dn_i));
+        
+        Nfermion += (n_up_i + n_dn_i);
+    }
     
-    //auto n_up_site0 = c_up_dg_site0 * c_up_site0;
-    //n_up_site0.prt();
+    Hubbard.enumerate_basis_conserve(Nsites, {"electron"}, Nfermion, static_cast<double>(total_fermion));
+    std::cout << "dim_all = " << Hubbard.dim_all << std::endl;
+    
+    // sort basis
+    Hubbard.sort_basis_all();
+    std::cout << std::endl;
+    
+    /*
+    for (MKL_INT j = 0; j < Hubbard.dim_all; j++) {
+        std::cout << "j = " << j << std::endl;
+        Hubbard.basis_all[j].prt_nonzero();
+        std::cout << std::endl;
+    }
+    */
+    
+    // generating Hamiltonian matrix
+    Hubbard.generate_Ham_all_sparse(false);
+    std::cout << std::endl;
+    
+    Hubbard.locate_E0();
+    std::cout << std::endl;
+}
+
+
+// test t-J model on square lattice
+void test_tJ()
+{
+    
+    std::cout << "testing tJ model." << std::endl;
+    MKL_INT lx = 3, ly = 3;
+    qbasis::lattice lattice("square","pbc",{lx,ly});
+    MKL_INT total_fermion = 4;
+    
+    double J = 1.9;
+    
+    auto c_up  = std::vector<std::vector<std::complex<double>>>(3,std::vector<std::complex<double>>(3, 0.0));
+    auto c_dn  = std::vector<std::vector<std::complex<double>>>(3,std::vector<std::complex<double>>(3, 0.0));
+    c_up[0][1] = std::complex<double>(1.0,0.0);
+    c_dn[0][2] = std::complex<double>(1.0,0.0);
+    
+    qbasis::mopr<std::complex<double>> Nfermion;
+    qbasis::model<std::complex<double>> tJ;
+
+    for (MKL_INT m = 0; m < lattice.Lx(); m++) {
+        for (MKL_INT n = 0; n < lattice.Ly(); n++) {
+            MKL_INT site_i, site_j;
+            lattice.coor2site(std::vector<MKL_INT>{m,n}, 0, site_i);
+            auto c_up_i = qbasis::opr<std::complex<double>>(site_i,0,true,c_up);
+            auto c_dn_i = qbasis::opr<std::complex<double>>(site_i,0,true,c_dn);
+            auto c_up_dg_i = c_up_i; c_up_dg_i.dagger();
+            auto c_dn_dg_i = c_dn_i; c_dn_dg_i.dagger();
+            auto Sp_i = c_up_dg_i * c_dn_i;
+            auto Sm_i = c_dn_dg_i * c_up_i;
+            auto Sz_i = std::complex<double>(0.5,0.0) * (c_up_dg_i * c_up_i - c_dn_dg_i * c_dn_i);
+            auto n_i  = c_up_dg_i * c_up_i + c_dn_dg_i * c_dn_i;
+            
+            Nfermion += (c_up_dg_i * c_up_i + c_dn_dg_i * c_dn_i);
+            
+            // right neighbor
+            lattice.coor2site(std::vector<MKL_INT>{m+1,n}, 0, site_j);
+            auto c_up_j = qbasis::opr<std::complex<double>>(site_j,0,true,c_up);
+            auto c_dn_j = qbasis::opr<std::complex<double>>(site_j,0,true,c_dn);
+            auto c_up_dg_j = c_up_j; c_up_dg_j.dagger();
+            auto c_dn_dg_j = c_dn_j; c_dn_dg_j.dagger();
+            auto Sp_j = c_up_dg_j * c_dn_j;
+            auto Sm_j = c_dn_dg_j * c_up_j;
+            auto Sz_j = std::complex<double>(0.5,0.0) * (c_up_dg_j * c_up_j - c_dn_dg_j * c_dn_j);
+            auto n_j  = c_up_dg_j * c_up_j + c_dn_dg_j * c_dn_j;
+            
+            tJ.add_offdiagonal_Ham(std::complex<double>(-1.0,0.0) * ( c_up_dg_i * c_up_j ));
+            tJ.add_offdiagonal_Ham(std::complex<double>(-1.0,0.0) * ( c_up_dg_j * c_up_i ));
+            tJ.add_offdiagonal_Ham(std::complex<double>(-1.0,0.0) * ( c_dn_dg_i * c_dn_j ));
+            tJ.add_offdiagonal_Ham(std::complex<double>(-1.0,0.0) * ( c_dn_dg_j * c_dn_i ));
+            tJ.add_offdiagonal_Ham(std::complex<double>(0.5 * J,0.0) * (Sp_i * Sm_j));
+            tJ.add_offdiagonal_Ham(std::complex<double>(0.5 * J,0.0) * (Sm_i * Sp_j));
+            tJ.add_diagonal_Ham(std::complex<double>(J,0.0) * Sz_i * Sz_j);
+            tJ.add_diagonal_Ham(std::complex<double>(-0.25 * J,0.0) * n_i * n_j);
+            
+            // top neighbor
+            lattice.coor2site(std::vector<MKL_INT>{m,n+1}, 0, site_j);
+            c_up_j = qbasis::opr<std::complex<double>>(site_j,0,true,c_up);
+            c_dn_j = qbasis::opr<std::complex<double>>(site_j,0,true,c_dn);
+            c_up_dg_j = c_up_j; c_up_dg_j.dagger();
+            c_dn_dg_j = c_dn_j; c_dn_dg_j.dagger();
+            Sp_j = c_up_dg_j * c_dn_j;
+            Sm_j = c_dn_dg_j * c_up_j;
+            Sz_j = std::complex<double>(0.5,0.0) * (c_up_dg_j * c_up_j - c_dn_dg_j * c_dn_j);
+            n_j  = c_up_dg_j * c_up_j + c_dn_dg_j * c_dn_j;
+            
+            tJ.add_offdiagonal_Ham(std::complex<double>(-1.0,0.0) * ( c_up_dg_i * c_up_j ));
+            tJ.add_offdiagonal_Ham(std::complex<double>(-1.0,0.0) * ( c_up_dg_j * c_up_i ));
+            tJ.add_offdiagonal_Ham(std::complex<double>(-1.0,0.0) * ( c_dn_dg_i * c_dn_j ));
+            tJ.add_offdiagonal_Ham(std::complex<double>(-1.0,0.0) * ( c_dn_dg_j * c_dn_i ));
+            tJ.add_offdiagonal_Ham(std::complex<double>(0.5 * J,0.0) * (Sp_i * Sm_j));
+            tJ.add_offdiagonal_Ham(std::complex<double>(0.5 * J,0.0) * (Sm_i * Sp_j));
+            tJ.add_diagonal_Ham(std::complex<double>(J,0.0) * Sz_i * Sz_j);
+            tJ.add_diagonal_Ham(std::complex<double>(-0.25 * J,0.0) * n_i * n_j);
+        }
+    }
+    
+    tJ.enumerate_basis_conserve(lattice.total_sites(), {"tJ"}, Nfermion, static_cast<double>(total_fermion));
+    std::cout << "dim_all = " << tJ.dim_all << std::endl;
+    
+    // sort basis
+    tJ.sort_basis_all();
+    std::cout << std::endl;
+    
+    
+    // generating Hamiltonian matrix
+    tJ.generate_Ham_all_sparse(false);
+    std::cout << std::endl;
+    
+    tJ.locate_E0();
+    std::cout << std::endl;
     
 }
 
+// test Kondo lattice chain
+void test_Kondo()
+{
+    
+}

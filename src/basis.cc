@@ -8,32 +8,47 @@ namespace qbasis {
         dim_local(static_cast<short>(dim_local_)),
         bits_per_site(static_cast<short>(ceil(log2(static_cast<double>(dim_local_)) - 1e-9))),
         Nfermion_map(std::vector<int>()),
-        bits(static_cast<DBitSet::size_type>(n_sites * bits_per_site)) {}
+        bits(static_cast<DBitSet::size_type>(n_sites * bits_per_site))
+    {
+        Nfermion_map.shrink_to_fit();
+    }
     
     basis_elem::basis_elem(const MKL_INT &n_sites, const MKL_INT &dim_local_, const opr<double> &Nfermion):
         dim_local(static_cast<short>(dim_local_)),
         bits_per_site(static_cast<short>(ceil(log2(static_cast<double>(dim_local_)) - 1e-9))),
         bits(static_cast<DBitSet::size_type>(n_sites * bits_per_site))
     {
-        assert(Nfermion.q_diagonal() && ! Nfermion.q_zero());
+        auto Nf = Nfermion;
+        Nf.simplify();
+        assert(Nf.q_diagonal() && ! Nf.q_zero());
         Nfermion_map = std::vector<int>(dim_local_);
         Nfermion_map.shrink_to_fit();
         for (decltype(Nfermion_map.size()) j = 0; j < Nfermion_map.size(); j++)
-            Nfermion_map[j] = static_cast<int>(ceil(Nfermion.mat[j] - 1e-9) + 1e-9);
+            Nfermion_map[j] = static_cast<int>(ceil(Nf.mat[j] - 1e-9) + 1e-9);
     }
     
     basis_elem::basis_elem(const MKL_INT &n_sites, const std::string &s)
     {
         if (s == "spin-1/2") {
-            dim_local = 2;
+            dim_local = 2;                            // { |up>, |dn> }
             Nfermion_map = std::vector<int>();
-        } else if (s == "spin-1") {
+        } else if (s == "spin-1") {                   // { |up>, |0>, |dn> }
             dim_local = 3;
             Nfermion_map = std::vector<int>();
-        } else if (s == "dimer") {
+        } else if (s == "dimer") {                    // { |s>, |t+>, |t->, |t0> } or { |s>, |tx>, |ty>, |tz> }
             dim_local = 4;
             Nfermion_map = std::vector<int>();
+        } else if (s == "electron") {                 // { |0>, |up>, |dn>, |up+dn> }
+            dim_local = 4;
+            Nfermion_map = std::vector<int>{0,1,1,2};
+        } else if (s == "tJ") {                       // { |0>, |up>, |dn> }
+            dim_local = 3;
+            Nfermion_map = std::vector<int>{0,1,1};
+        } else if (s == "spinless-fermion") {         // { |0>, |1> }
+            dim_local = 2;
+            Nfermion_map = std::vector<int>{0,1};
         }
+        Nfermion_map.shrink_to_fit();
         bits_per_site = static_cast<short>(ceil(log2(static_cast<double>(dim_local)) - 1e-9));
         bits = DBitSet(static_cast<DBitSet::size_type>(n_sites * bits_per_site));
     }
@@ -925,11 +940,10 @@ namespace qbasis {
                         }
                     }
                 }
-                if (rhs.mbits[lhs.orbital].q_fermion()) {
-                    auto &ele = rhs.mbits[lhs.orbital];
-                    for (MKL_INT site_cnt = 0; site_cnt < lhs.site; site_cnt++) {
-                        sgn = (sgn + ele.Nfermion_map[ele.siteRead(site_cnt)]) % 2;
-                    }
+                assert(rhs.mbits[lhs.orbital].q_fermion());
+                auto &ele = rhs.mbits[lhs.orbital];
+                for (MKL_INT site_cnt = 0; site_cnt < lhs.site; site_cnt++) {
+                    sgn = (sgn + ele.Nfermion_map[ele.siteRead(site_cnt)]) % 2;
                 }
             }
             for (MKL_INT row = 0; row < lhs.dim; row++) {

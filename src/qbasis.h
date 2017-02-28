@@ -41,6 +41,13 @@
 #endif
 
 
+// FUNCTIONS which need further change for Fermions:
+// opr& transform(const std::vector<MKL_INT> &plan);
+// opr_prod& transform(const std::vector<MKL_INT> &plan);
+// basis_elem& transform(const std::vector<MKL_INT> &plan, MKL_INT &sgn);
+// basis_elem& translate(const lattice &latt, const std::vector<MKL_INT> &disp, MKL_INT &sgn);
+// mbasis_elem& transform(const std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> &plan, MKL_INT &sgn);
+
 namespace qbasis {
 
 //  -------------part 0: global vals, forward declarations ---------------------
@@ -179,8 +186,14 @@ namespace qbasis {
         basis_elem(const MKL_INT &n_sites, const MKL_INT &dim_local_, const opr<double> &Nfermion); // fermion
         
         // constructor from total number of sites and a given name.
-        // current choices:
-        // "spin-1/2", "spin-1"
+        // Note: if you use a given name here, your operator definitions HAVE TO BE CONSISTENT with this basis definition!!!
+        // current choices of name s:
+        // ***   spin-1/2            ***
+        // ***   spin-1              ***
+        // ***   dimer               ***
+        // ***   electron            ***
+        // ***   tJ                  ***
+        // ***   spinless-fermion    ***
         basis_elem(const MKL_INT &n_sites, const std::string &s);
         
         // copy constructor
@@ -265,7 +278,7 @@ namespace qbasis {
         // default constructor
         mbasis_elem() = default;
         
-        // construcutor with total number of sites, and name  of each orbital
+        // construcutor with total number of sites, and name of each orbital
         mbasis_elem(const MKL_INT &n_sites, std::initializer_list<std::string> lst);
         
         // copy constructor
