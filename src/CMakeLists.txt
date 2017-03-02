@@ -17,11 +17,11 @@ target_link_libraries(qbasis ${LIBS})
 add_executable(test.x test.cc ${QBASIS_SRC})
 target_link_libraries(test.x ${LIBS})
 
-add_executable(xxz.x chain_xxz.cc ${QBASIS_SRC})
-target_link_libraries(xxz.x ${LIBS})
-
 add_executable(ss.x ../../2017_ShastrySutherland/variational/src/shastry_sutherland.cc ${QBASIS_SRC})
 target_link_libraries(ss.x ${LIBS})
+
+add_executable(ex.x ../../2017_Filip/lanczos/src/exchange.cc ${QBASIS_SRC})
+target_link_libraries(ex.x ${LIBS})
 
 set_target_properties(qbasis PROPERTIES PUBLIC_HEADER "${QBASIS_INCLUDE}")
 
