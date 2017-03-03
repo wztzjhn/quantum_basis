@@ -40,6 +40,37 @@ namespace qbasis {
         return res;
     }
     
+    std::vector<MKL_INT> dynamic_base_plus1(const std::vector<MKL_INT> &nums, const std::vector<MKL_INT> &base)
+    {
+        MKL_INT len = static_cast<MKL_INT>(nums.size());
+        assert(len > 0);
+        assert(nums.size() == base.size());
+        for (MKL_INT j = 0; j < len; j++) assert(nums[j] >= 0 && nums[j] < base[j]);
+        auto res = nums;
+        res[len-1]++;
+        MKL_INT i = len - 1;
+        while (i > 0 && res[i] == base[i]) {
+            res[i] = 0;
+            res[i-1]++;
+            i--;
+        }
+        return res;
+    }
+    
+    template <typename T>
+    bool is_sorted_norepeat(const std::vector<T> &array)
+    {
+        auto it = array.begin();
+        auto it_prev = it++;
+        while (it != array.end()) {
+            if (! (*it_prev < *it)) return false;
+            it_prev = it++;
+        }
+        return true;
+    }
+    template bool is_sorted_norepeat(const std::vector<MKL_INT> &array);
+    template bool is_sorted_norepeat(const std::vector<mbasis_elem> &array);
+    
     template <typename T>
     MKL_INT binary_search(const std::vector<T> &array, const T &val,
                           const MKL_INT &bgn, const MKL_INT &end)
@@ -59,7 +90,7 @@ namespace qbasis {
         }
         return -1;
     }
-    template MKL_INT binary_search(const std::vector<qbasis::mbasis_elem> &array, const qbasis::mbasis_elem &val,
+    template MKL_INT binary_search(const std::vector<mbasis_elem> &array, const mbasis_elem &val,
                                    const MKL_INT &bgn, const MKL_INT &end);
     template MKL_INT binary_search(const std::vector<MKL_INT> &array, const MKL_INT &val,
                                    const MKL_INT &bgn, const MKL_INT &end);

@@ -1085,6 +1085,11 @@ namespace qbasis {
     MKL_INT dynamic_base(const std::vector<MKL_INT> &num, const std::vector<MKL_INT> &base);
     // the other way around
     std::vector<MKL_INT> dynamic_base(const MKL_INT &total, const std::vector<MKL_INT> &base);
+    // nums + 1
+    std::vector<MKL_INT> dynamic_base_plus1(const std::vector<MKL_INT> &nums, const std::vector<MKL_INT> &base);
+    
+    template <typename T>
+    bool is_sorted_norepeat(const std::vector<T> &array);
     
     // note: end means the position which has already passed the last element
     template <typename T>
