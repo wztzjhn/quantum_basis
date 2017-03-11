@@ -19,8 +19,6 @@ namespace qbasis {
         assert(m < dim);                                                          // # of orthogonal vectors: at most dim
         assert(std::abs(nrm2(dim, resid, 1) - 1.0) < lanczos_precision);          // normalized
         if (np == 0) return;
-        std::chrono::time_point<std::chrono::system_clock> start, end;
-        start = std::chrono::system_clock::now();
         std::vector<T*> vpt(m+1);                                                 // pointers of v_0, v_1, ..., v_m
         if (MemoSteps) {                                                          // v has m cols
             for (MKL_INT j = 0; j < m; j++) vpt[j] = &v[j*dim];
@@ -70,9 +68,20 @@ namespace qbasis {
         axpy(dim, -hessenberg[ldh+m-1], vpt[m-1], 1, vpt[m], 1);                  // w_{k-1}
         rnorm = nrm2(dim, vpt[m], 1);
         scal(dim, 1.0 / rnorm, vpt[m], 1);                                        // v[k]
-        end = std::chrono::system_clock::now();
-        std::chrono::duration<double> elapsed_seconds = end - start;
-        //std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        // stupid re-orthogonalization
+        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        if (MemoSteps) {
+            for (MKL_INT l = 0; l < m-1; l++) {
+                auto q = dotc(dim, &v[l*dim], 1, vpt[m], 1);
+                double qabs = std::abs(q);
+                if (qabs > lanczos_precision) {
+                    axpy(dim, -q, &v[l*dim], 1, vpt[m], 1);
+                    scal(dim, 1.0 / std::sqrt(1.0 - qabs * qabs), vpt[m], 1);
+                }
+            }
+        }
+        
     }
 
 
