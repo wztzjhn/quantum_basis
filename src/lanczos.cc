@@ -50,6 +50,19 @@ namespace qbasis {
             axpy(dim, -hessenberg[ldh+j], vpt[j], 1, vpt[j+1], 1);                // w_j
             hessenberg[j+1] = nrm2(dim, vpt[j+1], 1);                             // beta[j+1]
             scal(dim, 1.0 / hessenberg[j+1], vpt[j+1], 1);                        // v[j+1]
+            // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            // stupid re-orthogonalization, change checking criteria and replace with DGKS later!!!
+            // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            if (MemoSteps) {
+                for (MKL_INT l = 0; l < j; l++) {
+                    auto q = dotc(dim, &v[l*dim], 1, vpt[j+1], 1);
+                    double qabs = std::abs(q);
+                    if (qabs > lanczos_precision) {
+                        axpy(dim, -q, &v[l*dim], 1, vpt[j+1], 1);
+                        scal(dim, 1.0 / std::sqrt(1.0 - qabs * qabs), vpt[j+1], 1);
+                    }
+                }
+            }
         }
         mat.MultMv(vpt[m-1], vpt[m]);
         if(m > 1) axpy(dim, -hessenberg[m-1], vpt[m-2], 1, vpt[m], 1);
@@ -59,7 +72,7 @@ namespace qbasis {
         scal(dim, 1.0 / rnorm, vpt[m], 1);                                        // v[k]
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
-        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+        //std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
 
 
@@ -303,10 +316,11 @@ namespace qbasis {
                 perform_shifts(dim, ncv, np, ritz.data()+nev, rnorm, resid.data(), v.data(),
                                hessenberg.data(), ncv, Q.data(), ncv);
                 lanczos(nev, np, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv, true);
-//                for (MKL_INT j = 0; j < nev; j++) {
-//                    std::cout << std::setw(16) << ritz[j];
-//                }
-                std::cout << "ritz0 = " << ritz[0] << std::endl;
+                for (MKL_INT j = 0; j < nev; j++) {
+                    std::cout << std::setw(16) << ritz[j];
+                }
+                std::cout << std::endl;
+                //std::cout << "ritz0 = " << ritz[0] << std::endl;
                 step++;
             }
             nconv = 1;
