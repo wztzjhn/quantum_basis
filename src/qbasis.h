@@ -1011,9 +1011,9 @@ namespace qbasis {
         
         void generate_Ham_all_sparse(const bool &upper_triangle = true); // generate the full Hamiltonian in sparse matrix format
         
-        void locate_E0(const MKL_INT &nev = 5, const MKL_INT &ncv = 15);
+        void locate_E0(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
         
-        void locate_Emax(const MKL_INT &nev = 5, const MKL_INT &ncv = 15);
+        void locate_Emax(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
         
         // lhs | phi >
         void moprXeigenvec(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col = 0);
