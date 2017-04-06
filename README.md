@@ -13,6 +13,6 @@ Dependencies:
 
 Note: using a modified version of arpack++ to be compatible with MKL. To download:
 
-git clone git@github.com:wztzjhn/arpackpp.git
+go to https://github.com/wztzjhn/arpackpp
 
 Currently the known working compilers are clang and gcc (c++11 required). (Intel icc not tested yet)
