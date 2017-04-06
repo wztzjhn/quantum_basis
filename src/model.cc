@@ -19,8 +19,12 @@ namespace qbasis {
     // need further optimization!
     template <typename T>
     void model<T>::enumerate_basis_conserve(const MKL_INT &n_sites, std::initializer_list<std::string> lst,
-                                            const mopr<std::complex<double>> &conserve, const double &val)
+                                            std::initializer_list<mopr<std::complex<double>>> conserve_lst,
+                                            std::initializer_list<double> val_lst)
+//                                            const mopr<std::complex<double>> &conserve, const double &val)
     {
+        MKL_INT num_conserve = static_cast<MKL_INT>(conserve_lst.size());
+        assert(conserve_lst.size() == val_lst.size());
         std::list<qbasis::mbasis_elem> basis_temp;
         auto GS = mbasis_elem(n_sites,lst);
         GS.reset();
@@ -28,14 +32,36 @@ namespace qbasis {
         
         MKL_INT cnt = 0;
         while (! state_new.q_maximized()) {
-            auto temp = state_new.diagonal_operator(conserve);
-            if (std::abs(temp - val) < 1e-5) basis_temp.push_back(state_new);
+            bool flag = true;
+            auto it_opr = conserve_lst.begin();
+            auto it_val = val_lst.begin();
+            while (it_opr != conserve_lst.end()) {
+                auto temp = state_new.diagonal_operator(*it_opr);
+                if (std::abs(temp - *it_val) >= 1e-5) {
+                    flag = false;
+                    break;
+                }
+                it_opr++;
+                it_val++;
+            }
+            if (flag) basis_temp.push_back(state_new);
             state_new.increment();
             cnt++;
         }
         
-        auto temp = state_new.diagonal_operator(conserve);
-        if (std::abs(temp - val) < 1e-5) basis_temp.push_back(state_new);
+        bool flag = true;
+        auto it_opr = conserve_lst.begin();
+        auto it_val = val_lst.begin();
+        while (it_opr != conserve_lst.end()) {
+            auto temp = state_new.diagonal_operator(*it_opr);
+            if (std::abs(temp - *it_val) >= 1e-5) {
+                flag = false;
+                break;
+            }
+            it_opr++;
+            it_val++;
+        }
+        if (flag) basis_temp.push_back(state_new);
         
         dim_all = basis_temp.size();
         basis_all.clear();

@@ -1005,7 +1005,8 @@ namespace qbasis {
         
         void enumerate_basis_all(); // naive way of enumerating all possible basis state
         void enumerate_basis_conserve(const MKL_INT &n_sites, std::initializer_list<std::string> lst,
-                                      const mopr<std::complex<double>> &conserve, const double &val);
+                                      std::initializer_list<mopr<std::complex<double>>> conserve_lst,
+                                      std::initializer_list<double> val_lst);
         
         void sort_basis_all();
         

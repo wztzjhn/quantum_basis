@@ -543,7 +543,7 @@ void test_Hubbard() {
         Nfermion += (n_up_i + n_dn_i);
     }
     
-    Hubbard.enumerate_basis_conserve(Nsites, {"electron"}, Nfermion, static_cast<double>(total_fermion));
+    Hubbard.enumerate_basis_conserve(Nsites, {"electron"}, {Nfermion}, {static_cast<double>(total_fermion)});
     std::cout << "dim_all = " << Hubbard.dim_all << std::endl;
     
     // sort basis
@@ -643,7 +643,7 @@ void test_tJ()
         }
     }
     
-    tJ.enumerate_basis_conserve(lattice.total_sites(), {"tJ"}, Nfermion, static_cast<double>(total_fermion));
+    tJ.enumerate_basis_conserve(lattice.total_sites(), {"tJ"}, {Nfermion}, {static_cast<double>(total_fermion)});
     std::cout << "dim_all = " << tJ.dim_all << std::endl;
     
     // sort basis
