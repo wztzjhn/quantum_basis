@@ -15,6 +15,7 @@ void test_lattice();
 void test_dimer();
 void test_Hubbard();
 void test_tJ();
+void test_bubble();
 
 int main(){
     test_lanczos_memoAll();
@@ -31,6 +32,8 @@ int main(){
     test_Hubbard();
     
     test_tJ();
+    
+    test_bubble();
     
     //std::cout << boost::math::binomial_coefficient<double>(10, 2) << std::endl;
     
@@ -664,4 +667,14 @@ void test_tJ()
 void test_Kondo()
 {
     
+}
+void test_bubble() {
+    std::vector<MKL_INT> val{3,1,10,2,5,12,9,-3};
+    auto cnt = qbasis::bubble_sort(val, 0, 8);
+    std::cout << "cnt = " << cnt << std::endl;
+    std::cout << "vals: " << std::endl;
+    for (MKL_INT j = 0; j < val.size(); j++) {
+        std::cout << val[j] << "  ";
+    }
+    std::cout << std::endl;
 }

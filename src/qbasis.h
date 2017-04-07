@@ -256,7 +256,7 @@ namespace qbasis {
     private:
         short dim_local;
         short bits_per_site;
-        std::vector<int> Nfermion_map;     // Nfermion_map[i] corresponds to the number of fermions on state i
+        std::vector<int> Nfermion_map;     // Nfermion_map[i] corresponds to the number of fermions of state i
         DBitSet bits;
     };
     
@@ -1033,12 +1033,13 @@ namespace qbasis {
         mopr<T> Ham_diag;
         mopr<T> Ham_off_diag;
         
-        // add basis_repr later
         std::vector<qbasis::mbasis_elem> basis_all;
+        std::vector<MKL_INT> basis_belong;                     // size: dim_all, store the position of its repr
+        std::vector<std::complex<double>> basis_coeff;         // size: dim_all, store the coeff
+        std::vector<MKL_INT> basis_repr;                       // size: dim_repr, store the position of repr
         
-        std::vector<T> basis_coeff;
-        
-        csr_mat<T> HamMat_csr;
+        csr_mat<T> HamMat_csr;                                 // corresponding to the full Hilbert space
+        csr_mat<std::complex<double>> HamMat_repr_csr;         // for the representative Hilbert space
         
         std::vector<double> eigenvals;
         std::vector<T> eigenvecs;
@@ -1096,6 +1097,10 @@ namespace qbasis {
     template <typename T>
     MKL_INT binary_search(const std::vector<T> &array, const T &val,
                           const MKL_INT &bgn, const MKL_INT &end);
+    
+    // return the number of exchanges happened during the bubble sort
+    template <typename T>
+    MKL_INT bubble_sort(std::vector<T> &array, const MKL_INT &bgn, const MKL_INT &end);
     
     //             b1
     // a0 +  ---------------

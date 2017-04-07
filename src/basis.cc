@@ -134,13 +134,21 @@ namespace qbasis {
         return results;
     }
     
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // in future, replace with quick sort to improve performance!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     basis_elem &basis_elem::transform(const std::vector<MKL_INT> &plan, MKL_INT &sgn)
     {
         if (! q_fermion()) {
             sgn = 0;
         } else {
-            std::cout << "Fermionic translation not implemented yet!" << std::endl;
-            assert(false);
+            std::vector<MKL_INT> plan_fermion;
+            for (MKL_INT site = 0; site < total_sites(); site++) {
+                auto state = siteRead(site);
+                if (Nfermion_map[state] % 2 != 0) plan_fermion.push_back(plan[site]); // keeps all the sites which have fermion
+                // using bubble sort to count how many times we are exchanging fermions
+                sgn = bubble_sort(plan_fermion, 0, static_cast<MKL_INT>(plan_fermion.size())) % 2;
+            }
         }
         assert(static_cast<MKL_INT>(plan.size()) == total_sites());
         auto res = *this;

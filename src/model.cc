@@ -14,6 +14,8 @@ namespace qbasis {
             basis_all[j] = basis_all[j-1];
             basis_all[j].increment();
         }
+        
+        sort_basis_all();
     }
     
     // need further optimization!
@@ -21,9 +23,7 @@ namespace qbasis {
     void model<T>::enumerate_basis_conserve(const MKL_INT &n_sites, std::initializer_list<std::string> lst,
                                             std::initializer_list<mopr<std::complex<double>>> conserve_lst,
                                             std::initializer_list<double> val_lst)
-//                                            const mopr<std::complex<double>> &conserve, const double &val)
     {
-        MKL_INT num_conserve = static_cast<MKL_INT>(conserve_lst.size());
         assert(conserve_lst.size() == val_lst.size());
         std::list<qbasis::mbasis_elem> basis_temp;
         auto GS = mbasis_elem(n_sites,lst);
@@ -66,6 +66,8 @@ namespace qbasis {
         dim_all = basis_temp.size();
         basis_all.clear();
         for (auto & ele : basis_temp) basis_all.push_back(ele);
+        
+        sort_basis_all();
     }
     
     template <typename T>
