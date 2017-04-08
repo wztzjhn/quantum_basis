@@ -837,6 +837,8 @@ namespace qbasis {
         void MultMv(const T *x, T *y) const;
         void MultMv(T *x, T *y);  // to be compatible with arpack++
         
+        std::vector<T> to_dense() const;
+        
         // matrix matrix product, x and y of shape dim * n
         //void MultMm(const T *x, T *y, MKL_INT n) const;
         
