@@ -276,8 +276,41 @@ namespace qbasis {
         MKL_INT dim = mat.dimension();
         MKL_INT np = ncv - nev;
         MKL_INT niter;
-
-        if (use_arpack) {
+        
+        if (dim <= 30) {                                                                // fall back to full diagonalization
+            assert(nev <= dim);
+            auto mat_dense = mat.to_dense();
+            std::vector<double> eigenvals_all(dim);
+            auto info = heevd(LAPACK_COL_MAJOR, 'V', 'U', dim, mat_dense.data(), dim, eigenvals_all.data());
+            assert(info == 0);
+            nconv = nev;
+            std::vector<std::pair<double, MKL_INT>> eigenvals_copy(dim);
+            for (MKL_INT j = 0; j < dim; j++) {
+                eigenvals_copy[j].first = eigenvals_all[j];
+                eigenvals_copy[j].second = j;
+            }
+            if (order == "SR" || order == "sr" || order == "SA" || order == "sa") {      // smallest real part
+                std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
+                          [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return a.first < b.first; });
+            } else if (order == "LR" || order == "lr" || order == "LA" || order == "la") { // largest real part
+                std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
+                          [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return b.first < a.first; });
+            } else if (order == "SM" || order == "sm") { // smallest magnitude
+                std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
+                          [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return std::abs(a.first) < std::abs(b.first); });
+            } else if (order == "LM" || order == "lm") { // largest magnitude
+                std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
+                          [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return std::abs(b.first) < std::abs(a.first); });
+            }
+            for (MKL_INT j = 0; j < nconv; j++)
+                eigenvals[j] = eigenvals_copy[j].first;
+            for (MKL_INT j = 0; j < nconv; j++) {
+                std::cout << "j = " << j << ", E_j = " << eigenvals[j] << std::endl;
+            }
+            // sort the eigenvecs
+            for (MKL_INT j = 0; j < nconv; j++)
+                copy(dim, mat_dense.data() + dim * eigenvals_copy[j].second, 1, eigenvecs + dim * j, 1);
+        } else if (use_arpack) {
             std::string order_cap(order);
             std::vector<T> eigenvecs_copy(nev*dim);
             std::transform(order_cap.begin(), order_cap.end(), order_cap.begin(), ::toupper);

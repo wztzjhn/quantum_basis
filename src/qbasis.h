@@ -1270,13 +1270,13 @@ namespace qbasis {
         mkl_zcsrcsc(job, &n, Acsr, AJ0, AI0, Acsc, AJ1, AI1, info);
     }
     
-    // lapack computational routine, computes all eigenvalues of a real symmetric tridiagonal matrix using QR algorithm.
+    // lapack computational routine, computes all eigenvalues of a real symmetric TRIDIAGONAL matrix using QR algorithm.
     inline // double
     lapack_int sterf(const lapack_int &n, double *d, double *e) {
         return LAPACKE_dsterf(n, d, e);
     }
     
-    // lapack computational routine, computes all eigenvalues and (optionally) eigenvectors of a symmetric/hermitian tridiagonal matrix using the divide and conquer method.
+    // lapack computational routine, computes all eigenvalues and (optionally) eigenvectors of a symmetric/hermitian TRIDIAGONAL matrix using the divide and conquer method.
     inline // double
     lapack_int stedc(const int &matrix_layout, const char &compz, const lapack_int &n, double *d, double *e, double *z, const lapack_int &ldz) {
         return LAPACKE_dstedc(matrix_layout, compz, n, d, e, z, ldz);
@@ -1316,6 +1316,16 @@ namespace qbasis {
                      const lapack_int &m, const lapack_int &n, const lapack_int &k,
                      const double *a, const lapack_int &lda, const double *tau, double *c, const lapack_int &ldc) {
         return LAPACKE_dormqr(matrix_layout, side, trans, m, n, k, a, lda, tau, c, ldc);
+    }
+    
+    // lapack driver routine, computes all eigenvalues and, optionally, all eigenvectors of a hermitian matrix using divide and conquer algorithm.
+    inline // double
+    lapack_int heevd(const int &matrix_layout, const char &jobz, const char &uplo, const lapack_int &n, double *a, const lapack_int &lda, double *w) {
+        return LAPACKE_dsyevd(matrix_layout, jobz, uplo, n, a, lda, w);
+    }
+    inline // complex double
+    lapack_int heevd(const int &matrix_layout, const char &jobz, const char &uplo, const lapack_int &n, std::complex<double> *a, const lapack_int &lda, double *w) {
+        return LAPACKE_zheevd(matrix_layout, jobz, uplo, n, a, lda, w);
     }
 }
 
