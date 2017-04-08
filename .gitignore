@@ -34,6 +34,7 @@ xbuild
 build
 results
 bin
+alps_benchmark
 performance_test
 src/examples
 

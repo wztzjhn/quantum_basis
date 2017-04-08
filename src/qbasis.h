@@ -930,7 +930,7 @@ namespace qbasis {
         lattice() = default;
         
         // constructor from particular requirements. e.g. square, triangular...
-        lattice(const std::string &name, const std::string &bc_, std::initializer_list<MKL_INT> lens);
+        lattice(const std::string &name, const std::vector<MKL_INT> &L_, const std::vector<std::string> &bc_);
         
         // coordinates <-> site indices
         // 1D: site = i * num_sub + sub
@@ -954,12 +954,16 @@ namespace qbasis {
         // inverse of a transformation
         std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> plan_inverse(const std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> &old) const;
         
-        std::string boundary() const {
+        std::vector<std::string> boundary() const {
             return bc;
         }
         
         MKL_INT dimension() const {
             return dim;
+        }
+        
+        MKL_INT num_sublattice() const {
+            return num_sub;
         }
         
         MKL_INT total_sites() const {
@@ -973,12 +977,12 @@ namespace qbasis {
         MKL_INT Lz() const { assert(L.size() > 2); return L[2]; }
         
     private:
-        MKL_INT dim;
-        MKL_INT num_sub;
+        std::vector<MKL_INT> L;             // linear size in each dimension
+        std::vector<std::string> bc;        // boundary condition
         std::vector<std::vector<double>> a; // real space basis
         std::vector<std::vector<double>> b; // momentum space basis
-        std::string bc;                     // boundary condition
-        std::vector<MKL_INT> L;             // linear size in each dimension
+        MKL_INT dim;
+        MKL_INT num_sub;
         MKL_INT Nsites;
         
     };
