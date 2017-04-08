@@ -337,7 +337,9 @@ namespace qbasis {
             }
             for (decltype(eigenvals_copy.size()) j = 0; j < eigenvals_copy.size(); j++)
                 eigenvals[j] = eigenvals_copy[j].first;
+            std::cout << "(nev,ncv,nconv) = (" << nev << "," << ncv << "," << nconv << ")" << std::endl;
             std::cout << "Number of implicit restarts: " << niter << std::endl;
+            std::cout << "Disclamer: IRAM may miss a few degenerate eigenstates. Check with different (nev,ncv) to find out!" << std::endl;
             for (MKL_INT j = 0; j < nconv; j++) {
                 std::cout << "j = " << j << ", E_j = " << eigenvals[j] << std::endl;
             }
@@ -367,6 +369,8 @@ namespace qbasis {
             }
             nconv = 1;
             eigenvals[0] = ritz[0];
+            
+            std::cout << "Disclamer: IRAM may miss a few degenerate eigenstates. Check with different (nev,ncv) to find out!" << std::endl;
         }
 
 
