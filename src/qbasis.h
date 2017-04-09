@@ -1009,18 +1009,24 @@ namespace qbasis {
         void add_offdiagonal_Ham(const opr_prod<T> &rhs) { Ham_off_diag += rhs; }
         void add_offdiagonal_Ham(const mopr<T> &rhs)     { Ham_off_diag += rhs; }
         
-        void enumerate_basis_all(); // naive way of enumerating all possible basis state
-        void enumerate_basis_conserve(const MKL_INT &n_sites, std::initializer_list<std::string> lst,
+        void enumerate_basis_full(); // naive way of enumerating all possible basis state
+        void enumerate_basis_full_conserve(const MKL_INT &n_sites, std::initializer_list<std::string> lst,
                                       std::initializer_list<mopr<std::complex<double>>> conserve_lst,
                                       std::initializer_list<double> val_lst);
         
-        void sort_basis_all();
+        void sort_basis_full();
         
-        void generate_Ham_all_sparse(const bool &upper_triangle = true); // generate the full Hamiltonian in sparse matrix format
+        // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
+        void basis_repr_init(const std::vector<MKL_INT> &momentum, const lattice &latt);
         
-        void locate_E0(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
+        void generate_Ham_sparse_full(const bool &upper_triangle = true); // generate the full Hamiltonian in sparse matrix format
+        void generate_Ham_sparse_repr(const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr
         
-        void locate_Emax(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
+        void locate_E0_full(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
+        void locate_E0_repr(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
+        
+        void locate_Emax_full(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
+        void locate_Emax_repr(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
         
         // lhs | phi >
         void moprXeigenvec(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col = 0);
@@ -1033,41 +1039,37 @@ namespace qbasis {
         double energy_max() { return Emax; }
         double energy_gap() { return gap; }
         
-        MKL_INT dim_all;
-        MKL_INT dim_repr;
+        void prt_Ham_diag() { Ham_diag.prt(); }
+        void prt_Ham_offdiag() { Ham_off_diag.prt(); }
+        
         
         mopr<T> Ham_diag;
         mopr<T> Ham_off_diag;
         
-        std::vector<qbasis::mbasis_elem> basis_all;
+        MKL_INT dim_full;
+        MKL_INT dim_repr;
+        
+        std::vector<qbasis::mbasis_elem> basis_full;
         std::vector<MKL_INT> basis_belong;                     // size: dim_all, store the position of its repr
         std::vector<std::complex<double>> basis_coeff;         // size: dim_all, store the coeff
-        std::vector<MKL_INT> basis_repr;                       // size: dim_repr, store the position of repr
+        std::vector<MKL_INT> basis_repr;
         
-        csr_mat<T> HamMat_csr;                                 // corresponding to the full Hilbert space
-        csr_mat<std::complex<double>> HamMat_repr_csr;         // for the representative Hilbert space
+        csr_mat<T> HamMat_csr_full;                            // corresponding to the full Hilbert space
+        csr_mat<std::complex<double>> HamMat_csr_repr;         // for the representative Hilbert space
         
-        std::vector<double> eigenvals;
-        std::vector<T> eigenvecs;
+        std::vector<double> eigenvals_full;
+        std::vector<double> eigenvals_repr;
+        std::vector<T> eigenvecs_full;
+        std::vector<std::complex<double>> eigenvecs_repr;
         MKL_INT nconv;
-        
-        void prt_Ham_diag() { Ham_diag.prt(); }
-        void prt_Ham_offdiag() { Ham_off_diag.prt(); }
-        
         
         // later add conserved quantum operators and corresponding quantum numbers
         // later add measurement operators
     
     private:
-        
-        
         double Emax;
         double E0;
         double gap;
-        
-        // lil_mat<T> HamMat_lil;   // only for internal temporaty use
-        
-        
     };
     
     

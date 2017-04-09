@@ -278,12 +278,11 @@ namespace qbasis {
         MKL_INT niter;
         
         if (dim <= 30) {                                                                // fall back to full diagonalization
-            assert(nev <= dim);
             auto mat_dense = mat.to_dense();
             std::vector<double> eigenvals_all(dim);
             auto info = heevd(LAPACK_COL_MAJOR, 'V', 'U', dim, mat_dense.data(), dim, eigenvals_all.data());
             assert(info == 0);
-            nconv = nev;
+            nconv = nev < dim ? nev : dim;
             std::vector<std::pair<double, MKL_INT>> eigenvals_copy(dim);
             for (MKL_INT j = 0; j < dim; j++) {
                 eigenvals_copy[j].first = eigenvals_all[j];

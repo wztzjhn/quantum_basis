@@ -146,9 +146,9 @@ namespace qbasis {
             for (MKL_INT site = 0; site < total_sites(); site++) {
                 auto state = siteRead(site);
                 if (Nfermion_map[state] % 2 != 0) plan_fermion.push_back(plan[site]); // keeps all the sites which have fermion
-                // using bubble sort to count how many times we are exchanging fermions
-                sgn = bubble_sort(plan_fermion, 0, static_cast<MKL_INT>(plan_fermion.size())) % 2;
             }
+            // using bubble sort to count how many times we are exchanging fermions
+            sgn = bubble_sort(plan_fermion, 0, static_cast<MKL_INT>(plan_fermion.size())) % 2;
         }
         assert(static_cast<MKL_INT>(plan.size()) == total_sites());
         auto res = *this;
