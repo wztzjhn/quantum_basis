@@ -18,8 +18,8 @@ Some examples of writing ED code based on this library are provided in the folde
 . xxz spin-1 model on kagome lattice (to be filled up)
 
 Dependencies:
-1. boost(>=1.56)
-2. MKL
+1. boost(>=1.56) (Download: http://www.boost.org/)
+2. MKL (Download: https://software.intel.com/en-us/intel-mkl)
 3. arpack (dependency to be removed in a future release)
 4. arpack++ (dependency to be removed in a future release)
 
