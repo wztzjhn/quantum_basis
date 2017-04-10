@@ -4,6 +4,7 @@
 
 // Fermi-Hubbard model on square lattice, x-dir periodic, y-dir periodic
 int main() {
+    std::cout << std::setprecision(10);
     // parameters
     double t = 1;
     double U = 1.1;
