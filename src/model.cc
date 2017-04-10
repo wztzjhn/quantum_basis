@@ -73,7 +73,6 @@ namespace qbasis {
     template <typename T>
     void model<T>::sort_basis_full()
     {
-        std::cout << "checking if basis sorted..." << std::endl;
         bool sorted = true;
         for (MKL_INT j = 0; j < dim_full - 1; j++) {
             assert(basis_full[j] != basis_full[j+1]);
@@ -83,11 +82,9 @@ namespace qbasis {
             }
         }
         if (! sorted) {
-            std::cout << "sorting basis..." << std::endl;
+            std::cout << "sorting basis(full)..." << std::endl;
             std::sort(basis_full.begin(), basis_full.end());
             std::cout << "sorting finished." << std::endl;
-        } else {
-            std::cout << "yes it is already sorted." << std::endl;
         }
     }
     
@@ -307,19 +304,11 @@ namespace qbasis {
     template <typename T>
     void model<T>::locate_E0_repr(const MKL_INT &nev, const MKL_INT &ncv)
     {
+        assert(ncv > nev + 1);
+        std::cout << "Calculating ground state in the subspace..." << std::endl;
         if (dim_repr < 1) {
             std::cout << "dim_repr = " << dim_repr << "!!!" << std::endl;
             return;
-        }
-        assert(ncv > nev + 1);
-        std::cout << "Calculating ground state..." << std::endl;
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            if (tid == 0) {
-                std::cout << "Number of threads = " << omp_get_num_threads() << std::endl;
-                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
-            }
         }
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
@@ -368,19 +357,11 @@ namespace qbasis {
     template <typename T>
     void model<T>::locate_Emax_repr(const MKL_INT &nev, const MKL_INT &ncv)
     {
+        assert(ncv > nev + 1);
+        std::cout << "Calculating highest energy state in the subspace..." << std::endl;
         if (dim_repr < 1) {
             std::cout << "dim_repr = " << dim_repr << "!!!" << std::endl;
             return;
-        }
-        assert(ncv > nev + 1);
-        std::cout << "Calculating highest energy state..." << std::endl;
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            if (tid == 0) {
-                std::cout << "Number of threads = " << omp_get_num_threads() << std::endl;
-                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
-            }
         }
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();

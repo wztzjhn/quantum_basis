@@ -338,10 +338,11 @@ namespace qbasis {
                 eigenvals[j] = eigenvals_copy[j].first;
             std::cout << "(nev,ncv,nconv) = (" << nev << "," << ncv << "," << nconv << ")" << std::endl;
             std::cout << "Number of implicit restarts: " << niter << std::endl;
-            std::cout << "Disclamer: IRAM may miss a few degenerate eigenstates. Check with different (nev,ncv) to find out!" << std::endl;
             for (MKL_INT j = 0; j < nconv; j++) {
                 std::cout << "j = " << j << ", E_j = " << eigenvals[j] << std::endl;
             }
+            std::cout << "Caution: IRAM may miss a few degenerate eigenstates!" << std::endl;
+            std::cout << "(in these cases, try a different set of {nev, ncv} may help finding the missing eigenstates)" << std::endl;
             // sort the arpack eigenvecs
             for (MKL_INT j = 0; j < nconv; j++)
                 copy(dim, eigenvecs_copy.data() + dim * eigenvals_copy[j].second, 1, eigenvecs + dim * j, 1);
@@ -369,7 +370,8 @@ namespace qbasis {
             nconv = 1;
             eigenvals[0] = ritz[0];
             
-            std::cout << "Disclamer: IRAM may miss a few degenerate eigenstates. Check with different (nev,ncv) to find out!" << std::endl;
+            std::cout << "Caution: IRAM may miss a few degenerate eigenstates!" << std::endl;
+            std::cout << "(in these cases, try a different set of {nev, ncv} may help finding the missing eigenstates)" << std::endl;
         }
 
 
