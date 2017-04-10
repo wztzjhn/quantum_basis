@@ -2,7 +2,7 @@
 #include <iomanip>
 #include "qbasis.h"
 
-// Hubbard model on square lattice, x-dir periodic, y-dir open
+// Fermi-Hubbard model on square lattice, x-dir periodic, y-dir periodic
 int main() {
     // parameters
     double t = 1;
@@ -14,6 +14,8 @@ int main() {
     
     
     // lattice object
+    // you are allowed to change "pbc" to "obc" to play,
+    // just remember to delete the "assertion" lines at the bottom of this file
     std::vector<std::string> bc{"pbc", "pbc"};
     qbasis::lattice lattice("square",std::vector<MKL_INT>{Lx, Ly},bc);
     
@@ -29,8 +31,7 @@ int main() {
     
     // constructing the Hamiltonian in operator representation
     qbasis::model<std::complex<double>> Hubbard;
-    //qbasis::mopr<std::complex<double>> Nfermion;
-    qbasis::mopr<std::complex<double>> Nup;   // an operator representating total electron number
+    qbasis::mopr<std::complex<double>> Nup;   // operators representating total electron number
     qbasis::mopr<std::complex<double>> Ndown;
     for (MKL_INT x = 0; x < Lx; x++) {
         for (MKL_INT y = 0; y < Ly; y++) {
@@ -74,7 +75,6 @@ int main() {
             Hubbard.add_diagonal_Ham(std::complex<double>(U,0.0) * (n_up_i * n_dn_i));
             
             // total electron operator
-            //Nfermion += (n_up_i + n_dn_i);
             Nup      += n_up_i;
             Ndown    += n_dn_i;
         }
@@ -94,6 +94,7 @@ int main() {
     // obtaining the eigenvals of the matrix
     Hubbard.locate_E0_full();
     std::cout << std::endl;
+    
     
     // for the parameters considered, we should obtain:
     assert(std::abs(Hubbard.eigenvals_full[0] + 12.68398173) < 1e-8);

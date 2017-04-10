@@ -2,7 +2,7 @@
 #include <iomanip>
 #include "qbasis.h"
 
-// Hubbard model on square lattice, x-dir periodic, y-dir open
+// Fermi-Hubbard model on square lattice, x-dir periodic, y-dir periodic
 int main() {
     // parameters
     double t = 1;
@@ -14,6 +14,8 @@ int main() {
     
     
     // lattice object
+    // you are allowed to change "pbc" to "obc" to play,
+    // just remember to delete the "assertion" lines at the bottom of this file
     std::vector<std::string> bc{"pbc", "pbc"};
     qbasis::lattice lattice("square",std::vector<MKL_INT>{Lx, Ly},bc);
     
@@ -29,7 +31,6 @@ int main() {
     
     // constructing the Hamiltonian in operator representation
     qbasis::model<std::complex<double>> Hubbard;
-    //qbasis::mopr<std::complex<double>> Nfermion;
     qbasis::mopr<std::complex<double>> Nup;   // an operator representating total electron number
     qbasis::mopr<std::complex<double>> Ndown;
     for (MKL_INT x = 0; x < Lx; x++) {
@@ -74,7 +75,6 @@ int main() {
             Hubbard.add_diagonal_Ham(std::complex<double>(U,0.0) * (n_up_i * n_dn_i));
             
             // total electron operator
-            //Nfermion += (n_up_i + n_dn_i);
             Nup      += n_up_i;
             Ndown    += n_dn_i;
         }
@@ -84,6 +84,7 @@ int main() {
     // constructing the Hilbert space basis
     Hubbard.enumerate_basis_full_conserve(lattice.total_sites(), {"electron"}, {Nup,Ndown}, {static_cast<double>(Nup_total),static_cast<double>(Ndn_total)});
     std::cout << "dim_full = " << Hubbard.dim_full << std::endl;
+    
     
     std::vector<double> energies;
     for (MKL_INT i = 0; i < Lx; i++) {
@@ -101,6 +102,7 @@ int main() {
             energies.push_back(Hubbard.eigenvals_repr[0]);
         }
     }
+    
     
     // for the parameters considered, we should obtain:
     assert(std::abs(energies[0] + 10.146749232) < 1e-8);
