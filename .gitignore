@@ -36,8 +36,6 @@ results
 bin
 alps_benchmark
 performance_test
-src/examples
 
 # Other files
-checking.nb
-simle_lanczos.nb
+*.nb

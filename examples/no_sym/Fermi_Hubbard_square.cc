@@ -75,8 +75,8 @@ int main() {
             Hubbard.add_diagonal_Ham(std::complex<double>(U,0.0) * (n_up_i * n_dn_i));
             
             // total electron operator
-            Nup      += n_up_i;
-            Ndown    += n_dn_i;
+            Nup   += n_up_i;
+            Ndown += n_dn_i;
         }
     }
     
