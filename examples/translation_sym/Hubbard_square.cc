@@ -85,7 +85,7 @@ int main() {
     Hubbard.enumerate_basis_full_conserve(lattice.total_sites(), {"electron"}, {Nup,Ndown}, {static_cast<double>(Nup_total),static_cast<double>(Ndn_total)});
     std::cout << "dim_full = " << Hubbard.dim_full << std::endl;
     
-    
+    std::vector<double> energies;
     for (MKL_INT i = 0; i < Lx; i++) {
         for (MKL_INT j = 0; j < Ly; j++) {
             // constructing the subspace basis
@@ -98,6 +98,18 @@ int main() {
             // obtaining the lowest eigenvals of the matrix
             Hubbard.locate_E0_repr();
             std::cout << std::endl;
+            energies.push_back(Hubbard.eigenvals_repr[0]);
         }
     }
+    
+    // for the parameters considered, we should obtain:
+    assert(std::abs(energies[0] + 10.146749232) < 1e-8);
+    assert(std::abs(energies[1] + 12.683981731) < 1e-8);
+    assert(std::abs(energies[2] + 12.683981731) < 1e-8);
+    assert(std::abs(energies[3] + 12.683981731) < 1e-8);
+    assert(std::abs(energies[4] + 10.101817578) < 1e-8);
+    assert(std::abs(energies[5] + 10.101817578) < 1e-8);
+    assert(std::abs(energies[6] + 12.683981731) < 1e-8);
+    assert(std::abs(energies[7] + 10.101817578) < 1e-8);
+    assert(std::abs(energies[8] + 10.101817578) < 1e-8);
 }

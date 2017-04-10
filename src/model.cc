@@ -297,8 +297,8 @@ namespace qbasis {
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
-        std::cout << "E0   = " << E0 << std::endl;
-        std::cout << "Gap  = " << gap << std::endl;
+        std::cout << "E0   = " << std::setprecision(12) << E0 << std::endl;
+        std::cout << "Gap  = " << std::setprecision(12) << gap << std::endl;
     }
     
     template <typename T>
@@ -322,8 +322,8 @@ namespace qbasis {
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
-        std::cout << "E0   = " << E0 << std::endl;
-        std::cout << "Gap  = " << gap << std::endl;
+        std::cout << "E0   = " << std::setprecision(12) << E0 << std::endl;
+        std::cout << "Gap  = " << std::setprecision(12) << gap << std::endl;
     }
     
     
@@ -351,7 +351,7 @@ namespace qbasis {
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
-        std::cout << "Emax = " << Emax << std::endl;
+        std::cout << "Emax = " << std::setprecision(12) << Emax << std::endl;
     }
     
     template <typename T>
@@ -374,7 +374,7 @@ namespace qbasis {
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
-        std::cout << "Emax = " << Emax << std::endl;
+        std::cout << "Emax = " << std::setprecision(12) << Emax << std::endl;
     }
     
     template <typename T>

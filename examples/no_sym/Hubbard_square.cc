@@ -94,4 +94,7 @@ int main() {
     // obtaining the eigenvals of the matrix
     Hubbard.locate_E0_full();
     std::cout << std::endl;
+    
+    // for the parameters considered, we should obtain:
+    assert(std::abs(Hubbard.eigenvals_full[0] + 12.68398173) < 1e-8);
 }
