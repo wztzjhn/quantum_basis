@@ -1017,7 +1017,7 @@ namespace qbasis {
         void sort_basis_full();
         
         // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
-        void basis_repr_init(const std::vector<MKL_INT> &momentum, const lattice &latt);
+        void basis_init_repr(const std::vector<MKL_INT> &momentum, const lattice &latt);
         
         void generate_Ham_sparse_full(const bool &upper_triangle = true); // generate the full Hamiltonian in sparse matrix format
         void generate_Ham_sparse_repr(const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr

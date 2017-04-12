@@ -89,7 +89,7 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::basis_repr_init(const std::vector<MKL_INT> &momentum, const lattice &latt)
+    void model<T>::basis_init_repr(const std::vector<MKL_INT> &momentum, const lattice &latt)
     {
         assert(latt.dimension() == static_cast<MKL_INT>(momentum.size()));
         std::chrono::time_point<std::chrono::system_clock> start, end;

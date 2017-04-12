@@ -91,7 +91,7 @@ int main() {
     for (MKL_INT i = 0; i < Lx; i++) {
         for (MKL_INT j = 0; j < Ly; j++) {
             // constructing the subspace basis
-            Hubbard.basis_repr_init(std::vector<MKL_INT>{i,j}, lattice);
+            Hubbard.basis_init_repr(std::vector<MKL_INT>{i,j}, lattice);
             
             // generating matrix of the Hamiltonian in the subspace
             Hubbard.generate_Ham_sparse_repr();
