@@ -134,13 +134,21 @@ namespace qbasis {
         return results;
     }
     
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // in future, replace with quick sort to improve performance!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     basis_elem &basis_elem::transform(const std::vector<MKL_INT> &plan, MKL_INT &sgn)
     {
         if (! q_fermion()) {
             sgn = 0;
         } else {
-            std::cout << "Fermionic translation not implemented yet!" << std::endl;
-            assert(false);
+            std::vector<MKL_INT> plan_fermion;
+            for (MKL_INT site = 0; site < total_sites(); site++) {
+                auto state = siteRead(site);
+                if (Nfermion_map[state] % 2 != 0) plan_fermion.push_back(plan[site]); // keeps all the sites which have fermion
+            }
+            // using bubble sort to count how many times we are exchanging fermions
+            sgn = bubble_sort(plan_fermion, 0, static_cast<MKL_INT>(plan_fermion.size())) % 2;
         }
         assert(static_cast<MKL_INT>(plan.size()) == total_sites());
         auto res = *this;
@@ -397,6 +405,7 @@ namespace qbasis {
         return *this;
     }
     
+    // need re-write this function to more general cases (pbc mixing obc in different dimensions)
     mbasis_elem &mbasis_elem::translate_to_unique_state(const qbasis::lattice &latt, std::vector<MKL_INT> &disp_vec) {
         assert(latt.total_sites() == total_sites());
         MKL_INT orb_smart = 0;
@@ -405,9 +414,15 @@ namespace qbasis {
         
         auto statis  = mbits[orb_smart].statistics();
         MKL_INT state_smart = 0;
-        if (latt.boundary() == "pbc" || latt.boundary() == "PBC") {
+        
+        std::vector<std::string> pbc(latt.dimension(),"pbc");
+        std::vector<std::string> obc(latt.dimension(),"obc");
+        std::vector<std::string> PBC(latt.dimension(),"PBC");
+        std::vector<std::string> OBC(latt.dimension(),"OBC");
+        
+        if (latt.boundary() == pbc || latt.boundary() == PBC) {
             state_smart = 0;
-        } else if (latt.boundary() == "obc" || latt.boundary() == "OBC") {
+        } else if (latt.boundary() == obc || latt.boundary() == OBC) {
             state_smart = 1;
         }
         while (statis[state_smart] == 0) state_smart++;
@@ -422,7 +437,7 @@ namespace qbasis {
         }
         assert(static_cast<MKL_INT>(sites_smart.size()) == num_sites_smart);
         
-        if (latt.boundary() == "pbc" || latt.boundary() == "PBC") {
+        if (latt.boundary() == pbc || latt.boundary() == PBC) {
             // now we want to translate site_smart to the highest site, to minimize the state in < comparison
             std::vector<MKL_INT> coor_smart(latt.dimension());
             MKL_INT sub_smart;
@@ -443,7 +458,7 @@ namespace qbasis {
                 }
             }
             swap(state_min, *this);
-        } else if (latt.boundary() == "obc" || latt.boundary() == "OBC") {
+        } else if (latt.boundary() == obc || latt.boundary() == OBC) {
             std::vector<MKL_INT> lowest_coors(latt.dimension());
             MKL_INT sub0;
             latt.site2coor(lowest_coors, sub0, sites_smart[0]);
@@ -619,6 +634,11 @@ namespace qbasis {
             if (cnt >= num_sites_smart) break;
         }
         
+        std::vector<std::string> pbc(latt.dimension(),"pbc");
+        std::vector<std::string> obc(latt.dimension(),"obc");
+        std::vector<std::string> PBC(latt.dimension(),"PBC");
+        std::vector<std::string> OBC(latt.dimension(),"OBC");
+        
         // later we can change it to be a more general consition
         // for obc, restrict the translation possibility: only local state 0 can be shifted outside boundary
         std::vector<MKL_INT> coor0(latt.dimension());
@@ -629,7 +649,7 @@ namespace qbasis {
             extremal_coors[dim][0] = coor0[dim];
             extremal_coors[dim][1] = coor0[dim];
         }
-        if (latt.boundary() == "obc" || latt.boundary() == "OBC") {
+        if (latt.boundary() == obc || latt.boundary() == OBC) {
             for (MKL_INT site = 0; site < latt.total_sites(); site++) {
                 std::vector<MKL_INT> coor(latt.dimension());
                 MKL_INT sub;
@@ -661,7 +681,7 @@ namespace qbasis {
             bool flag = false;
             for (MKL_INT dim = 0; dim < latt.dimension(); dim++) {
                 disp[dim] = coor_lhs_smart[dim] - coor_rhs_smart[dim];
-                if (latt.boundary() == "obc" || latt.boundary() == "OBC") {      // should not cross boundary
+                if (latt.boundary() == obc || latt.boundary() == OBC) {      // should not cross boundary
                     if (disp[dim] > 0 && extremal_coors[dim][1] + disp[dim] >= latt.Linear_size()[dim]) {
                         flag = true;
                         break;

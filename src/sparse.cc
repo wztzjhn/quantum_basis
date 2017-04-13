@@ -149,6 +149,23 @@ namespace qbasis {
     
     
     template <typename T>
+    std::vector<T> csr_mat<T>::to_dense() const
+    {
+        if (dim > 500) std::cout << "Warning: converting a large matrix to dense format!!!" << std::endl;
+        std::vector<T> res(dim*dim,static_cast<T>(0.0));
+        for (MKL_INT row = 0; row < dim; row++) {
+            MKL_INT pt_row_curr = ia[row];
+            MKL_INT pt_row_next = ia[row+1];
+            for (MKL_INT pt = pt_row_curr; pt < pt_row_next; pt++) {
+                MKL_INT col = ja[pt];
+                res[row + col * dim] = val[pt];
+                if (sym && row != col) res[col + row * dim] = conjugate(val[pt]);
+            }
+        }
+        return res;
+    }
+    
+    template <typename T>
     void csr_mat<T>::MultMv(const T *x, T *y) const
     {
         assert(val != nullptr && ja != nullptr && ia != nullptr);

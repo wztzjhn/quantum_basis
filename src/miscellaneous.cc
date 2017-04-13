@@ -97,6 +97,35 @@ namespace qbasis {
     
     
     template <typename T>
+    MKL_INT bubble_sort(std::vector<T> &array, const MKL_INT &bgn, const MKL_INT &end)
+    {
+        if(array.size() == 0 && bgn == end) return 0;            // no exchange at all
+        assert(bgn < end);
+        assert(bgn >= 0 && bgn < static_cast<MKL_INT>(array.size()));
+        assert(end > 0 && end <= static_cast<MKL_INT>(array.size()));
+        MKL_INT len = end - bgn;
+        MKL_INT cnt = 0;
+        
+        using std::swap;
+        for (MKL_INT j = 1; j < len; j++) {  // e.g. if len = 3, need bubble sort with 2 loops
+            MKL_INT cnt0 = 0;
+            for (MKL_INT i = bgn; i < end - j; i++) {
+                if (array[i+1] < array[i]) {
+                    swap(array[i], array[i+1]);
+                    cnt0++;
+                }
+            }
+            if (cnt0 == 0) {  // already sorted
+                break;
+            } else {
+                cnt += cnt0;
+            }
+        }
+        return cnt;
+    }
+    template MKL_INT bubble_sort(std::vector<MKL_INT> &array, const MKL_INT &bgn, const MKL_INT &end);
+    
+    template <typename T>
     T continued_fraction(T a[], T b[], const MKL_INT &len)
     {
         T res = static_cast<T>(0.0);

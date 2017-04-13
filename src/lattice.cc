@@ -2,47 +2,49 @@
 
 namespace qbasis {
     // ----------------- implementation of lattice ------------------
-    lattice::lattice(const std::string &name, const std::string &bc_, std::initializer_list<MKL_INT> lens) : bc(bc_)
+    lattice::lattice(const std::string &name, const std::vector<MKL_INT> &L_, const std::vector<std::string> &bc_) : L(L_), bc(bc_)
     {
-        if (name == "square") {
-            assert(lens.size() == 2);
-            dim = 2;
+        assert(L.size() == bc.size());
+        dim = static_cast<MKL_INT>(L.size());
+        a = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
+        b = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
+        if (name == "chain") {
+            assert(L.size() == 1);
             num_sub = 1;
-            a = std::vector<std::vector<double>>(2, std::vector<double>(2, 0.0));
-            b = a;
-            a[0][0] = 1.0; a[0][1] = 0.0;
-            a[1][0] = 0.0; a[1][1] = 1.0;
+            a[0][0] = 1.0;
+            b[0][0] = 2.0 * pi;
+            Nsites = L[0] * num_sub;
+        } else if (name == "square") {
+            assert(L.size() == 2);
+            num_sub = 1;
+            a[0][0] = 1.0;      a[0][1] = 0.0;
+            a[1][0] = 0.0;      a[1][1] = 1.0;
             b[0][0] = 2.0 * pi; b[0][1] = 0.0;
-            b[1][0] = 0.0; b[1][1] = 2.0 * pi;
-            L = std::vector<MKL_INT>(dim);
-            auto it_arg = lens.begin();
-            auto it_L   = L.begin();
-            while(it_arg != lens.end()) {
-                *it_L = *it_arg;
-                it_L++;
-                it_arg++;
-            }
-            Nsites = L[0] * L[1];
+            b[1][0] = 0.0;      b[1][1] = 2.0 * pi;
+            Nsites = L[0] * L[1] * num_sub;
         } else if (name == "triangular") {
-            assert(lens.size() == 2);
-            dim = 2;
+            assert(L.size() == 2);
             num_sub = 1;
-            a = std::vector<std::vector<double>>(2, std::vector<double>(2, 0.0));
-            b = a;
-            a[0][0] = 1.0; a[0][1] = 0.0;
-            a[1][0] = 0.5; a[1][1] = 0.5 * sqrt(3.0);
+            a[0][0] = 1.0;      a[0][1] = 0.0;
+            a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);
             b[0][0] = 2.0 * pi; b[0][1] = -2.0 * pi / sqrt(3.0);
-            b[1][0] = 0.0; b[1][1] = 4.0 * pi / sqrt(3.0);
-            L = std::vector<MKL_INT>(dim);
-            auto it_arg = lens.begin();
-            auto it_L   = L.begin();
-            while(it_arg != lens.end()) {
-                *it_L = *it_arg;
-                it_L++;
-                it_arg++;
-            }
-            Nsites = L[0] * L[1];
+            b[1][0] = 0.0;      b[1][1] = 4.0 * pi / sqrt(3.0);
+            Nsites = L[0] * L[1] * num_sub;
+        } else if (name == "cubic") {
+            assert(L.size() == 3);
+            num_sub = 1;
+            a[0][0] = 1.0;      a[0][1] = 0.0;      a[0][2] = 0.0;
+            a[1][0] = 0.0;      a[1][1] = 1.0;      a[1][2] = 0.0;
+            a[2][0] = 0.0;      a[2][1] = 0.0;      a[2][2] = 1.0;
+            b[0][0] = 2.0 * pi; b[0][1] = 0.0;      b[0][2] = 0.0;
+            b[1][0] = 0.0;      b[1][1] = 2.0 * pi; b[1][2] = 0.0;
+            b[2][0] = 0.0;      b[2][1] = 0.0;      b[2][2] = 2.0 * pi;
+            Nsites = L[0] * L[1] * L[2] * num_sub;
         }
+        for (MKL_INT j = 0; j < dim; j++) {
+            assert(bc[j] == "pbc" || bc[j] == "PBC" || bc[j] == "obc" || bc[j] == "OBC");
+        }
+        
     }
     
     void lattice::coor2site(const std::vector<MKL_INT> &coor, const MKL_INT &sub, MKL_INT &site) const {

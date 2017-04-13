@@ -2,7 +2,7 @@
 #include <iomanip>
 #include "qbasis.h"
 
-
+void test_trimer();
 
 void test_basis();
 void test_operator();
@@ -15,26 +15,31 @@ void test_lattice();
 void test_dimer();
 void test_Hubbard();
 void test_tJ();
+void test_bubble();
 
 int main(){
-    test_lanczos_memoAll();
-    test_iram();
-    test_basis();
+    //test_lanczos_memoAll();
+    //test_iram();
+    //test_basis();
     //test_operator();
     
-    test_cfraction();
-    test_dotc();
-    test_lattice();
+    //test_cfraction();
+    //test_dotc();
+    //test_lattice();
     
-    test_dimer();
+    //test_dimer();
     
-    test_Hubbard();
+    //test_Hubbard();
     
     test_tJ();
+    
+    //test_bubble();
     
     //std::cout << boost::math::binomial_coefficient<double>(10, 2) << std::endl;
     
     //std::cout << qbasis::dynamic_base(std::vector<MKL_INT>{1,2,3}, std::vector<MKL_INT>{2,3,5}) << std::endl;
+    
+    //test_trimer();
 }
 
 void test_dimer() {
@@ -88,7 +93,7 @@ void test_dimer() {
 }
 
 void test_lattice() {
-    qbasis::lattice square("square","pbc",{3,3});
+    qbasis::lattice square("square",std::vector<MKL_INT>{3,3},std::vector<std::string>{"pbc", "pbc"});
     std::vector<MKL_INT> coor = {1,2};
     MKL_INT sub = 0;
     for (MKL_INT site = 0; site < square.total_sites(); site++) {
@@ -165,7 +170,7 @@ void test_basis() {
         std::cout << "stat " << j << ", count = " << stats2[j] << std::endl;
     }
     
-    qbasis::lattice square("square","pbc",{3,3});
+    qbasis::lattice square("square",std::vector<MKL_INT>{3,3},std::vector<std::string>{"pbc", "pbc"});
     MKL_INT sgn;
     mele1.translate(square, std::vector<MKL_INT>{1,2}, sgn);
     std::cout << "translational equiv?: " << qbasis::trans_equiv(mele1, mele2, square) << std::endl;
@@ -206,6 +211,15 @@ void test_lanczos_memoAll() {
     sp_lil.add(6,3,2.0);
     qbasis::csr_mat<std::complex<double>> sp_csr_full(sp_lil);
     sp_lil.destroy();
+    
+    sp_csr_full.prt();
+    auto dense_mat = sp_csr_full.to_dense();
+    for (MKL_INT row = 0; row < dim; row++) {
+        for (MKL_INT col = 0; col < dim; col++) {
+            std::cout << dense_mat[row + col * dim] << "\t";
+        }
+        std::cout << std::endl;
+    }
 
     std::vector<std::complex<double>> x = {1.0, std::complex<double>(2.3, 3.4), 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
     qbasis::scal(dim, 1.0/qbasis::nrm2(dim, x.data(), 1), x.data(), 1);
@@ -506,9 +520,9 @@ void test_operator(){
 // test Hubbard chain
 void test_Hubbard() {
     std::cout << "testing Hubbard chain." << std::endl;
-    MKL_INT Nsites = 7;
-    double U = 12.3;
-    MKL_INT total_fermion = 5; // half-filling
+    MKL_INT Nsites = 6;
+    double U = 1.1;
+    MKL_INT total_fermion = 4;
     
     auto c_up = std::vector<std::vector<std::complex<double>>>(4,std::vector<std::complex<double>>(4, 0.0));
     auto c_dn = std::vector<std::vector<std::complex<double>>>(4,std::vector<std::complex<double>>(4, 0.0));
@@ -519,6 +533,8 @@ void test_Hubbard() {
     
     qbasis::mopr<std::complex<double>> Nfermion;
     qbasis::model<std::complex<double>> Hubbard;
+    
+    qbasis::lattice lattice("chain",std::vector<MKL_INT>{Nsites},std::vector<std::string>{"pbc"});
     
     for (MKL_INT i = 0; i < Nsites; i++) {
         auto c_up_i    = qbasis::opr<std::complex<double>>(i,0,true,c_up);
@@ -543,12 +559,8 @@ void test_Hubbard() {
         Nfermion += (n_up_i + n_dn_i);
     }
     
-    Hubbard.enumerate_basis_conserve(Nsites, {"electron"}, Nfermion, static_cast<double>(total_fermion));
-    std::cout << "dim_all = " << Hubbard.dim_all << std::endl;
-    
-    // sort basis
-    Hubbard.sort_basis_all();
-    std::cout << std::endl;
+    Hubbard.enumerate_basis_full_conserve(Nsites, {"electron"}, {Nfermion}, {static_cast<double>(total_fermion)});
+    std::cout << "dim_all = " << Hubbard.dim_full << std::endl;
     
     /*
     for (MKL_INT j = 0; j < Hubbard.dim_all; j++) {
@@ -559,10 +571,98 @@ void test_Hubbard() {
     */
     
     // generating Hamiltonian matrix
-    Hubbard.generate_Ham_all_sparse(false);
+    Hubbard.generate_Ham_sparse_full(false);
     std::cout << std::endl;
     
-    Hubbard.locate_E0();
+    
+    Hubbard.locate_E0_full(28,39);
+    std::cout << std::endl;
+    
+//    std::cout << "full matrix" << std::endl;
+//    auto xxx = Hubbard.HamMat_csr_full.to_dense();
+//    for (MKL_INT i = 0; i < Hubbard.dim_full; i++) {
+//        for (MKL_INT j = 0; j < Hubbard.dim_full; j++) {
+//            std::cout << xxx[i + j * Hubbard.dim_full] << "\t";
+//        }
+//        std::cout << std::endl;
+//    }
+    
+    
+//    for (MKL_INT j = 0; j < Hubbard.dim_full; j++) {
+//        std::cout << "basis [ " << j << "]:" << std::endl;
+//        Hubbard.basis_full[j].prt_nonzero();
+//        std::cout << std::endl;
+//    }
+    
+    
+    Hubbard.basis_repr_init(std::vector<MKL_INT>{0}, lattice);
+//        for (MKL_INT j = 0; j < Hubbard.dim_repr; j++) {
+//            std::cout << "repr [" << j << "]:" << Hubbard.basis_repr[j] << std::endl;
+//        }
+//        for (MKL_INT j = 0; j < Hubbard.dim_full; j++) {
+//            std::cout << "basis_long[" << j << "]:" << Hubbard.basis_belong[j] << std::endl;
+//        }
+//    
+//        for (MKL_INT j = 0; j < Hubbard.dim_full; j++) {
+//            std::cout << "basis_coeff[" << j << "]:" << Hubbard.basis_coeff[j] << std::endl;
+//        }
+    
+    
+    Hubbard.generate_Ham_sparse_repr();
+    std::cout << std::endl;
+    
+
+    
+    Hubbard.locate_E0_repr();
+    std::cout << std::endl;
+    
+    Hubbard.basis_repr_init(std::vector<MKL_INT>{1}, lattice);
+    Hubbard.generate_Ham_sparse_repr();
+    std::cout << std::endl;
+    
+    
+//    for (MKL_INT j = 0; j < Hubbard.dim_repr; j++) {
+//        std::cout << "repr [" << j << "]:" << Hubbard.basis_repr[j] << std::endl;
+//    }
+//    for (MKL_INT j = 0; j < Hubbard.dim_full; j++) {
+//        std::cout << "basis_long[" << j << "]:" << Hubbard.basis_belong[j] << std::endl;
+//    }
+//    
+//    for (MKL_INT j = 0; j < Hubbard.dim_full; j++) {
+//        std::cout << "basis_coeff[" << j << "]:" << Hubbard.basis_coeff[j] << std::endl;
+//    }
+    
+    Hubbard.locate_E0_repr();
+    std::cout << std::endl;
+    
+    Hubbard.basis_repr_init(std::vector<MKL_INT>{2}, lattice);
+    Hubbard.generate_Ham_sparse_repr();
+    std::cout << std::endl;
+    
+    
+//    for (MKL_INT j = 0; j < Hubbard.dim_repr; j++) {
+//        std::cout << "repr [" << j << "]:" << Hubbard.basis_repr[j] << std::endl;
+//    }
+//    for (MKL_INT j = 0; j < Hubbard.dim_full; j++) {
+//        std::cout << "basis_long[" << j << "]:" << Hubbard.basis_belong[j] << std::endl;
+//    }
+//    
+//    for (MKL_INT j = 0; j < Hubbard.dim_full; j++) {
+//        std::cout << "basis_coeff[" << j << "]:" << Hubbard.basis_coeff[j] << std::endl;
+//    }
+    
+    Hubbard.locate_E0_repr();
+    std::cout << std::endl;
+    
+//    for (MKL_INT j = 0; j < Hubbard.dim_full; j++) {
+//        std::cout << "eigenvec[" << j << "]=" << Hubbard.eigenvecs_full[j] << std::endl;
+//    }
+    
+    
+    Hubbard.basis_repr_init(std::vector<MKL_INT>{3}, lattice);
+    Hubbard.generate_Ham_sparse_repr();
+    std::cout << std::endl;
+    Hubbard.locate_E0_repr();
     std::cout << std::endl;
 }
 
@@ -573,7 +673,7 @@ void test_tJ()
     
     std::cout << "testing tJ model." << std::endl;
     MKL_INT lx = 3, ly = 3;
-    qbasis::lattice lattice("square","pbc",{lx,ly});
+    qbasis::lattice lattice("square",std::vector<MKL_INT>{lx,ly},std::vector<std::string>{"pbc", "pbc"});
     MKL_INT total_fermion = 4;
     
     double J = 1.9;
@@ -643,20 +743,30 @@ void test_tJ()
         }
     }
     
-    tJ.enumerate_basis_conserve(lattice.total_sites(), {"tJ"}, Nfermion, static_cast<double>(total_fermion));
-    std::cout << "dim_all = " << tJ.dim_all << std::endl;
-    
-    // sort basis
-    tJ.sort_basis_all();
-    std::cout << std::endl;
-    
+    tJ.enumerate_basis_full_conserve(lattice.total_sites(), {"tJ"}, {Nfermion}, {static_cast<double>(total_fermion)});
+    std::cout << "dim_all = " << tJ.dim_full << std::endl;
     
     // generating Hamiltonian matrix
-    tJ.generate_Ham_all_sparse(false);
+    tJ.generate_Ham_sparse_full(false);
     std::cout << std::endl;
     
-    tJ.locate_E0();
+    tJ.locate_E0_full();
     std::cout << std::endl;
+    
+    
+
+    for (MKL_INT i = 0; i < lattice.Lx(); i++) {
+        for (MKL_INT j = 0; j < lattice.Ly(); j++) {
+            tJ.basis_repr_init(std::vector<MKL_INT>{i,j}, lattice);
+            tJ.generate_Ham_sparse_repr();
+            std::cout << std::endl;
+            
+            tJ.locate_E0_repr();
+            std::cout << std::endl;
+        }
+    }
+    
+    
     
 }
 
@@ -664,4 +774,85 @@ void test_tJ()
 void test_Kondo()
 {
     
+}
+
+void test_trimer()
+{
+    qbasis::lattice lattice("chain",std::vector<MKL_INT>{3},std::vector<std::string>{"obc"});
+    
+    std::vector<std::vector<std::complex<double>>> Splus(2,std::vector<std::complex<double>>(2));
+    std::vector<std::vector<std::complex<double>>> Sminus(2,std::vector<std::complex<double>>(2));
+    std::vector<std::vector<std::complex<double>>> Sx(2,std::vector<std::complex<double>>(2));
+    std::vector<std::vector<std::complex<double>>> Sy(2,std::vector<std::complex<double>>(2));
+    std::vector<std::complex<double>> Sz(2);
+    Splus[0][0] = 0.0;
+    Splus[0][1] = 1.0;
+    Splus[1][0] = 0.0;
+    Splus[1][1] = 0.0;
+    Sminus[0][0] = 0.0;
+    Sminus[0][1] = 0.0;
+    Sminus[1][0] = 1.0;
+    Sminus[1][1] = 0.0;
+    Sx[0][0] = 0.0;
+    Sx[0][1] = 0.5;
+    Sx[1][0] = 0.5;
+    Sx[1][1] = 0.0;
+    Sy[0][0] = 0.0;
+    Sy[0][1] = std::complex<double>(0.0,-0.5);
+    Sy[1][0] = std::complex<double>(0.0,0.5);
+    Sy[1][1] = 0.0;
+    Sz[0] = 0.5;
+    Sz[1] = -0.5;
+    
+    qbasis::model<std::complex<double>> trimer;
+    qbasis::mopr<std::complex<double>> Sz_total;
+    //trimer.dim_all = qbasis::int_pow(2, 3);
+    //trimer.basis_all = std::vector<qbasis::mbasis_elem>(trimer.dim_all,qbasis::mbasis_elem(3,{"spin-1/2"}));
+    
+    qbasis::opr<std::complex<double>> s0x(0,0,false,Sx);
+    qbasis::opr<std::complex<double>> s1x(1,0,false,Sx);
+    qbasis::opr<std::complex<double>> s2x(2,0,false,Sx);
+    qbasis::opr<std::complex<double>> s0y(0,0,false,Sy);
+    qbasis::opr<std::complex<double>> s1y(1,0,false,Sy);
+    qbasis::opr<std::complex<double>> s2y(2,0,false,Sy);
+    qbasis::opr<std::complex<double>> s0z(0,0,false,Sz);
+    qbasis::opr<std::complex<double>> s1z(1,0,false,Sz);
+    qbasis::opr<std::complex<double>> s2z(2,0,false,Sz);
+    
+    trimer.add_offdiagonal_Ham(s0x * s1x + s0y * s1y);
+    trimer.add_diagonal_Ham(s0z * s1z);
+    trimer.add_offdiagonal_Ham(s1x * s2x + s1y * s2y);
+    trimer.add_diagonal_Ham(s1z * s2z);
+    
+    Sz_total = (s0z + s1z + s2z);
+    
+    trimer.enumerate_basis_full_conserve(3, {"spin-1/2"}, {Sz_total}, {0.5});
+    std::cout << "dim_all = " << trimer.dim_full << std::endl;
+    
+    for (MKL_INT j = 0; j < trimer.dim_full; j++) {
+        std::cout << " j = " << j << std::endl;
+        trimer.basis_full[j].prt_nonzero(); std::cout << std::endl;
+    }
+    
+    trimer.generate_Ham_sparse_full(true);
+    
+    trimer.HamMat_csr_full.prt();
+    
+    trimer.locate_E0_full(2,3);
+    for (MKL_INT j = 0; j < trimer.dim_full; j++) {
+        std::cout << "j= "  << j << ", mod=" << std::abs(trimer.eigenvecs_full[j]) << ", allp= " << trimer.eigenvecs_full[j] << std::endl;
+    }
+    
+    
+}
+
+void test_bubble() {
+    std::vector<MKL_INT> val{3,1,10,2,5,12,9,-3};
+    auto cnt = qbasis::bubble_sort(val, 0, 8);
+    std::cout << "cnt = " << cnt << std::endl;
+    std::cout << "vals: " << std::endl;
+    for (MKL_INT j = 0; j < val.size(); j++) {
+        std::cout << val[j] << "  ";
+    }
+    std::cout << std::endl;
 }

@@ -256,7 +256,7 @@ namespace qbasis {
     private:
         short dim_local;
         short bits_per_site;
-        std::vector<int> Nfermion_map;     // Nfermion_map[i] corresponds to the number of fermions on state i
+        std::vector<int> Nfermion_map;     // Nfermion_map[i] corresponds to the number of fermions of state i
         DBitSet bits;
     };
     
@@ -837,6 +837,8 @@ namespace qbasis {
         void MultMv(const T *x, T *y) const;
         void MultMv(T *x, T *y);  // to be compatible with arpack++
         
+        std::vector<T> to_dense() const;
+        
         // matrix matrix product, x and y of shape dim * n
         //void MultMm(const T *x, T *y, MKL_INT n) const;
         
@@ -930,7 +932,7 @@ namespace qbasis {
         lattice() = default;
         
         // constructor from particular requirements. e.g. square, triangular...
-        lattice(const std::string &name, const std::string &bc_, std::initializer_list<MKL_INT> lens);
+        lattice(const std::string &name, const std::vector<MKL_INT> &L_, const std::vector<std::string> &bc_);
         
         // coordinates <-> site indices
         // 1D: site = i * num_sub + sub
@@ -954,12 +956,16 @@ namespace qbasis {
         // inverse of a transformation
         std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> plan_inverse(const std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> &old) const;
         
-        std::string boundary() const {
+        std::vector<std::string> boundary() const {
             return bc;
         }
         
         MKL_INT dimension() const {
             return dim;
+        }
+        
+        MKL_INT num_sublattice() const {
+            return num_sub;
         }
         
         MKL_INT total_sites() const {
@@ -973,12 +979,12 @@ namespace qbasis {
         MKL_INT Lz() const { assert(L.size() > 2); return L[2]; }
         
     private:
-        MKL_INT dim;
-        MKL_INT num_sub;
+        std::vector<MKL_INT> L;             // linear size in each dimension
+        std::vector<std::string> bc;        // boundary condition
         std::vector<std::vector<double>> a; // real space basis
         std::vector<std::vector<double>> b; // momentum space basis
-        std::string bc;                     // boundary condition
-        std::vector<MKL_INT> L;             // linear size in each dimension
+        MKL_INT dim;
+        MKL_INT num_sub;
         MKL_INT Nsites;
         
     };
@@ -1003,17 +1009,24 @@ namespace qbasis {
         void add_offdiagonal_Ham(const opr_prod<T> &rhs) { Ham_off_diag += rhs; }
         void add_offdiagonal_Ham(const mopr<T> &rhs)     { Ham_off_diag += rhs; }
         
-        void enumerate_basis_all(); // naive way of enumerating all possible basis state
-        void enumerate_basis_conserve(const MKL_INT &n_sites, std::initializer_list<std::string> lst,
-                                      const mopr<std::complex<double>> &conserve, const double &val);
+        void enumerate_basis_full(); // naive way of enumerating all possible basis state
+        void enumerate_basis_full_conserve(const MKL_INT &n_sites, std::initializer_list<std::string> lst,
+                                      std::initializer_list<mopr<std::complex<double>>> conserve_lst,
+                                      std::initializer_list<double> val_lst);
         
-        void sort_basis_all();
+        void sort_basis_full();
         
-        void generate_Ham_all_sparse(const bool &upper_triangle = true); // generate the full Hamiltonian in sparse matrix format
+        // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
+        void basis_init_repr(const std::vector<MKL_INT> &momentum, const lattice &latt);
         
-        void locate_E0(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
+        void generate_Ham_sparse_full(const bool &upper_triangle = true); // generate the full Hamiltonian in sparse matrix format
+        void generate_Ham_sparse_repr(const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr
         
-        void locate_Emax(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
+        void locate_E0_full(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
+        void locate_E0_repr(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
+        
+        void locate_Emax_full(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
+        void locate_Emax_repr(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
         
         // lhs | phi >
         void moprXeigenvec(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col = 0);
@@ -1026,40 +1039,37 @@ namespace qbasis {
         double energy_max() { return Emax; }
         double energy_gap() { return gap; }
         
-        MKL_INT dim_all;
-        MKL_INT dim_repr;
+        void prt_Ham_diag() { Ham_diag.prt(); }
+        void prt_Ham_offdiag() { Ham_off_diag.prt(); }
+        
         
         mopr<T> Ham_diag;
         mopr<T> Ham_off_diag;
         
-        // add basis_repr later
-        std::vector<qbasis::mbasis_elem> basis_all;
+        MKL_INT dim_full;
+        MKL_INT dim_repr;
         
-        std::vector<T> basis_coeff;
+        std::vector<qbasis::mbasis_elem> basis_full;
+        std::vector<MKL_INT> basis_belong;                     // size: dim_all, store the position of its repr
+        std::vector<std::complex<double>> basis_coeff;         // size: dim_all, store the coeff
+        std::vector<MKL_INT> basis_repr;
         
-        csr_mat<T> HamMat_csr;
+        csr_mat<T> HamMat_csr_full;                            // corresponding to the full Hilbert space
+        csr_mat<std::complex<double>> HamMat_csr_repr;         // for the representative Hilbert space
         
-        std::vector<double> eigenvals;
-        std::vector<T> eigenvecs;
+        std::vector<double> eigenvals_full;
+        std::vector<double> eigenvals_repr;
+        std::vector<T> eigenvecs_full;
+        std::vector<std::complex<double>> eigenvecs_repr;
         MKL_INT nconv;
-        
-        void prt_Ham_diag() { Ham_diag.prt(); }
-        void prt_Ham_offdiag() { Ham_off_diag.prt(); }
-        
         
         // later add conserved quantum operators and corresponding quantum numbers
         // later add measurement operators
     
     private:
-        
-        
         double Emax;
         double E0;
         double gap;
-        
-        // lil_mat<T> HamMat_lil;   // only for internal temporaty use
-        
-        
     };
     
     
@@ -1095,6 +1105,10 @@ namespace qbasis {
     template <typename T>
     MKL_INT binary_search(const std::vector<T> &array, const T &val,
                           const MKL_INT &bgn, const MKL_INT &end);
+    
+    // return the number of exchanges happened during the bubble sort
+    template <typename T>
+    MKL_INT bubble_sort(std::vector<T> &array, const MKL_INT &bgn, const MKL_INT &end);
     
     //             b1
     // a0 +  ---------------
@@ -1258,13 +1272,13 @@ namespace qbasis {
         mkl_zcsrcsc(job, &n, Acsr, AJ0, AI0, Acsc, AJ1, AI1, info);
     }
     
-    // lapack computational routine, computes all eigenvalues of a real symmetric tridiagonal matrix using QR algorithm.
+    // lapack computational routine, computes all eigenvalues of a real symmetric TRIDIAGONAL matrix using QR algorithm.
     inline // double
     lapack_int sterf(const lapack_int &n, double *d, double *e) {
         return LAPACKE_dsterf(n, d, e);
     }
     
-    // lapack computational routine, computes all eigenvalues and (optionally) eigenvectors of a symmetric/hermitian tridiagonal matrix using the divide and conquer method.
+    // lapack computational routine, computes all eigenvalues and (optionally) eigenvectors of a symmetric/hermitian TRIDIAGONAL matrix using the divide and conquer method.
     inline // double
     lapack_int stedc(const int &matrix_layout, const char &compz, const lapack_int &n, double *d, double *e, double *z, const lapack_int &ldz) {
         return LAPACKE_dstedc(matrix_layout, compz, n, d, e, z, ldz);
@@ -1304,6 +1318,16 @@ namespace qbasis {
                      const lapack_int &m, const lapack_int &n, const lapack_int &k,
                      const double *a, const lapack_int &lda, const double *tau, double *c, const lapack_int &ldc) {
         return LAPACKE_dormqr(matrix_layout, side, trans, m, n, k, a, lda, tau, c, ldc);
+    }
+    
+    // lapack driver routine, computes all eigenvalues and, optionally, all eigenvectors of a hermitian matrix using divide and conquer algorithm.
+    inline // double
+    lapack_int heevd(const int &matrix_layout, const char &jobz, const char &uplo, const lapack_int &n, double *a, const lapack_int &lda, double *w) {
+        return LAPACKE_dsyevd(matrix_layout, jobz, uplo, n, a, lda, w);
+    }
+    inline // complex double
+    lapack_int heevd(const int &matrix_layout, const char &jobz, const char &uplo, const lapack_int &n, std::complex<double> *a, const lapack_int &lda, double *w) {
+        return LAPACKE_zheevd(matrix_layout, jobz, uplo, n, a, lda, w);
     }
 }
 
