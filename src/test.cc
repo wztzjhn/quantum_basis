@@ -29,9 +29,9 @@ int main(){
     
     //test_dimer();
     
-    //test_Hubbard();
+    test_Hubbard();
     
-    test_tJ();
+    //test_tJ();
     
     //test_bubble();
     
@@ -520,9 +520,9 @@ void test_operator(){
 // test Hubbard chain
 void test_Hubbard() {
     std::cout << "testing Hubbard chain." << std::endl;
-    MKL_INT Nsites = 6;
+    MKL_INT Nsites = 18;
     double U = 1.1;
-    MKL_INT total_fermion = 4;
+    MKL_INT total_fermion = 18;
     
     auto c_up = std::vector<std::vector<std::complex<double>>>(4,std::vector<std::complex<double>>(4, 0.0));
     auto c_dn = std::vector<std::vector<std::complex<double>>>(4,std::vector<std::complex<double>>(4, 0.0));
@@ -571,12 +571,12 @@ void test_Hubbard() {
     */
     
     // generating Hamiltonian matrix
-    Hubbard.generate_Ham_sparse_full(false);
-    std::cout << std::endl;
+    //Hubbard.generate_Ham_sparse_full(false);
+    //std::cout << std::endl;
     
     
-    Hubbard.locate_E0_full(28,39);
-    std::cout << std::endl;
+    //Hubbard.locate_E0_full(28,39);
+    //std::cout << std::endl;
     
 //    std::cout << "full matrix" << std::endl;
 //    auto xxx = Hubbard.HamMat_csr_full.to_dense();
