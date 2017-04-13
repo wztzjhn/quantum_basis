@@ -595,7 +595,7 @@ void test_Hubbard() {
 //    }
     
     
-    Hubbard.basis_repr_init(std::vector<MKL_INT>{0}, lattice);
+    Hubbard.basis_init_repr(std::vector<MKL_INT>{0}, lattice);
 //        for (MKL_INT j = 0; j < Hubbard.dim_repr; j++) {
 //            std::cout << "repr [" << j << "]:" << Hubbard.basis_repr[j] << std::endl;
 //        }
@@ -616,7 +616,7 @@ void test_Hubbard() {
     Hubbard.locate_E0_repr();
     std::cout << std::endl;
     
-    Hubbard.basis_repr_init(std::vector<MKL_INT>{1}, lattice);
+    Hubbard.basis_init_repr(std::vector<MKL_INT>{1}, lattice);
     Hubbard.generate_Ham_sparse_repr();
     std::cout << std::endl;
     
@@ -635,7 +635,7 @@ void test_Hubbard() {
     Hubbard.locate_E0_repr();
     std::cout << std::endl;
     
-    Hubbard.basis_repr_init(std::vector<MKL_INT>{2}, lattice);
+    Hubbard.basis_init_repr(std::vector<MKL_INT>{2}, lattice);
     Hubbard.generate_Ham_sparse_repr();
     std::cout << std::endl;
     
@@ -659,7 +659,7 @@ void test_Hubbard() {
 //    }
     
     
-    Hubbard.basis_repr_init(std::vector<MKL_INT>{3}, lattice);
+    Hubbard.basis_init_repr(std::vector<MKL_INT>{3}, lattice);
     Hubbard.generate_Ham_sparse_repr();
     std::cout << std::endl;
     Hubbard.locate_E0_repr();
@@ -757,7 +757,7 @@ void test_tJ()
 
     for (MKL_INT i = 0; i < lattice.Lx(); i++) {
         for (MKL_INT j = 0; j < lattice.Ly(); j++) {
-            tJ.basis_repr_init(std::vector<MKL_INT>{i,j}, lattice);
+            tJ.basis_init_repr(std::vector<MKL_INT>{i,j}, lattice);
             tJ.generate_Ham_sparse_repr();
             std::cout << std::endl;
             
