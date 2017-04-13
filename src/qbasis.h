@@ -198,13 +198,13 @@ namespace qbasis {
         
         // copy constructor
         basis_elem(const basis_elem& old) :
-        dim_local(old.dim_local), bits_per_site(old.bits_per_site),
-        Nfermion_map(old.Nfermion_map), bits(old.bits) {}
+            dim_local(old.dim_local), bits_per_site(old.bits_per_site),
+            Nfermion_map(old.Nfermion_map), bits(old.bits) {}
         
         // move constructor
         basis_elem(basis_elem &&old) noexcept :
-        dim_local(old.dim_local), bits_per_site(old.bits_per_site),
-        Nfermion_map(std::move(old.Nfermion_map)), bits(std::move(old.bits)) {}
+            dim_local(old.dim_local), bits_per_site(old.bits_per_site),
+            Nfermion_map(std::move(old.Nfermion_map)), bits(std::move(old.bits)) {}
         
         // copy assignment constructor and move assignment constructor, using "swap and copy"
         basis_elem& operator=(basis_elem old)
@@ -301,6 +301,7 @@ namespace qbasis {
         MKL_INT total_sites() const;
         MKL_INT total_orbitals() const;
         MKL_INT local_dimension() const;
+        std::vector<MKL_INT> local_dimension_vec() const;
         bool q_zero() const;
         bool q_maximized() const;
         

@@ -672,9 +672,10 @@ void test_tJ()
 {
     
     std::cout << "testing tJ model." << std::endl;
-    MKL_INT lx = 3, ly = 3;
+    MKL_INT lx = 3, ly = 2;
     qbasis::lattice lattice("square",std::vector<MKL_INT>{lx,ly},std::vector<std::string>{"pbc", "pbc"});
-    MKL_INT total_fermion = 4;
+    MKL_INT total_up = lx * ly / 2;
+    MKL_INT total_dn = lx * ly / 2;
     
     double J = 1.9;
     
@@ -683,7 +684,7 @@ void test_tJ()
     c_up[0][1] = std::complex<double>(1.0,0.0);
     c_dn[0][2] = std::complex<double>(1.0,0.0);
     
-    qbasis::mopr<std::complex<double>> Nfermion;
+    qbasis::mopr<std::complex<double>> N_up, N_dn;
     qbasis::model<std::complex<double>> tJ;
 
     for (MKL_INT m = 0; m < lattice.Lx(); m++) {
@@ -699,7 +700,8 @@ void test_tJ()
             auto Sz_i = std::complex<double>(0.5,0.0) * (c_up_dg_i * c_up_i - c_dn_dg_i * c_dn_i);
             auto n_i  = c_up_dg_i * c_up_i + c_dn_dg_i * c_dn_i;
             
-            Nfermion += (c_up_dg_i * c_up_i + c_dn_dg_i * c_dn_i);
+            N_up += (c_up_dg_i * c_up_i);
+            N_dn += (c_dn_dg_i * c_dn_i);
             
             // right neighbor
             lattice.coor2site(std::vector<MKL_INT>{m+1,n}, 0, site_j);
@@ -743,28 +745,28 @@ void test_tJ()
         }
     }
     
-    tJ.enumerate_basis_full_conserve(lattice.total_sites(), {"tJ"}, {Nfermion}, {static_cast<double>(total_fermion)});
+    tJ.enumerate_basis_full_conserve(lattice.total_sites(), {"tJ"}, {N_up, N_dn}, {static_cast<double>(total_up),static_cast<double>(total_dn)});
     std::cout << "dim_all = " << tJ.dim_full << std::endl;
     
     // generating Hamiltonian matrix
-    tJ.generate_Ham_sparse_full(false);
-    std::cout << std::endl;
+    //tJ.generate_Ham_sparse_full(false);
+    //std::cout << std::endl;
     
-    tJ.locate_E0_full();
-    std::cout << std::endl;
+    //tJ.locate_E0_full();
+    //std::cout << std::endl;
     
     
-
-    for (MKL_INT i = 0; i < lattice.Lx(); i++) {
-        for (MKL_INT j = 0; j < lattice.Ly(); j++) {
+    MKL_INT i = 0, j = 0;
+//    for (MKL_INT i = 0; i < lattice.Lx(); i++) {
+//        for (MKL_INT j = 0; j < lattice.Ly(); j++) {
             tJ.basis_init_repr(std::vector<MKL_INT>{i,j}, lattice);
             tJ.generate_Ham_sparse_repr();
             std::cout << std::endl;
             
             tJ.locate_E0_repr();
             std::cout << std::endl;
-        }
-    }
+//        }
+//    }
     
     
     
