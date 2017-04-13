@@ -525,6 +525,16 @@ namespace qbasis {
         return res;
     }
     
+    std::vector<MKL_INT> mbasis_elem::local_dimension_vec() const
+    {
+        assert(! mbits.empty());
+        std::vector<MKL_INT> res;
+        for (decltype(mbits.size()) j = 0; j < mbits.size(); j++) {
+            res.push_back(mbits[j].local_dimension());
+        }
+        return res;
+    }
+    
     void mbasis_elem::prt() const
     {
         if (total_orbitals() == 1) {

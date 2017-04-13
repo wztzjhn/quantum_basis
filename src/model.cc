@@ -28,10 +28,38 @@ namespace qbasis {
         std::list<qbasis::mbasis_elem> basis_temp;
         auto GS = mbasis_elem(n_sites,lst);
         GS.reset();
-        auto state_new = GS;
+        MKL_INT dim_local  = GS.local_dimension();
+        MKL_INT n_orbs     = GS.total_orbitals();
+        auto dim_local_vec = GS.local_dimension_vec();
         
-        MKL_INT cnt = 0;
-        while (! state_new.q_maximized()) {
+        // checking if reaching code capability
+        MKL_INT mkl_int_max = LLONG_MAX;
+        if (mkl_int_max != LLONG_MAX) {
+            mkl_int_max = INT_MAX;
+            //std::cout << "int_max = " << INT_MAX << std::endl;
+            assert(mkl_int_max == INT_MAX);
+        }
+        assert(mkl_int_max > 0);
+        MKL_INT site_max = log(mkl_int_max) / log(dim_local);
+        std::cout << "Capability of current code for current model: maximal " << site_max << " sites." << std::endl;
+        assert(n_sites < site_max);
+        
+        MKL_INT dim_total = int_pow(dim_local, n_sites);
+        assert(dim_total > 0);
+        
+        // base[]: { dim_orb0, dim_orb0, ..., dim_orb1, dim_orb1,...    }
+        std::vector<MKL_INT> base(n_sites * n_orbs);
+        MKL_INT pos = 0;
+        for (MKL_INT orb = 0; orb < n_orbs; orb++)
+            for (MKL_INT site = 0; site < n_sites; site++) base[pos++] = dim_local_vec[orb];
+        
+        #pragma omp parallel for schedule(dynamic,1)
+        for (MKL_INT j = 0; j < dim_total; j++) {
+            auto dist = dynamic_base(j, base);
+            auto state_new = GS;
+            MKL_INT pos = 0;
+            for (MKL_INT orb = 0; orb < n_orbs; orb++)
+                for (MKL_INT site = 0; site < n_sites; site++) state_new.siteWrite(site, orb, dist[pos++]);
             bool flag = true;
             auto it_opr = conserve_lst.begin();
             auto it_val = val_lst.begin();
@@ -44,28 +72,17 @@ namespace qbasis {
                 it_opr++;
                 it_val++;
             }
-            if (flag) basis_temp.push_back(state_new);
-            state_new.increment();
-            cnt++;
+            if (! flag) continue;
+            #pragma omp critical
+            basis_temp.push_back(state_new);
         }
-        
-        bool flag = true;
-        auto it_opr = conserve_lst.begin();
-        auto it_val = val_lst.begin();
-        while (it_opr != conserve_lst.end()) {
-            auto temp = state_new.diagonal_operator(*it_opr);
-            if (std::abs(temp - *it_val) >= 1e-5) {
-                flag = false;
-                break;
-            }
-            it_opr++;
-            it_val++;
-        }
-        if (flag) basis_temp.push_back(state_new);
         
         dim_full = basis_temp.size();
         basis_full.clear();
-        for (auto & ele : basis_temp) basis_full.push_back(ele);
+        while (! basis_temp.empty()) {
+            basis_full.push_back(*basis_temp.begin());
+            basis_temp.pop_front();
+        }
         
         sort_basis_full();
     }
