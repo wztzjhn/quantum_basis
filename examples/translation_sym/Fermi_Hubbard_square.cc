@@ -84,7 +84,6 @@ int main() {
 
     // constructing the Hilbert space basis
     Hubbard.enumerate_basis_full_conserve(lattice.total_sites(), {"electron"}, {Nup,Ndown}, {static_cast<double>(Nup_total),static_cast<double>(Ndn_total)});
-    std::cout << "dim_full = " << Hubbard.dim_full << std::endl;
     
     
     std::vector<double> energies;

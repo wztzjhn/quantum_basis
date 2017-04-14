@@ -15,9 +15,12 @@ namespace qbasis {
         assert(nums.size() == base.size());
         assert(nums.size() > 0);
         MKL_INT res = 0;
-        for (MKL_INT j = nums.size() - 1; j > 0; j--) {
+        MKL_INT j = nums.size() - 1;
+        while (nums[j] == 0 && j > 0) j--;
+        while (j > 0) {
             assert(nums[j] < base[j]);
             res = (res + nums[j]) * base[j-1];
+            j--;
         }
         assert(nums[0] < base[0]);
         res += nums[0];
@@ -30,10 +33,14 @@ namespace qbasis {
         assert(total >= 0);
         MKL_INT len = base.size();
         std::vector<MKL_INT> res(len);
-        auto temp = total;     // temp == i + j * base[0] + k * base[0] * base[1] + ...
+        MKL_INT temp = total;     // temp == i + j * base[0] + k * base[0] * base[1] + ...
         for (MKL_INT n = 0; n < len - 1; n++) {
             res[n] = temp % base[n];
             temp = (temp - res[n]) / base[n];
+            if (temp == 0) {
+                for (MKL_INT j = n + 1; j < len - 1; j++) res[j] = 0;
+                break;
+            }
         }
         res[len-1] = temp;
         assert(temp < base[len-1]);

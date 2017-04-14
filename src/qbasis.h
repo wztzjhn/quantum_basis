@@ -44,9 +44,6 @@
 // FUNCTIONS which need further change for Fermions:
 // opr& transform(const std::vector<MKL_INT> &plan);
 // opr_prod& transform(const std::vector<MKL_INT> &plan);
-// basis_elem& transform(const std::vector<MKL_INT> &plan, MKL_INT &sgn);
-// basis_elem& translate(const lattice &latt, const std::vector<MKL_INT> &disp, MKL_INT &sgn);
-// mbasis_elem& transform(const std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> &plan, MKL_INT &sgn);
 
 namespace qbasis {
 
@@ -257,6 +254,22 @@ namespace qbasis {
         short dim_local;
         short bits_per_site;
         std::vector<int> Nfermion_map;     // Nfermion_map[i] corresponds to the number of fermions of state i
+        /*
+        in terms of bits when perfoming "<" comparison (e.g. bits_per_site = 2):
+        e.g.  0 1 0 1 0 0 0 0 1 1 0 1 0 0 0 0 1 1 1 0
+                                                  ^ ^
+                                                /     \
+                                            bits[1]   bits[0]
+                                                \     /
+                                                 site[0]
+        Note1: this storage scheme is related to the difiniton of "<" in terms of comparison of basis,
+               but unrelated to the definition of wavefunctions (especially in terms of sign)!
+        The wavefunction is always defined as:
+        |alpha_0, beta_1, gamma_2, ... > = alpha_0^\dagger beta_1^\dagger gamma_2^\dagger ... |GS>
+        (where alpha_i^\dagger is creation operator of state alpha on site i)
+        Note2: later for mbasis (mbits), the "<" comparison of different orbitals is different:
+               orb_0    orb_1    orb_2 ...          -> opposite to the arrangement of sites!!!
+        */
         DBitSet bits;
     };
     
@@ -1093,6 +1106,12 @@ namespace qbasis {
     
     // given two arrays: num & base, get the result of:
     // num[0] + num[1] * base[0] + num[2] * base[0] * base[1] + num[3] * base[0] * base[1] * base[2] + ...
+    // e.g. (base = {2,2,2,2,2})
+    // 0      0      1      0      1
+    //                      ^      ^
+    //                      |      |
+    //                   num[1]   num[0]
+    // 1 + 0 * 2 + 1 * 2^2 + 0 * 2^3 + 0 * 2^4
     MKL_INT dynamic_base(const std::vector<MKL_INT> &num, const std::vector<MKL_INT> &base);
     // the other way around
     std::vector<MKL_INT> dynamic_base(const MKL_INT &total, const std::vector<MKL_INT> &base);

@@ -2,6 +2,19 @@
 #include <iomanip>
 #include "qbasis.h"
 
+void test_DBitSet() {
+    unsigned long val = 80000000000000000ul;
+    std::cout << "val = " << val << std::endl;
+    qbasis::DBitSet x(60, val);
+    std::cout << "x: " << x << std::endl;
+    for (MKL_INT j = 0; j < 36; j++) {
+        std::cout << "x[" << j << "] = " << x[j] << std::endl;
+    }
+    
+    std::cout << (std::vector<MKL_INT>{2,1} > std::vector<MKL_INT>{1,2} ) << std::endl;
+}
+
+
 void test_trimer();
 
 void test_basis();
@@ -17,7 +30,10 @@ void test_Hubbard();
 void test_tJ();
 void test_bubble();
 
+
+
 int main(){
+    test_DBitSet();
     //test_lanczos_memoAll();
     //test_iram();
     //test_basis();
@@ -31,7 +47,7 @@ int main(){
     
     test_Hubbard();
     
-    //test_tJ();
+    test_tJ();
     
     //test_bubble();
     
@@ -39,7 +55,7 @@ int main(){
     
     //std::cout << qbasis::dynamic_base(std::vector<MKL_INT>{1,2,3}, std::vector<MKL_INT>{2,3,5}) << std::endl;
     
-    //test_trimer();
+    test_trimer();
 }
 
 void test_dimer() {
@@ -520,9 +536,9 @@ void test_operator(){
 // test Hubbard chain
 void test_Hubbard() {
     std::cout << "testing Hubbard chain." << std::endl;
-    MKL_INT Nsites = 18;
+    MKL_INT Nsites = 8;
     double U = 1.1;
-    MKL_INT total_fermion = 18;
+    MKL_INT total_fermion = 8;
     
     auto c_up = std::vector<std::vector<std::complex<double>>>(4,std::vector<std::complex<double>>(4, 0.0));
     auto c_dn = std::vector<std::vector<std::complex<double>>>(4,std::vector<std::complex<double>>(4, 0.0));
@@ -672,7 +688,7 @@ void test_tJ()
 {
     
     std::cout << "testing tJ model." << std::endl;
-    MKL_INT lx = 3, ly = 2;
+    MKL_INT lx = 2, ly = 3;
     qbasis::lattice lattice("square",std::vector<MKL_INT>{lx,ly},std::vector<std::string>{"pbc", "pbc"});
     MKL_INT total_up = lx * ly / 2;
     MKL_INT total_dn = lx * ly / 2;
@@ -840,7 +856,7 @@ void test_trimer()
     
     trimer.HamMat_csr_full.prt();
     
-    trimer.locate_E0_full(2,3);
+    trimer.locate_E0_full(2,4);
     for (MKL_INT j = 0; j < trimer.dim_full; j++) {
         std::cout << "j= "  << j << ", mod=" << std::abs(trimer.eigenvecs_full[j]) << ", allp= " << trimer.eigenvecs_full[j] << std::endl;
     }

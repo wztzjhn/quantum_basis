@@ -339,7 +339,7 @@ namespace qbasis {
             std::cout << "(nev,ncv,nconv) = (" << nev << "," << ncv << "," << nconv << ")" << std::endl;
             std::cout << "Number of implicit restarts: " << niter << std::endl;
             for (MKL_INT j = 0; j < nconv; j++) {
-                std::cout << "j = " << j << ", E_j = " << eigenvals[j] << std::endl;
+                std::cout << "E_" << j << " = " << eigenvals[j] << std::endl;
             }
             std::cout << "Caution: IRAM may miss a few degenerate eigenstates!" << std::endl;
             std::cout << "(in these cases, try a different set of {nev, ncv} may help finding the missing eigenstates)" << std::endl;

@@ -8,6 +8,14 @@ namespace qbasis {
     template <typename T>
     void model<T>::enumerate_basis_full()
     {
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) {
+                std::cout << "Number of threads = " << omp_get_num_threads() << std::endl;
+                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl << std::endl;
+            }
+        }
         assert(dim_full > 0);
         basis_full[0].reset();
         for (MKL_INT j = 1; j < dim_full; j++) {
@@ -18,14 +26,23 @@ namespace qbasis {
         sort_basis_full();
     }
     
-    // need further optimization!
+    // need further optimization! (for example, special treatment of dilute limit; special treatment of quantum numbers; quick sort of sign)
     template <typename T>
     void model<T>::enumerate_basis_full_conserve(const MKL_INT &n_sites, std::initializer_list<std::string> lst,
                                                  std::initializer_list<mopr<std::complex<double>>> conserve_lst,
                                                  std::initializer_list<double> val_lst)
     {
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) {
+                std::cout << "Number of threads = " << omp_get_num_threads() << std::endl;
+                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl << std::endl;
+            }
+        }
+        
         assert(conserve_lst.size() == val_lst.size());
-        std::list<qbasis::mbasis_elem> basis_temp;
+        std::list<mbasis_elem> basis_temp;
         auto GS = mbasis_elem(n_sites,lst);
         GS.reset();
         MKL_INT dim_local  = GS.local_dimension();
@@ -38,51 +55,92 @@ namespace qbasis {
             mkl_int_max = INT_MAX;
             //std::cout << "int_max = " << INT_MAX << std::endl;
             assert(mkl_int_max == INT_MAX);
+            std::cout << "Using 32-bit integers." << std::endl;
+        } else {
+            std::cout << "Using 64-bit integers." << std::endl;
         }
         assert(mkl_int_max > 0);
         MKL_INT site_max = log(mkl_int_max) / log(dim_local);
-        std::cout << "Capability of current code for current model: maximal " << site_max << " sites." << std::endl;
+        std::cout << "Capability of current code for current model: maximal " << site_max << " sites. (in the ideal case of infinite memory available)" << std::endl << std::endl;
         assert(n_sites < site_max);
         
-        MKL_INT dim_total = int_pow(dim_local, n_sites);
-        assert(dim_total > 0);
+        std::cout << "Enumerating the full basis with certain symmtries..." << std::endl;
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
         
-        // base[]: { dim_orb0, dim_orb0, ..., dim_orb1, dim_orb1,...    }
+        // Hilbert space size if without any symmetry
+        MKL_INT dim_total = int_pow(dim_local, n_sites);
+        assert(dim_total > 0); // prevent overflow
+        std::cout << "Hilbert space size **if** without any symmetry: " << dim_total << std::endl;
+        
+        // base[]: {  ..., dim_orb1, dim_orb1, dim_orb0, dim_orb0 }
         std::vector<MKL_INT> base(n_sites * n_orbs);
         MKL_INT pos = 0;
-        for (MKL_INT orb = 0; orb < n_orbs; orb++)
+        for (MKL_INT orb = n_orbs - 1; orb >= 0; orb--)  // high index orbitals considered last in comparison
             for (MKL_INT site = 0; site < n_sites; site++) base[pos++] = dim_local_vec[orb];
         
+        // array to help distributing jobs to different threads
+        std::vector<MKL_INT> job_array;
+        for (MKL_INT j = 0; j < dim_total; j+=1000) job_array.push_back(j);
+        MKL_INT total_chunks = static_cast<MKL_INT>(job_array.size());
+        job_array.push_back(dim_total);
+        
+        
         #pragma omp parallel for schedule(dynamic,1)
-        for (MKL_INT j = 0; j < dim_total; j++) {
-            auto dist = dynamic_base(j, base);
+        for (MKL_INT chunk = 0; chunk < total_chunks; chunk++) {
+            std::list<qbasis::mbasis_elem> basis_temp_job;
+            
+            // get a new starting basis element
+            MKL_INT state_num = job_array[chunk];
+            auto dist = dynamic_base(state_num, base);
             auto state_new = GS;
             MKL_INT pos = 0;
-            for (MKL_INT orb = 0; orb < n_orbs; orb++)
+            for (MKL_INT orb = n_orbs - 1; orb >= 0; orb--) // the order is important
                 for (MKL_INT site = 0; site < n_sites; site++) state_new.siteWrite(site, orb, dist[pos++]);
-            bool flag = true;
-            auto it_opr = conserve_lst.begin();
-            auto it_val = val_lst.begin();
-            while (it_opr != conserve_lst.end()) {
-                auto temp = state_new.diagonal_operator(*it_opr);
-                if (std::abs(temp - *it_val) >= 1e-5) {
-                    flag = false;
-                    break;
+            
+            while (state_num < job_array[chunk+1]) {
+                // check if the symmetries are obeyed
+                bool flag = true;
+                auto it_opr = conserve_lst.begin();
+                auto it_val = val_lst.begin();
+                while (it_opr != conserve_lst.end()) {
+                    auto temp = state_new.diagonal_operator(*it_opr);
+                    if (std::abs(temp - *it_val) >= 1e-5) {
+                        flag = false;
+                        break;
+                    }
+                    it_opr++;
+                    it_val++;
                 }
-                it_opr++;
-                it_val++;
+                if (flag) basis_temp_job.push_back(state_new);
+                state_num++;
+                if (state_num < job_array[chunk+1]) state_new.increment();
             }
-            if (! flag) continue;
+            
+            // double check the correctness, erase these lines later
+            std::cout << "(a few benchmark lines to be removed in the future)" << std::endl;
+            if (chunk < total_chunks - 1) {
+                state_new.increment();
+                dist = dynamic_base(state_num, base);
+                auto state_check = GS;
+                pos = 0;
+                for (MKL_INT orb = n_orbs - 1; orb >= 0; orb--) // the order is important
+                    for (MKL_INT site = 0; site < n_sites; site++) state_check.siteWrite(site, orb, dist[pos++]);
+                assert(state_new == state_check);
+            }
+            
             #pragma omp critical
-            basis_temp.push_back(state_new);
+            basis_temp.splice(basis_temp.end(), basis_temp_job);
         }
         
+        // pick the fruits
         dim_full = basis_temp.size();
-        basis_full.clear();
-        while (! basis_temp.empty()) {
-            basis_full.push_back(*basis_temp.begin());
-            basis_temp.pop_front();
-        }
+        std::cout << "Hilbert space size with symmetry: " << dim_full << std::endl;
+        basis_full = std::vector<mbasis_elem>(std::make_move_iterator(basis_temp.begin()),
+                                              std::make_move_iterator(basis_temp.end()));
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl << std::endl;
         
         sort_basis_full();
     }
@@ -99,9 +157,13 @@ namespace qbasis {
             }
         }
         if (! sorted) {
-            std::cout << "sorting basis(full)..." << std::endl;
+            std::chrono::time_point<std::chrono::system_clock> start, end;
+            start = std::chrono::system_clock::now();
+            std::cout << "sorting basis(full)... ";
             std::sort(basis_full.begin(), basis_full.end());
-            std::cout << "sorting finished." << std::endl;
+            end = std::chrono::system_clock::now();
+            std::chrono::duration<double> elapsed_seconds = end - start;
+            std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
         }
     }
     
@@ -199,14 +261,6 @@ namespace qbasis {
     template <typename T>
     void model<T>::generate_Ham_sparse_full(const bool &upper_triangle)
     {
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            if (tid == 0) {
-                std::cout << "Number of threads = " << omp_get_num_threads() << std::endl;
-                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
-            }
-        }
         std::cout << "Generating Hamiltonian Matrix..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
@@ -243,14 +297,6 @@ namespace qbasis {
         if (dim_repr < 1) {
             std::cout << "dim_repr = " << dim_repr << "!!!" << std::endl;
             return;
-        }
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            if (tid == 0) {
-                std::cout << "Number of threads = " << omp_get_num_threads() << std::endl;
-                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
-            }
         }
         std::cout << "Generating Hamiltonian Matrix..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
@@ -294,14 +340,6 @@ namespace qbasis {
     {
         assert(ncv > nev + 1);
         std::cout << "Calculating ground state..." << std::endl;
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            if (tid == 0) {
-                std::cout << "Number of threads = " << omp_get_num_threads() << std::endl;
-                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
-            }
-        }
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         std::vector<T> v0(HamMat_csr_full.dimension(), 1.0);
@@ -349,14 +387,6 @@ namespace qbasis {
     {
         assert(ncv > nev + 1);
         std::cout << "Calculating highest energy state..." << std::endl;
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            if (tid == 0) {
-                std::cout << "Number of threads = " << omp_get_num_threads() << std::endl;
-                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
-            }
-        }
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         std::vector<T> v0(HamMat_csr_full.dimension(), 1.0);
