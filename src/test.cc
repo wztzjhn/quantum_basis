@@ -613,7 +613,7 @@ void test_tJ()
         }
     }
     
-    tJ.enumerate_basis_full_conserve(lattice.total_sites(), {"tJ"}, {N_up, N_dn}, {static_cast<double>(total_up),static_cast<double>(total_dn)});
+    tJ.enumerate_basis_full(lattice.total_sites(), {"tJ"}, {N_up, N_dn}, {static_cast<double>(total_up),static_cast<double>(total_dn)});
     std::cout << "dim_all = " << tJ.dim_full << std::endl;
     
     // generating Hamiltonian matrix
@@ -691,7 +691,7 @@ void test_trimer()
     
     Sz_total = (s0z + s1z + s2z);
     
-    trimer.enumerate_basis_full_conserve(3, {"spin-1/2"}, {Sz_total}, {0.5});
+    trimer.enumerate_basis_full(3, {"spin-1/2"}, {Sz_total}, {0.5});
     std::cout << "dim_all = " << trimer.dim_full << std::endl;
     
     for (MKL_INT j = 0; j < trimer.dim_full; j++) {

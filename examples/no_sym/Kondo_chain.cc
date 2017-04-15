@@ -106,8 +106,8 @@ int main() {
     
     
     // constructing the Hilbert space basis
-    //Kondo.enumerate_basis_full_conserve(lattice.total_sites(), {"electron","spin-1/2"}, {Nelec_total,Sz_total}, {static_cast<double>(Nelec_total_val),Sz_total_val});
-    Kondo.enumerate_basis_full_conserve(lattice.total_sites(), {"electron","spin-1/2"}, {Nelec_total}, {static_cast<double>(Nelec_total_val)});
+    //Kondo.enumerate_basis_full(lattice.total_sites(), {"electron","spin-1/2"}, {Nelec_total,Sz_total}, {static_cast<double>(Nelec_total_val),Sz_total_val});
+    Kondo.enumerate_basis_full(lattice.total_sites(), {"electron","spin-1/2"}, {Nelec_total}, {static_cast<double>(Nelec_total_val)});
     
     
     // generating matrix of the Hamiltonian in the full Hilbert space

@@ -4,33 +4,12 @@
 #include "qbasis.h"
 
 namespace qbasis {
-
-    template <typename T>
-    void model<T>::enumerate_basis_full()
-    {
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            if (tid == 0) {
-                std::cout << "Number of threads = " << omp_get_num_threads() << std::endl;
-                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl << std::endl;
-            }
-        }
-        assert(dim_full > 0);
-        basis_full[0].reset();
-        for (MKL_INT j = 1; j < dim_full; j++) {
-            basis_full[j] = basis_full[j-1];
-            basis_full[j].increment();
-        }
-        
-        sort_basis_full();
-    }
     
     // need further optimization! (for example, special treatment of dilute limit; special treatment of quantum numbers; quick sort of sign)
     template <typename T>
-    void model<T>::enumerate_basis_full_conserve(const MKL_INT &n_sites, std::initializer_list<std::string> lst,
-                                                 std::initializer_list<mopr<std::complex<double>>> conserve_lst,
-                                                 std::initializer_list<double> val_lst)
+    void model<T>::enumerate_basis_full(const MKL_INT &n_sites, std::initializer_list<std::string> lst,
+                                        std::initializer_list<mopr<std::complex<double>>> conserve_lst,
+                                        std::initializer_list<double> val_lst)
     {
         #pragma omp parallel
         {

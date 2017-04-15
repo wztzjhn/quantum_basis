@@ -1023,10 +1023,11 @@ namespace qbasis {
         void add_offdiagonal_Ham(const opr_prod<T> &rhs) { Ham_off_diag += rhs; }
         void add_offdiagonal_Ham(const mopr<T> &rhs)     { Ham_off_diag += rhs; }
         
-        void enumerate_basis_full(); // naive way of enumerating all possible basis state
-        void enumerate_basis_full_conserve(const MKL_INT &n_sites, std::initializer_list<std::string> lst,
-                                      std::initializer_list<mopr<std::complex<double>>> conserve_lst,
-                                      std::initializer_list<double> val_lst);
+        //void enumerate_basis_full();
+        // naive way of enumerating all possible basis state
+        void enumerate_basis_full(const MKL_INT &n_sites, std::initializer_list<std::string> lst,
+                                  std::initializer_list<mopr<std::complex<double>>> conserve_lst = {},
+                                  std::initializer_list<double> val_lst = {});
         
         void sort_basis_full();
         
