@@ -10,15 +10,16 @@ int main() {
     std::cout << "If you know a good reference or tool (or alps scripts), please contact me. Thanks!" << std::endl << std::endl;
     // parameters
     double t = 1;
-    double J_RKKY = 0.0;
     double J_Kondo = 1.1;
+    double J_RKKY = 0.0;         // artificial RKKY
     MKL_INT L = 4;
-    //double Sz_total_val = 0.0; // not used
+    double Sz_total_val = 0.0;   // not used. to turn on, modify a comment line near the bottom of the file
     MKL_INT Nelec_total_val = L;
 
     std::cout << "L =       " << L << std::endl;
     std::cout << "t =       " << t << std::endl;
     std::cout << "J_Kondo = " << J_Kondo << std::endl << std::endl;
+    std::cout << "J_RKKY  = " << J_RKKY << std::endl << std::endl;
     std::cout << "N_elec  = " << Nelec_total_val << std::endl;
     
     // lattice object
@@ -29,10 +30,10 @@ int main() {
     // electrons:
     auto c_up = std::vector<std::vector<std::complex<double>>>(4,std::vector<std::complex<double>>(4, 0.0));
     auto c_dn = std::vector<std::vector<std::complex<double>>>(4,std::vector<std::complex<double>>(4, 0.0));
-    c_up[0][1] = std::complex<double>(1.0,0.0);
-    c_up[2][3] = std::complex<double>(1.0,0.0);
-    c_dn[0][2] = std::complex<double>(1.0,0.0);
-    c_dn[1][3] = std::complex<double>(-1.0,0.0);
+    c_up[0][1] = 1.0;
+    c_up[2][3] = 1.0;
+    c_dn[0][2] = 1.0;
+    c_dn[1][3] = -1.0;
     // Spins:
     std::vector<std::vector<std::complex<double>>> Splus(2,std::vector<std::complex<double>>(2));
     std::vector<std::vector<std::complex<double>>> Sminus(2,std::vector<std::complex<double>>(2));
@@ -49,7 +50,7 @@ int main() {
     Sz[1]        = -0.5;
     
     // constructing the Hamiltonian in operator representation
-    // electrons sitting on orbital 0, local spins on orbital 1
+    // electrons on orbital 0, local spins on orbital 1
     qbasis::model<std::complex<double>> Kondo;
     qbasis::mopr<std::complex<double>> Nelec_total;   // operators representating total electron number
     qbasis::mopr<std::complex<double>> Sz_total;
@@ -72,7 +73,7 @@ int main() {
         auto Sminus_i  = qbasis::opr<std::complex<double>>(site_i,1,false,Sminus);
         auto Sz_i      = qbasis::opr<std::complex<double>>(site_i,1,false,Sz);
         
-        // play with neighbor (x+1)
+        // with neighbor (x+1)
         if (bc[0] == "pbc" || (bc[0] == "obc" && x < L - 1)) {
             lattice.coor2site(std::vector<MKL_INT>{x+1}, 0, site_j);
             // hopping
