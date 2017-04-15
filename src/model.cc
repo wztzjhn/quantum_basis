@@ -60,11 +60,10 @@ namespace qbasis {
         
         // array to help distributing jobs to different threads
         std::vector<MKL_INT> job_array;
-        for (MKL_INT j = 0; j < dim_total; j+=1000) job_array.push_back(j);
+        for (MKL_INT j = 0; j < dim_total; j+=10000) job_array.push_back(j);
         MKL_INT total_chunks = static_cast<MKL_INT>(job_array.size());
         job_array.push_back(dim_total);
         
-        std::cout << "(a few benchmark lines to be removed in the future)" << std::endl;
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT chunk = 0; chunk < total_chunks; chunk++) {
             std::list<qbasis::mbasis_elem> basis_temp_job;
@@ -94,17 +93,6 @@ namespace qbasis {
                 if (flag) basis_temp_job.push_back(state_new);
                 state_num++;
                 if (state_num < job_array[chunk+1]) state_new.increment();
-            }
-            
-            // double check the correctness, erase these lines later
-            if (chunk < total_chunks - 1) {
-                state_new.increment();
-                dist = dynamic_base(state_num, base);
-                auto state_check = GS;
-                pos = 0;
-                for (MKL_INT orb = n_orbs - 1; orb >= 0; orb--) // the order is important
-                    for (MKL_INT site = 0; site < n_sites; site++) state_check.siteWrite(site, orb, dist[pos++]);
-                assert(state_new == state_check);
             }
             
             #pragma omp critical
