@@ -1,5 +1,5 @@
 # Qbasis
-Basis of condensed matter quantum lattice problems, for usage in exact diagonalization (ED). The code is designed for any general bosonic or fermionic problem (or a mix of both), as long as the user can provide the matrix form (explained in the manual) of the elementary operators of the Hamiltonian.
+Basis of condensed matter quantum lattice problems, for usage in exact diagonalization (ED). The code is designed for any general bosonic or fermionic problem (or a mix of both), as long as the user can provide the [matrix form of the elementary operators](Manual.pdf) of the Hamiltonian.
 
 ## Examples
 To learn how to use this library to design ED code for your own models, please refer to the folder "examples" (each complete example is about 100 lines):
@@ -15,12 +15,13 @@ To learn how to use this library to design ED code for your own models, please r
 - [MKL](https://software.intel.com/en-us/intel-mkl)
 - [arpack](https://github.com/opencollab/arpack-ng) (dependency to be removed in a future release)
 - [arpack++](https://github.com/wztzjhn/arpackpp) (dependency to be removed in a future release)
-Note: using a modified version of arpack++ to be compatible with MKL.
+
+**Note: using a modified version of arpack++ to be compatible with MKL.**
 
 ## Parallel scheme: 
 MKL + OpenMP
 
-## Compiling
+## Compilation
 Currently the known working compilers are clang and gcc (c++11 required). (Intel icc not working yet)
 
 The code can be compiled in two modes:
