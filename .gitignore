@@ -36,6 +36,7 @@ results
 bin
 alps_benchmark
 performance_test
+examples/translation_sym/test
 
 # Other files
 *.nb
