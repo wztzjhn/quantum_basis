@@ -1,5 +1,6 @@
 #include <iostream>
 #include <iomanip>
+#include <fstream>
 #include "qbasis.h"
 
 void test_DBitSet() {
@@ -26,14 +27,14 @@ void test_cfraction();
 void test_dotc();
 void test_lattice();
 void test_dimer();
-void test_Hubbard();
 void test_tJ();
 void test_bubble();
 
 
 
+
 int main(){
-    test_DBitSet();
+    //test_DBitSet();
     //test_lanczos_memoAll();
     //test_iram();
     //test_basis();
@@ -45,8 +46,6 @@ int main(){
     
     //test_dimer();
     
-    test_Hubbard();
-    
     test_tJ();
     
     //test_bubble();
@@ -55,7 +54,7 @@ int main(){
     
     //std::cout << qbasis::dynamic_base(std::vector<MKL_INT>{1,2,3}, std::vector<MKL_INT>{2,3,5}) << std::endl;
     
-    test_trimer();
+    //test_trimer();
 }
 
 void test_dimer() {
@@ -533,154 +532,7 @@ void test_operator(){
 
 }
 
-// test Hubbard chain
-void test_Hubbard() {
-    std::cout << "testing Hubbard chain." << std::endl;
-    MKL_INT Nsites = 8;
-    double U = 1.1;
-    MKL_INT total_fermion = 8;
-    
-    auto c_up = std::vector<std::vector<std::complex<double>>>(4,std::vector<std::complex<double>>(4, 0.0));
-    auto c_dn = std::vector<std::vector<std::complex<double>>>(4,std::vector<std::complex<double>>(4, 0.0));
-    c_up[0][1] = std::complex<double>(1.0,0.0);
-    c_up[2][3] = std::complex<double>(1.0,0.0);
-    c_dn[0][2] = std::complex<double>(1.0,0.0);
-    c_dn[1][3] = std::complex<double>(-1.0,0.0);
-    
-    qbasis::mopr<std::complex<double>> Nfermion;
-    qbasis::model<std::complex<double>> Hubbard;
-    
-    qbasis::lattice lattice("chain",std::vector<MKL_INT>{Nsites},std::vector<std::string>{"pbc"});
-    
-    for (MKL_INT i = 0; i < Nsites; i++) {
-        auto c_up_i    = qbasis::opr<std::complex<double>>(i,0,true,c_up);
-        auto c_dn_i    = qbasis::opr<std::complex<double>>(i,0,true,c_dn);
-        auto c_up_dg_i = c_up_i; c_up_dg_i.dagger();
-        auto c_dn_dg_i = c_dn_i; c_dn_dg_i.dagger();
-        auto n_up_i    = c_up_dg_i * c_up_i;
-        auto n_dn_i    = c_dn_dg_i * c_dn_i;
-        
-        MKL_INT j = (i < Nsites - 1) ? (i+1) : 0;
-        auto c_up_j    = qbasis::opr<std::complex<double>>(j,0,true,c_up);
-        auto c_dn_j    = qbasis::opr<std::complex<double>>(j,0,true,c_dn);
-        auto c_up_dg_j = c_up_j; c_up_dg_j.dagger();
-        auto c_dn_dg_j = c_dn_j; c_dn_dg_j.dagger();
-        
-        Hubbard.add_offdiagonal_Ham(std::complex<double>(-1.0,0.0) * ( c_up_dg_i * c_up_j ));
-        Hubbard.add_offdiagonal_Ham(std::complex<double>(-1.0,0.0) * ( c_up_dg_j * c_up_i ));
-        Hubbard.add_offdiagonal_Ham(std::complex<double>(-1.0,0.0) * ( c_dn_dg_i * c_dn_j ));
-        Hubbard.add_offdiagonal_Ham(std::complex<double>(-1.0,0.0) * ( c_dn_dg_j * c_dn_i ));
-        Hubbard.add_diagonal_Ham(std::complex<double>(U,0.0) * (n_up_i * n_dn_i));
-        
-        Nfermion += (n_up_i + n_dn_i);
-    }
-    
-    Hubbard.enumerate_basis_full_conserve(Nsites, {"electron"}, {Nfermion}, {static_cast<double>(total_fermion)});
-    std::cout << "dim_all = " << Hubbard.dim_full << std::endl;
-    
-    /*
-    for (MKL_INT j = 0; j < Hubbard.dim_all; j++) {
-        std::cout << "j = " << j << std::endl;
-        Hubbard.basis_all[j].prt_nonzero();
-        std::cout << std::endl;
-    }
-    */
-    
-    // generating Hamiltonian matrix
-    //Hubbard.generate_Ham_sparse_full(false);
-    //std::cout << std::endl;
-    
-    
-    //Hubbard.locate_E0_full(28,39);
-    //std::cout << std::endl;
-    
-//    std::cout << "full matrix" << std::endl;
-//    auto xxx = Hubbard.HamMat_csr_full.to_dense();
-//    for (MKL_INT i = 0; i < Hubbard.dim_full; i++) {
-//        for (MKL_INT j = 0; j < Hubbard.dim_full; j++) {
-//            std::cout << xxx[i + j * Hubbard.dim_full] << "\t";
-//        }
-//        std::cout << std::endl;
-//    }
-    
-    
-//    for (MKL_INT j = 0; j < Hubbard.dim_full; j++) {
-//        std::cout << "basis [ " << j << "]:" << std::endl;
-//        Hubbard.basis_full[j].prt_nonzero();
-//        std::cout << std::endl;
-//    }
-    
-    
-    Hubbard.basis_init_repr(std::vector<MKL_INT>{0}, lattice);
-//        for (MKL_INT j = 0; j < Hubbard.dim_repr; j++) {
-//            std::cout << "repr [" << j << "]:" << Hubbard.basis_repr[j] << std::endl;
-//        }
-//        for (MKL_INT j = 0; j < Hubbard.dim_full; j++) {
-//            std::cout << "basis_long[" << j << "]:" << Hubbard.basis_belong[j] << std::endl;
-//        }
-//    
-//        for (MKL_INT j = 0; j < Hubbard.dim_full; j++) {
-//            std::cout << "basis_coeff[" << j << "]:" << Hubbard.basis_coeff[j] << std::endl;
-//        }
-    
-    
-    Hubbard.generate_Ham_sparse_repr();
-    std::cout << std::endl;
-    
 
-    
-    Hubbard.locate_E0_repr();
-    std::cout << std::endl;
-    
-    Hubbard.basis_init_repr(std::vector<MKL_INT>{1}, lattice);
-    Hubbard.generate_Ham_sparse_repr();
-    std::cout << std::endl;
-    
-    
-//    for (MKL_INT j = 0; j < Hubbard.dim_repr; j++) {
-//        std::cout << "repr [" << j << "]:" << Hubbard.basis_repr[j] << std::endl;
-//    }
-//    for (MKL_INT j = 0; j < Hubbard.dim_full; j++) {
-//        std::cout << "basis_long[" << j << "]:" << Hubbard.basis_belong[j] << std::endl;
-//    }
-//    
-//    for (MKL_INT j = 0; j < Hubbard.dim_full; j++) {
-//        std::cout << "basis_coeff[" << j << "]:" << Hubbard.basis_coeff[j] << std::endl;
-//    }
-    
-    Hubbard.locate_E0_repr();
-    std::cout << std::endl;
-    
-    Hubbard.basis_init_repr(std::vector<MKL_INT>{2}, lattice);
-    Hubbard.generate_Ham_sparse_repr();
-    std::cout << std::endl;
-    
-    
-//    for (MKL_INT j = 0; j < Hubbard.dim_repr; j++) {
-//        std::cout << "repr [" << j << "]:" << Hubbard.basis_repr[j] << std::endl;
-//    }
-//    for (MKL_INT j = 0; j < Hubbard.dim_full; j++) {
-//        std::cout << "basis_long[" << j << "]:" << Hubbard.basis_belong[j] << std::endl;
-//    }
-//    
-//    for (MKL_INT j = 0; j < Hubbard.dim_full; j++) {
-//        std::cout << "basis_coeff[" << j << "]:" << Hubbard.basis_coeff[j] << std::endl;
-//    }
-    
-    Hubbard.locate_E0_repr();
-    std::cout << std::endl;
-    
-//    for (MKL_INT j = 0; j < Hubbard.dim_full; j++) {
-//        std::cout << "eigenvec[" << j << "]=" << Hubbard.eigenvecs_full[j] << std::endl;
-//    }
-    
-    
-    Hubbard.basis_init_repr(std::vector<MKL_INT>{3}, lattice);
-    Hubbard.generate_Ham_sparse_repr();
-    std::cout << std::endl;
-    Hubbard.locate_E0_repr();
-    std::cout << std::endl;
-}
 
 
 // test t-J model on square lattice
@@ -788,11 +640,6 @@ void test_tJ()
     
 }
 
-// test Kondo lattice chain
-void test_Kondo()
-{
-    
-}
 
 void test_trimer()
 {
@@ -874,3 +721,4 @@ void test_bubble() {
     }
     std::cout << std::endl;
 }
+

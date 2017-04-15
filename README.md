@@ -11,7 +11,7 @@ Some examples of writing ED code based on this library are provided in the folde
 
 . tJ model on triangular lattice (to be filled up)
 
-. Kondo lattice model on a chain (to be filled up)
+. Kondo Lattice model on a chain (need more benchmark, currently the gap has been verified, but E0 not checked yet)
 
 . xxz spin-1/2 model on a chain (to be filled up)
 
