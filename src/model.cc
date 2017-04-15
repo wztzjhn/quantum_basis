@@ -161,6 +161,8 @@ namespace qbasis {
         }
         std::cout << ")..." << std::endl;
         
+        std::cout << "-------- if all dims obc, let's stop here (to be implemented) -------" << std::endl;
+        
         MKL_INT num_sub = latt.num_sublattice();
         auto L = latt.Linear_size();
         basis_belong.resize(dim_full);
