@@ -1,9 +1,7 @@
 # quantum_basis
-Basis of condensed matter quantum lattice problems, for usage in exact diagonalization (ED) and beyond. The code is designed for any general bosonic or fermionic problem (or a mix of both), as long as the user can provide the matrix form of the elementary operators of the Hamiltonian.
+Basis of condensed matter quantum lattice problems, for usage in exact diagonalization (ED). The code is designed for any general bosonic or fermionic problem (or a mix of both), as long as the user can provide the matrix form (explained in the manual) of the elementary operators of the Hamiltonian.
 
-The users are encouraged to use this library to design ED code for any intercting quantum lattice model. 
-
-Some examples of writing ED code based on this library are provided in the folder "examples":
+To learn how to use this library to design ED code for your own models, please refer to the folder "examples" (each complete example is about 100 lines):
 
 . Fermi-Hubbard Model on square lattice
 
