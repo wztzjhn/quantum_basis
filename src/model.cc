@@ -85,7 +85,7 @@ namespace qbasis {
         MKL_INT total_chunks = static_cast<MKL_INT>(job_array.size());
         job_array.push_back(dim_total);
         
-        
+        std::cout << "(a few benchmark lines to be removed in the future)" << std::endl;
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT chunk = 0; chunk < total_chunks; chunk++) {
             std::list<qbasis::mbasis_elem> basis_temp_job;
@@ -118,7 +118,6 @@ namespace qbasis {
             }
             
             // double check the correctness, erase these lines later
-            std::cout << "(a few benchmark lines to be removed in the future)" << std::endl;
             if (chunk < total_chunks - 1) {
                 state_new.increment();
                 dist = dynamic_base(state_num, base);

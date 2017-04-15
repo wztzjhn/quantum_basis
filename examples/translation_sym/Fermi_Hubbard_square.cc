@@ -12,7 +12,13 @@ int main() {
     MKL_INT Ly = 3;
     MKL_INT Nup_total = 5;
     MKL_INT Ndn_total = 4;
-    
+
+    std::cout << "Lx =      " << Lx << std::endl;
+    std::cout << "Ly =      " << Ly << std::endl;
+    std::cout << "t =       " << t << std::endl;
+    std::cout << "U =       " << U << std::endl;
+    std::cout << "N_up =    " << Nup_total << std::endl;
+    std::cout << "N_dn =    " << Ndn_total << std::endl << std::endl;   
     
     // lattice object
     // you are allowed to change "pbc" to "obc" to play,
