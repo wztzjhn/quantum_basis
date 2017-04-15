@@ -2,7 +2,7 @@
 #include <iomanip>
 #include "qbasis.h"
 
-// Kondo Lattice model on a chain, periodic boundary condition
+// Kondo Lattice model on a chain
 int main() {
     std::cout << std::setprecision(10);
     std::cout << "The gap is bench marked with Tsunetsugu et al. PRB 46, 3175 (1992)." << std::endl;
@@ -14,7 +14,7 @@ int main() {
     double J_RKKY = 0.0;         // artificial RKKY
     MKL_INT L = 4;
     double Sz_total_val = 0.0;   // not used. to turn on, modify a comment line near the bottom of the file
-    MKL_INT Nelec_total_val = L;
+    double Nelec_total_val = L;
 
     std::cout << "L =       " << L << std::endl;
     std::cout << "t =       " << t << std::endl;
@@ -107,7 +107,7 @@ int main() {
     
     // constructing the Hilbert space basis
     //Kondo.enumerate_basis_full(lattice.total_sites(), {"electron","spin-1/2"}, {Nelec_total,Sz_total}, {static_cast<double>(Nelec_total_val),Sz_total_val});
-    Kondo.enumerate_basis_full(lattice.total_sites(), {"electron","spin-1/2"}, {Nelec_total}, {static_cast<double>(Nelec_total_val)});
+    Kondo.enumerate_basis_full(lattice.total_sites(), {"electron","spin-1/2"}, {Nelec_total}, {Nelec_total_val});
     
     
     std::vector<double> energies;

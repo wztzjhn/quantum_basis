@@ -2,7 +2,7 @@
 #include <iomanip>
 #include "qbasis.h"
 
-// Fermi-Hubbard model on square lattice, x-dir periodic, y-dir periodic
+// Fermi-Hubbard model on square lattice
 int main() {
     std::cout << std::setprecision(10);
     // parameters
@@ -10,8 +10,8 @@ int main() {
     double U = 1.1;
     MKL_INT Lx = 3;
     MKL_INT Ly = 3;
-    MKL_INT Nup_total = 5;
-    MKL_INT Ndn_total = 4;
+    double Nup_total = 5;
+    double Ndn_total = 4;
  
     std::cout << "Lx =      " << Lx << std::endl;
     std::cout << "Ly =      " << Ly << std::endl;
@@ -21,8 +21,6 @@ int main() {
     std::cout << "N_dn =    " << Ndn_total << std::endl << std::endl;
 
     // lattice object
-    // you are allowed to change "pbc" to "obc" to play,
-    // just remember to delete the "assertion" lines at the bottom of this file
     std::vector<std::string> bc{"pbc", "pbc"};
     qbasis::lattice lattice("square",std::vector<MKL_INT>{Lx, Ly},bc);
     
@@ -89,7 +87,7 @@ int main() {
     
 
     // constructing the Hilbert space basis
-    Hubbard.enumerate_basis_full(lattice.total_sites(), {"electron"}, {Nup,Ndown}, {static_cast<double>(Nup_total),static_cast<double>(Ndn_total)});
+    Hubbard.enumerate_basis_full(lattice.total_sites(), {"electron"}, {Nup,Ndown}, {Nup_total,Ndn_total});
     
 
     // generating matrix of the Hamiltonian in the full Hilbert space

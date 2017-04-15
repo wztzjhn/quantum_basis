@@ -12,7 +12,7 @@ To learn how to use this library to design ED code for your own models, please r
 
 ## Dependencies:
 - [boost(>=1.56)](http://www.boost.org/)
-- [MKL](https://software.intel.com/en-us/intel-mkl)
+- [MKL](https://software.intel.com/en-us/intel-mkl)(2013 version known to be too old)
 - [arpack](https://github.com/opencollab/arpack-ng) (dependency to be removed in a future release)
 - [arpack++](https://github.com/wztzjhn/arpackpp) (dependency to be removed in a future release)
 
