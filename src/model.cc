@@ -64,8 +64,14 @@ namespace qbasis {
         MKL_INT total_chunks = static_cast<MKL_INT>(job_array.size());
         job_array.push_back(dim_total);
         
+        MKL_INT report = dim_total > 1000000 ? (total_chunks / 10) : total_chunks;
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT chunk = 0; chunk < total_chunks; chunk++) {
+            if (chunk > 0 && chunk % report == 0) {
+                #pragma omp critical
+                std::cout << "progress: "
+                          << (static_cast<double>(chunk) / static_cast<double>(total_chunks) * 100.0) << "%" << std::endl;
+            }
             std::list<qbasis::mbasis_elem> basis_temp_job;
             
             // get a new starting basis element
