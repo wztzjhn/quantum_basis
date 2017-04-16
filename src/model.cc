@@ -21,7 +21,7 @@ namespace qbasis {
         }
         
         assert(conserve_lst.size() == val_lst.size());
-        std::list<mbasis_elem> basis_temp;
+        std::list<std::vector<mbasis_elem>> basis_temp;
         auto GS = mbasis_elem(n_sites,lst);
         GS.reset();
         MKL_INT dim_local  = GS.local_dimension();
@@ -43,7 +43,7 @@ namespace qbasis {
         std::cout << "Capability of current code for current model: maximal " << site_max << " sites. (in the ideal case of infinite memory available)" << std::endl << std::endl;
         assert(n_sites < site_max);
         
-        std::cout << "Enumerating the full basis with certain symmtries..." << std::endl;
+        std::cout << "Enumerating the full basis with " << val_lst.size() << " conserved quantum numbers..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         
@@ -64,15 +64,15 @@ namespace qbasis {
         MKL_INT total_chunks = static_cast<MKL_INT>(job_array.size());
         job_array.push_back(dim_total);
         
+        dim_full = 0;
         MKL_INT report = dim_total > 1000000 ? (total_chunks / 10) : total_chunks;
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT chunk = 0; chunk < total_chunks; chunk++) {
             if (chunk > 0 && chunk % report == 0) {
-                #pragma omp critical
                 std::cout << "progress: "
                           << (static_cast<double>(chunk) / static_cast<double>(total_chunks) * 100.0) << "%" << std::endl;
             }
-            std::list<qbasis::mbasis_elem> basis_temp_job;
+            std::vector<qbasis::mbasis_elem> basis_temp_job;
             
             // get a new starting basis element
             MKL_INT state_num = job_array[chunk];
@@ -100,16 +100,27 @@ namespace qbasis {
                 state_num++;
                 if (state_num < job_array[chunk+1]) state_new.increment();
             }
-            
-            #pragma omp critical
-            basis_temp.splice(basis_temp.end(), basis_temp_job);
+            if (basis_temp_job.size() > 0) {
+                #pragma omp critical
+                {
+                    dim_full += basis_temp_job.size();
+                    basis_temp.push_back(basis_temp_job);           // think how to make sure it is a move operation here
+                }
+            }
         }
+        std::cout << "Hilbert space size with symmetry: " << dim_full << std::endl;
         
         // pick the fruits
-        dim_full = basis_temp.size();
-        std::cout << "Hilbert space size with symmetry: " << dim_full << std::endl;
-        basis_full = std::vector<mbasis_elem>(std::make_move_iterator(basis_temp.begin()),
-                                              std::make_move_iterator(basis_temp.end()));
+        basis_full.clear();
+        basis_full.resize(dim_full);
+        auto it_full = basis_full.begin();
+        for (auto it = basis_temp.begin(); it != basis_temp.end(); it++) {
+            it_full = std::move(it->begin(), it->end(), it_full);
+            it->erase(it->begin(), it->end());
+            it->shrink_to_fit();
+        }
+        assert(it_full == basis_full.end());
+        
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl << std::endl;
