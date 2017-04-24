@@ -10,12 +10,13 @@ namespace qbasis {
         return res;
     }
     
-    MKL_INT dynamic_base(const std::vector<MKL_INT> &nums, const std::vector<MKL_INT> &base)
+    template <typename T>
+    T dynamic_base(const std::vector<T> &nums, const std::vector<T> &base)
     {
         assert(nums.size() == base.size());
         assert(nums.size() > 0);
-        MKL_INT res = 0;
-        MKL_INT j = nums.size() - 1;
+        T res = 0;
+        auto j = nums.size() - 1;
         while (nums[j] == 0 && j > 0) j--;
         while (j > 0) {
             assert(nums[j] < base[j]);
@@ -26,19 +27,22 @@ namespace qbasis {
         res += nums[0];
         return res;
     }
+    template MKL_INT dynamic_base(const std::vector<MKL_INT> &nums, const std::vector<MKL_INT> &base);
+    template uint32_t dynamic_base(const std::vector<uint32_t> &nums, const std::vector<uint32_t> &base);
     
-    std::vector<MKL_INT> dynamic_base(const MKL_INT &total, const std::vector<MKL_INT> &base)
+    template <typename T>
+    std::vector<T> dynamic_base(const T &total, const std::vector<T> &base)
     {
         assert(base.size() > 0);
         assert(total >= 0);
-        MKL_INT len = base.size();
-        std::vector<MKL_INT> res(len);
-        MKL_INT temp = total;     // temp == i + j * base[0] + k * base[0] * base[1] + ...
-        for (MKL_INT n = 0; n < len - 1; n++) {
+        auto len = base.size();
+        std::vector<T> res(len);
+        T temp = total;        // temp == i + j * base[0] + k * base[0] * base[1] + ...
+        for (decltype(len) n = 0; n < len - 1; n++) {
             res[n] = temp % base[n];
             temp = (temp - res[n]) / base[n];
             if (temp == 0) {
-                for (MKL_INT j = n + 1; j < len - 1; j++) res[j] = 0;
+                for (decltype(len) j = n + 1; j < len - 1; j++) res[j] = 0;
                 break;
             }
         }
@@ -46,16 +50,19 @@ namespace qbasis {
         assert(temp < base[len-1]);
         return res;
     }
+    template std::vector<MKL_INT> dynamic_base(const MKL_INT &total, const std::vector<MKL_INT> &base);
+    template std::vector<uint32_t> dynamic_base(const uint32_t &total, const std::vector<uint32_t> &base);
     
-    std::vector<MKL_INT> dynamic_base_plus1(const std::vector<MKL_INT> &nums, const std::vector<MKL_INT> &base)
+    template <typename T>
+    std::vector<T> dynamic_base_plus1(const std::vector<T> &nums, const std::vector<T> &base)
     {
-        MKL_INT len = static_cast<MKL_INT>(nums.size());
+        auto len = nums.size();
         assert(len > 0);
-        assert(nums.size() == base.size());
-        for (MKL_INT j = 0; j < len; j++) assert(nums[j] >= 0 && nums[j] < base[j]);
+        assert(len == base.size());
+        for (decltype(len) j = 0; j < len; j++) assert(nums[j] >= 0 && nums[j] < base[j]);
         auto res = nums;
         res[len-1]++;
-        MKL_INT i = len - 1;
+        auto i = len - 1;
         while (i > 0 && res[i] == base[i]) {
             res[i] = 0;
             res[i-1]++;
@@ -63,6 +70,8 @@ namespace qbasis {
         }
         return res;
     }
+    template std::vector<MKL_INT> dynamic_base_plus1(const std::vector<MKL_INT> &nums, const std::vector<MKL_INT> &base);
+    template std::vector<uint32_t> dynamic_base_plus1(const std::vector<uint32_t> &nums, const std::vector<uint32_t> &base);
     
     template <typename T>
     bool is_sorted_norepeat(const std::vector<T> &array)
@@ -104,19 +113,19 @@ namespace qbasis {
     
     
     template <typename T>
-    MKL_INT bubble_sort(std::vector<T> &array, const MKL_INT &bgn, const MKL_INT &end)
+    int bubble_sort(std::vector<T> &array, const int &bgn, const int &end)
     {
         if(array.size() == 0 && bgn == end) return 0;            // no exchange at all
         assert(bgn < end);
-        assert(bgn >= 0 && bgn < static_cast<MKL_INT>(array.size()));
-        assert(end > 0 && end <= static_cast<MKL_INT>(array.size()));
-        MKL_INT len = end - bgn;
-        MKL_INT cnt = 0;
+        assert(bgn >= 0 && bgn < static_cast<int>(array.size()));
+        assert(end > 0 && end <= static_cast<int>(array.size()));
+        int len = end - bgn;
+        int cnt = 0;
         
         using std::swap;
-        for (MKL_INT j = 1; j < len; j++) {  // e.g. if len = 3, need bubble sort with 2 loops
-            MKL_INT cnt0 = 0;
-            for (MKL_INT i = bgn; i < end - j; i++) {
+        for (int j = 1; j < len; j++) {  // e.g. if len = 3, need bubble sort with 2 loops
+            int cnt0 = 0;
+            for (int i = bgn; i < end - j; i++) {
                 if (array[i+1] < array[i]) {
                     swap(array[i], array[i+1]);
                     cnt0++;
@@ -130,7 +139,7 @@ namespace qbasis {
         }
         return cnt;
     }
-    template MKL_INT bubble_sort(std::vector<MKL_INT> &array, const MKL_INT &bgn, const MKL_INT &end);
+    template int bubble_sort(std::vector<uint32_t> &array, const int &bgn, const int &end);
     
     template <typename T>
     T continued_fraction(T a[], T b[], const MKL_INT &len)

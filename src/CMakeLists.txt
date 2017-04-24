@@ -1,5 +1,4 @@
 set(QBASIS_SRC
-  measure.cc
   lattice.cc
   model.cc
   lanczos.cc

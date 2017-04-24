@@ -19,7 +19,10 @@
 #define lapack_complex_double   MKL_Complex16
 #endif
 
+#include <cstdint>
+#include <cmath>
 #include <complex>
+#include <algorithm>
 #include <string>
 #include <vector>
 #include <list>
@@ -28,16 +31,15 @@
 #include <initializer_list>
 #include <chrono>
 #include <cassert>
-#include <boost/dynamic_bitset.hpp>
-#include <boost/math/special_functions/binomial.hpp>
 #include "mkl.h"
+//#include <boost/math/special_functions/binomial.hpp>
 
 #ifdef _OPENMP
 #include <omp.h>
 #else
 #define omp_get_thread_num() -1
-#define omp_get_num_threads() -1
-#define omp_get_num_procs() -1
+#define omp_get_num_threads() 1
+#define omp_get_num_procs() 1
 #endif
 
 
@@ -49,46 +51,37 @@ namespace qbasis {
 
 //  -------------part 0: global vals, forward declarations ---------------------
 //  ----------------------------------------------------------------------------
-    // the startup cost of boost::dynamic_bitset is around 40 Bytes
-    using DBitSet = boost::dynamic_bitset<>;
     static const double pi = 3.141592653589793238462643;
-    // later let's combine these three as a unified name "precision"
+    // later let's try to combine these three as a unified name "precision"
     static const double opr_precision = 1e-12; // used as the threshold value in comparison
     static const double sparse_precision = 1e-14;
     static const double lanczos_precision = 1e-12;
     
-    
-    class basis_elem;
+    class basis_prop;
     class mbasis_elem;
     template <typename> class wavefunction;
     template <typename> class opr;
     template <typename> class opr_prod;
     template <typename> class mopr;
-    template <typename> class csr_mat;
-    //class threads_pool;
-    template <typename> class model;
     class lattice;
+    template <typename> class csr_mat;
+    template <typename> class model;
+    //class threads_pool;
     
-    bool operator<(const basis_elem&, const basis_elem&);
-    bool operator==(const basis_elem&, const basis_elem&);
-    bool operator!=(const basis_elem&, const basis_elem&);
-    
+    // ---------- basis -----------
     bool operator<(const mbasis_elem&, const mbasis_elem&);
     bool operator==(const mbasis_elem&, const mbasis_elem&);
     bool operator!=(const mbasis_elem&, const mbasis_elem&);
-    bool trans_equiv(const mbasis_elem&, const mbasis_elem&, const lattice&);   // computational heavy, use with caution
+    bool trans_equiv(const mbasis_elem&, const mbasis_elem&, const std::vector<basis_prop> &props, const lattice&);   // computational heavy, use with caution
     
     template <typename T> void swap(wavefunction<T>&, wavefunction<T>&);
     template <typename T> wavefunction<T> operator+(const wavefunction<T>&, const wavefunction<T>&);
-    
     template <typename T> wavefunction<T> operator*(const wavefunction<T>&, const T&);
     template <typename T> wavefunction<T> operator*(const T&, const wavefunction<T>&);
     template <typename T> wavefunction<T> operator*(const mbasis_elem&, const T&);
     template <typename T> wavefunction<T> operator*(const T&, const mbasis_elem&);
     
-    
-    
-    // the following originally from operators.h
+    // -------- operators -----------
     template <typename T> void swap(opr<T>&, opr<T>&);
     template <typename T> bool operator==(const opr<T>&, const opr<T>&);
     template <typename T> bool operator!=(const opr<T>&, const opr<T>&);
@@ -138,21 +131,17 @@ namespace qbasis {
     template <typename T> mopr<T> operator*(const T&, const mopr<T>&);
 
     // opr * | orb0, orb1, ..., ORB, ... > = | orb0, orb1, ..., opr*ORB, ... >, fermionic sign has to be computed when traversing orbitals
-    template <typename T> wavefunction<T> operator*(const opr<T>&, const mbasis_elem&);
-    template <typename T> wavefunction<T> operator*(const opr<T>&, const wavefunction<T>&);
-    template <typename T> wavefunction<T> operator*(const opr_prod<T>&, const mbasis_elem&);
-    template <typename T> wavefunction<T> operator*(const opr_prod<T>&, const wavefunction<T>&);
-    template <typename T> wavefunction<T> operator*(const mopr<T>&, const mbasis_elem&);
-    template <typename T> wavefunction<T> operator*(const mopr<T>&, const wavefunction<T>&);
+    template <typename T> wavefunction<T> oprXphi(const opr<T>&, const mbasis_elem&, const std::vector<basis_prop>&);
+    template <typename T> wavefunction<T> oprXphi(const opr<T>&, const wavefunction<T>&, const std::vector<basis_prop>&);
+    template <typename T> wavefunction<T> oprXphi(const opr_prod<T>&, const mbasis_elem&, const std::vector<basis_prop>&);
+    template <typename T> wavefunction<T> oprXphi(const opr_prod<T>&, const wavefunction<T>&, const std::vector<basis_prop>&);
+    template <typename T> wavefunction<T> oprXphi(const mopr<T>&, const mbasis_elem&, const std::vector<basis_prop>&);
+    template <typename T> wavefunction<T> oprXphi(const mopr<T>&, const wavefunction<T>&, const std::vector<basis_prop>&);
     
     // mopr * {a list of mbasis} -->> {a new list of mbasis}
     template <typename T> void gen_mbasis_by_mopr(const mopr<T>&, std::list<mbasis_elem>&);
     
-    
     template <typename T> void swap(csr_mat<T>&, csr_mat<T>&);
-    
-    
-    
     
     
     
@@ -161,29 +150,13 @@ namespace qbasis {
 //  --------------------  part 1: basis of the wave functions ------------------
 //  ----------------------------------------------------------------------------
     
-    
-    
-    // ------------ fundamental class for basis elements --------------
-    // for given number of sites, store the bits for a single orbital
-    class basis_elem {
-        friend void swap(basis_elem &lhs, basis_elem &rhs);
-        friend bool operator<(const basis_elem&, const basis_elem&);
-        friend bool operator==(const basis_elem&, const basis_elem&);
-        friend bool operator!=(const basis_elem&, const basis_elem&);
-        template <typename T> friend wavefunction<T> operator*(const opr<T>&, const mbasis_elem&);
-        friend class mbasis_elem;
+    // ------------ basic info of a particular basis -----------------
+    class basis_prop {
     public:
-        // default constructor
-        basis_elem() = default;
+        basis_prop(const uint32_t &n_sites, const uint8_t &dim_local_,
+                   const std::vector<uint32_t> &Nf_map = std::vector<uint32_t>(),
+                   const bool &dilute_ = false);
         
-        // constructor (initializer for all site to be the 0th state)
-        // with total number of sites, local dimension of Hilbert space,
-        // and Nfermion is the fermion density operator (single site)
-        basis_elem(const MKL_INT &n_sites, const MKL_INT &dim_local_);                              // boson
-        basis_elem(const MKL_INT &n_sites, const MKL_INT &dim_local_, const opr<double> &Nfermion); // fermion
-        
-        // constructor from total number of sites and a given name.
-        // Note: if you use a given name here, your operator definitions HAVE TO BE CONSISTENT with this basis definition!!!
         // current choices of name s:
         // ***   spin-1/2            ***
         // ***   spin-1              ***
@@ -191,187 +164,164 @@ namespace qbasis {
         // ***   electron            ***
         // ***   tJ                  ***
         // ***   spinless-fermion    ***
-        basis_elem(const MKL_INT &n_sites, const std::string &s);
+        basis_prop(const uint32_t &n_sites, const std::string &s);
         
-        // copy constructor
-        basis_elem(const basis_elem& old) :
-            dim_local(old.dim_local), bits_per_site(old.bits_per_site),
-            Nfermion_map(old.Nfermion_map), bits(old.bits) {}
-        
-        // move constructor
-        basis_elem(basis_elem &&old) noexcept :
-            dim_local(old.dim_local), bits_per_site(old.bits_per_site),
-            Nfermion_map(std::move(old.Nfermion_map)), bits(std::move(old.bits)) {}
-        
-        // copy assignment constructor and move assignment constructor, using "swap and copy"
-        basis_elem& operator=(basis_elem old)
-        {
-            swap(*this, old);
-            return *this;
-        }
-        
-        // destructor
-        ~basis_elem() {}
-        
-        // a few basic properties
-        MKL_INT local_dimension() const { return static_cast<MKL_INT>(dim_local); }
-        MKL_INT total_sites() const;
         bool q_fermion() const { return (! Nfermion_map.empty()); }
-        bool q_zero() const { return bits.none(); }
-        bool q_maximized() const;
-        bool q_same_state_all_site() const;
         
-        // read out the status of a particular site
-        // storage order: site0, site1, site2, ..., site(N-1)
-        MKL_INT siteRead(const MKL_INT &site) const;
-        
-        basis_elem& siteWrite(const MKL_INT &site, const MKL_INT &val);
-        
-        // return a vector of length dim_local, reporting # of each state
-        std::vector<MKL_INT> statistics() const;
-        
-        // change basis_elem to the next available state
-        basis_elem& increment();
-        
-        // translate the basis directly using bits (suitable for 1D)
-        // not implemented yet
-        
-        // transform the basis according to the given plan, or directly according to translation (or other transformation) on a particular lattice
-        // sgn = 0 or 1 denoting if extra minus sign generated by translating fermions
-        basis_elem& transform(const std::vector<MKL_INT> &plan, MKL_INT &sgn);
-        basis_elem& translate(const lattice &latt, const std::vector<MKL_INT> &disp, MKL_INT &sgn);
-        
-        // reset bits to 0
-        basis_elem& reset() {bits.reset(); return *this; }
-        
-        void prt() const;
-        void prt_nonzero() const;
-        
-        // remember to change odd_fermion[site]
-        //basis_elem& flip();
-        
-    private:
-        short dim_local;
-        short bits_per_site;
-        std::vector<int> Nfermion_map;     // Nfermion_map[i] corresponds to the number of fermions of state i
-        /*
-        in terms of bits when perfoming "<" comparison (e.g. bits_per_site = 2):
-        e.g.  0 1 0 1 0 0 0 0 1 1 0 1 0 0 0 0 1 1 1 0
-                                                  ^ ^
-                                                /     \
-                                            bits[1]   bits[0]
-                                                \     /
-                                                 site[0]
-        Note1: this storage scheme is related to the difiniton of "<" in terms of comparison of basis,
-               but unrelated to the definition of wavefunctions (especially in terms of sign)!
-        The wavefunction is always defined as:
-        |alpha_0, beta_1, gamma_2, ... > = alpha_0^\dagger beta_1^\dagger gamma_2^\dagger ... |GS>
-        (where alpha_i^\dagger is creation operator of state alpha on site i)
-        Note2: later for mbasis (mbits), the "<" comparison of different orbitals is different:
-               orb_0    orb_1    orb_2 ...          -> opposite to the arrangement of sites!!!
-        */
-        DBitSet bits;
+        uint8_t dim_local;                      // local (single-site, single-orbital) dimension < 256
+        uint8_t bits_per_site;                  // <= 8
+        uint8_t bits_ignore;                    // for each orbital (with many sites), there are a few bits ignored
+        uint16_t num_bytes;                     // for multi-orbital system, sum of num_bytes < 65536
+        uint32_t num_sites;
+        std::vector<uint32_t> Nfermion_map;     // Nfermion_map[i] corresponds to the number of fermions of state i
+        bool dilute;                            // if dilute, bit-rep is not a good representation
     };
     
     
-    
-    
+    // ------------ fundamental class for basis elements --------------
     // -------------- class for basis with several orbitals---------------
     // for given number of sites, and several orbitals, store the vectors of bits
     class mbasis_elem {
         friend void swap(mbasis_elem&, mbasis_elem&);
         friend bool operator<(const mbasis_elem&, const mbasis_elem&);
         friend bool operator==(const mbasis_elem&, const mbasis_elem&);
-        friend bool trans_equiv(const mbasis_elem&, const mbasis_elem&, const lattice&);
-        //template <typename T> friend class opr;
-        //template <typename T> friend T operator* (const opr<T>&, const mbasis_elem&);
-        //template <typename T> friend T operator* (const opr_prod<T>&, const mbasis_elem&);
-        template <typename T> friend wavefunction<T> operator*(const opr<T>&, const mbasis_elem&);
+        friend bool trans_equiv(const mbasis_elem&, const mbasis_elem&, const std::vector<basis_prop> &props, const lattice&);
+        template <typename T> friend wavefunction<T> oprXphi(const opr<T>&, const mbasis_elem&, const std::vector<basis_prop>&);
     public:
         // default constructor
-        mbasis_elem() = default;
+        mbasis_elem() { mbits = nullptr; }
         
-        // construcutor with total number of sites, and name of each orbital
-        mbasis_elem(const MKL_INT &n_sites, std::initializer_list<std::string> lst);
+        // constructor with its properties
+        mbasis_elem(const std::vector<basis_prop> &props);
         
         // copy constructor
-        mbasis_elem(const mbasis_elem& old): mbits(old.mbits) {}
+        mbasis_elem(const mbasis_elem& old);
         
         // move constructor
-        mbasis_elem(mbasis_elem &&old) noexcept : mbits(std::move(old.mbits)) {}
+        mbasis_elem(mbasis_elem &&old) noexcept { mbits = old.mbits; old.mbits = nullptr; }
         
         // copy assignment constructor and move assignment constructor, using "swap and copy"
-        mbasis_elem& operator=(mbasis_elem old)
-        {
-            swap(*this, old);
-            return *this;
-        }
+        mbasis_elem& operator=(mbasis_elem old) { swap(*this, old); return *this; }
         
         // destructor
-        ~mbasis_elem() {}
+        ~mbasis_elem() { if (mbits != nullptr) { free(mbits); mbits = nullptr; } }
         
-        // a few basic properties
-        MKL_INT total_sites() const;
-        MKL_INT total_orbitals() const;
-        MKL_INT local_dimension() const;
-        std::vector<MKL_INT> local_dimension_vec() const;
-        bool q_zero() const;
-        bool q_maximized() const;
+        //     ---------- status changes -----------
+        // read out a state from a given site and given orbital
+        uint8_t siteRead(const std::vector<basis_prop> &props,
+                         const uint32_t &site, const uint32_t &orbital) const;
         
-        // a direct product of the statistics of all orbitals, size: dim_orb1 * dim_orb2 * ...
-        std::vector<MKL_INT> statistics() const;
+        // write to a given site and given orbital
+        mbasis_elem& siteWrite(const std::vector<basis_prop> &props,
+                               const uint32_t &site, const uint32_t &orbital, const uint8_t &val);
+        
+        // reset all bits to 0 for a partical orbital
+        mbasis_elem& reset(const std::vector<basis_prop> &props, const uint32_t &orbital);
+        
+        // reset all bits to 0 in all orbitals
+        mbasis_elem& reset(const std::vector<basis_prop> &props);
+        
+        // change mbasis_elem to the next available state, for a particular orbital
+        mbasis_elem& increment(const std::vector<basis_prop> &props, const uint32_t &orbital);
         
         // change mbasis_elem to the next available state
-        mbasis_elem& increment();
+        mbasis_elem& increment(const std::vector<basis_prop> &props);
         
+        //    ---------------- print ---------------
+        void prt_bits(const std::vector<basis_prop> &props) const;       // print the bits
         
+        void prt_states(const std::vector<basis_prop> &props) const;     // print non-vacuum states
         
+        //    ----------- basic inquiries ----------
+        bool q_zero(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
+        
+        bool q_zero() const;
+        
+        bool q_maximized(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
+        
+        bool q_maximized(const std::vector<basis_prop> &props) const;
+        
+        bool q_same_state_all_site(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
+        
+        bool q_same_state_all_site(const std::vector<basis_prop> &props) const;
+        
+        // return a vector of length dim_local (for orbital), reporting # of each state
+        std::vector<uint32_t> statistics(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
+        
+        // a direct product of the statistics of all orbitals, size: dim_orb1 * dim_orb2 * ...
+        std::vector<uint32_t> statistics(const std::vector<basis_prop> &props) const;
+        
+        //    ---------- transformations -----------
+        // translate the basis according to the given plan, transform a single orbital
+        // sgn = 0 or 1 denoting if extra minus sign generated by translating fermions
+        mbasis_elem& transform(const std::vector<basis_prop> &props,
+                               const std::vector<uint32_t> &plan, int &sgn,
+                               const uint32_t &orbital);
         // translate the basis according to the given plan, all orbitals transform in same way: site1 -> site2
-        mbasis_elem& transform(const std::vector<MKL_INT> &plan, MKL_INT &sgn);
+        mbasis_elem& transform(const std::vector<basis_prop> &props,
+                               const std::vector<uint32_t> &plan, int &sgn);
+        
         // different orbs transform in different ways: (site1, orb1) -> (site2, orb2)
         // outer vector: each element denotes one orbital
         // middle vector: each element denotes one site
         // inner pair: first=site, second=orbital
-        mbasis_elem& transform(const std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> &plan, MKL_INT &sgn);
-        mbasis_elem& translate(const lattice &latt, const std::vector<MKL_INT> &disp, MKL_INT &sgn);
+        mbasis_elem& transform(const std::vector<basis_prop> &props,
+                               const std::vector<std::vector<std::pair<uint32_t,uint32_t>>> &plan, int &sgn);
+        
+        mbasis_elem& translate(const std::vector<basis_prop> &props,
+                               const lattice &latt, const std::vector<int> &disp, int &sgn,
+                               const uint32_t &orbital);
+        mbasis_elem& translate(const std::vector<basis_prop> &props,
+                               const lattice &latt, const std::vector<int> &disp, int &sgn);
         
         // change to a basis element which is the unique (fully determined by the lattice and its state) among its translational equivalents
-        mbasis_elem& translate_to_unique_state(const lattice &latt, std::vector<MKL_INT> &disp_vec);
+        mbasis_elem& translate_to_unique_state(const std::vector<basis_prop> &props,
+                                               const lattice &latt, std::vector<int> &disp_vec);
         
-        // reset all bits to 0 in all orbitals
-        mbasis_elem& reset();
+        //    ------------ measurements ------------
+        double diagonal_operator(const std::vector<basis_prop> &props, const opr<double> &lhs) const;
         
-        MKL_INT siteRead(const MKL_INT &site, const MKL_INT &orbital) const;
+        std::complex<double> diagonal_operator(const std::vector<basis_prop> &props, const opr<std::complex<double>> &lhs) const;
         
-        mbasis_elem& siteWrite(const MKL_INT &site, const MKL_INT &orbital, const MKL_INT &val);
+        double diagonal_operator(const std::vector<basis_prop> &props, const opr_prod<double> &lhs) const;
         
-        double diagonal_operator(const opr<double>& lhs) const;
-        std::complex<double> diagonal_operator(const opr<std::complex<double>>& lhs) const;
+        std::complex<double> diagonal_operator(const std::vector<basis_prop> &props, const opr_prod<std::complex<double>> &lhs) const;
         
-        double diagonal_operator(const opr_prod<double>& lhs) const;
-        std::complex<double> diagonal_operator(const opr_prod<std::complex<double>>& lhs) const;
+        double diagonal_operator(const std::vector<basis_prop> &props, const mopr<double> &lhs) const;
         
-        double diagonal_operator(const mopr<double>& lhs) const;
-        std::complex<double> diagonal_operator(const mopr<std::complex<double>>& lhs) const;
+        std::complex<double> diagonal_operator(const std::vector<basis_prop> &props, const mopr<std::complex<double>> &lhs) const;
         
-        void prt() const;
-        void prt_nonzero() const;
+        // deprecated
+        //std::vector<MKL_INT> local_dimension_vec() const;
         
     private:
         // store an array of basis elements, for multi-orbital site (or unit cell)
-        std::vector<basis_elem> mbits;
+        // the first 2 bytes are used to store the total number of bytes used by this array
+        /*
+         in terms of bits when perfoming "<" comparison (e.g. bits_per_site = 2):
+         e.g.  0 1 0 1 0 0 0 0 1 1 0 1 0 0 0 0 1 1 1 0
+                                                   ^ ^
+                                                 /     \
+                                            bits[1]   bits[0]
+                                                 \     /
+                                                 site[0]
+         Note1: for arrangement of orbitals, they are similar:
+                ...   orb[2]    orb[1]    orb[0]
+         Note2: The wavefunction is always defined as:
+                |alpha_0, beta_1, gamma_2, ... > = alpha_0^\dagger beta_1^\dagger gamma_2^\dagger ... |GS>
+                (where alpha_i^\dagger is creation operator of state alpha on site i)
+         */
+        uint8_t* mbits;
     };
     
     
-    
-    //      BETTER USE SMART POINTERS TO POINT TO THE ORIGINAL BASIS
     // -------------- class for wave functions ---------------
     // Use with caution, may hurt speed when not used properly
     template <typename T> class wavefunction {
         friend void swap <> (wavefunction<T> &, wavefunction<T> &);
-        friend wavefunction<T> operator* <> (const opr<T>&, const wavefunction<T>&);
-        friend wavefunction<T> operator* <> (const opr_prod<T>&, const wavefunction<T>&);
-        friend wavefunction<T> operator* <> (const mopr<T>&, const wavefunction<T>&);
+        friend wavefunction<T> oprXphi <> (const opr<T>&, const wavefunction<T>&, const std::vector<basis_prop>&);
+        friend wavefunction<T> oprXphi <> (const opr_prod<T>&, const wavefunction<T>&, const std::vector<basis_prop>&);
+        friend wavefunction<T> oprXphi <> (const mopr<T>&, const wavefunction<T>&, const std::vector<basis_prop>&);
     public:
         // default constructor
         wavefunction() = default;
@@ -396,26 +346,34 @@ namespace qbasis {
         // destructor
         ~wavefunction() {}
         
-        std::pair<mbasis_elem, T>& operator[](MKL_INT n)
-        {
-            assert(n < size());
-            assert(! elements.empty());
-            auto it = elements.begin();
-            for (decltype(n) i = 0; i < n; i++) ++it;
-            return *it;
-        }
+        std::pair<mbasis_elem, T>& operator[](uint32_t n);
         
-        const std::pair<mbasis_elem, T>& operator[](MKL_INT n) const
-        {
-            assert(n < size());
-            assert(! elements.empty());
-            auto it = elements.begin();
-            for (decltype(n) i = 0; i < n; i++) ++it;
-            return *it;
-        }
+        const std::pair<mbasis_elem, T>& operator[](uint32_t n) const;
         
+        //    ---------------- print ---------------
+        void prt_bits(const std::vector<basis_prop> &props) const;
+        
+        void prt_states(const std::vector<basis_prop> &props) const;
+        
+        //    ----------- basic inquiries ----------
+        // check if zero
+        bool q_zero() const { return elements.empty(); }
+        
+        // check if sorted
+        bool q_sorted() const;
+        
+        // check if sorted and there are no dulplicated terms
+        bool q_sorted_fully() const;
+        
+        uint32_t size() const { return static_cast<uint32_t>(elements.size()); }
+        
+        // for \sum_i \alpha_i * element[i], return \sum_i |\alpha_i|^2
+        double amplitude();
+        
+        //    ------------ arithmetics -------------
         // add one element
         wavefunction& operator+=(std::pair<mbasis_elem, T> ele);
+        
         wavefunction& operator+=(const mbasis_elem &ele);
         
         // add a wave function
@@ -426,22 +384,6 @@ namespace qbasis {
         
         // simplify
         wavefunction& simplify();
-        
-        // check if sorted
-        bool sorted() const;
-        // check if sorted and there are no dulplicated terms
-        bool sorted_fully() const;
-        
-        // for \sum_i \alpha_i * element[i], return \sum_i |\alpha_i|^2
-        double amplitude();
-        
-        // check if zero
-        bool q_zero() const { return elements.empty(); }
-        
-        MKL_INT size() const {return static_cast<MKL_INT>(elements.size()); }
-        
-        void prt() const;
-        void prt_nonzero() const;
         
     private:
         // store an array of basis elements, and their corresponding coefficients
@@ -467,22 +409,17 @@ namespace qbasis {
         friend opr<T> normalize <> (const opr<T>&, T&);
         friend class opr_prod<T>;
         friend class mopr<T>;
-        friend class basis_elem;
         friend class mbasis_elem;
-        //friend T operator* <> (const opr<T>&, const basis_elem&);
-        //friend T operator* <> (const opr<T>&, const mbasis_elem&);
-        //friend T operator* <> (const opr_prod<T>&, const mbasis_elem&);
-        friend wavefunction<T> operator* <> (const opr<T>&, const mbasis_elem&);
-        
+        friend wavefunction<T> oprXphi <> (const opr<T>&, const mbasis_elem&, const std::vector<basis_prop>&);
     public:
         // default constructor
         opr() : mat(nullptr) {}
         
         // constructor from diagonal elements
-        opr(const MKL_INT &site_, const MKL_INT &orbital_, const bool &fermion_, const std::vector<T> &mat_);
+        opr(const uint32_t &site_, const uint32_t &orbital_, const bool &fermion_, const std::vector<T> &mat_);
         
         // constructor from a matrix
-        opr(const MKL_INT &site_, const MKL_INT &orbital_, const bool &fermion_, const std::vector<std::vector<T>> &mat_);
+        opr(const uint32_t &site_, const uint32_t &orbital_, const bool &fermion_, const std::vector<std::vector<T>> &mat_);
         
         // copy constructor
         opr(const opr<T> &old);
@@ -491,69 +428,64 @@ namespace qbasis {
         opr(opr<T> &&old) noexcept;
         
         // copy assignment constructor and move assignment constructor, using "swap and copy"
-        opr& operator=(opr<T> old)
-        {
-            swap(*this, old);
-            return *this;
-        }
+        opr& operator=(opr<T> old) { swap(*this, old); return *this; }
         
-        // \sqrt { sum_{i,j} |mat[i,j]|^2 }
-        double norm() const;
+        // destructor
+        ~opr() { if(mat != nullptr) delete [] mat; }
         
-        // invert the sign
-        opr& negative();
+        void prt() const;
         
-        // change site index
-        opr& change_site(const MKL_INT &site_);
+        //    ----------- basic inquiries ----------
+        // question if it is zero operator
+        bool q_zero() const;
         
         // question if it is identity operator
-        bool q_diagonal() const
-        {
-            return diagonal;
-        }
+        bool q_diagonal() const { return diagonal; }
         
         // question if it is identity operator
         bool q_identity() const;
         
-        // question if it is zero operator
-        bool q_zero() const;
+        //    ------------ arithmetics -------------
+        // \sqrt { sum_{i,j} |mat[i,j]|^2 }
+        double norm() const;
         
         // simplify the structure if possible
         opr& simplify();
         
+        // invert the sign
+        opr& negative();
+        
         // take Hermitian conjugate
         opr& dagger();
         
+        // change site index
+        opr& change_site(const uint32_t &site_);
+        
         // fermions not implemented yet
-        opr& transform(const std::vector<MKL_INT> &plan);
+        opr& transform(const std::vector<uint32_t> &plan);
         
         // compound assignment operators
         opr& operator+=(const opr<T> &rhs);
+        
         opr& operator-=(const opr<T> &rhs);
+        
         opr& operator*=(const opr<T> &rhs);
+        
         opr& operator*=(const T &rhs);
-        
-        // destructor
-        ~opr() {if(mat != nullptr) delete [] mat;}
-        
-        void prt() const;
-        
+
     private:
-        MKL_INT site;      // site No.
-        MKL_INT orbital;   // orbital No.
-        MKL_INT dim;       // number of rows(columns) of the matrix
-        bool fermion;      // fermion or not
-        bool diagonal;     // diagonal in matrix form
-        T *mat;            // matrix form, or diagonal elements if diagonal
+        uint32_t site;      // site No.
+        uint32_t orbital;   // orbital No.
+        uint32_t dim;       // number of rows(columns) of the matrix
+        bool fermion;       // fermion or not
+        bool diagonal;      // diagonal in matrix form
+        T *mat;             // matrix form, or diagonal elements if diagonal
     };
     
     
     // -------------- class for operator products ----------------
     // note: when mat_prod is empty, it represents identity operator, with coefficient coeff
-    
-    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // I sacrificed the efficiency by assuming all matrices in this class have the same type, think later how we can improve
-    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // all matrices in this class should have the same type (may decrease effiency, think later how we can improve)
     template <typename T> class opr_prod {
         friend void swap <> (opr_prod<T>&, opr_prod<T>&);
         friend bool operator== <> (const opr_prod<T>&, const opr_prod<T>&);
@@ -567,9 +499,8 @@ namespace qbasis {
         friend opr_prod<T> operator* <> (const opr<T>&, const opr<T>&);
         friend class mopr<T>;
         friend class mbasis_elem;
-        //friend T operator* <> (const opr_prod<T>&, const mbasis_elem&);
-        friend wavefunction<T> operator* <> (const opr_prod<T>&, const mbasis_elem&);
-        friend wavefunction<T> operator* <> (const opr_prod<T>&, const wavefunction<T>&);
+        friend wavefunction<T> oprXphi <> (const opr_prod<T>&, const mbasis_elem&, const std::vector<basis_prop>&);
+        friend wavefunction<T> oprXphi <> (const opr_prod<T>&, const wavefunction<T>&, const std::vector<basis_prop>&);
     public:
         // default constructor
         opr_prod() = default;
@@ -584,37 +515,36 @@ namespace qbasis {
         opr_prod(opr_prod<T> &&old) noexcept : coeff(std::move(old.coeff)), mat_prod(std::move(old.mat_prod)) {}
         
         // copy assignment constructor and move assignment constructor, using "swap and copy"
-        opr_prod& operator=(opr_prod<T> old)
-        {
-            swap(*this, old);
-            return *this;
-        }
-        
-        // compound assignment operators
-        opr_prod& operator*=(opr<T> rhs);
-        opr_prod& operator*=(opr_prod<T> rhs); // in this form to avoid self-assignment
-        opr_prod& operator*=(const T &rhs);
-        
-        // invert the sign
-        opr_prod& negative();
-        
-        opr_prod& transform(const std::vector<MKL_INT> &plan);
-        
-        // question if it is proportional to identity operator
-        bool q_prop_identity() const;
-        
-        // question if each opr is diagonal
-        bool q_diagonal() const;
-        
-        // question if it is zero operator
-        bool q_zero() const;
-        
-        MKL_INT len() const;
+        opr_prod& operator=(opr_prod<T> old) { swap(*this, old); return *this; }
         
         // destructor
         ~opr_prod() {}
         
         void prt() const;
+        
+        //    ----------- basic inquiries ----------
+        // question if it is zero operator
+        bool q_zero() const;
+        
+        // question if each opr is diagonal
+        bool q_diagonal() const;
+        
+        // question if it is proportional to identity operator
+        bool q_prop_identity() const;
+        
+        uint32_t len() const;
+        
+        //    ------------ arithmetics -------------
+        // invert the sign
+        opr_prod& negative();
+        
+        opr_prod& transform(const std::vector<uint32_t> &plan);
+        
+        opr_prod& operator*=(opr<T> rhs);
+        
+        opr_prod& operator*=(opr_prod<T> rhs); // in this form to avoid self-assignment
+        
+        opr_prod& operator*=(const T &rhs);
         
     private:
         T coeff;
@@ -653,8 +583,8 @@ namespace qbasis {
         friend mopr<T> operator* <> (const opr<T>&, const mopr<T>&);
         friend mopr<T> operator* <> (const mopr<T>&, const T&);
         friend mopr<T> operator* <> (const T&, const mopr<T>&);
-        friend wavefunction<T> operator* <> (const mopr<T>&, const mbasis_elem&);
-        friend wavefunction<T> operator* <> (const mopr<T>&, const wavefunction<T>&);
+        friend wavefunction<T> oprXphi <> (const mopr<T>&, const mbasis_elem&, const std::vector<basis_prop>&);
+        friend wavefunction<T> oprXphi <> (const mopr<T>&, const wavefunction<T>&, const std::vector<basis_prop>&);
     public:
         // default constructor
         mopr() = default;
@@ -672,62 +602,52 @@ namespace qbasis {
         mopr(mopr<T> &&old) noexcept : mats(std::move(old.mats)) {}
         
         // copy assignment constructor and move assignment constructor, using "swap and copy"
-        mopr& operator=(mopr<T> old)
-        {
-            swap(*this, old);
-            return *this;
-        }
+        mopr& operator=(mopr<T> old) { swap(*this, old); return *this; }
         
-        // compound assignment operators
-        mopr& operator+=(opr<T> rhs);
-        mopr& operator+=(opr_prod<T> rhs);
-        mopr& operator+=(mopr<T> rhs);
-        mopr& operator-=(opr<T> rhs);
-        mopr& operator-=(opr_prod<T> rhs);
-        mopr& operator-=(mopr<T> rhs);
-        mopr& operator*=(opr<T> rhs);
-        mopr& operator*=(opr_prod<T> rhs);
-        mopr& operator*=(mopr<T> rhs);
-        mopr& operator*=(const T &rhs);
+        // destructor
+        ~mopr() {}
         
-        opr_prod<T>& operator[](MKL_INT n)
-        {
-            assert(n < size());
-            assert(! mats.empty());
-            auto it = mats.begin();
-            for (decltype(n) i = 0; i < n; i++) ++it;
-            return *it;
-        }
+        void prt() const;
         
-        const opr_prod<T>& operator[](MKL_INT n) const
-        {
-            assert(n < size());
-            assert(! mats.empty());
-            auto it = mats.begin();
-            for (decltype(n) i = 0; i < n; i++) ++it;
-            return *it;
-        }
+        //    ----------- basic inquiries ----------
+        bool q_zero() const { return mats.empty(); }
         
-        MKL_INT size() const {return static_cast<MKL_INT>(mats.size()); }
+        // question if each opr_prod is diagonal
+        bool q_diagonal() const;
         
-        // simplify, need implementation
+        uint32_t size() const { return static_cast<uint32_t>(mats.size()); }
+        
+        opr_prod<T>& operator[](uint32_t n);
+        
+        const opr_prod<T>& operator[](uint32_t n) const;
+        
+        //    ------------ arithmetics -------------
         mopr& simplify();
         
         // invert the sign
         mopr& negative();
         
-        mopr& transform(const std::vector<MKL_INT> &plan);
+        mopr& transform(const std::vector<uint32_t> &plan);
         
-        // destructor
-        ~mopr() {}
+        mopr& operator+=(opr<T> rhs);
         
-        bool q_zero() const {return mats.empty(); }
+        mopr& operator+=(opr_prod<T> rhs);
         
-        // question if each opr_prod is diagonal
-        bool q_diagonal() const;
+        mopr& operator+=(mopr<T> rhs);
         
-        void prt() const;
+        mopr& operator-=(opr<T> rhs);
         
+        mopr& operator-=(opr_prod<T> rhs);
+        
+        mopr& operator-=(mopr<T> rhs);
+        
+        mopr& operator*=(opr<T> rhs);
+        
+        mopr& operator*=(opr_prod<T> rhs);
+        
+        mopr& operator*=(mopr<T> rhs);
+        
+        mopr& operator*=(const T &rhs);
         
     private:
         // the outer list represents the sum of operators, inner data structure taken care by operator products
@@ -946,61 +866,60 @@ namespace qbasis {
         lattice() = default;
         
         // constructor from particular requirements. e.g. square, triangular...
-        lattice(const std::string &name, const std::vector<MKL_INT> &L_, const std::vector<std::string> &bc_);
+        lattice(const std::string &name, const std::vector<uint32_t> &L_, const std::vector<std::string> &bc_);
         
         // coordinates <-> site indices
         // 1D: site = i * num_sub + sub
         // 2D: site = (i + j * L[0]) * num_sub + sub
         // 3D: site = (i + j * L[0] + k * L[0] * L[1]) * num_sub + sub
-        void coor2site(const std::vector<MKL_INT> &coor, const MKL_INT &sub, MKL_INT &site) const;
-        void site2coor(std::vector<MKL_INT> &coor, MKL_INT &sub, const MKL_INT &site) const;
+        void coor2site(const std::vector<int> &coor, const int &sub, uint32_t &site) const;
+        void site2coor(std::vector<int> &coor, int &sub, const uint32_t &site) const;
         
         // return a vector containing the positions of each site after translation
-        std::vector<MKL_INT> translation_plan(const std::vector<MKL_INT> &disp) const;
+        std::vector<uint32_t> translation_plan(const std::vector<int> &disp) const;
         
         // return a vector containing the positions of each site after c2 (180) or c4 (90) rotation
-        std::vector<MKL_INT> c2_rotation_plan() const;
-        std::vector<MKL_INT> c4_rotation_plan() const;
-        std::vector<MKL_INT> reflection_plan() const;
+        std::vector<uint32_t> c2_rotation_plan() const;
+        std::vector<uint32_t> c4_rotation_plan() const;
+        std::vector<uint32_t> reflection_plan() const;
         
         // combine two plans
-        std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> plan_product(const std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> &lhs,
-                                                                          const std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> &rhs) const;
+        std::vector<std::vector<std::pair<uint32_t,uint32_t>>> plan_product(const std::vector<std::vector<std::pair<uint32_t,uint32_t>>> &lhs,
+                                                                            const std::vector<std::vector<std::pair<uint32_t,uint32_t>>> &rhs) const;
         
         // inverse of a transformation
-        std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> plan_inverse(const std::vector<std::vector<std::pair<MKL_INT,MKL_INT>>> &old) const;
+        std::vector<std::vector<std::pair<uint32_t,uint32_t>>> plan_inverse(const std::vector<std::vector<std::pair<uint32_t,uint32_t>>> &old) const;
         
         std::vector<std::string> boundary() const {
             return bc;
         }
         
-        MKL_INT dimension() const {
+        uint32_t dimension() const {
             return dim;
         }
         
-        MKL_INT num_sublattice() const {
+        uint32_t num_sublattice() const {
             return num_sub;
         }
         
-        MKL_INT total_sites() const {
+        uint32_t total_sites() const {
             return Nsites;
         }
         
-        std::vector<MKL_INT> Linear_size() const { return L; }
+        std::vector<uint32_t> Linear_size() const { return L; }
         
-        MKL_INT Lx() const { return L[0]; }
-        MKL_INT Ly() const { assert(L.size() > 1); return L[1]; }
-        MKL_INT Lz() const { assert(L.size() > 2); return L[2]; }
+        uint32_t Lx() const { return L[0]; }
+        uint32_t Ly() const { assert(L.size() > 1); return L[1]; }
+        uint32_t Lz() const { assert(L.size() > 2); return L[2]; }
         
     private:
-        std::vector<MKL_INT> L;             // linear size in each dimension
-        std::vector<std::string> bc;        // boundary condition
-        std::vector<std::vector<double>> a; // real space basis
-        std::vector<std::vector<double>> b; // momentum space basis
-        MKL_INT dim;
-        MKL_INT num_sub;
-        MKL_INT Nsites;
-        
+        std::vector<uint32_t> L;             // linear size in each dimension
+        std::vector<std::string> bc;         // boundary condition
+        std::vector<std::vector<double>> a;  // real space basis
+        std::vector<std::vector<double>> b;  // momentum space basis
+        uint32_t dim;
+        uint32_t num_sub;
+        uint32_t Nsites;
     };
     
     
@@ -1011,9 +930,29 @@ namespace qbasis {
 //        friend MKL_INT generate_Ham_all_AtRow <> (model<T> &,
 //                                                  threads_pool &);
     public:
+        std::vector<basis_prop> props;
+        MKL_INT dim_full;
+        MKL_INT dim_repr;
+        mopr<T> Ham_diag;
+        mopr<T> Ham_off_diag;
+        std::vector<qbasis::mbasis_elem> basis_full;
+        std::vector<MKL_INT> basis_belong;                     // size: dim_all, store the position of its repr
+        std::vector<std::complex<double>> basis_coeff;         // size: dim_all, store the coeff
+        std::vector<MKL_INT> basis_repr;
+        csr_mat<T> HamMat_csr_full;                            // corresponding to the full Hilbert space
+        csr_mat<std::complex<double>> HamMat_csr_repr;         // for the representative Hilbert space
+        MKL_INT nconv;
+        std::vector<double> eigenvals_full;
+        std::vector<double> eigenvals_repr;
+        std::vector<T> eigenvecs_full;
+        std::vector<std::complex<double>> eigenvecs_repr;
+        
         model() = default;
         
         ~model() {}
+        
+        void prt_Ham_diag() { Ham_diag.prt(); }
+        void prt_Ham_offdiag() { Ham_off_diag.prt(); }
         
         void add_diagonal_Ham(const opr<T> &rhs)      { assert(rhs.q_diagonal()); Ham_diag += rhs; }
         void add_diagonal_Ham(const opr_prod<T> &rhs) { assert(rhs.q_diagonal()); Ham_diag += rhs; }
@@ -1023,16 +962,15 @@ namespace qbasis {
         void add_offdiagonal_Ham(const opr_prod<T> &rhs) { Ham_off_diag += rhs; }
         void add_offdiagonal_Ham(const mopr<T> &rhs)     { Ham_off_diag += rhs; }
         
-        //void enumerate_basis_full();
         // naive way of enumerating all possible basis state
-        void enumerate_basis_full(const MKL_INT &n_sites, std::initializer_list<std::string> lst,
+        void enumerate_basis_full(const uint32_t &n_sites, std::initializer_list<std::string> lst,
                                   std::initializer_list<mopr<std::complex<double>>> conserve_lst = {},
                                   std::initializer_list<double> val_lst = {});
         
         void sort_basis_full();
         
         // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
-        void basis_init_repr(const std::vector<MKL_INT> &momentum, const lattice &latt);
+        void basis_init_repr(const std::vector<int> &momentum, const lattice &latt);
         
         void generate_Ham_sparse_full(const bool &upper_triangle = true); // generate the full Hamiltonian in sparse matrix format
         void generate_Ham_sparse_repr(const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr
@@ -1053,30 +991,6 @@ namespace qbasis {
         double energy_min() { return E0; }
         double energy_max() { return Emax; }
         double energy_gap() { return gap; }
-        
-        void prt_Ham_diag() { Ham_diag.prt(); }
-        void prt_Ham_offdiag() { Ham_off_diag.prt(); }
-        
-        
-        mopr<T> Ham_diag;
-        mopr<T> Ham_off_diag;
-        
-        MKL_INT dim_full;
-        MKL_INT dim_repr;
-        
-        std::vector<qbasis::mbasis_elem> basis_full;
-        std::vector<MKL_INT> basis_belong;                     // size: dim_all, store the position of its repr
-        std::vector<std::complex<double>> basis_coeff;         // size: dim_all, store the coeff
-        std::vector<MKL_INT> basis_repr;
-        
-        csr_mat<T> HamMat_csr_full;                            // corresponding to the full Hilbert space
-        csr_mat<std::complex<double>> HamMat_csr_repr;         // for the representative Hilbert space
-        
-        std::vector<double> eigenvals_full;
-        std::vector<double> eigenvals_repr;
-        std::vector<T> eigenvecs_full;
-        std::vector<std::complex<double>> eigenvecs_repr;
-        MKL_INT nconv;
         
         // later add conserved quantum operators and corresponding quantum numbers
         // later add measurement operators
@@ -1113,11 +1027,14 @@ namespace qbasis {
     //                      |      |
     //                   num[1]   num[0]
     // 1 + 0 * 2 + 1 * 2^2 + 0 * 2^3 + 0 * 2^4
-    MKL_INT dynamic_base(const std::vector<MKL_INT> &num, const std::vector<MKL_INT> &base);
+    template <typename T>
+    T dynamic_base(const std::vector<T> &num, const std::vector<T> &base);
     // the other way around
-    std::vector<MKL_INT> dynamic_base(const MKL_INT &total, const std::vector<MKL_INT> &base);
+    template <typename T>
+    std::vector<T> dynamic_base(const T &total, const std::vector<T> &base);
     // nums + 1
-    std::vector<MKL_INT> dynamic_base_plus1(const std::vector<MKL_INT> &nums, const std::vector<MKL_INT> &base);
+    template <typename T>
+    std::vector<T> dynamic_base_plus1(const std::vector<T> &nums, const std::vector<T> &base);
     
     template <typename T>
     bool is_sorted_norepeat(const std::vector<T> &array);
@@ -1129,7 +1046,7 @@ namespace qbasis {
     
     // return the number of exchanges happened during the bubble sort
     template <typename T>
-    MKL_INT bubble_sort(std::vector<T> &array, const MKL_INT &bgn, const MKL_INT &end);
+    int bubble_sort(std::vector<T> &array, const int &bgn, const int &end);
     
     //             b1
     // a0 +  ---------------
@@ -1208,13 +1125,6 @@ namespace qbasis {
                               const std::complex<double> *y, const MKL_INT incy) {
         std::complex<double> result(0.0, 0.0);
         cblas_zdotc_sub(n, x, incx, y, incy, &result);
-//        const std::complex<double> *xpt = x;
-//        const std::complex<double> *ypt = y;
-//        for (MKL_INT j = 0; j < n; j++) {
-//            result += std::conj(*xpt) * (*ypt);
-//            xpt += incx;
-//            ypt += incy;
-//        }
         return result;
     }
     
@@ -1352,9 +1262,5 @@ namespace qbasis {
     }
 }
 
-
-
-
-// Note: to include the functions required to call this library
 
 #endif /* qbasis_h */

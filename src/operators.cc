@@ -5,8 +5,8 @@
 namespace qbasis {
     // ----------------- implementation of class opr (operator) ------------------
     template <typename T>
-    opr<T>::opr(const MKL_INT &site_, const MKL_INT &orbital_, const bool &fermion_, const std::vector<T> &mat_):
-        site(site_), orbital(orbital_), dim(static_cast<MKL_INT>(mat_.size())), fermion(fermion_), diagonal(true)
+    opr<T>::opr(const uint32_t &site_, const uint32_t &orbital_, const bool &fermion_, const std::vector<T> &mat_):
+        site(site_), orbital(orbital_), dim(static_cast<uint32_t>(mat_.size())), fermion(fermion_), diagonal(true)
     {
         if (mat_.empty() ||
             std::all_of(mat_.begin(), mat_.end(), [](const T &a){ return std::abs(a) < opr_precision; })) {
@@ -18,14 +18,14 @@ namespace qbasis {
     }
     
     template <typename T>
-    opr<T>::opr(const MKL_INT &site_, const MKL_INT &orbital_, const bool &fermion_, const std::vector<std::vector<T>> &mat_):
-        site(site_), orbital(orbital_), dim(static_cast<MKL_INT>(mat_.size())), fermion(fermion_), diagonal(false)
+    opr<T>::opr(const uint32_t &site_, const uint32_t &orbital_, const bool &fermion_, const std::vector<std::vector<T>> &mat_):
+        site(site_), orbital(orbital_), dim(static_cast<uint32_t>(mat_.size())), fermion(fermion_), diagonal(false)
     {
         assert(mat_.empty() || (mat_.size() == mat_[0].size()));
         if (mat_.empty()) {
             mat = nullptr;
         } else {
-            bool qempty = 1;
+            bool qempty = true;
             for (auto &ele : mat_) {
                 if (std::any_of(ele.begin(), ele.end(), [](const T &a){ return std::abs(a) >= opr_precision; })) {
                     qempty = 0;
@@ -36,10 +36,9 @@ namespace qbasis {
                 mat = nullptr;
             } else {
                 mat = new T[dim * dim];
-                for (MKL_INT j = 0; j < dim; j++) {
-                    for (MKL_INT i = 0; i < dim; i++) {
-                        // column major order
-                        mat[i + j * dim] = mat_[i][j];
+                for (uint32_t j = 0; j < dim; j++) {
+                    for (uint32_t i = 0; i < dim; i++) {
+                        mat[i + j * dim] = mat_[i][j]; // column major order
                     }
                 }
             }
@@ -57,7 +56,6 @@ namespace qbasis {
         } else {
             mat = nullptr;
         }
-        
     }
     
     template <typename T>
@@ -69,29 +67,38 @@ namespace qbasis {
     }
     
     template <typename T>
-    double opr<T>::norm() const
+    void opr<T>::prt() const
     {
-        if (mat == nullptr) {
-            return 0.0;
+        std::cout << "operator (" << site << "," << orbital << "), "
+                  << dim << " x " << dim << ":" << std::endl;
+        if (fermion) std::cout << "fermion" << std::endl;
+        if (mat != nullptr) {
+            if (diagonal) {
+                for (decltype(dim) i = 0; i < dim; i++) std::cout << mat[i] << " ";
+                std::cout << std::endl;
+            } else {
+                for (decltype(dim) i = 0; i < dim; i++) {
+                    for (decltype(dim) j = 0; j < dim; j++) {
+                        std::cout << mat[i + j * dim] << " ";
+                    }
+                    std::cout << std::endl;
+                }
+            }
         } else {
-            decltype(dim) n = diagonal ? dim : dim * dim;
-            return nrm2(n, mat, 1);
+            std::cout << "zero operator!" << std::endl;
         }
     }
     
     template <typename T>
-    opr<T> &opr<T>::negative()
+    bool opr<T>::q_zero() const
     {
-        decltype(dim) sz = (mat == nullptr ? 0 : (diagonal ? dim : dim * dim));
-        for (decltype(sz) i = 0; i < sz; i++) mat[i] = -mat[i];
-        return *this;
-    }
-    
-    template <typename T>
-    opr<T> &opr<T>::change_site(const MKL_INT &site_)
-    {
-        site = site_;
-        return *this;
+        auto temp = *this;
+        temp.simplify();
+        if (temp.mat == nullptr) {
+            return true;
+        } else {
+            return false;
+        }
     }
     
     template <typename T>
@@ -110,14 +117,13 @@ namespace qbasis {
     }
     
     template <typename T>
-    bool opr<T>::q_zero() const
+    double opr<T>::norm() const
     {
-        auto temp = *this;
-        temp.simplify();
-        if (temp.mat == nullptr) {
-            return true;
+        if (mat == nullptr) {
+            return 0.0;
         } else {
-            return false;
+            decltype(dim) n = diagonal ? dim : dim * dim;
+            return nrm2(static_cast<MKL_INT>(n), mat, 1);
         }
     }
     
@@ -170,12 +176,20 @@ namespace qbasis {
     }
     
     template <typename T>
+    opr<T> &opr<T>::negative()
+    {
+        decltype(dim) sz = (mat == nullptr ? 0 : (diagonal ? dim : dim * dim));
+        for (decltype(sz) i = 0; i < sz; i++) mat[i] = -mat[i];
+        return *this;
+    }
+    
+    template <typename T>
     opr<T> &opr<T>::dagger()
     {
-        if (mat == nullptr || diagonal) return *this;
+        if ((mat == nullptr) || diagonal) return *this;
         T* mat_new = new T[dim*dim];
-        for (MKL_INT j = 0; j < dim; j++) {
-            for (MKL_INT i = 0; i < dim; i++) {
+        for (decltype(dim) j = 0; j < dim; j++) {
+            for (decltype(dim) i = 0; i < dim; i++) {
                 mat_new[i + j * dim] = conjugate(mat[j + i * dim]);
             }
         }
@@ -186,7 +200,14 @@ namespace qbasis {
     }
     
     template <typename T>
-    opr<T> &opr<T>::transform(const std::vector<MKL_INT> &plan)
+    opr<T> &opr<T>::change_site(const uint32_t &site_)
+    {
+        site = site_;
+        return *this;
+    }
+    
+    template <typename T>
+    opr<T> &opr<T>::transform(const std::vector<uint32_t> &plan)
     {
         site = plan[site];
         return *this;
@@ -274,7 +295,8 @@ namespace qbasis {
                     for (decltype(dim) i = 0; i < dim; i++) mat_new[i + j * dim] *= mat[i];
                 }
             } else {
-                gemm('n', 'n', dim, dim, dim, 1.0, mat, dim, rhs.mat, dim, 0.0, mat_new, dim);
+                MKL_INT diml = static_cast<MKL_INT>(dim);
+                gemm('n', 'n', diml, diml, diml, 1.0, mat, diml, rhs.mat, diml, 0.0, mat_new, diml);
             }
             using std::swap;
             swap(mat, mat_new); // now mat points to the correct memory
@@ -300,31 +322,6 @@ namespace qbasis {
     }
     
     template <typename T>
-    void opr<T>::prt() const
-    {
-        std::cout << "operator (" << site << "," << orbital << "), "
-        << dim << " x " << dim << ":" << std::endl;
-        if (fermion) std::cout << "fermion" << std::endl;
-        if (mat != nullptr) {
-            if (diagonal) {
-                for (decltype(dim) i = 0; i < dim; i++) std::cout << mat[i] << " ";
-                std::cout << std::endl;
-            } else {
-                for (decltype(dim) i = 0; i < dim; i++) {
-                    for (decltype(dim) j = 0; j < dim; j++) {
-                        std::cout << mat[i + j * dim] << " ";
-                    }
-                    std::cout << std::endl;
-                }
-                
-            }
-        } else {
-            std::cout << "zero operator!" << std::endl;
-        }
-        //std::cout << std::endl;
-    }
-    
-    template <typename T>
     void swap(opr<T> &lhs, opr<T> &rhs)
     {
         using std::swap;
@@ -335,7 +332,6 @@ namespace qbasis {
         swap(lhs.diagonal, rhs.diagonal);
         swap(lhs.mat, rhs.mat);
     }
-    
     
     template <typename T>
     bool operator==(const opr<T> &lhs, const opr<T> &rhs)
@@ -465,6 +461,69 @@ namespace qbasis {
     }
     
     template <typename T>
+    void opr_prod<T>::prt() const
+    {
+        std::cout << mat_prod.size() << " products: "<< std::endl;
+        std::cout << "prefactor: " << coeff << std::endl;
+        for(auto &product : mat_prod){
+            product.prt();
+            std::cout << "xxxxxxxx" << std::endl;
+        }
+    }
+    
+    template <typename T>
+    bool opr_prod<T>::q_zero() const
+    {
+        return std::abs(coeff) < opr_precision ? true : false;
+    }
+    
+    template <typename T>
+    bool opr_prod<T>::q_diagonal() const
+    {
+        if (q_zero()) return true;
+        for (auto it = mat_prod.begin(); it != mat_prod.end(); it++) {
+            if (! it->q_diagonal()) return false;
+        }
+        return true;
+    }
+    
+    template <typename T>
+    bool opr_prod<T>::q_prop_identity() const // ask this question without simplifying the operator products
+    {
+        return (std::abs(coeff) >= opr_precision && mat_prod.empty()) ? true : false;
+    }
+    
+    template <typename T>
+    uint32_t opr_prod<T>::len() const
+    {
+        return static_cast<uint32_t>(mat_prod.size());
+    }
+    
+    template <typename T>
+    opr_prod<T> &opr_prod<T>::negative()
+    {
+        coeff = -coeff;
+        return *this;
+    }
+    
+    template <typename T>
+    opr_prod<T> &opr_prod<T>::transform(const std::vector<uint32_t> &plan)
+    {
+        if (q_zero()) return *this;
+        
+        // for fermions, there can be an overall sign, change in future
+        for (auto it = mat_prod.begin(); it != mat_prod.end(); it++) {
+            assert(! it->fermion);
+            it->site = plan[it->site];
+        }
+        
+        mat_prod.sort([](const opr<T> &lhs, const opr<T> &rhs)
+                      { std::vector<uint32_t> a = {lhs.site, lhs.orbital}, b = {rhs.site, rhs.orbital}; return a < b; });
+        
+        return *this;
+    }
+    
+    template <typename T>
     opr_prod<T> &opr_prod<T>::operator*=(opr<T> rhs)
     {
         if (this->q_zero()) return *this;                  // zero operator self
@@ -485,8 +544,8 @@ namespace qbasis {
             return *this;
         }
         auto j = mat_prod.rbegin();
-        std::vector<MKL_INT> val_rhs = {rhs.site, rhs.orbital};
-        std::vector<MKL_INT> val_j   = {j->site, j->orbital};
+        std::vector<uint32_t> val_rhs = {rhs.site, rhs.orbital};
+        std::vector<uint32_t> val_j   = {j->site, j->orbital};
         while (j != mat_prod.rend() && val_rhs < val_j) {
             if(rhs.fermion && j->fermion) prefactor = -prefactor;
             j++;
@@ -545,69 +604,6 @@ namespace qbasis {
         return *this;
     }
     
-    template <typename T>
-    opr_prod<T> &opr_prod<T>::negative()
-    {
-        coeff = -coeff;
-        return *this;
-    }
-    
-    template <typename T>
-    opr_prod<T> &opr_prod<T>::transform(const std::vector<MKL_INT> &plan)
-    {
-        if (q_zero()) return *this;
-        
-        // for fermions, there can be an overall sign
-        for (auto it = mat_prod.begin(); it != mat_prod.end(); it++) {
-            assert(! it->fermion);
-            it->site = plan[it->site];
-        }
-        
-        mat_prod.sort([](const opr<T> &lhs, const opr<T> &rhs)
-                      { std::vector<MKL_INT> a = {lhs.site, lhs.orbital}, b={rhs.site, rhs.orbital}; return a < b; });
-        
-        return *this;
-    }
-    
-    template <typename T>
-    bool opr_prod<T>::q_prop_identity() const // ask this question without simplifying the operator products
-    {
-        return (std::abs(coeff) >= opr_precision && mat_prod.empty()) ? true : false;
-    }
-    
-    template <typename T>
-    bool opr_prod<T>::q_zero() const
-    {
-        return std::abs(coeff) < opr_precision ? true : false;
-    }
-    
-    template <typename T>
-    bool opr_prod<T>::q_diagonal() const
-    {
-        if (q_zero()) return true;
-        for (auto it = mat_prod.begin(); it != mat_prod.end(); it++) {
-            if (! it->q_diagonal()) return false;
-        }
-        return true;
-    }
-    
-    template <typename T>
-    MKL_INT opr_prod<T>::len() const
-    {
-        return static_cast<MKL_INT>(mat_prod.size());
-    }
-    
-    template <typename T>
-    void opr_prod<T>::prt() const
-    {
-        std::cout << mat_prod.size() << " products: "<< std::endl;
-        std::cout << "prefactor: " << coeff << std::endl;
-        for(auto &product : mat_prod){
-            product.prt();
-            std::cout << "xxxxxxxx" << std::endl;
-            //std::cout << std::endl;
-        }
-    }
     
     template <typename T>
     void swap(opr_prod<T> &lhs, opr_prod<T> &rhs)
@@ -718,6 +714,90 @@ namespace qbasis {
     }
     
     template <typename T>
+    void mopr<T>::prt() const
+    {
+        std::cout << "terms: " << mats.size() << std::endl;
+        for(auto &product : mats){
+            std::cout << "----------------------" << std::endl;
+            std::cout << "prefactor: " << product.coeff << std::endl;
+            for (auto &individual : product.mat_prod) {
+                individual.prt();
+                std::cout << "xxxxxxxx" << std::endl;
+            }
+            std::cout << std::endl;
+        }
+    }
+    
+    template <typename T>
+    bool mopr<T>::q_diagonal() const
+    {
+        if (q_zero()) return true;
+        for (auto it = mats.begin(); it != mats.end(); it++) {
+            if (! it->q_diagonal()) return false;
+        }
+        return true;
+    }
+    
+    template <typename T>
+    opr_prod<T> &mopr<T>::operator[](uint32_t n)
+    {
+        assert(n < size());
+        assert(! mats.empty());
+        auto it = mats.begin();
+        for (decltype(n) i = 0; i < n; i++) ++it;
+        return *it;
+    }
+    
+    template <typename T>
+    const opr_prod<T> &mopr<T>::operator[](uint32_t n) const
+    {
+        assert(n < size());
+        assert(! mats.empty());
+        auto it = mats.begin();
+        for (decltype(n) i = 0; i < n; i++) ++it;
+        return *it;
+    }
+    
+    template <typename T>
+    mopr<T> &mopr<T>::simplify()
+    {
+        mats.sort();
+        auto it = mats.begin();
+        auto it_prev = it++;
+        while (it != mats.end()) {  // combine all terms
+            if(it->len() == it_prev->len() && it->mat_prod == it_prev->mat_prod) {
+                it_prev->coeff += it->coeff;
+                it = mats.erase(it);
+            } else {
+                it_prev = it++;
+            }
+        }
+        it = mats.begin();
+        while (it != mats.end()) { // remove all zero terms
+            if (std::abs(it->coeff) < opr_precision) {
+                it = mats.erase(it);
+            } else {
+                it++;
+            }
+        }
+        return *this;
+    }
+    
+    template <typename T>
+    mopr<T> &mopr<T>::negative()
+    {
+        for (auto &ele : mats) ele.negative();
+        return *this;
+    }
+    
+    template <typename T>
+    mopr<T> &mopr<T>::transform(const std::vector<uint32_t> &plan)
+    {
+        for (auto &ele: mats) ele.transform(plan);
+        return *this;
+    }
+    
+    template <typename T>
     mopr<T> &mopr<T>::operator+=(opr<T> rhs)
     {
         T prefactor;
@@ -742,14 +822,14 @@ namespace qbasis {
                 mats.insert(it, std::move(rhs));
             } else if(rhs < *it) {          // rhs not found
                 mats.insert(it, std::move(rhs));
-            } else {                                   // found something on same site, orbital and fermionic property
+            } else {                        // found something on same site, orbital and fermionic property
                 auto opr_sum = it->coeff * (it->mat_prod).front();
                 opr_sum += rhs.coeff * rhs.mat_prod.front();
                 *it = opr_prod<T>(std::move(opr_sum));
                 if (it->q_zero()) mats.erase(it);
             }
         } else {
-            mats.insert(it, std::move(rhs));            // leave simplification separately
+            mats.insert(it, std::move(rhs));  // leave simplification separately
         }
         return *this;
     }
@@ -838,70 +918,6 @@ namespace qbasis {
         }
         for (auto &ele : mats) ele *= rhs;
         return *this;
-    }
-    
-    template <typename T>
-    mopr<T> &mopr<T>::negative()
-    {
-        for (auto &ele : mats) ele.negative();
-        return *this;
-    }
-    
-    template <typename T>
-    mopr<T> &mopr<T>::simplify()
-    {
-        mats.sort();
-        auto it = mats.begin();
-        auto it_prev = it++;
-        while (it != mats.end()) {  // combine all terms
-            if(it->len() == it_prev->len() && it->mat_prod == it_prev->mat_prod) {
-                it_prev->coeff += it->coeff;
-                it = mats.erase(it);
-            } else {
-                it_prev = it++;
-            }
-        }
-        it = mats.begin();
-        while (it != mats.end()) { // remove all zero terms
-            if (std::abs(it->coeff) < opr_precision) {
-                it = mats.erase(it);
-            } else {
-                it++;
-            }
-        }
-        return *this;
-    }
-    
-    template <typename T>
-    mopr<T> &mopr<T>::transform(const std::vector<MKL_INT> &plan)
-    {
-        for (auto &ele: mats) ele.transform(plan);
-        return *this;
-    }
-    
-    template <typename T>
-    bool mopr<T>::q_diagonal() const
-    {
-        if (q_zero()) return true;
-        for (auto it = mats.begin(); it != mats.end(); it++) {
-            if (! it->q_diagonal()) return false;
-        }
-        return true;
-    }
-    
-    template <typename T>
-    void mopr<T>::prt() const
-    {
-        std::cout << "terms: " << mats.size() << std::endl;
-        for(auto &product : mats){
-            std::cout << "----------------------" << std::endl;
-            std::cout << "prefactor: " << product.coeff << std::endl;
-            for (auto &individual : product.mat_prod) {
-                individual.prt();
-                std::cout << "xxxxxxxx" << std::endl;
-            }
-            std::cout << std::endl;
-        }
     }
     
     template <typename T>

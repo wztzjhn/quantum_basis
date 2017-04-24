@@ -1,13 +1,14 @@
 #include <iostream>
 //#include <fstream>
 //#include <iomanip>
+#include <climits>
 #include "qbasis.h"
 
 namespace qbasis {
     
     // need further optimization! (for example, special treatment of dilute limit; special treatment of quantum numbers; quick sort of sign)
     template <typename T>
-    void model<T>::enumerate_basis_full(const MKL_INT &n_sites, std::initializer_list<std::string> lst,
+    void model<T>::enumerate_basis_full(const uint32_t &n_sites, std::initializer_list<std::string> lst,
                                         std::initializer_list<mopr<std::complex<double>>> conserve_lst,
                                         std::initializer_list<double> val_lst)
     {
@@ -21,12 +22,19 @@ namespace qbasis {
         }
         
         assert(conserve_lst.size() == val_lst.size());
+        props.clear();
+        for (auto &name : lst) props.emplace_back(n_sites,name);
+        
         std::list<std::vector<mbasis_elem>> basis_temp;
-        auto GS = mbasis_elem(n_sites,lst);
-        GS.reset();
-        MKL_INT dim_local  = GS.local_dimension();
-        MKL_INT n_orbs     = GS.total_orbitals();
-        auto dim_local_vec = GS.local_dimension_vec();
+        auto GS = mbasis_elem(props);
+        GS.reset(props);
+        uint32_t n_orbs = props.size();
+        uint32_t dim_local = 1;
+        std::vector<uint32_t> dim_local_vec;
+        for (decltype(props.size()) j = 0; j < props.size(); j++) {
+            dim_local *= static_cast<uint32_t>(props[j].dim_local);
+            dim_local_vec.push_back(static_cast<uint32_t>(props[j].dim_local));
+        }
         
         // checking if reaching code capability
         MKL_INT mkl_int_max = LLONG_MAX;
@@ -39,7 +47,7 @@ namespace qbasis {
             std::cout << "Using 64-bit integers." << std::endl;
         }
         assert(mkl_int_max > 0);
-        MKL_INT site_max = log(mkl_int_max) / log(dim_local);
+        uint32_t site_max = log(mkl_int_max) / log(dim_local);
         std::cout << "Capability of current code for current model: maximal " << site_max << " sites. (in the ideal case of infinite memory available)" << std::endl << std::endl;
         assert(n_sites < site_max);
         
@@ -48,15 +56,15 @@ namespace qbasis {
         start = std::chrono::system_clock::now();
         
         // Hilbert space size if without any symmetry
-        MKL_INT dim_total = int_pow(dim_local, n_sites);
+        MKL_INT dim_total = int_pow(static_cast<MKL_INT>(dim_local), static_cast<MKL_INT>(n_sites));
         assert(dim_total > 0); // prevent overflow
         std::cout << "Hilbert space size **if** without any symmetry: " << dim_total << std::endl;
         
-        // base[]: {  ..., dim_orb1, dim_orb1, dim_orb0, dim_orb0 }
+        // base[]: {  dim_orb0, dim_orb0, ..., dim_orb1, dim_orb1,..., ...  }
         std::vector<MKL_INT> base(n_sites * n_orbs);
-        MKL_INT pos = 0;
-        for (MKL_INT orb = n_orbs - 1; orb >= 0; orb--)  // high index orbitals considered last in comparison
-            for (MKL_INT site = 0; site < n_sites; site++) base[pos++] = dim_local_vec[orb];
+        uint32_t pos = 0;
+        for (uint32_t orb = 0; orb < n_orbs; orb++)  // low index orbitals considered last in comparison
+            for (uint32_t site = 0; site < n_sites; site++) base[pos++] = dim_local_vec[orb];
         
         // array to help distributing jobs to different threads
         std::vector<MKL_INT> job_array;
@@ -79,8 +87,8 @@ namespace qbasis {
             auto dist = dynamic_base(state_num, base);
             auto state_new = GS;
             MKL_INT pos = 0;
-            for (MKL_INT orb = n_orbs - 1; orb >= 0; orb--) // the order is important
-                for (MKL_INT site = 0; site < n_sites; site++) state_new.siteWrite(site, orb, dist[pos++]);
+            for (MKL_INT orb = 0; orb < n_orbs; orb++) // the order is important
+                for (MKL_INT site = 0; site < n_sites; site++) state_new.siteWrite(props, site, orb, dist[pos++]);
             
             while (state_num < job_array[chunk+1]) {
                 // check if the symmetries are obeyed
@@ -88,7 +96,7 @@ namespace qbasis {
                 auto it_opr = conserve_lst.begin();
                 auto it_val = val_lst.begin();
                 while (it_opr != conserve_lst.end()) {
-                    auto temp = state_new.diagonal_operator(*it_opr);
+                    auto temp = state_new.diagonal_operator(props, *it_opr);
                     if (std::abs(temp - *it_val) >= 1e-5) {
                         flag = false;
                         break;
@@ -98,13 +106,13 @@ namespace qbasis {
                 }
                 if (flag) basis_temp_job.push_back(state_new);
                 state_num++;
-                if (state_num < job_array[chunk+1]) state_new.increment();
+                if (state_num < job_array[chunk+1]) state_new.increment(props);
             }
             if (basis_temp_job.size() > 0) {
                 #pragma omp critical
                 {
                     dim_full += basis_temp_job.size();
-                    basis_temp.push_back(basis_temp_job);           // think how to make sure it is a move operation here
+                    basis_temp.push_back(std::move(basis_temp_job));     // think how to make sure it is a move operation here
                 }
             }
         }
@@ -112,14 +120,13 @@ namespace qbasis {
         
         // pick the fruits
         basis_full.clear();
-        basis_full.resize(dim_full);
-        auto it_full = basis_full.begin();
         for (auto it = basis_temp.begin(); it != basis_temp.end(); it++) {
-            it_full = std::move(it->begin(), it->end(), it_full);
+            basis_full.resize(basis_full.size() + it->size());
+            std::move(it->begin(), it->end(), basis_full.end());
             it->erase(it->begin(), it->end());
             it->shrink_to_fit();
         }
-        assert(it_full == basis_full.end());
+        assert(dim_full == basis_full.size());
         
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
@@ -151,13 +158,13 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::basis_init_repr(const std::vector<MKL_INT> &momentum, const lattice &latt)
+    void model<T>::basis_init_repr(const std::vector<int> &momentum, const lattice &latt)
     {
-        assert(latt.dimension() == static_cast<MKL_INT>(momentum.size()));
+        assert(latt.dimension() == static_cast<uint32_t>(momentum.size()));
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         std::cout << "Classifying states according to momentum: (";
-        for (MKL_INT j = 0; j < static_cast<MKL_INT>(momentum.size()); j++) {
+        for (uint32_t j = 0; j < momentum.size(); j++) {
             if (latt.boundary()[j] == "pbc" || latt.boundary()[j] == "PBC") {
                 std::cout << momentum[j] << "\t";
             } else {
@@ -168,7 +175,7 @@ namespace qbasis {
         
         std::cout << "-------- if all dims obc, let's stop here (to be implemented) -------" << std::endl;
         
-        MKL_INT num_sub = latt.num_sublattice();
+        auto num_sub = latt.num_sublattice();
         auto L = latt.Linear_size();
         basis_belong.resize(dim_full);
         std::fill(basis_belong.begin(), basis_belong.end(), -1);
@@ -179,12 +186,12 @@ namespace qbasis {
             basis_belong[i] = i;
             basis_coeff[i] = std::complex<double>(1.0, 0.0);
             #pragma omp parallel for schedule(dynamic,1)
-            for (MKL_INT site = num_sub; site < latt.total_sites(); site += num_sub) {
-                std::vector<MKL_INT> disp;
-                MKL_INT sub, sgn;
+            for (uint32_t site = num_sub; site < latt.total_sites(); site += num_sub) {
+                std::vector<int> disp;
+                int sub, sgn;
                 latt.site2coor(disp, sub, site);
                 bool flag = false;
-                for (MKL_INT d = 0; d < latt.dimension(); d++) {
+                for (uint32_t d = 0; d < latt.dimension(); d++) {
                     if (latt.boundary()[d] != "pbc" && latt.boundary()[d] != "PBC" && disp[d] != 0) {
                         flag = true;
                         break;
@@ -192,10 +199,10 @@ namespace qbasis {
                 }
                 if (flag) continue;            // such translation forbidden by boundary condition
                 auto basis_temp = basis_full[i];
-                basis_temp.translate(latt, disp, sgn);
+                basis_temp.translate(props, latt, disp, sgn);
                 auto j = binary_search(basis_full, basis_temp, 0, dim_full);
                 double exp_coef = 0.0;
-                for (MKL_INT d = 0; d < latt.dimension(); d++) {
+                for (uint32_t d = 0; d < latt.dimension(); d++) {
                     if (latt.boundary()[d] == "pbc" || latt.boundary()[d] == "PBC") {
                         exp_coef += momentum[d] * disp[d] / static_cast<double>(L[d]);
                     }
@@ -252,9 +259,9 @@ namespace qbasis {
         lil_mat<T> matrix_lil(dim_full, upper_triangle);
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim_full; i++) {
-            for (MKL_INT cnt = 0; cnt < Ham_diag.size(); cnt++)                        // diagonal part:
-                matrix_lil.add(i, i, basis_full[i].diagonal_operator(Ham_diag[cnt]));
-            qbasis::wavefunction<T> intermediate_state = Ham_off_diag * basis_full[i];  // non-diagonal part:
+            for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)                                       // diagonal part:
+                matrix_lil.add(i, i, basis_full[i].diagonal_operator(props, Ham_diag[cnt]));
+            qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[i], props);  // non-diagonal part:
             for (MKL_INT cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele_new = intermediate_state[cnt];
                 MKL_INT j = binary_search(basis_full, ele_new.first, 0, dim_full);       // < j | H | i > obtained
@@ -264,7 +271,6 @@ namespace qbasis {
                 } else {
                     matrix_lil.add(i, j, conjugate(ele_new.second));
                 }
-                
             }
         }
         HamMat_csr_full = csr_mat<T>(matrix_lil);
@@ -290,19 +296,16 @@ namespace qbasis {
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim_repr; i++) {
             auto repr_i = basis_repr[i];
-            for (MKL_INT cnt = 0; cnt < Ham_diag.size(); cnt++)                             // diagonal part:
-                matrix_lil.add(i, i, basis_full[repr_i].diagonal_operator(Ham_diag[cnt]));
-            
-            qbasis::wavefunction<T> intermediate_state = Ham_off_diag * basis_full[repr_i];  // non-diagonal part:
-            for (MKL_INT cnt = 0; cnt < intermediate_state.size(); cnt++) {
+            for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)                                            // diagonal part:
+                matrix_lil.add(i, i, basis_full[repr_i].diagonal_operator(props,Ham_diag[cnt]));
+            qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[repr_i], props);  // non-diagonal part:
+            for (uint32_t cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele_new = intermediate_state[cnt];
                 MKL_INT state_j = binary_search(basis_full, ele_new.first, 0, dim_full);
                 assert(state_j != -1);
                 auto repr_j = basis_belong[state_j];
-                auto j = binary_search(basis_repr, repr_j, 0, dim_repr);                    // < j |P'_k H | i > obtained
+                auto j = binary_search(basis_repr, repr_j, 0, dim_repr);                 // < j |P'_k H | i > obtained
                 if (j < 0) continue;
-//                assert(basis_repr[j] == repr_j);
-//                assert(j >= 0);
                 auto coeff = basis_coeff[state_j]/std::sqrt(std::real(basis_coeff[repr_i] * basis_coeff[repr_j]));
                 if (upper_triangle) {
                     if (i <= j) matrix_lil.add(i, j, conjugate(ele_new.second) * coeff);
@@ -430,14 +433,14 @@ namespace qbasis {
 //                std::chrono::time_point<std::chrono::system_clock> enter_time, start_wait, finish_wait;
 //                enter_time = std::chrono::system_clock::now();
                 std::vector<std::pair<MKL_INT, T>> values;
-                for (MKL_INT cnt_opr = 0; cnt_opr < lhs.size(); cnt_opr++) {
+                for (uint32_t cnt_opr = 0; cnt_opr < lhs.size(); cnt_opr++) {
                     auto &A = lhs[cnt_opr];
                     auto temp = eigenvecs_full[base + j];
                     if (A.q_diagonal()) {
-                        values.push_back(std::pair<MKL_INT, T>(j,temp * basis_full[j].diagonal_operator(A)));
+                        values.push_back(std::pair<MKL_INT, T>(j,temp * basis_full[j].diagonal_operator(props,A)));
                     } else {
-                        auto intermediate_state = A * basis_full[j];
-                        for (MKL_INT cnt = 0; cnt < intermediate_state.size(); cnt++) {
+                        auto intermediate_state = oprXphi(A, basis_full[j], props);
+                        for (uint32_t cnt = 0; cnt < intermediate_state.size(); cnt++) {
                             auto &ele = intermediate_state[cnt];
                             values.push_back(std::pair<MKL_INT, T>(binary_search(basis_full, ele.first, 0, dim_full), temp * ele.second));
                         }

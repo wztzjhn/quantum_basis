@@ -1,419 +1,440 @@
-#include <cmath>
 #include <iostream>
 #include "qbasis.h"
 
 namespace qbasis {
-    // ----------------- implementation of basis ------------------
-    basis_elem::basis_elem(const MKL_INT &n_sites, const MKL_INT &dim_local_):
-        dim_local(static_cast<short>(dim_local_)),
-        bits_per_site(static_cast<short>(ceil(log2(static_cast<double>(dim_local_)) - 1e-9))),
-        Nfermion_map(std::vector<int>()),
-        bits(static_cast<DBitSet::size_type>(n_sites * bits_per_site))
+    
+    // -------------- implementation of basis_prop ---------------
+    basis_prop::basis_prop(const uint32_t &n_sites, const uint8_t &dim_local_,
+                           const std::vector<uint32_t> &Nf_map,
+                           const bool &dilute_):
+        dim_local(dim_local_),
+        num_sites(n_sites),
+        Nfermion_map(Nf_map),
+        dilute(dilute_)
     {
-        Nfermion_map.shrink_to_fit();
+        bits_per_site = static_cast<uint8_t>(ceil(log2(static_cast<double>(dim_local)) - 1e-9));
+        if (! dilute_) {
+            num_bytes = static_cast<uint16_t>((bits_per_site * num_sites) / 8 + 1);
+            bits_ignore = static_cast<uint8_t>(num_bytes * 8 - bits_per_site * num_sites);
+        } else {
+            assert(false); // modify later
+        }
+        
     }
     
-    basis_elem::basis_elem(const MKL_INT &n_sites, const MKL_INT &dim_local_, const opr<double> &Nfermion):
-        dim_local(static_cast<short>(dim_local_)),
-        bits_per_site(static_cast<short>(ceil(log2(static_cast<double>(dim_local_)) - 1e-9))),
-        bits(static_cast<DBitSet::size_type>(n_sites * bits_per_site))
-    {
-        auto Nf = Nfermion;
-        Nf.simplify();
-        assert(Nf.q_diagonal() && ! Nf.q_zero());
-        Nfermion_map = std::vector<int>(dim_local_);
-        Nfermion_map.shrink_to_fit();
-        for (decltype(Nfermion_map.size()) j = 0; j < Nfermion_map.size(); j++)
-            Nfermion_map[j] = static_cast<int>(ceil(Nf.mat[j] - 1e-9) + 1e-9);
-    }
-    
-    basis_elem::basis_elem(const MKL_INT &n_sites, const std::string &s)
+    basis_prop::basis_prop(const uint32_t &n_sites, const std::string &s):
+        num_sites(n_sites)
     {
         if (s == "spin-1/2") {
             dim_local = 2;                            // { |up>, |dn> }
-            Nfermion_map = std::vector<int>();
+            Nfermion_map = std::vector<uint32_t>();
+            dilute = false;
         } else if (s == "spin-1") {                   // { |up>, |0>, |dn> }
             dim_local = 3;
-            Nfermion_map = std::vector<int>();
+            Nfermion_map = std::vector<uint32_t>();
+            dilute = false;
         } else if (s == "dimer") {                    // { |s>, |t+>, |t->, |t0> } or { |s>, |tx>, |ty>, |tz> }
             dim_local = 4;
-            Nfermion_map = std::vector<int>();
+            Nfermion_map = std::vector<uint32_t>();
+            dilute = false;
         } else if (s == "electron") {                 // { |0>, |up>, |dn>, |up+dn> }
             dim_local = 4;
-            Nfermion_map = std::vector<int>{0,1,1,2};
+            Nfermion_map = std::vector<uint32_t>{0,1,1,2};
+            dilute = false;
         } else if (s == "tJ") {                       // { |0>, |up>, |dn> }
             dim_local = 3;
-            Nfermion_map = std::vector<int>{0,1,1};
+            Nfermion_map = std::vector<uint32_t>{0,1,1};
+            dilute = false;
         } else if (s == "spinless-fermion") {         // { |0>, |1> }
             dim_local = 2;
-            Nfermion_map = std::vector<int>{0,1};
+            Nfermion_map = std::vector<uint32_t>{0,1};
+            dilute = false;
         }
-        Nfermion_map.shrink_to_fit();
-        bits_per_site = static_cast<short>(ceil(log2(static_cast<double>(dim_local)) - 1e-9));
-        bits = DBitSet(static_cast<DBitSet::size_type>(n_sites * bits_per_site));
-    }
-    
-    MKL_INT basis_elem::total_sites() const
-    {
-        if (bits_per_site > 0) {
-            return static_cast<MKL_INT>(bits.size()) / bits_per_site;
+        bits_per_site = static_cast<uint8_t>(ceil(log2(static_cast<double>(dim_local)) - 1e-9));
+        assert(bits_per_site <= 8);
+        if (! dilute) {
+            num_bytes = static_cast<uint16_t>((bits_per_site * num_sites) / 8 + 1);
+            bits_ignore = static_cast<uint8_t>(num_bytes * 8 - bits_per_site * num_sites);
         } else {
-            return 0;
+            assert(false); // modify later
         }
     }
     
-    MKL_INT basis_elem::siteRead(const MKL_INT &site) const
-    {
-        assert(site >= 0 && site < total_sites());
-        MKL_INT bits_bgn = bits_per_site * site;
-        MKL_INT bits_end = bits_bgn + bits_per_site;
-        MKL_INT res = bits[bits_end - 1];
-        for (auto j = bits_end - 2; j >= bits_bgn; j--) res = res + res + bits[j];
-        return res;
-    }
-    
-    basis_elem &basis_elem::siteWrite(const MKL_INT &site, const MKL_INT &val)
-    {
-        assert(val >= 0 && val < local_dimension());
-        MKL_INT bits_bgn = bits_per_site * site;
-        MKL_INT bits_end = bits_bgn + bits_per_site;
-        auto temp = val;
-        for (MKL_INT j = bits_bgn; j < bits_end; j++) {
-            bits[j] = temp % 2;
-            temp /= 2;
-        }
-        return *this;
-    }
-    
-    bool basis_elem::q_maximized() const
-    {
-        if (int_pow(2, bits_per_site) == dim_local) {
-            return bits.all();
-        } else {
-            for (MKL_INT site = 0; site < total_sites(); site++) {
-                if (siteRead(site) != dim_local - 1) return false;
-            }
-            return true;
-        }
-    }
-    
-    bool basis_elem::q_same_state_all_site() const
-    {
-        if (total_sites() <= 1) return true;
-        for (MKL_INT j = 1; j < total_sites(); j++) {
-            if (siteRead(j-1) != siteRead(j)) return false;
-        }
-        return true;
-    }
-    
-    basis_elem &basis_elem::increment()
-    {
-        assert(! q_maximized());
-        if (int_pow(2, bits_per_site) == dim_local) {     // no waste bit
-            for(decltype(bits.size()) loop = 0; loop < bits.size(); ++loop)
-            {
-                if ((bits[loop] ^= 0x1) == 0x1) break;
-            }
-        } else {
-            auto val = siteRead(0) + 1;
-            MKL_INT site = 0;
-            while (val >= dim_local && site < total_sites()) {
-                siteWrite(site, val - dim_local);
-                val = siteRead(++site) + 1;
-            }
-            assert(site < total_sites());
-            siteWrite(site, val);
-        }
-        return *this;
-    }
-    
-    std::vector<MKL_INT> basis_elem::statistics() const
-    {
-        std::vector<MKL_INT> results(dim_local,0);
-        for (MKL_INT site = 0; site < total_sites(); site++) results[siteRead(site)]++;
-        return results;
-    }
-    
-    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // in future, replace with quick sort to improve performance!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    basis_elem &basis_elem::transform(const std::vector<MKL_INT> &plan, MKL_INT &sgn)
-    {
-        if (! q_fermion()) {
-            sgn = 0;
-        } else {
-            std::vector<MKL_INT> plan_fermion;
-            for (MKL_INT site = 0; site < total_sites(); site++) {
-                auto state = siteRead(site);
-                if (Nfermion_map[state] % 2 != 0) plan_fermion.push_back(plan[site]); // keeps all the sites which have fermion
-            }
-            // using bubble sort to count how many times we are exchanging fermions
-            sgn = bubble_sort(plan_fermion, 0, static_cast<MKL_INT>(plan_fermion.size())) % 2;
-        }
-        assert(static_cast<MKL_INT>(plan.size()) == total_sites());
-        auto res = *this;
-        for (MKL_INT site = 0; site < total_sites(); site++) {
-            MKL_INT bits_bgn1 = bits_per_site * site;
-            MKL_INT bits_bgn2 = bits_per_site * plan[site];
-            for (MKL_INT j = 0; j < bits_per_site; j++) res.bits[bits_bgn2+j] = bits[bits_bgn1+j];
-        }
-        swap(*this, res);
-        return *this;
-    }
-    
-    basis_elem &basis_elem::translate(const qbasis::lattice &latt, const std::vector<MKL_INT> &disp, MKL_INT &sgn)
-    {
-        assert(latt.dimension() == static_cast<MKL_INT>(disp.size()));
-        auto plan = latt.translation_plan(disp);
-        transform(plan, sgn);
-        return *this;
-    }
-    
-    void basis_elem::prt() const
-    {
-        std::cout << bits;
-    }
-    
-    void basis_elem::prt_nonzero() const
-    {
-        for (MKL_INT j = 0; j < total_sites(); j++) {
-            auto st = siteRead(j);
-            if (st != 0) {
-                std::cout << "site " << j << ", state " << st << std::endl;
-            }
-        }
-    }
-    
-//    basis_elem& basis_elem::flip()    // remember to change odd_fermion[site]
-//    {
-//        bits.flip();
-//        return *this;
-//    }
-    
-    
-    void swap(basis_elem &lhs, basis_elem &rhs)
-    {
-        using std::swap;
-        swap(lhs.dim_local, rhs.dim_local);
-        swap(lhs.bits_per_site, rhs.bits_per_site);
-        swap(lhs.Nfermion_map, rhs.Nfermion_map);
-        lhs.bits.swap(rhs.bits);
-    }
-    
-    bool operator<(const basis_elem &lhs, const basis_elem &rhs)
-    {
-        assert(lhs.dim_local == rhs.dim_local);
-        assert(lhs.bits_per_site == rhs.bits_per_site);
-        assert(lhs.q_fermion() == rhs.q_fermion());
-        return (lhs.bits < rhs.bits);
-    }
-    
-    bool operator==(const basis_elem &lhs, const basis_elem &rhs)
-    {
-        assert(lhs.dim_local == rhs.dim_local);
-        assert(lhs.bits_per_site == rhs.bits_per_site);
-        assert(lhs.q_fermion() == rhs.q_fermion());
-        return (lhs.bits == rhs.bits);
-    }
-    
-    bool operator!=(const basis_elem &lhs, const basis_elem &rhs)
-    {
-        return (! (lhs == rhs));
-    }
     
     
     // ----------------- implementation of mbasis ------------------
-    mbasis_elem::mbasis_elem(const MKL_INT &n_sites, std::initializer_list<std::string> lst)
+    mbasis_elem::mbasis_elem(const std::vector<basis_prop> &props)
     {
-        for (const auto &elem : lst) mbits.push_back(basis_elem(n_sites, elem));
-        //std::cout << "size before shrink: " << mbits.capacity() << std::endl;
-        mbits.shrink_to_fit();
-        //std::cout << "size after shrink: " << mbits.capacity() << std::endl;
+        uint16_t total_bytes = 2; // first 2 bytes used for storing the length (in terms of bytes) of mbits
+        for (decltype(props.size()) orb = 0; orb < props.size(); orb++) total_bytes += props[orb].num_bytes;
+        mbits = static_cast<uint8_t*>(malloc(total_bytes * sizeof(uint8_t)));
+        
+        mbits[0] = total_bytes / 256;
+        mbits[1] = total_bytes % 256;
+        
+        // later we can allow to initialize to specific value
+        for (uint16_t byte_pos = 2; byte_pos < total_bytes; byte_pos++) mbits[byte_pos] = 0;
     }
     
-    MKL_INT mbasis_elem::siteRead(const MKL_INT &site, const MKL_INT &orbital) const
+    mbasis_elem::mbasis_elem(const mbasis_elem& old)
     {
-        assert(orbital < total_orbitals());
-        return mbits[orbital].siteRead(site);
+        if (old.mbits != nullptr) {
+            uint16_t total_bytes = static_cast<uint16_t>(old.mbits[0] * 256) + static_cast<uint16_t>(old.mbits[1]);
+            mbits = static_cast<uint8_t*>(malloc(total_bytes * sizeof(uint8_t)));
+            for (uint16_t byte_pos = 0; byte_pos < total_bytes; byte_pos++) mbits[byte_pos] = old.mbits[byte_pos];
+        } else {
+            mbits = nullptr;
+        }
     }
     
-    mbasis_elem &mbasis_elem::siteWrite(const MKL_INT &site, const MKL_INT &orbital, const MKL_INT &val)
+    uint8_t mbasis_elem::siteRead(const std::vector<basis_prop> &props,
+                                  const uint32_t &site, const uint32_t &orbital) const
     {
-        assert(orbital < total_orbitals());
-        mbits[orbital].siteWrite(site, val);
+        assert(orbital < props.size());
+        uint16_t byte_pos = 2;
+        for (int orb = 0; orb < orbital; orb++) byte_pos += props[orb].num_bytes;
+        
+        uint8_t res;
+        if (! props[orbital].dilute) {
+            uint32_t bits_per_site = props[orbital].bits_per_site;
+            uint32_t bit_pos = bits_per_site * site;
+            byte_pos += bit_pos / 8;
+            bit_pos %= 8;
+            if (bit_pos + bits_per_site <= 8) {
+                uint8_t mask = (1 << bits_per_site) - 1;
+                res = (mbits[byte_pos] >> bit_pos);
+                res &= mask;
+            } else {   // crossing boundary
+                uint16_t mask = (static_cast<uint16_t>(1) << bits_per_site) - 1;
+                uint16_t res_temp = (static_cast<uint16_t>(mbits[byte_pos+1]) << 8) | mbits[byte_pos];
+                res = static_cast<uint8_t>((res_temp >> bit_pos) & mask);
+            }
+        } else {
+            assert(false); // implement later
+        }
+        return res;
+    }
+    
+    mbasis_elem &mbasis_elem::siteWrite(const std::vector<basis_prop> &props,
+                                        const uint32_t &site, const uint32_t &orbital, const uint8_t &val)
+    {
+        assert(orbital < props.size());
+        uint16_t byte_pos = 2;
+        for (int orb = 0; orb < orbital; orb++) byte_pos += props[orb].num_bytes;
+        
+        if (! props[orbital].dilute) {
+            uint32_t bits_per_site = props[orbital].bits_per_site;
+            uint32_t bit_pos = bits_per_site * site;
+            byte_pos += bit_pos / 8;
+            bit_pos %= 8;
+            if (bit_pos + bits_per_site <= 8) {
+                uint8_t mask = ~((1 << bits_per_site) - 1);
+                mbits[byte_pos] &= mask;
+                mbits[byte_pos] |= (val << bit_pos);
+            } else {   // crossing boundary
+                uint32_t num_bits_l = 8 - bit_pos;
+                uint32_t num_bits_h = bits_per_site - num_bits_l;
+                uint8_t mask_h = ~((1 << num_bits_h) - 1);
+                mbits[byte_pos+1] &= mask_h;
+                mbits[byte_pos+1] |= (val >> num_bits_l);
+                uint8_t mask_l = (1 << bit_pos) - 1;
+                mbits[byte_pos] &= mask_l;
+                mbits[byte_pos] |= static_cast<uint8_t>(val << bit_pos);
+            }
+        } else {
+            assert(false); // implement later
+        }
         return *this;
     }
     
-    
-    double mbasis_elem::diagonal_operator(const opr<double>& lhs) const
+    mbasis_elem &mbasis_elem::reset(const std::vector<basis_prop> &props, const uint32_t &orbital)
     {
-        assert(lhs.q_diagonal() && (! lhs.fermion) && lhs.dim == mbits[lhs.orbital].local_dimension());
-        if (lhs.q_zero()) {
-            return 0.0;
-        } else {
-            return lhs.mat[mbits[lhs.orbital].siteRead(lhs.site)];
-        }
+        assert(orbital < props.size());
+        uint16_t byte_pos_bgn = 2;
+        for (uint32_t orb = 0; orb < orbital; orb++) byte_pos_bgn += props[orb].num_bytes;
+        uint16_t byte_pos_end = byte_pos_bgn + props[orbital].num_bytes;
+        for (uint16_t byte_pos = byte_pos_bgn; byte_pos < byte_pos_end; byte_pos++) mbits[byte_pos] = 0;
+        return *this;
     }
     
-    std::complex<double> mbasis_elem::diagonal_operator(const opr<std::complex<double>>& lhs) const
+    mbasis_elem &mbasis_elem::reset(const std::vector<basis_prop> &props)
     {
-        assert(lhs.q_diagonal() && (! lhs.fermion) && lhs.dim == mbits[lhs.orbital].local_dimension());
-        if (lhs.q_zero()) {
-            return std::complex<double>(0.0, 0.0);
-        } else {
-            return lhs.mat[mbits[lhs.orbital].siteRead(lhs.site)];
-        }
+        if (mbits == nullptr) return *this;
+        uint16_t total_bytes = static_cast<uint16_t>(mbits[0] * 256) + static_cast<uint16_t>(mbits[1]);
+        for (uint16_t byte_pos = 2; byte_pos < total_bytes; byte_pos++) mbits[byte_pos] = 0;
+        return *this;
     }
     
-    double mbasis_elem::diagonal_operator(const opr_prod<double>& lhs) const
+    mbasis_elem &mbasis_elem::increment(const std::vector<basis_prop> &props, const uint32_t &orbital)
     {
-        if (lhs.q_zero()) {
-            return 0.0;
-        } else {
-            double res = lhs.coeff;
-            for (const auto &op : lhs.mat_prod) {
-                assert(op.q_diagonal() && (! op.fermion) && op.dim == mbits[op.orbital].local_dimension());
-                res *= diagonal_operator(op);
-                if (std::abs(res) < opr_precision) break;
+        assert(! q_maximized(props,orbital));
+        auto dim_local = props[orbital].dim_local;
+        auto num_sites = props[orbital].num_sites;
+        
+        if (int_pow(2, props[orbital].bits_per_site) == dim_local) {     // no waste bit
+            uint16_t byte_pos_bgn = 2;
+            for (uint32_t orb = 0; orb < orbital; orb++) byte_pos_bgn += props[orb].num_bytes;
+            uint16_t byte_pos_end = byte_pos_bgn + props[orbital].num_bytes;
+            for (uint16_t byte_pos = byte_pos_bgn; byte_pos < byte_pos_end; byte_pos++) {
+                if (mbits[byte_pos] != 255u) {
+                    mbits[byte_pos]++;
+                    break;
+                }
             }
-            return res;
-        }
-    }
-    
-    std::complex<double> mbasis_elem::diagonal_operator(const opr_prod<std::complex<double>>& lhs) const
-    {
-        if (lhs.q_zero()) {
-            return std::complex<double>(0.0, 0.0);
         } else {
-            std::complex<double> res = lhs.coeff;
-            for (const auto &op : lhs.mat_prod) {
-                assert(op.q_diagonal() && (! op.fermion) && op.dim == mbits[op.orbital].local_dimension());
-                res *= diagonal_operator(op);
-                if (std::abs(res) < opr_precision) break;
+            uint8_t val = siteRead(props, 0, orbital) + 1;
+            uint32_t site = 0;
+            
+            while (val >= dim_local && site < num_sites) {
+                siteWrite(props, site, orbital, val - dim_local);
+                val = siteRead(props, ++site, orbital) + 1;
             }
-            return res;
+            assert(site < num_sites);
+            siteWrite(props, site, orbital, val);
         }
+        return *this;
     }
     
-    double mbasis_elem::diagonal_operator(const mopr<double>& lhs) const
+    mbasis_elem &mbasis_elem::increment(const std::vector<basis_prop> &props)
     {
-        if (lhs.q_zero()) {
-            return 0.0;
-        } else {
-            double res = 0.0;
-            for (MKL_INT j = 0; j < lhs.size(); j++) {
-                auto op = lhs[j];
-                res += diagonal_operator(op);
-            }
-            return res;
-        }
-    }
-    
-    std::complex<double> mbasis_elem::diagonal_operator(const mopr<std::complex<double> > &lhs) const
-    {
-        if (lhs.q_zero()) {
-            return 0.0;
-        } else {
-            std::complex<double> res = 0.0;
-            for (MKL_INT j = 0; j < lhs.size(); j++) {
-                auto op = lhs[j];
-                res += diagonal_operator(op);
-            }
-            return res;
-        }
-    }
-    
-    bool mbasis_elem::q_zero() const
-    {
-        for (MKL_INT orb = 0; orb < total_orbitals(); orb++) {
-            if (! mbits[orb].q_zero()) return false;
-        }
-        return true;
-    }
-    
-    bool mbasis_elem::q_maximized() const
-    {
-        for (MKL_INT orb = 0; orb < total_orbitals(); orb++) {
-            if (! mbits[orb].q_maximized()) return false;
-        }
-        return true;
-    }
-    
-    std::vector<MKL_INT> mbasis_elem::statistics() const {
-        std::vector<MKL_INT> results(local_dimension(),0);
-        std::vector<MKL_INT> state(total_orbitals());
-        std::vector<MKL_INT> base(total_orbitals());
-        for (MKL_INT orb = 0; orb < total_orbitals(); orb++) base[orb] = mbits[orb].local_dimension();
-        for (MKL_INT site = 0; site < total_sites(); site++) {
-            for (MKL_INT orb = 0; orb < total_orbitals(); orb++) state[orb] = mbits[orb].siteRead(site);
-            results[dynamic_base(state, base)]++;
-        }
-        return results;
-    }
-    
-    mbasis_elem &mbasis_elem::increment()
-    {
-        assert(! q_maximized());
-        for (MKL_INT orb = total_orbitals() - 1; orb >= 0; orb--) {
-            if (mbits[orb].q_maximized()) {
-                mbits[orb].reset();
+        assert(! q_maximized(props));
+        for (decltype(props.size()) orb = 0; orb < props.size(); orb++) {
+            if (q_maximized(props,orb)) {
+                reset(props, orb);
             } else {
-                mbits[orb].increment();
+                increment(props, orb);
                 break;
             }
         }
         return *this;
     }
     
-    mbasis_elem &mbasis_elem::transform(const std::vector<MKL_INT> &plan, MKL_INT &sgn) {
+    bool mbasis_elem::q_zero(const std::vector<basis_prop> &props, const uint32_t &orbital) const
+    {
+        assert(orbital < props.size());
+        uint16_t byte_pos_bgn = 2;
+        for (uint32_t orb = 0; orb < orbital; orb++) byte_pos_bgn += props[orb].num_bytes;
+        uint16_t byte_pos_end = byte_pos_bgn + props[orbital].num_bytes;
+        for (uint16_t byte_pos = byte_pos_bgn; byte_pos < byte_pos_end; byte_pos++) {
+            if (mbits[byte_pos] != 0) return false;
+        }
+        return true;
+    }
+    
+    bool mbasis_elem::q_zero() const
+    {
+        uint16_t total_bytes = static_cast<uint16_t>(mbits[0] * 256) + static_cast<uint16_t>(mbits[1]);
+        for (uint16_t byte_pos = 2; byte_pos < total_bytes; byte_pos++) {
+            if (mbits[byte_pos] != 0) return false;
+        }
+        return true;
+    }
+    
+    bool mbasis_elem::q_maximized(const std::vector<basis_prop> &props, const uint32_t &orbital) const
+    {
+        assert(orbital < props.size());
+        auto dim_local = props[orbital].dim_local;
+        
+        if (int_pow(2, props[orbital].bits_per_site) == dim_local) {
+            uint16_t byte_pos_first = 2;
+            uint16_t byte_pos_last;
+            for (uint32_t orb = 0; orb < orbital; orb++) byte_pos_first += props[orb].num_bytes;
+            byte_pos_last = byte_pos_first + props[orbital].num_bytes - 1;
+            for (auto byte_pos = byte_pos_first; byte_pos < byte_pos_last; byte_pos++) {
+                if (mbits[byte_pos] != 255u) return false;
+            }
+            return mbits[byte_pos_last] == static_cast<uint8_t>((1 << (8 - props[orbital].bits_ignore)) - 1);
+        } else {
+            for (decltype(props[orbital].num_sites) site = 0; site < props[orbital].num_sites; site++) {
+                if (siteRead(props, site, orbital) != dim_local - 1) return false;
+            }
+            return true;
+        }
+    }
+    
+    bool mbasis_elem::q_maximized(const std::vector<basis_prop> &props) const
+    {
+        for (decltype(props.size()) orb = 0; orb < props.size(); orb++) {
+            if (! q_maximized(props, orb)) return false;
+        }
+        return true;
+    }
+    
+    bool mbasis_elem::q_same_state_all_site(const std::vector<basis_prop> &props, const uint32_t &orbital) const
+    {
+        uint32_t total_sites = props[orbital].num_sites;
+        if (total_sites <= 1) return true;
+        auto val0 = siteRead(props, 0, orbital);
+        for (uint32_t j = 1; j < total_sites; j++) {
+            auto val = siteRead(props, j, orbital);
+            if (val != val0) return false;
+        }
+        return true;
+    }
+    
+    bool mbasis_elem::q_same_state_all_site(const std::vector<basis_prop> &props) const
+    {
+        for (uint32_t orb = 0; orb < props.size(); orb++) {
+            if (! q_same_state_all_site(props, orb)) return false;
+        }
+        return true;
+    }
+    
+    std::vector<uint32_t> mbasis_elem::statistics(const std::vector<basis_prop> &props, const uint32_t &orbital) const
+    {
+        std::vector<uint32_t> results(props[orbital].dim_local,0);
+        for (uint32_t site = 0; site < props[orbital].num_sites; site++)
+            results[siteRead(props, site, orbital)]++;
+        return results;
+    }
+    
+    std::vector<uint32_t> mbasis_elem::statistics(const std::vector<basis_prop> &props) const
+    {
+        uint32_t local_dimension = 1;
+        for (decltype(props.size()) j = 0; j < props.size(); j++) local_dimension *= props[j].dim_local;
+        uint32_t total_orbitals = props.size();
+        uint32_t total_sites    = props[0].num_sites;
+        
+        std::vector<uint32_t> results(local_dimension,0);
+        std::vector<uint32_t> state(total_orbitals);
+        std::vector<uint32_t> base(total_orbitals);
+        for (uint32_t orb = 0; orb < total_orbitals; orb++) base[orb] = props[orb].dim_local;
+        for (uint32_t site = 0; site < total_sites; site++) {
+            for (uint32_t orb = 0; orb < total_orbitals; orb++) state[orb] = siteRead(props, site, orb);
+            results[dynamic_base(state, base)]++;
+        }
+        return results;
+    }
+    
+    void mbasis_elem::prt_bits(const std::vector<basis_prop> &props) const
+    {
+        uint16_t byte_pos_bgn = 2;
+        for (decltype(props.size()) orb = 0; orb < props.size(); orb++) {
+            std::cout << "orb " << static_cast<unsigned>(orb) << "(ignore "
+                      << static_cast<unsigned>(props[orb].bits_ignore) << " bits): ";
+            uint16_t byte_pos_end = byte_pos_bgn + props[orb].num_bytes;
+            for (auto byte_pos = byte_pos_end - 1; byte_pos >= byte_pos_bgn; byte_pos--) {
+                std::cout << std::bitset<8>(mbits[byte_pos]) << ",";
+            }
+            std::cout << std::endl;
+        }
+    }
+    
+    void mbasis_elem::prt_states(const std::vector<basis_prop> &props) const
+    {
+        for (decltype(props.size()) orb = 0; orb < props.size(); orb++) {
+            std::cout << "--- orb " << static_cast<unsigned>(orb) << " ---" << std::endl;
+            auto total_sites = props[orb].num_sites;
+            for (decltype(total_sites) j = 0; j < total_sites; j++) {
+                auto st = siteRead(props, j, orb);
+                if (st != 0) {
+                    std::cout << "site " << static_cast<unsigned>(j) << ", state " << static_cast<unsigned>(st) << std::endl;
+                }
+            }
+        }
+    }
+    
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // in future, replace with quick sort to improve performance!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    mbasis_elem &mbasis_elem::transform(const std::vector<basis_prop> &props,
+                                        const std::vector<uint32_t> &plan, int &sgn,
+                                        const uint32_t &orbital) {
+        uint32_t total_sites = props[orbital].num_sites;
+        assert(plan.size() == total_sites);
+        if (! props[orbital].q_fermion()) {
+            sgn = 0;
+        } else {
+            std::vector<uint32_t> plan_fermion;
+            for (uint32_t site = 0; site < total_sites; site++) {
+                uint8_t state = siteRead(props, site, orbital);
+                // keeps all the sites which have fermion
+                if (props[orbital].Nfermion_map[state] % 2 != 0) plan_fermion.push_back(plan[site]);
+            }
+            // using bubble sort to count how many times we are exchanging fermions
+            sgn = bubble_sort(plan_fermion, 0, static_cast<int>(plan_fermion.size())) % 2;
+        }
+        // store the values
+        std::vector<uint8_t> vals(plan.size());
+        for (decltype(total_sites) site = 0; site < total_sites; site++) {
+            vals[site] = siteRead(props, site, orbital);
+        }
+        // write the values
+        for (decltype(total_sites) site = 0; site < total_sites; site++) {
+            siteWrite(props, plan[site], orbital, vals[site]);
+        }
+        return *this;
+    }
+    
+    mbasis_elem &mbasis_elem::transform(const std::vector<basis_prop> &props,
+                                        const std::vector<uint32_t> &plan, int &sgn) {
         sgn = 0;
-        for (auto it = mbits.begin(); it != mbits.end(); it++) {
-            MKL_INT sgn0;
-            it->transform(plan, sgn0);
+        for (uint32_t orb = 0; orb < props.size(); orb++) {
+            int sgn0;
+            transform(props, plan, sgn0, orb);
             sgn = (sgn + sgn0) % 2;
         }
         return *this;
     }
     
-    mbasis_elem &mbasis_elem::transform(const std::vector<std::vector<std::pair<MKL_INT, MKL_INT>>> &plan, MKL_INT &sgn) {
+    mbasis_elem &mbasis_elem::transform(const std::vector<basis_prop> &props,
+                                        const std::vector<std::vector<std::pair<uint32_t, uint32_t>>> &plan, int &sgn) {
         sgn = 0;
-        
+        uint32_t total_orbitals = props.size();
+        uint32_t total_sites    = props[0].num_sites;
         // implement fermionic transformation later
-        assert(std::none_of(mbits.begin(), mbits.end(), [](basis_elem x){ return x.q_fermion(); }));
-        assert(plan.size() == mbits.size());
-        assert(static_cast<MKL_INT>(plan[0].size()) == total_sites());
+        assert(std::none_of(props.begin(), props.end(), [](basis_prop x){ return x.q_fermion(); }));
+        assert(plan.size() == props.size());
+        assert(static_cast<uint32_t>(plan[0].size()) == total_sites);
         
-        auto res = *this;
-        
-        for (MKL_INT orb1 = 0; orb1 < total_orbitals(); orb1++) {
-            for (MKL_INT site1 = 0; site1 < total_sites(); site1++) {
+        // store the values
+        std::vector<std::vector<uint8_t>> vals(total_orbitals,std::vector<uint8_t>(total_sites));
+        for (uint32_t orb = 0; orb < total_orbitals; orb++) {
+            for (uint32_t site = 0; site < total_sites; site++)
+                vals[orb][site] = siteRead(props, site, orb);
+        }
+        // write the values
+        for (uint32_t orb1 = 0; orb1 < total_orbitals; orb1++) {
+            for (uint32_t site1 = 0; site1 < total_sites; site1++) {
                 auto site2 = plan[orb1][site1].first;
                 auto orb2  = plan[orb1][site1].second;
-                assert(mbits[orb1].local_dimension() == mbits[orb2].local_dimension());
-                MKL_INT bits_bgn1 = mbits[orb1].bits_per_site * site1;
-                MKL_INT bits_bgn2 = mbits[orb2].bits_per_site * site2;
-                for (MKL_INT j = 0; j < mbits[orb1].bits_per_site; j++) res.mbits[orb2].bits[bits_bgn2+j] = mbits[orb1].bits[bits_bgn1+j];
+                assert(props[orb1].dim_local == props[orb2].dim_local);
+                siteWrite(props, site2, orb2, vals[orb1][site1]);
             }
         }
-        swap(res, *this);
         return *this;
     }
     
-    mbasis_elem &mbasis_elem::translate(const qbasis::lattice &latt, const std::vector<MKL_INT> &disp, MKL_INT &sgn) {
+    mbasis_elem &mbasis_elem::translate(const std::vector<basis_prop> &props,
+                                        const qbasis::lattice &latt, const std::vector<int> &disp, int &sgn,
+                                        const uint32_t &orbital) {
         auto plan = latt.translation_plan(disp);
-        transform(plan, sgn);
+        transform(props, plan, sgn, orbital);
+        return *this;
+    }
+    
+    mbasis_elem &mbasis_elem::translate(const std::vector<basis_prop> &props,
+                                        const qbasis::lattice &latt, const std::vector<int> &disp, int &sgn) {
+        auto plan = latt.translation_plan(disp);
+        transform(props, plan, sgn);
         return *this;
     }
     
     // need re-write this function to more general cases (pbc mixing obc in different dimensions)
-    mbasis_elem &mbasis_elem::translate_to_unique_state(const qbasis::lattice &latt, std::vector<MKL_INT> &disp_vec) {
-        assert(latt.total_sites() == total_sites());
-        MKL_INT orb_smart = 0;
-        while (orb_smart < total_orbitals() && mbits[orb_smart].q_same_state_all_site()) orb_smart++;
-        if (orb_smart == total_orbitals()) return *this; // if every site in the same state
+    mbasis_elem &mbasis_elem::translate_to_unique_state(const std::vector<basis_prop> &props,
+                                                        const qbasis::lattice &latt, std::vector<int> &disp_vec) {
+        for (decltype(latt.dimension()) j = 1; j < latt.dimension(); j++) {
+            assert(latt.boundary()[j-1] == latt.boundary()[j]); // relax in future
+        }
+        uint32_t total_sites    = props[0].num_sites;
+        uint32_t total_orbitals = props.size();
+        assert(latt.total_sites() == total_sites);
+        uint32_t orb_smart = 0;
+        while (orb_smart < total_orbitals && q_same_state_all_site(props, orb_smart)) orb_smart++;
+        if (orb_smart == total_orbitals) return *this; // if every site in the same state
         
-        auto statis  = mbits[orb_smart].statistics();
-        MKL_INT state_smart = 0;
+        auto statis = statistics(props, orb_smart);
+        uint8_t state_smart = 0;
         
         std::vector<std::string> pbc(latt.dimension(),"pbc");
         std::vector<std::string> obc(latt.dimension(),"obc");
@@ -426,32 +447,31 @@ namespace qbasis {
             state_smart = 1;
         }
         while (statis[state_smart] == 0) state_smart++;
-        assert(state_smart < mbits[orb_smart].local_dimension() && statis[state_smart] > 0);
+        assert(state_smart < props[orb_smart].dim_local);
         
         // following nomenclature of trans_equiv()
-        MKL_INT num_sites_smart = statis[state_smart];
-        std::vector<MKL_INT> sites_smart;
-        for (MKL_INT site = 0; site < mbits[orb_smart].total_sites(); site++) {                // search for sites_smart
-            if (mbits[orb_smart].siteRead(site) == state_smart) sites_smart.push_back(site);
-            if (static_cast<MKL_INT>(sites_smart.size()) >= num_sites_smart) break;
+        uint32_t num_sites_smart = statis[state_smart];
+        std::vector<uint32_t> sites_smart;
+        for (uint32_t site = 0; site < total_sites; site++) {                // search for sites_smart
+            if (siteRead(props, site, orb_smart) == state_smart) sites_smart.push_back(site);
+            if (static_cast<uint32_t>(sites_smart.size()) >= num_sites_smart) break;
         }
-        assert(static_cast<MKL_INT>(sites_smart.size()) == num_sites_smart);
         
         if (latt.boundary() == pbc || latt.boundary() == PBC) {
             // now we want to translate site_smart to the highest site, to minimize the state in < comparison
-            std::vector<MKL_INT> coor_smart(latt.dimension());
-            MKL_INT sub_smart;
+            std::vector<int> coor_smart(latt.dimension());
+            int sub_smart;
             auto state_min = *this;
             auto linear_size = latt.Linear_size();
-            std::vector<MKL_INT> disp(latt.dimension(),0);
+            std::vector<int> disp(latt.dimension(),0);
             disp_vec = disp;
-            for (MKL_INT cnt = 0; cnt < num_sites_smart; cnt++) {
+            for (uint32_t cnt = 0; cnt < num_sites_smart; cnt++) {
                 latt.site2coor(coor_smart, sub_smart, sites_smart[cnt]);
-                for (MKL_INT j = 0; j < latt.dimension(); j++)
-                    disp[j] = linear_size[j] - 1 - coor_smart[j];
+                for (uint32_t j = 0; j < latt.dimension(); j++)
+                    disp[j] = static_cast<int>(linear_size[j]) - 1 - coor_smart[j];
                 auto state_new = *this;
-                MKL_INT sgn;
-                state_new.translate(latt, disp, sgn);
+                int sgn;
+                state_new.translate(props, latt, disp, sgn);
                 if(state_new < state_min) {
                     state_min = state_new;
                     disp_vec = disp;
@@ -459,20 +479,20 @@ namespace qbasis {
             }
             swap(state_min, *this);
         } else if (latt.boundary() == obc || latt.boundary() == OBC) {
-            std::vector<MKL_INT> lowest_coors(latt.dimension());
-            MKL_INT sub0;
+            std::vector<int> lowest_coors(latt.dimension());
+            int sub0;
             latt.site2coor(lowest_coors, sub0, sites_smart[0]);
             //this->prt(); std::cout << std::endl;
-            std::vector<MKL_INT> highest_coors = lowest_coors;
+            std::vector<int> highest_coors = lowest_coors;
             
-            for (MKL_INT site = 0; site < latt.total_sites(); site++) {
-                std::vector<MKL_INT> coor(latt.dimension());
-                MKL_INT sub;
+            for (uint32_t site = 0; site < latt.total_sites(); site++) {
+                std::vector<int> coor(latt.dimension());
+                int sub;
                 latt.site2coor(coor, sub, site);
-                std::vector<MKL_INT> temp(total_orbitals());
-                for (MKL_INT orb = 0; orb < total_orbitals(); orb++) temp[orb] = siteRead(site, orb);
-                if (std::any_of(temp.begin(), temp.end(), [](MKL_INT a){return a != 0; })) {
-                    for (MKL_INT dim = 0; dim < latt.dimension(); dim++) {
+                std::vector<uint8_t> temp(total_orbitals);
+                for (uint32_t orb = 0; orb < total_orbitals; orb++) temp[orb] = siteRead(props, site, orb);
+                if (std::any_of(temp.begin(), temp.end(), [](uint8_t a){return a != 0; })) {
+                    for (uint32_t dim = 0; dim < latt.dimension(); dim++) {
                         if (coor[dim] < lowest_coors[dim]) lowest_coors[dim] = coor[dim];
                         if (coor[dim] > highest_coors[dim]) highest_coors[dim] = coor[dim];
                     }
@@ -480,80 +500,102 @@ namespace qbasis {
             }
             
             disp_vec.resize(latt.dimension());
-            MKL_INT sgn;
-            for (MKL_INT dim = 0; dim < latt.dimension(); dim++) {
+            int sgn;
+            for (uint32_t dim = 0; dim < latt.dimension(); dim++) {
                 assert(lowest_coors[dim] >= 0 && lowest_coors[dim] < latt.Linear_size()[dim]);
                 assert(highest_coors[dim] >= 0 && highest_coors[dim] < latt.Linear_size()[dim]);
                 assert(lowest_coors[dim] <= highest_coors[dim]);
                 disp_vec[dim] = (latt.Linear_size()[dim] - 1 - highest_coors[dim] - lowest_coors[dim])/2;
                 if (lowest_coors[dim] + disp_vec[dim]
-                    > latt.Linear_size()[dim] - 1 - (highest_coors[dim] + disp_vec[dim])) {
+                    > static_cast<int>(latt.Linear_size()[dim]) - 1 - (highest_coors[dim] + disp_vec[dim])) {
                     disp_vec[dim]--;
                 }
             }
-            this->translate(latt, disp_vec, sgn);
-            
+            this->translate(props, latt, disp_vec, sgn);
         }
         return *this;
     }
     
-    mbasis_elem &mbasis_elem::reset()
+    double mbasis_elem::diagonal_operator(const std::vector<basis_prop> &props, const opr<double>& lhs) const
     {
-        for(auto it = mbits.begin(); it != mbits.end(); it++) it->reset();
-        return *this;
-    }
-    
-    MKL_INT mbasis_elem::total_sites() const
-    {
-        assert(! mbits.empty());
-        return mbits[0].total_sites();
-    }
-    
-    MKL_INT mbasis_elem::total_orbitals() const
-    {
-        assert(! mbits.empty());
-        return static_cast<MKL_INT>(mbits.size());
-    }
-    
-    MKL_INT mbasis_elem::local_dimension() const
-    {
-        assert(! mbits.empty());
-        MKL_INT res = 1;
-        for (decltype(mbits.size()) j = 0; j < mbits.size(); j++) {
-            res *= mbits[j].local_dimension();
-        }
-        return res;
-    }
-    
-    std::vector<MKL_INT> mbasis_elem::local_dimension_vec() const
-    {
-        assert(! mbits.empty());
-        std::vector<MKL_INT> res;
-        for (decltype(mbits.size()) j = 0; j < mbits.size(); j++) {
-            res.push_back(mbits[j].local_dimension());
-        }
-        return res;
-    }
-    
-    void mbasis_elem::prt() const
-    {
-        if (total_orbitals() == 1) {
-            mbits[0].prt();
+        assert(lhs.q_diagonal() && (! lhs.fermion) && lhs.dim == props[lhs.orbital].dim_local);
+        if (lhs.q_zero()) {
+            return 0.0;
         } else {
-            for (MKL_INT j = 0; j < total_orbitals(); j++) {
-                mbits[j].prt();
-                std::cout << ", ";
-            }
+            return lhs.mat[siteRead(props, lhs.site, lhs.orbital)];
         }
     }
     
-    void mbasis_elem::prt_nonzero() const
+    std::complex<double> mbasis_elem::diagonal_operator(const std::vector<basis_prop> &props, const opr<std::complex<double>>& lhs) const
     {
-        for (MKL_INT j = 0; j < total_orbitals(); j++) {
-            std::cout << "orb " << j << std::endl;
-            mbits[j].prt_nonzero();
+        assert(lhs.q_diagonal() && (! lhs.fermion) && lhs.dim == props[lhs.orbital].dim_local);
+        if (lhs.q_zero()) {
+            return std::complex<double>(0.0, 0.0);
+        } else {
+            return lhs.mat[siteRead(props, lhs.site, lhs.orbital)];
         }
     }
+    
+    double mbasis_elem::diagonal_operator(const std::vector<basis_prop> &props, const opr_prod<double>& lhs) const
+    {
+        if (lhs.q_zero()) {
+            return 0.0;
+        } else {
+            double res = lhs.coeff;
+            for (const auto &op : lhs.mat_prod) {
+                assert(op.q_diagonal() && (! op.fermion) && op.dim == props[op.orbital].dim_local);
+                res *= diagonal_operator(props, op);
+                if (std::abs(res) < opr_precision) break;
+            }
+            return res;
+        }
+    }
+    
+    std::complex<double> mbasis_elem::diagonal_operator(const std::vector<basis_prop> &props, const opr_prod<std::complex<double>>& lhs) const
+    {
+        if (lhs.q_zero()) {
+            return std::complex<double>(0.0, 0.0);
+        } else {
+            std::complex<double> res = lhs.coeff;
+            for (const auto &op : lhs.mat_prod) {
+                assert(op.q_diagonal() && (! op.fermion) && op.dim == props[op.orbital].dim_local);
+                res *= diagonal_operator(props, op);
+                if (std::abs(res) < opr_precision) break;
+            }
+            return res;
+        }
+    }
+    
+    double mbasis_elem::diagonal_operator(const std::vector<basis_prop> &props, const mopr<double> &lhs) const
+    {
+        if (lhs.q_zero()) {
+            return 0.0;
+        } else {
+            double res = 0.0;
+            for (decltype(lhs.size()) j = 0; j < lhs.size(); j++) {
+                auto op = lhs[j];
+                res += diagonal_operator(props, op);
+            }
+            return res;
+        }
+    }
+    
+    std::complex<double> mbasis_elem::diagonal_operator(const std::vector<basis_prop> &props, const mopr<std::complex<double>> &lhs) const
+    {
+        if (lhs.q_zero()) {
+            return 0.0;
+        } else {
+            std::complex<double> res = 0.0;
+            for (decltype(lhs.size()) j = 0; j < lhs.size(); j++) {
+                auto op = lhs[j];
+                res += diagonal_operator(props, op);
+            }
+            return res;
+        }
+    }
+    
+
+    // ------------------ friends ------------------
     
     void swap(mbasis_elem &lhs, mbasis_elem &rhs)
     {
@@ -563,12 +605,26 @@ namespace qbasis {
     
     bool operator<(const mbasis_elem &lhs, const mbasis_elem &rhs)
     {
-        return (lhs.mbits < rhs.mbits);
+        assert(lhs.mbits[0] == rhs.mbits[0] && lhs.mbits[1] == rhs.mbits[1]);
+        uint16_t total_bytes = static_cast<uint16_t>(lhs.mbits[0] * 256) + static_cast<uint16_t>(lhs.mbits[1]);
+        for (uint16_t byte_pos = total_bytes - 1; byte_pos > 2; byte_pos--) {
+            if (lhs.mbits[byte_pos] < rhs.mbits[byte_pos]) {
+                return true;
+            } else if (rhs.mbits[byte_pos] < lhs.mbits[byte_pos]) {
+                return false;
+            }
+        }
+        return (lhs.mbits[2] < rhs.mbits[2]);
     }
     
     bool operator==(const mbasis_elem &lhs, const mbasis_elem &rhs)
     {
-        return (lhs.mbits == rhs.mbits);
+        assert(lhs.mbits[0] == rhs.mbits[0] && lhs.mbits[1] == rhs.mbits[1]);
+        uint16_t total_bytes = static_cast<uint16_t>(lhs.mbits[0] * 256) + static_cast<uint16_t>(lhs.mbits[1]);
+        for (uint16_t byte_pos = 2; byte_pos < total_bytes; byte_pos++) {
+            if (lhs.mbits[byte_pos] != rhs.mbits[byte_pos]) return false;
+        }
+        return true;
     }
     
     bool operator!=(const mbasis_elem &lhs, const mbasis_elem &rhs)
@@ -576,38 +632,39 @@ namespace qbasis {
         return (! (lhs == rhs));
     }
     
-    bool trans_equiv(const mbasis_elem &lhs, const mbasis_elem &rhs, const lattice &latt)
+    bool trans_equiv(const mbasis_elem &lhs, const mbasis_elem &rhs,
+                     const std::vector<basis_prop> &props, const lattice &latt)
     {
-        assert(latt.total_sites() == lhs.total_sites());
-        auto statis  = lhs.statistics();
-        auto statis2 = rhs.statistics();
+        for (decltype(latt.dimension()) j = 1; j < latt.dimension(); j++) {
+            assert(latt.boundary()[j-1] == latt.boundary()[j]); // relax in future
+        }
+        uint32_t total_sites    = props[0].num_sites;
+        uint32_t total_orbitals = props.size();
+        assert(latt.total_sites() == total_sites);
+        auto statis  = lhs.statistics(props);
+        auto statis2 = rhs.statistics(props);
         if (statis != statis2) return false;
-        std::vector<std::pair<MKL_INT,MKL_INT>> statis_temp(statis.size());
-        for (decltype(statis_temp.size()) j = 0; j < statis_temp.size(); j++) {
+        std::vector<std::pair<uint32_t,uint32_t>> statis_temp(statis.size());
+        for (uint32_t j = 0; j < statis_temp.size(); j++) {
             statis_temp[j].first = j;
             statis_temp[j].second = statis[j];
             //std::cout << "stat [" << j << "] = " << statis[j] << std::endl;
         }
         std::sort(statis_temp.begin(), statis_temp.end(),
-                  [](const std::pair<MKL_INT,MKL_INT> &a, const std::pair<MKL_INT,MKL_INT> &b){ return a.second < b.second; });
-//        for (decltype(stat.size()) j = 0; j < stat.size(); j++) {
-//            std::cout << "stat[" << stat[j].first << "] = " << stat[j].second << std::endl;
-//        }
-        MKL_INT min_idx = 0;
+                  [](const std::pair<uint32_t,uint32_t> &a, const std::pair<uint32_t,uint32_t> &b){ return a.second < b.second; });
+        uint32_t min_idx = 0;
         while (statis_temp[min_idx].second < 1) min_idx++;
-        assert(min_idx < static_cast<MKL_INT>(statis_temp.size()));
-        if (min_idx == static_cast<MKL_INT>(statis_temp.size()) - 1) return true;     // if every site in the same state
+        assert(min_idx < static_cast<uint32_t>(statis_temp.size()));
+        if (min_idx == static_cast<uint32_t>(statis_temp.size()) - 1) return true;     // if every site in the same state
         min_idx = statis_temp[min_idx].first;
-        MKL_INT num_sites_smart = statis[min_idx];
-//        std::cout << "min (but 0): " << std::endl;
-//        std::cout << "statis[" << min_idx << "]=" << num_sites_smart << std::endl;
+        uint32_t num_sites_smart = statis[min_idx];
         
-        std::vector<MKL_INT> base(lhs.total_orbitals());
-        for (MKL_INT orb = 0; orb < static_cast<MKL_INT>(base.size()); orb++) base[orb] = lhs.mbits[orb].local_dimension();
+        std::vector<uint32_t> base(total_orbitals);
+        for (uint32_t orb = 0; orb < static_cast<uint32_t>(base.size()); orb++) base[orb] = props[orb].dim_local;
         auto state_smart = dynamic_base(min_idx, base);
         
-        MKL_INT site_lhs_smart;
-        std::vector<MKL_INT> sites_rhs_smart(statis[min_idx]);
+        uint32_t site_lhs_smart;
+        std::vector<uint32_t> sites_rhs_smart(statis[min_idx]);
         
         // nomenclature:
         // state_smart: an array containing the states in each orbital, and we want to locate which sites have this state
@@ -615,10 +672,10 @@ namespace qbasis {
         // site_lhs_smart:  (any) one site from lhs, which has state_smart
         // sites_rhs_smart: all sites from rhs, which have state_smart
         
-        for (MKL_INT site = 0; site < lhs.total_sites(); site++) {                // search for site_lhs_smart
-            MKL_INT flag = 1;
-            for (MKL_INT orb = 0; orb < lhs.total_orbitals(); orb++) {
-                if (lhs.mbits[orb].siteRead(site) != state_smart[orb]) {
+        for (uint32_t site = 0; site < total_sites; site++) {                // search for site_lhs_smart
+            int flag = 1;
+            for (uint32_t orb = 0; orb < total_orbitals; orb++) {
+                if (lhs.siteRead(props, site, orb) != state_smart[orb]) {
                     flag = 0;
                     break;
                 }
@@ -628,11 +685,11 @@ namespace qbasis {
                 break;
             }
         }
-        MKL_INT cnt = 0;
-        for (MKL_INT site = 0; site < rhs.total_sites(); site++) {                // search for sites_rhs_smart
-            MKL_INT flag = 1;
-            for (MKL_INT orb = 0; orb < rhs.total_orbitals(); orb++) {
-                if (rhs.mbits[orb].siteRead(site) != state_smart[orb]) {
+        uint32_t cnt = 0;
+        for (uint32_t site = 0; site < total_sites; site++) {                // search for sites_rhs_smart
+            int flag = 1;
+            for (uint32_t orb = 0; orb < total_orbitals; orb++) {
+                if (rhs.siteRead(props, site, orb) != state_smart[orb]) {
                     flag = 0;
                     break;
                 }
@@ -651,45 +708,45 @@ namespace qbasis {
         
         // later we can change it to be a more general consition
         // for obc, restrict the translation possibility: only local state 0 can be shifted outside boundary
-        std::vector<MKL_INT> coor0(latt.dimension());
-        MKL_INT sub0;
+        std::vector<int> coor0(latt.dimension());
+        int sub0;
         latt.site2coor(coor0, sub0, sites_rhs_smart[0]);
-        std::vector<std::vector<MKL_INT>> extremal_coors(latt.dimension(), std::vector<MKL_INT>(2));
-        for (MKL_INT dim = 0; dim < latt.dimension(); dim++) {
+        std::vector<std::vector<int>> extremal_coors(latt.dimension(), std::vector<int>(2));
+        for (decltype(latt.dimension()) dim = 0; dim < latt.dimension(); dim++) {
             extremal_coors[dim][0] = coor0[dim];
             extremal_coors[dim][1] = coor0[dim];
         }
         if (latt.boundary() == obc || latt.boundary() == OBC) {
-            for (MKL_INT site = 0; site < latt.total_sites(); site++) {
-                std::vector<MKL_INT> coor(latt.dimension());
-                MKL_INT sub;
+            for (uint32_t site = 0; site < total_sites; site++) {
+                std::vector<int> coor(latt.dimension());
+                int sub;
                 latt.site2coor(coor, sub, site);
-                std::vector<MKL_INT> temp(rhs.total_orbitals());
-                for (MKL_INT orb = 0; orb < rhs.total_orbitals(); orb++) temp[orb] = rhs.siteRead(site, orb);
-                if (std::any_of(temp.begin(), temp.end(), [](MKL_INT a){return a != 0; })) {
-                    for (MKL_INT dim = 0; dim < latt.dimension(); dim++) {
+                std::vector<uint8_t> temp(total_orbitals);
+                for (uint32_t orb = 0; orb < total_orbitals; orb++) temp[orb] = rhs.siteRead(props, site, orb);
+                if (std::any_of(temp.begin(), temp.end(), [](uint8_t a){return a != 0; })) {
+                    for (uint32_t dim = 0; dim < latt.dimension(); dim++) {
                         if (coor[dim] < extremal_coors[dim][0]) extremal_coors[dim][0] = coor[dim];
                         if (coor[dim] > extremal_coors[dim][1]) extremal_coors[dim][1] = coor[dim];
                     }
                 }
             }
         }
-        for (MKL_INT dim = 0; dim < latt.dimension(); dim++) {
+        for (uint32_t dim = 0; dim < latt.dimension(); dim++) {
             assert(extremal_coors[dim][0] >= 0 && extremal_coors[dim][0] < latt.Linear_size()[dim]);
             assert(extremal_coors[dim][1] >= 0 && extremal_coors[dim][1] < latt.Linear_size()[dim]);
             assert(extremal_coors[dim][0] <= extremal_coors[dim][1]);
         }
         
         // now we want to translate rhs to compare to lhs
-        std::vector<MKL_INT> coor_lhs_smart(latt.dimension()), coor_rhs_smart(latt.dimension());
-        MKL_INT sub_lhs_smart, sub_rhs_smart;
+        std::vector<int> coor_lhs_smart(latt.dimension()), coor_rhs_smart(latt.dimension());
+        int sub_lhs_smart, sub_rhs_smart;
         latt.site2coor(coor_lhs_smart, sub_lhs_smart, site_lhs_smart);
-        for (MKL_INT cnt = 0; cnt < num_sites_smart; cnt++) {
+        for (uint32_t cnt = 0; cnt < num_sites_smart; cnt++) {
             latt.site2coor(coor_rhs_smart, sub_rhs_smart, sites_rhs_smart[cnt]);
             if (sub_lhs_smart != sub_rhs_smart) continue;         // no way to shift to a different sublattice
-            std::vector<MKL_INT> disp(latt.dimension());
+            std::vector<int> disp(latt.dimension());
             bool flag = false;
-            for (MKL_INT dim = 0; dim < latt.dimension(); dim++) {
+            for (uint32_t dim = 0; dim < latt.dimension(); dim++) {
                 disp[dim] = coor_lhs_smart[dim] - coor_rhs_smart[dim];
                 if (latt.boundary() == obc || latt.boundary() == OBC) {      // should not cross boundary
                     if (disp[dim] > 0 && extremal_coors[dim][1] + disp[dim] >= latt.Linear_size()[dim]) {
@@ -703,8 +760,8 @@ namespace qbasis {
             }
             if (flag) continue;
             auto rhs_new = rhs;
-            MKL_INT sgn;
-            rhs_new.translate(latt, disp, sgn);
+            int sgn;
+            rhs_new.translate(props, latt, disp, sgn);
             if (lhs == rhs_new) return true;
         }
         return false;
@@ -717,13 +774,13 @@ namespace qbasis {
         std::list<mbasis_elem> basis_new;
         
         #pragma omp parallel for schedule(dynamic,1)
-        for (MKL_INT j = 0; j < static_cast<MKL_INT>(basis.size()); j++) {
+        for (decltype(basis.size()) j = 0; j < basis.size(); j++) {
             std::list<mbasis_elem> temp;
             auto it = basis.begin();
             std::advance(it, j);
             auto phi0 = *it;
             auto states_new = Ham * phi0;
-            for (MKL_INT cnt = 0; cnt < states_new.size(); cnt++) {
+            for (decltype(states_new.size()) cnt = 0; cnt < states_new.size(); cnt++) {
                 if (states_new[cnt].first != phi0) temp.push_back(states_new[cnt].first);
             }
             #pragma omp critical
@@ -748,8 +805,93 @@ namespace qbasis {
         std::cout << elapsed_seconds.count() << "s)" << std::endl;
     }
     
-    
     // ----------------- implementation of wavefunction ------------------
+    template <typename T>
+    std::pair<mbasis_elem, T> &wavefunction<T>::operator[](uint32_t n)
+    {
+        assert(n < size());
+        assert(! elements.empty());
+        auto it = elements.begin();
+        for (decltype(n) i = 0; i < n; i++) ++it;
+        return *it;
+    }
+    
+    template <typename T>
+    const std::pair<mbasis_elem, T> &wavefunction<T>::operator[](uint32_t n) const
+    {
+        assert(n < size());
+        assert(! elements.empty());
+        auto it = elements.begin();
+        for (decltype(n) i = 0; i < n; i++) ++it;
+        return *it;
+    }
+    
+    template <typename T>
+    void wavefunction<T>::prt_bits(const std::vector<basis_prop> &props) const
+    {
+        for (auto &ele : elements) {
+            std::cout << "coeff: " << ele.second << std::endl;
+            ele.first.prt_bits(props);
+            std::cout << std::endl;
+        }
+    }
+    
+    template <typename T>
+    void wavefunction<T>::prt_states(const std::vector<basis_prop> &props) const
+    {
+        for (auto &ele : elements) {
+            std::cout << "coeff: " << ele.second << std::endl;
+            ele.first.prt_states(props);
+            std::cout << std::endl;
+        }
+    }
+    
+    template <typename T>
+    bool wavefunction<T>::q_sorted() const
+    {
+        if (elements.size() == 0 || elements.size() == 1) return true;
+        bool check = true;
+        auto it = elements.begin();
+        auto it_prev = it++;
+        while (it != elements.end()) {
+            if (it->first < it_prev->first) {
+                check = false;
+                break;
+            }
+            it_prev = it++;
+        }
+        return check;
+    }
+    
+    template <typename T>
+    bool wavefunction<T>::q_sorted_fully() const
+    {
+        if (elements.size() == 0 || elements.size() == 1) return true;
+        bool check = true;
+        auto it = elements.begin();
+        auto it_prev = it++;
+        while (it != elements.end()) {
+            if (! (it_prev->first < it->first)) {
+                check = false;
+                break;
+            }
+            it_prev = it++;
+        }
+        return check;
+    }
+    
+    template <typename T>
+    double wavefunction<T>::amplitude()
+    {
+        if (q_zero()) return 0.0;
+        simplify();
+        double res = 0.0;
+        for (auto it = elements.begin(); it != elements.end(); it++) {
+            res += std::norm(it->second);
+        }
+        return res;
+    }
+    
     template <typename T>
     wavefunction<T> &wavefunction<T>::operator+=(std::pair<mbasis_elem, T> ele)
     {
@@ -805,7 +947,7 @@ namespace qbasis {
     template <typename T>
     wavefunction<T> &wavefunction<T>::simplify()
     {
-        if (! this->sorted()) {
+        if (! this->q_sorted()) {
             elements.sort([](const std::pair<mbasis_elem, T> &lhs, const std::pair<mbasis_elem, T> &rhs){return lhs.first < rhs.first; });
         }
         auto it = elements.begin();
@@ -827,72 +969,6 @@ namespace qbasis {
             }
         }
         return *this;
-    }
-    
-    template <typename T>
-    bool wavefunction<T>::sorted() const
-    {
-        if (elements.size() == 0 || elements.size() == 1) return true;
-        bool check = true;
-        auto it = elements.begin();
-        auto it_prev = it++;
-        while (it != elements.end()) {
-            if (it->first < it_prev->first) {
-                check = false;
-                break;
-            }
-            it_prev = it++;
-        }
-        return check;
-    }
-    
-    template <typename T>
-    bool wavefunction<T>::sorted_fully() const
-    {
-        if (elements.size() == 0 || elements.size() == 1) return true;
-        bool check = true;
-        auto it = elements.begin();
-        auto it_prev = it++;
-        while (it != elements.end()) {
-            if (! (it_prev->first < it->first)) {
-                check = false;
-                break;
-            }
-            it_prev = it++;
-        }
-        return check;
-    }
-    
-    template <typename T>
-    double wavefunction<T>::amplitude()
-    {
-        if (q_zero()) return 0.0;
-        simplify();
-        double res = 0.0;
-        for (auto it = elements.begin(); it != elements.end(); it++) {
-            res += std::norm(it->second);
-        }
-        return res;
-    }
-    
-    template <typename T>
-    void wavefunction<T>::prt() const
-    {
-        for (auto &ele : elements) {
-            std::cout << "coeff: " << ele.second << std::endl;
-            ele.first.prt();
-            std::cout << std::endl;
-        }
-    }
-    
-    template <typename T>
-    void wavefunction<T>::prt_nonzero() const
-    {
-        for (auto &ele : elements) {
-            std::cout << "coeff: " << ele.second << std::endl;
-            ele.first.prt_nonzero();
-            std::cout << std::endl;
-        }
     }
     
     template <typename T>
@@ -949,38 +1025,36 @@ namespace qbasis {
     // |psi> = f_0^\dagger f_2^\dagger f_3^\dagger |0>
     // f_1^\dagger |psi> = - f_0^\dagger f_1^\dagger f_2^\dagger f_3^\dagger |0>
     template <typename T>
-    wavefunction<T> operator*(const opr<T> &lhs, const mbasis_elem &rhs)
+    wavefunction<T> oprXphi(const opr<T> &lhs, const mbasis_elem &rhs, const std::vector<basis_prop> &props)
     {
         wavefunction<T> res;
-        assert(lhs.dim == rhs.mbits[lhs.orbital].local_dimension());
-        MKL_INT col = rhs.mbits[lhs.orbital].siteRead(lhs.site);
-        MKL_INT displacement = col * lhs.dim;
+        assert(lhs.dim == props[lhs.orbital].dim_local);
+        uint32_t col = rhs.siteRead(props, lhs.site, lhs.orbital); // actually col <= 255
+        uint32_t displacement = col * lhs.dim;
         if (lhs.diagonal) {
             assert(! lhs.fermion);
             if (std::abs(lhs.mat[col]) > opr_precision)
                 res += std::pair<mbasis_elem, T>(rhs, lhs.mat[col]);
         } else {
-            MKL_INT sgn = 0;
+            int sgn = 0;
             if (lhs.fermion) {                         // count # of fermions traversed by this operator
-                for (MKL_INT orb_cnt = 0; orb_cnt < lhs.orbital; orb_cnt++) {
-                    if (rhs.mbits[orb_cnt].q_fermion()) {
-                        auto &ele = rhs.mbits[orb_cnt];
-                        for (MKL_INT site_cnt = 0; site_cnt < ele.total_sites(); site_cnt++) {
-                            sgn = (sgn + ele.Nfermion_map[ele.siteRead(site_cnt)]) % 2;
+                for (uint32_t orb_cnt = 0; orb_cnt < lhs.orbital; orb_cnt++) {
+                    if (props[orb_cnt].q_fermion()) {
+                        for (uint32_t site_cnt = 0; site_cnt < props[orb_cnt].num_sites; site_cnt++) {
+                            sgn = (sgn + props[orb_cnt].Nfermion_map[rhs.siteRead(props, site_cnt, orb_cnt)]) % 2;
                         }
                     }
                 }
-                assert(rhs.mbits[lhs.orbital].q_fermion());
-                auto &ele = rhs.mbits[lhs.orbital];
-                for (MKL_INT site_cnt = 0; site_cnt < lhs.site; site_cnt++) {
-                    sgn = (sgn + ele.Nfermion_map[ele.siteRead(site_cnt)]) % 2;
+                assert(props[lhs.orbital].q_fermion());
+                for (uint32_t site_cnt = 0; site_cnt < lhs.site; site_cnt++) {
+                    sgn = (sgn + props[lhs.orbital].Nfermion_map[rhs.siteRead(props, site_cnt, lhs.orbital)]) % 2;
                 }
             }
-            for (MKL_INT row = 0; row < lhs.dim; row++) {
+            for (uint8_t row = 0; row < lhs.dim; row++) {
                 auto coeff = (sgn == 0 ? lhs.mat[row + displacement] : (-lhs.mat[row + displacement]));
                 if (std::abs(coeff) > opr_precision) {
                     mbasis_elem state_new(rhs);
-                    state_new.mbits[lhs.orbital].siteWrite(lhs.site, row);
+                    state_new.siteWrite(props, lhs.site, lhs.orbital, row);
                     res += std::pair<mbasis_elem, T>(state_new, coeff);
                 }
             }
@@ -989,65 +1063,62 @@ namespace qbasis {
     }
 
     template <typename T>
-    wavefunction<T> operator*(const opr<T> &lhs, const wavefunction<T> &rhs)
+    wavefunction<T> oprXphi(const opr<T> &lhs, const wavefunction<T> &rhs, const std::vector<basis_prop> &props)
     {
         if (rhs.elements.empty()) return rhs;                                       // zero wavefunction
         wavefunction<T> res;
         for (auto it = rhs.elements.begin(); it != rhs.elements.end(); it++)
-            res += (it->second * (lhs * it->first));
+            res += (it->second * oprXphi(lhs, it->first, props));
         return res;
     }
     
     template <typename T>
-    wavefunction<T> operator*(const opr_prod<T> &lhs, const mbasis_elem &rhs)
+    wavefunction<T> oprXphi(const opr_prod<T> &lhs, const mbasis_elem &rhs, const std::vector<basis_prop> &props)
     {
         if (lhs.q_zero()) return wavefunction<T>();                                 // zero operator
         wavefunction<T> res(rhs);
         for (auto rit = lhs.mat_prod.rbegin(); rit != lhs.mat_prod.rend(); rit++) {
-            res = (*rit) * res;
+            res = oprXphi((*rit), res, props);
         }
         res *= lhs.coeff;
         return res;
     }
     
     template <typename T>
-    wavefunction<T> operator*(const opr_prod<T> &lhs, const wavefunction<T> &rhs)
+    wavefunction<T> oprXphi(const opr_prod<T> &lhs, const wavefunction<T> &rhs, const std::vector<basis_prop> &props)
     {
         if (rhs.elements.empty()) return rhs;                                       // zero wavefunction
         if (lhs.q_zero()) return wavefunction<T>();                                 // zero operator
         wavefunction<T> res(rhs);
         for (auto rit = lhs.mat_prod.rbegin(); rit != lhs.mat_prod.rend(); rit++) {
-            res = (*rit) * res;
+            res = oprXphi((*rit), res, props);
         }
         res *= lhs.coeff;
         return res;
     }
 
     template <typename T>
-    wavefunction<T> operator*(const mopr<T> &lhs, const mbasis_elem &rhs)
+    wavefunction<T> oprXphi(const mopr<T> &lhs, const mbasis_elem &rhs, const std::vector<basis_prop> &props)
     {
         if (lhs.q_zero()) return wavefunction<T>();                                // zero operator
         wavefunction<T> res;
         for (auto it = lhs.mats.begin(); it != lhs.mats.end(); it++)
-            res += ( (*it) * rhs );
+            res += oprXphi((*it), rhs, props);
         return res;
     }
     
     template <typename T>
-    wavefunction<T> operator*(const mopr<T> &lhs, const wavefunction<T> &rhs)
+    wavefunction<T> oprXphi(const mopr<T> &lhs, const wavefunction<T> &rhs, const std::vector<basis_prop> &props)
     {
         if (rhs.elements.empty()) return rhs;                                      // zero wavefunction
         if (lhs.q_zero()) return wavefunction<T>();                                // zero operator
         wavefunction<T> res;
         for (auto it = lhs.mats.begin(); it != lhs.mats.end(); it++)
-            res += ( (*it) * rhs );
+            res += oprXphi((*it), rhs, props);
         return res;
     }
     
     // Explicit instantiation
-    template void gen_mbasis_by_mopr(const mopr<double> &Ham, std::list<mbasis_elem> &basis);
-    template void gen_mbasis_by_mopr(const mopr<std::complex<double>> &Ham, std::list<mbasis_elem> &basis);
-    
     template class wavefunction<double>;
     template class wavefunction<std::complex<double>>;
     
@@ -1069,31 +1140,25 @@ namespace qbasis {
     template wavefunction<double> operator*(const double&, const wavefunction<double>&);
     template wavefunction<std::complex<double>> operator*(const std::complex<double>&, const wavefunction<std::complex<double>>&);
     
-    //template double operator*(const opr<double>&, const basis_elem&);
-    //template std::complex<double> operator*(const opr<std::complex<double>>&, const basis_elem&);
+    template wavefunction<double> oprXphi(const opr<double>&, const mbasis_elem&, const std::vector<basis_prop>&);
+    template wavefunction<std::complex<double>> oprXphi(const opr<std::complex<double>>&, const mbasis_elem&, const std::vector<basis_prop>&);
     
-    //template double operator*(const opr<double>&, const mbasis_elem&);
-    //template std::complex<double> operator*(const opr<std::complex<double>>&, const mbasis_elem&);
+    template wavefunction<double> oprXphi(const opr<double>&, const wavefunction<double>&, const std::vector<basis_prop>&);
+    template wavefunction<std::complex<double>> oprXphi(const opr<std::complex<double>>&, const wavefunction<std::complex<double>>&, const std::vector<basis_prop>&);
     
-    //template double operator*(const opr_prod<double>&, const mbasis_elem&);
-    //template std::complex<double> operator*(const opr_prod<std::complex<double>>&, const mbasis_elem&);
+    template wavefunction<double> oprXphi(const opr_prod<double>&, const mbasis_elem&, const std::vector<basis_prop>&);
+    template wavefunction<std::complex<double>> oprXphi(const opr_prod<std::complex<double>>&, const mbasis_elem&, const std::vector<basis_prop>&);
     
-    template wavefunction<double> operator*(const opr<double> &lhs, const mbasis_elem &rhs);
-    template wavefunction<std::complex<double>> operator*(const opr<std::complex<double>> &lhs, const mbasis_elem &rhs);
+    template wavefunction<double> oprXphi(const opr_prod<double>&, const wavefunction<double>&, const std::vector<basis_prop>&);
+    template wavefunction<std::complex<double>> oprXphi(const opr_prod<std::complex<double>>&, const wavefunction<std::complex<double>>&, const std::vector<basis_prop>&);
     
-    template wavefunction<double> operator*(const opr<double> &lhs, const wavefunction<double> &rhs);
-    template wavefunction<std::complex<double>> operator*(const opr<std::complex<double>> &lhs, const wavefunction<std::complex<double>> &rhs);
-
-    template wavefunction<double> operator*(const opr_prod<double> &lhs, const mbasis_elem &rhs);
-    template wavefunction<std::complex<double>> operator*(const opr_prod<std::complex<double>> &lhs, const mbasis_elem &rhs);
+    template wavefunction<double> oprXphi(const mopr<double>&, const mbasis_elem&, const std::vector<basis_prop>&);
+    template wavefunction<std::complex<double>> oprXphi(const mopr<std::complex<double>>&, const mbasis_elem&, const std::vector<basis_prop>&);
     
-    template wavefunction<double> operator*(const opr_prod<double> &lhs, const wavefunction<double> &rhs);
-    template wavefunction<std::complex<double>> operator*(const opr_prod<std::complex<double>> &lhs, const wavefunction<std::complex<double>> &rhs);
+    template wavefunction<double> oprXphi(const mopr<double>&, const wavefunction<double>&, const std::vector<basis_prop>&);
+    template wavefunction<std::complex<double>> oprXphi(const mopr<std::complex<double>>&, const wavefunction<std::complex<double>>&, const std::vector<basis_prop>&);
     
-    template wavefunction<double> operator*(const mopr<double>&, const mbasis_elem&);
-    template wavefunction<std::complex<double>> operator*(const mopr<std::complex<double>>&, const mbasis_elem&);
-    
-    template wavefunction<double> operator*(const mopr<double> &lhs, const wavefunction<double> &rhs);
-    template wavefunction<std::complex<double>> operator*(const mopr<std::complex<double>> &lhs, const wavefunction<std::complex<double>> &rhs);
+    template void gen_mbasis_by_mopr(const mopr<double> &Ham, std::list<mbasis_elem> &basis);
+    template void gen_mbasis_by_mopr(const mopr<std::complex<double>> &Ham, std::list<mbasis_elem> &basis);
     
 }
