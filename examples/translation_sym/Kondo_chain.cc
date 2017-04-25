@@ -113,7 +113,7 @@ int main() {
     std::vector<double> energies;
     for (int i = 0; i < L; i++) {
         // constructing the subspace basis
-        Kondo.basis_init_repr(std::vector<MKL_INT>{i}, lattice);
+        Kondo.basis_init_repr(std::vector<int>{i}, lattice);
 
         // generating matrix of the Hamiltonian in the subspace
         Kondo.generate_Ham_sparse_repr();
