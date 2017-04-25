@@ -1,16 +1,23 @@
 CXX       = clang++
-CPPFLAGS  = -g -O2 -std=c++11 -Weverything -Wno-c++98-compat-pedantic -Wno-c++98-compat -Wno-extra-semi -Wno-sign-conversion -isystem /usr/local/Cellar/boost/1.62.0/include -m64 -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
+CPPFLAGS  = -g -O2 -std=c++11 -Weverything -Wno-c++98-compat-pedantic -Wno-c++98-compat -Wno-extra-semi -Wno-sign-conversion -m64 -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
 LIBS      = -L/usr/local/lib -larpack -L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl
 
-OBJS      = measure.o lanczos.o sparse.o operators.o basis.o test.o
-
-OPTS      = 
+OBJS      = lattice.o miscellaneous.o model.o lanczos.o sparse.o operators.o basis.o
 
 EXEC      = ../bin/test.x
 
 
-all: $(OBJS)
-	$(CXX) $(OBJS) $(OPTS) $(LIBS) -o $(EXEC)
+test: $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o
+	$(CXX) $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o $(OPTS) $(LIBS) -o ../bin/test.x
+
+xxz: $(OBJS) chain_xxz.o
+	$(CXX) $(OBJS) chain_xxz.o $(OPTS) $(LIBS) -o ../bin/xxz.x
+
+libqbasis.a: $(OBJS)
+	ar rvs libqbasis.a $(OBJS)
+
+install: libqbasis.a
+	$(RM) ${HOME}/installs/lib/libqbasis.*; cp libqbasis.a ${HOME}/installs/lib; cp qbasis.h ${HOME}/installs/include
 
 %.o: %.cc
 	$(CXX) $(CPPFLAGS)  -c -o $@ $<

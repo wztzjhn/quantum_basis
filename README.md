@@ -11,7 +11,6 @@ To learn how to use this library to design ED code for your own models, please r
 - xxz spin-1 model on kagome lattice (to be filled up)
 
 ## Dependencies:
-- [boost](http://www.boost.org/) (>=1.56)
 - [MKL](https://software.intel.com/en-us/intel-mkl) (some old versions may not work)
 - [arpack](https://github.com/opencollab/arpack-ng) (dependency to be removed in a future release)
 - [arpack++](https://github.com/wztzjhn/arpackpp) (dependency to be removed in a future release)
@@ -22,7 +21,8 @@ To learn how to use this library to design ED code for your own models, please r
 MKL + OpenMP
 
 ## Compilation
-Currently the known working compilers are clang and gcc (c++11 required). (Intel icc not working yet)
+Currently the known working compilers are g++, icpc, and clang++ (c++11 required).
+(openmp in clang++ not tested yet)
 
 The code can be compiled in two modes:
 - 32-bit integer (less cost)

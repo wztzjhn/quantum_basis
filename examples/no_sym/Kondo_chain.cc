@@ -24,7 +24,7 @@ int main() {
 
     // lattice object
     std::vector<std::string> bc{"pbc"};
-    qbasis::lattice lattice("chain",std::vector<uint32_t>{L},bc);
+    qbasis::lattice lattice("chain",std::vector<uint32_t>{static_cast<uint32_t>(L)},bc);
 
     // local matrix representation
     // electrons:

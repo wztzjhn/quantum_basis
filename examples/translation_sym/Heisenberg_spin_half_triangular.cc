@@ -18,7 +18,7 @@ int main() {
 
     // lattice object
     std::vector<std::string> bc{"pbc", "pbc"};
-    qbasis::lattice lattice("triangular",std::vector<uint32_t>{Lx, Ly},bc);
+    qbasis::lattice lattice("triangular",std::vector<uint32_t>{static_cast<uint32_t>(Lx), static_cast<uint32_t>(Ly)},bc);
 
 
     // local matrix representation
