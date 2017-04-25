@@ -1,19 +1,26 @@
 CXX       = icpc
-CPPFLAGS  = -fast -std=c++11 -w3 -wd383,981 -isystem ${MKLROOT}/include
-LIBS      = -larmadillo -L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl
+CPPFLAGS  = -O2 -std=c++11 -w3 -wd383,981 -qopenmp -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
+LIBS      = -L/usr/local/lib -larpack -L${MKLROOT}/lib/intel64 -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -qopenmp
 
-OBJS      = lanczos.o sparse.o operators.o basis.o main.o
+OBJS      = lattice.o miscellaneous.o model.o lanczos.o sparse.o operators.o basis.o
 
-OPTS      = 
-
-EXEC      = ../bin/test.x
+EXEC      =
 
 
-all: $(OBJS)
-	$(CXX) $(OBJS) $(OPTS) $(LIBS) -o $(EXEC)
+test: $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o
+	$(CXX) $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o $(LIBS) -o ../bin/test.x
+
+xxz: $(OBJS) chain_xxz.o
+	$(CXX) $(OBJS) chain_xxz.o $(LIBS) -o ../bin/xxz.x
+
+libqbasis.a: $(OBJS)
+	ar rvs libqbasis.a $(OBJS)
+
+install: libqbasis.a
+	$(RM) ${HOME}/installs/lib/libqbasis.*; cp libqbasis.a ${HOME}/installs/lib; cp qbasis.h ${HOME}/installs/include
 
 %.o: %.cc
-	$(CXX) $(CPPFLAGS)  -c -o $@ $<
+	$(CXX) $(CPPFLAGS) -c -o $@ $<
 
 clean:
 	$(RM) *.o

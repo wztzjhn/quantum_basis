@@ -4,12 +4,11 @@ LIBS      = -L${HOME}/installs/lib -larpack -L${MKLROOT}/lib/intel64 -Wl,--no-as
 
 OBJS      = lattice.o miscellaneous.o model.o measure.o lanczos.o sparse.o operators.o basis.o
 
-OPTS      = 
-
 EXEC      =
 
-test: $(OBJS) test.o
-	$(CXX) $(OBJS) test.o $(OPTS) $(LIBS) -o ../bin/test.x
+
+test: $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o
+	$(CXX) $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o $(OPTS) $(LIBS) -o ../bin/test.x
 
 xxz: $(OBJS) chain_xxz.o
 	$(CXX) $(OBJS) chain_xxz.o $(OPTS) $(LIBS) -o ../bin/xxz.x

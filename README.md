@@ -21,7 +21,8 @@ To learn how to use this library to design ED code for your own models, please r
 MKL + OpenMP
 
 ## Compilation
-Currently the known working compilers are clang and gcc (c++11 required). (Intel icc not working yet)
+Currently the known working compilers are g++, icpc, and clang++ (c++11 required).
+(openmp in clang++ not tested yet)
 
 The code can be compiled in two modes:
 - 32-bit integer (less cost)
