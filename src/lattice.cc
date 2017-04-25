@@ -52,12 +52,12 @@ namespace qbasis {
         assert(static_cast<uint32_t>(coor.size()) == dim);
         int sub_temp = sub;
         while (sub_temp < 0)        sub_temp += static_cast<int>(num_sub);
-        while (sub_temp >= num_sub) sub_temp -= static_cast<int>(num_sub);
+        while (sub_temp >= static_cast<int>(num_sub)) sub_temp -= static_cast<int>(num_sub);
         std::vector<uint32_t> coor2 = {static_cast<uint32_t>(sub_temp)};
         for (uint32_t j = 0; j < dim; j++) {
             int coor_temp = coor[j];
             while (coor_temp < 0) coor_temp += L[j];
-            while (coor_temp >= L[j]) coor_temp -= L[j];
+            while (coor_temp >= static_cast<int>(L[j])) coor_temp -= L[j];
             coor2.push_back(static_cast<uint32_t>(coor_temp));
         }
         std::vector<uint32_t> base = {num_sub};

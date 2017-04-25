@@ -1,3 +1,7 @@
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include "qbasis.h"
 
 void test_lanczos_memoAll() {
     std::cout << "--------- test lanczos ---------" << std::endl;

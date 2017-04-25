@@ -140,6 +140,7 @@ namespace qbasis {
         return cnt;
     }
     template int bubble_sort(std::vector<uint32_t> &array, const int &bgn, const int &end);
+    template int bubble_sort(std::vector<MKL_INT> &array, const int &bgn, const int &end);
     
     template <typename T>
     T continued_fraction(T a[], T b[], const MKL_INT &len)

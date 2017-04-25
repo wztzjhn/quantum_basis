@@ -12,7 +12,7 @@ int main() {
     double t = 1;
     double J_Kondo = 1.1;
     double J_RKKY = 0.0;         // artificial RKKY
-    MKL_INT L = 4;
+    int L = 4;
     double Sz_total_val = 0.0;   // not used. to turn on, modify a comment line near the bottom of the file
     double Nelec_total_val = L;
 
@@ -21,11 +21,11 @@ int main() {
     std::cout << "J_Kondo = " << J_Kondo << std::endl << std::endl;
     std::cout << "J_RKKY  = " << J_RKKY << std::endl << std::endl;
     std::cout << "N_elec  = " << Nelec_total_val << std::endl;
-    
+
     // lattice object
     std::vector<std::string> bc{"pbc"};
-    qbasis::lattice lattice("chain",std::vector<MKL_INT>{L},bc);
-    
+    qbasis::lattice lattice("chain",std::vector<uint32_t>{static_cast<uint32_t>(L)},bc);
+
     // local matrix representation
     // electrons:
     auto c_up = std::vector<std::vector<std::complex<double>>>(4,std::vector<std::complex<double>>(4, 0.0));
@@ -48,15 +48,15 @@ int main() {
     Sminus[1][1] = 0.0;
     Sz[0]        = 0.5;
     Sz[1]        = -0.5;
-    
+
     // constructing the Hamiltonian in operator representation
     // electrons on orbital 0, local spins on orbital 1
     qbasis::model<std::complex<double>> Kondo;
     qbasis::mopr<std::complex<double>> Nelec_total;   // operators representating total electron number
     qbasis::mopr<std::complex<double>> Sz_total;
-    for (MKL_INT x = 0; x < L; x++) {
-        MKL_INT site_i, site_j;
-        lattice.coor2site(std::vector<MKL_INT>{x}, 0, site_i); // obtain site label of (x)
+    for (int x = 0; x < L; x++) {
+        uint32_t site_i, site_j;
+        lattice.coor2site(std::vector<int>{x}, 0, site_i); // obtain site label of (x)
         // construct operators on each site
         // electron
         auto c_up_i    = qbasis::opr<std::complex<double>>(site_i,0,true,c_up);
@@ -72,10 +72,10 @@ int main() {
         auto Splus_i   = qbasis::opr<std::complex<double>>(site_i,1,false,Splus);
         auto Sminus_i  = qbasis::opr<std::complex<double>>(site_i,1,false,Sminus);
         auto Sz_i      = qbasis::opr<std::complex<double>>(site_i,1,false,Sz);
-        
+
         // with neighbor (x+1)
         if (bc[0] == "pbc" || (bc[0] == "obc" && x < L - 1)) {
-            lattice.coor2site(std::vector<MKL_INT>{x+1}, 0, site_j);
+            lattice.coor2site(std::vector<int>{x+1}, 0, site_j);
             // hopping
             auto c_up_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c_up);
             auto c_dn_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c_dn);
@@ -92,26 +92,26 @@ int main() {
             Kondo.add_offdiagonal_Ham(std::complex<double>(0.5 * J_RKKY,0.0) * (Splus_i * Sminus_j + Sminus_i * Splus_j));
             Kondo.add_diagonal_Ham(std::complex<double>(J_RKKY,0.0) * (Sz_i * Sz_j));
         }
-        
+
         // electron-spin interaction
         Kondo.add_offdiagonal_Ham(std::complex<double>(0.5 * J_Kondo,0.0) * (Splus_i * sminus_i + Sminus_i * splus_i));
         Kondo.add_diagonal_Ham(std::complex<double>(J_Kondo,0.0) * (Sz_i * sz_i));
-        
+
         // total electron operator
         Nelec_total += (n_up_i + n_dn_i);
-        
+
         // total Sz operator
         Sz_total += (Sz_i + sz_i);
     }
-    
-    
+
+
     // constructing the Hilbert space basis
     //Kondo.enumerate_basis_full(lattice.total_sites(), {"electron","spin-1/2"}, {Nelec_total,Sz_total}, {static_cast<double>(Nelec_total_val),Sz_total_val});
     Kondo.enumerate_basis_full(lattice.total_sites(), {"electron","spin-1/2"}, {Nelec_total}, {Nelec_total_val});
-    
-    
+
+
     std::vector<double> energies;
-    for (MKL_INT i = 0; i < L; i++) {
+    for (int i = 0; i < L; i++) {
         // constructing the subspace basis
         Kondo.basis_init_repr(std::vector<MKL_INT>{i}, lattice);
 

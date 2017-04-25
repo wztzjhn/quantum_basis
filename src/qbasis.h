@@ -139,7 +139,7 @@ namespace qbasis {
     template <typename T> wavefunction<T> oprXphi(const mopr<T>&, const wavefunction<T>&, const std::vector<basis_prop>&);
     
     // mopr * {a list of mbasis} -->> {a new list of mbasis}
-    template <typename T> void gen_mbasis_by_mopr(const mopr<T>&, std::list<mbasis_elem>&);
+    template <typename T> void gen_mbasis_by_mopr(const mopr<T>&, std::list<mbasis_elem>&, const std::vector<basis_prop>&);
     
     template <typename T> void swap(csr_mat<T>&, csr_mat<T>&);
     
@@ -189,7 +189,7 @@ namespace qbasis {
         template <typename T> friend wavefunction<T> oprXphi(const opr<T>&, const mbasis_elem&, const std::vector<basis_prop>&);
     public:
         // default constructor
-        mbasis_elem() { mbits = nullptr; }
+        mbasis_elem() : mbits(nullptr) {}
         
         // constructor with its properties
         mbasis_elem(const std::vector<basis_prop> &props);
@@ -198,13 +198,13 @@ namespace qbasis {
         mbasis_elem(const mbasis_elem& old);
         
         // move constructor
-        mbasis_elem(mbasis_elem &&old) noexcept { mbits = old.mbits; old.mbits = nullptr; }
+        mbasis_elem(mbasis_elem &&old) noexcept;
         
         // copy assignment constructor and move assignment constructor, using "swap and copy"
         mbasis_elem& operator=(mbasis_elem old) { swap(*this, old); return *this; }
         
         // destructor
-        ~mbasis_elem() { if (mbits != nullptr) { free(mbits); mbits = nullptr; } }
+        ~mbasis_elem();
         
         //     ---------- status changes -----------
         // read out a state from a given site and given orbital
@@ -219,7 +219,7 @@ namespace qbasis {
         mbasis_elem& reset(const std::vector<basis_prop> &props, const uint32_t &orbital);
         
         // reset all bits to 0 in all orbitals
-        mbasis_elem& reset(const std::vector<basis_prop> &props);
+        mbasis_elem& reset();
         
         // change mbasis_elem to the next available state, for a particular orbital
         mbasis_elem& increment(const std::vector<basis_prop> &props, const uint32_t &orbital);
@@ -290,9 +290,6 @@ namespace qbasis {
         double diagonal_operator(const std::vector<basis_prop> &props, const mopr<double> &lhs) const;
         
         std::complex<double> diagonal_operator(const std::vector<basis_prop> &props, const mopr<std::complex<double>> &lhs) const;
-        
-        // deprecated
-        //std::vector<MKL_INT> local_dimension_vec() const;
         
     private:
         // store an array of basis elements, for multi-orbital site (or unit cell)
@@ -431,7 +428,7 @@ namespace qbasis {
         opr& operator=(opr<T> old) { swap(*this, old); return *this; }
         
         // destructor
-        ~opr() { if(mat != nullptr) delete [] mat; }
+        ~opr();
         
         void prt() const;
         

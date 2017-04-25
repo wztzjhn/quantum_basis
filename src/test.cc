@@ -3,6 +3,14 @@
 #include <fstream>
 #include "qbasis.h"
 
+void test_basis();
+
+void test_operator();
+
+void test_lanczos_memoAll();
+
+void test_lattice();
+
 void test_cfraction();
 void test_dotc();
 void test_bubble();
@@ -12,13 +20,19 @@ void test_bubble();
 
 int main(){
     
-    std::cout << std::abs(1.0) << std::endl;
+    test_basis();
     
-    test_dotc();
+    test_operator();
     
-    test_bubble();
+    test_lanczos_memoAll();
     
-    test_cfraction();
+    test_lattice();
+    
+    //test_dotc();
+    
+    //test_bubble();
+    
+    //test_cfraction();
 }
 
 

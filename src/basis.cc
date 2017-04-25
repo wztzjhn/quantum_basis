@@ -1,4 +1,5 @@
 #include <iostream>
+#include <bitset>
 #include "qbasis.h"
 
 namespace qbasis {
@@ -85,6 +86,30 @@ namespace qbasis {
         } else {
             mbits = nullptr;
         }
+#ifdef DEBUG
+//        printf("copy from &mbits = %p  to  %p\n",static_cast<void*>(old.mbits),static_cast<void*>(mbits));
+#endif
+    }
+    
+    mbasis_elem::mbasis_elem(mbasis_elem &&old) noexcept
+    {
+#ifdef DEBUG
+//        printf("move from &mbits = %p\n",static_cast<void*>(old.mbits));
+#endif
+        mbits = old.mbits;
+        old.mbits = nullptr;
+    }
+    
+    mbasis_elem::~mbasis_elem()
+    {
+#ifdef DEBUG
+//        printf("desctuctor used, &mbits = %p\n",static_cast<void*>(mbits));
+#endif
+        if (mbits != nullptr)
+        {
+            free(mbits);
+            mbits = nullptr;
+        }
     }
     
     uint8_t mbasis_elem::siteRead(const std::vector<basis_prop> &props,
@@ -92,7 +117,7 @@ namespace qbasis {
     {
         assert(orbital < props.size());
         uint16_t byte_pos = 2;
-        for (int orb = 0; orb < orbital; orb++) byte_pos += props[orb].num_bytes;
+        for (uint32_t orb = 0; orb < orbital; orb++) byte_pos += props[orb].num_bytes;
         
         uint8_t res;
         if (! props[orbital].dilute) {
@@ -119,8 +144,9 @@ namespace qbasis {
                                         const uint32_t &site, const uint32_t &orbital, const uint8_t &val)
     {
         assert(orbital < props.size());
+        assert(site < props[orbital].num_sites);
         uint16_t byte_pos = 2;
-        for (int orb = 0; orb < orbital; orb++) byte_pos += props[orb].num_bytes;
+        for (uint32_t orb = 0; orb < orbital; orb++) byte_pos += props[orb].num_bytes;
         
         if (! props[orbital].dilute) {
             uint32_t bits_per_site = props[orbital].bits_per_site;
@@ -128,7 +154,7 @@ namespace qbasis {
             byte_pos += bit_pos / 8;
             bit_pos %= 8;
             if (bit_pos + bits_per_site <= 8) {
-                uint8_t mask = ~((1 << bits_per_site) - 1);
+                uint8_t mask = ~(((1 << bits_per_site) - 1) << bit_pos);
                 mbits[byte_pos] &= mask;
                 mbits[byte_pos] |= (val << bit_pos);
             } else {   // crossing boundary
@@ -157,7 +183,7 @@ namespace qbasis {
         return *this;
     }
     
-    mbasis_elem &mbasis_elem::reset(const std::vector<basis_prop> &props)
+    mbasis_elem &mbasis_elem::reset()
     {
         if (mbits == nullptr) return *this;
         uint16_t total_bytes = static_cast<uint16_t>(mbits[0] * 256) + static_cast<uint16_t>(mbits[1]);
@@ -179,12 +205,14 @@ namespace qbasis {
                 if (mbits[byte_pos] != 255u) {
                     mbits[byte_pos]++;
                     break;
+                } else {
+                    mbits[byte_pos] = 0;
                 }
             }
         } else {
             uint8_t val = siteRead(props, 0, orbital) + 1;
             uint32_t site = 0;
-            
+
             while (val >= dim_local && site < num_sites) {
                 siteWrite(props, site, orbital, val - dim_local);
                 val = siteRead(props, ++site, orbital) + 1;
@@ -290,6 +318,9 @@ namespace qbasis {
     
     std::vector<uint32_t> mbasis_elem::statistics(const std::vector<basis_prop> &props) const
     {
+        // relax this condition in future
+        for (uint32_t orb = 0; orb < props.size() - 1; orb++) assert(props[orb].num_sites == props[orb+1].num_sites);
+        
         uint32_t local_dimension = 1;
         for (decltype(props.size()) j = 0; j < props.size(); j++) local_dimension *= props[j].dim_local;
         uint32_t total_orbitals = props.size();
@@ -308,6 +339,9 @@ namespace qbasis {
     
     void mbasis_elem::prt_bits(const std::vector<basis_prop> &props) const
     {
+#ifdef DEBUG
+        printf("&mbits = %p\n",static_cast<void*>(mbits));
+#endif
         uint16_t byte_pos_bgn = 2;
         for (decltype(props.size()) orb = 0; orb < props.size(); orb++) {
             std::cout << "orb " << static_cast<unsigned>(orb) << "(ignore "
@@ -317,6 +351,7 @@ namespace qbasis {
                 std::cout << std::bitset<8>(mbits[byte_pos]) << ",";
             }
             std::cout << std::endl;
+            byte_pos_bgn = byte_pos_end;
         }
     }
     
@@ -502,8 +537,8 @@ namespace qbasis {
             disp_vec.resize(latt.dimension());
             int sgn;
             for (uint32_t dim = 0; dim < latt.dimension(); dim++) {
-                assert(lowest_coors[dim] >= 0 && lowest_coors[dim] < latt.Linear_size()[dim]);
-                assert(highest_coors[dim] >= 0 && highest_coors[dim] < latt.Linear_size()[dim]);
+                assert(lowest_coors[dim] >= 0 && lowest_coors[dim] < static_cast<int>(latt.Linear_size()[dim]));
+                assert(highest_coors[dim] >= 0 && highest_coors[dim] < static_cast<int>(latt.Linear_size()[dim]));
                 assert(lowest_coors[dim] <= highest_coors[dim]);
                 disp_vec[dim] = (latt.Linear_size()[dim] - 1 - highest_coors[dim] - lowest_coors[dim])/2;
                 if (lowest_coors[dim] + disp_vec[dim]
@@ -619,8 +654,8 @@ namespace qbasis {
     
     bool operator==(const mbasis_elem &lhs, const mbasis_elem &rhs)
     {
-        assert(lhs.mbits[0] == rhs.mbits[0] && lhs.mbits[1] == rhs.mbits[1]);
         uint16_t total_bytes = static_cast<uint16_t>(lhs.mbits[0] * 256) + static_cast<uint16_t>(lhs.mbits[1]);
+        assert(lhs.mbits[0] == rhs.mbits[0] && lhs.mbits[1] == rhs.mbits[1]);
         for (uint16_t byte_pos = 2; byte_pos < total_bytes; byte_pos++) {
             if (lhs.mbits[byte_pos] != rhs.mbits[byte_pos]) return false;
         }
@@ -732,8 +767,8 @@ namespace qbasis {
             }
         }
         for (uint32_t dim = 0; dim < latt.dimension(); dim++) {
-            assert(extremal_coors[dim][0] >= 0 && extremal_coors[dim][0] < latt.Linear_size()[dim]);
-            assert(extremal_coors[dim][1] >= 0 && extremal_coors[dim][1] < latt.Linear_size()[dim]);
+            assert(extremal_coors[dim][0] >= 0 && extremal_coors[dim][0] < static_cast<int>(latt.Linear_size()[dim]));
+            assert(extremal_coors[dim][1] >= 0 && extremal_coors[dim][1] < static_cast<int>(latt.Linear_size()[dim]));
             assert(extremal_coors[dim][0] <= extremal_coors[dim][1]);
         }
         
@@ -749,7 +784,7 @@ namespace qbasis {
             for (uint32_t dim = 0; dim < latt.dimension(); dim++) {
                 disp[dim] = coor_lhs_smart[dim] - coor_rhs_smart[dim];
                 if (latt.boundary() == obc || latt.boundary() == OBC) {      // should not cross boundary
-                    if (disp[dim] > 0 && extremal_coors[dim][1] + disp[dim] >= latt.Linear_size()[dim]) {
+                    if (disp[dim] > 0 && extremal_coors[dim][1] + disp[dim] >= static_cast<int>(latt.Linear_size()[dim])) {
                         flag = true;
                         break;
                     } else if (disp[dim] < 0 && extremal_coors[dim][0] + disp[dim] < 0) {
@@ -765,44 +800,6 @@ namespace qbasis {
             if (lhs == rhs_new) return true;
         }
         return false;
-    }
-    
-    template <typename T> void gen_mbasis_by_mopr(const mopr<T> &Ham, std::list<mbasis_elem> &basis)
-    {
-        std::chrono::time_point<std::chrono::system_clock> start, end;
-        start = std::chrono::system_clock::now();
-        std::list<mbasis_elem> basis_new;
-        
-        #pragma omp parallel for schedule(dynamic,1)
-        for (decltype(basis.size()) j = 0; j < basis.size(); j++) {
-            std::list<mbasis_elem> temp;
-            auto it = basis.begin();
-            std::advance(it, j);
-            auto phi0 = *it;
-            auto states_new = Ham * phi0;
-            for (decltype(states_new.size()) cnt = 0; cnt < states_new.size(); cnt++) {
-                if (states_new[cnt].first != phi0) temp.push_back(states_new[cnt].first);
-            }
-            #pragma omp critical
-            basis_new.splice(basis_new.end(), temp);
-        }
-        std::cout << "mbasis size: " << basis.size() << " -> " << (basis.size() + basis_new.size()) << "(dulp) -> ";
-        basis.splice(basis.end(),basis_new);
-        
-        basis.sort();
-        auto it = basis.begin();
-        auto it_prev = it++;
-        while (it != basis.end()) {
-            if (*it == *it_prev) {
-                it = basis.erase(it);
-            } else {
-                it_prev = it++;
-            }
-        }
-        std::cout << basis.size() << ". (";
-        end   = std::chrono::system_clock::now();
-        std::chrono::duration<double> elapsed_seconds = end - start;
-        std::cout << elapsed_seconds.count() << "s)" << std::endl;
     }
     
     // ----------------- implementation of wavefunction ------------------
@@ -1118,6 +1115,46 @@ namespace qbasis {
         return res;
     }
     
+    
+    template <typename T> void gen_mbasis_by_mopr(const mopr<T> &Ham, std::list<mbasis_elem> &basis, const std::vector<basis_prop> &props)
+    {
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        std::list<mbasis_elem> basis_new;
+        
+        #pragma omp parallel for schedule(dynamic,1)
+        for (decltype(basis.size()) j = 0; j < basis.size(); j++) {
+            std::list<mbasis_elem> temp;
+            auto it = basis.begin();
+            std::advance(it, j);
+            auto phi0 = *it;
+            auto states_new = oprXphi(Ham, phi0, props);
+            for (decltype(states_new.size()) cnt = 0; cnt < states_new.size(); cnt++) {
+                if (states_new[cnt].first != phi0) temp.push_back(states_new[cnt].first);
+            }
+            #pragma omp critical
+            basis_new.splice(basis_new.end(), temp);
+        }
+        std::cout << "mbasis size: " << basis.size() << " -> " << (basis.size() + basis_new.size()) << "(dulp) -> ";
+        basis.splice(basis.end(),basis_new);
+        
+        basis.sort();
+        auto it = basis.begin();
+        auto it_prev = it++;
+        while (it != basis.end()) {
+            if (*it == *it_prev) {
+                it = basis.erase(it);
+            } else {
+                it_prev = it++;
+            }
+        }
+        std::cout << basis.size() << ". (";
+        end   = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s)" << std::endl;
+    }
+    
+    
     // Explicit instantiation
     template class wavefunction<double>;
     template class wavefunction<std::complex<double>>;
@@ -1158,7 +1195,7 @@ namespace qbasis {
     template wavefunction<double> oprXphi(const mopr<double>&, const wavefunction<double>&, const std::vector<basis_prop>&);
     template wavefunction<std::complex<double>> oprXphi(const mopr<std::complex<double>>&, const wavefunction<std::complex<double>>&, const std::vector<basis_prop>&);
     
-    template void gen_mbasis_by_mopr(const mopr<double> &Ham, std::list<mbasis_elem> &basis);
-    template void gen_mbasis_by_mopr(const mopr<std::complex<double>> &Ham, std::list<mbasis_elem> &basis);
+    template void gen_mbasis_by_mopr(const mopr<double>&, std::list<mbasis_elem>&, const std::vector<basis_prop>&);
+    template void gen_mbasis_by_mopr(const mopr<std::complex<double>>&, std::list<mbasis_elem>&, const std::vector<basis_prop>&);
     
 }

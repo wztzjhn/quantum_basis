@@ -13,7 +13,10 @@ set(QBASIS_INCLUDE qbasis.h)
 add_library(qbasis SHARED ${QBASIS_SRC})
 target_link_libraries(qbasis ${LIBS})
 
-add_executable(test.x test.cc ${QBASIS_SRC})
+#add_executable(Fermi_Hubbard_square.x ../examples/no_sym/Fermi_Hubbard_square.cc ${QBASIS_SRC})
+#target_link_libraries(Fermi_Hubbard_square.x ${LIBS})
+
+add_executable(test.x test.cc test_basis.cc test_operator.cc test_lanczos.cc test_lattice.cc ${QBASIS_SRC})
 target_link_libraries(test.x ${LIBS})
 
 add_executable(ss.x ../../2017_ShastrySutherland/variational/src/shastry_sutherland.cc ${QBASIS_SRC})

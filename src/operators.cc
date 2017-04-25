@@ -67,6 +67,16 @@ namespace qbasis {
     }
     
     template <typename T>
+    opr<T>::~opr()
+    {
+        if(mat != nullptr)
+        {
+            delete [] mat;
+            mat = nullptr;
+        }
+    }
+    
+    template <typename T>
     void opr<T>::prt() const
     {
         std::cout << "operator (" << site << "," << orbital << "), "

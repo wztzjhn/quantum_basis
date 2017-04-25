@@ -27,7 +27,7 @@ namespace qbasis {
         
         std::list<std::vector<mbasis_elem>> basis_temp;
         auto GS = mbasis_elem(props);
-        GS.reset(props);
+        GS.reset();
         uint32_t n_orbs = props.size();
         uint32_t dim_local = 1;
         std::vector<uint32_t> dim_local_vec;
@@ -87,8 +87,9 @@ namespace qbasis {
             auto dist = dynamic_base(state_num, base);
             auto state_new = GS;
             MKL_INT pos = 0;
-            for (MKL_INT orb = 0; orb < n_orbs; orb++) // the order is important
-                for (MKL_INT site = 0; site < n_sites; site++) state_new.siteWrite(props, site, orb, dist[pos++]);
+            for (uint32_t orb = 0; orb < n_orbs; orb++) // the order is important
+                for (uint32_t site = 0; site < n_sites; site++) state_new.siteWrite(props, site, orb, dist[pos++]);
+            
             
             while (state_num < job_array[chunk+1]) {
                 // check if the symmetries are obeyed
@@ -112,6 +113,7 @@ namespace qbasis {
                 #pragma omp critical
                 {
                     dim_full += basis_temp_job.size();
+                    //basis_temp.push_back(basis_temp_job);
                     basis_temp.push_back(std::move(basis_temp_job));     // think how to make sure it is a move operation here
                 }
             }
@@ -121,12 +123,12 @@ namespace qbasis {
         // pick the fruits
         basis_full.clear();
         for (auto it = basis_temp.begin(); it != basis_temp.end(); it++) {
-            basis_full.resize(basis_full.size() + it->size());
-            std::move(it->begin(), it->end(), basis_full.end());
-            it->erase(it->begin(), it->end());
+            basis_full.reserve(basis_full.size() + it->size());
+            basis_full.insert(basis_full.end(), std::make_move_iterator(it->begin()), std::make_move_iterator(it->end()));
+            it->erase(it->begin(), it->end()); // should I?
             it->shrink_to_fit();
         }
-        assert(dim_full == basis_full.size());
+        assert(dim_full == static_cast<MKL_INT>(basis_full.size()));
         
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
@@ -262,7 +264,7 @@ namespace qbasis {
             for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)                                       // diagonal part:
                 matrix_lil.add(i, i, basis_full[i].diagonal_operator(props, Ham_diag[cnt]));
             qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[i], props);  // non-diagonal part:
-            for (MKL_INT cnt = 0; cnt < intermediate_state.size(); cnt++) {
+            for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele_new = intermediate_state[cnt];
                 MKL_INT j = binary_search(basis_full, ele_new.first, 0, dim_full);       // < j | H | i > obtained
                 assert(j != -1);
