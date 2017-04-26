@@ -330,6 +330,30 @@ namespace qbasis {
     
     
     template <typename T>
+    void model<T>::MultMv_full(T *x, T *y)
+    {
+        #pragma omp parallel for schedule(dynamic,1)
+        for (MKL_INT i = 0; i < dim_full; i++) {
+            std::vector<std::pair<MKL_INT, T>> mat_free{std::pair<MKL_INT, T>(i,static_cast<T>(0.0))};
+            for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
+                mat_free[0].second += basis_full[i].diagonal_operator(props, Ham_diag[cnt]);
+            qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[i], props);
+            intermediate_state.simplify();
+            for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
+                auto &ele_new = intermediate_state[cnt];
+                MKL_INT j = binary_search(basis_full, ele_new.first, 0, dim_full);       // < j | H | i > obtained
+                assert(j != -1);
+                if (std::abs(ele_new.second) > opr_precision)
+                    mat_free.emplace_back(j, conjugate(ele_new.second));
+            }
+            y[i] = static_cast<T>(0.0);
+            for (auto it = mat_free.begin(); it < mat_free.end(); it++)
+                y[i] += (x[it->first] * it->second);
+        }
+    }
+    
+    
+    template <typename T>
     void model<T>::locate_E0_full(const MKL_INT &nev, const MKL_INT &ncv)
     {
         assert(ncv > nev + 1);
