@@ -125,9 +125,10 @@ namespace qbasis {
         
         // pick the fruits
         basis_full.clear();
+        std::cout << "memory performance not optimal in the following line, think about improvements." << std::endl;
+        basis_full.reserve(dim_full);
         std::cout << "Moving temporary basis (" << basis_temp.size() << " pieces) to basis_full... ";
         for (auto it = basis_temp.begin(); it != basis_temp.end(); it++) {
-            basis_full.reserve(basis_full.size() + it->size());
             basis_full.insert(basis_full.end(), std::make_move_iterator(it->begin()), std::make_move_iterator(it->end()));
             it->erase(it->begin(), it->end()); // should I?
             it->shrink_to_fit();
