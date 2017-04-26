@@ -48,6 +48,13 @@ namespace qbasis {
     }
 
     template <typename T>
+    void lil_mat<T>::destroy()
+    {
+        mat.clear();
+        mat.shrink_to_fit();
+    }
+    
+    template <typename T>
     void lil_mat<T>::prt() const
     {
         std::cout << "dim = " << dim << std::endl;
@@ -147,22 +154,52 @@ namespace qbasis {
         old.ia  = nullptr;
     }
     
+    template <typename T>
+    void csr_mat<T>::destroy()
+    {
+        if(val != nullptr) {
+            delete [] val;
+            val = nullptr;
+        }
+        if(ja != nullptr){
+            delete [] ja;
+            ja = nullptr;
+        }
+        if(ia != nullptr){
+            delete [] ia;
+            ia = nullptr;
+        }
+    }
     
     template <typename T>
-    std::vector<T> csr_mat<T>::to_dense() const
+    csr_mat<T>::~csr_mat()
     {
-        if (dim > 500) std::cout << "Warning: converting a large matrix to dense format!!!" << std::endl;
-        std::vector<T> res(dim*dim,static_cast<T>(0.0));
-        for (MKL_INT row = 0; row < dim; row++) {
-            MKL_INT pt_row_curr = ia[row];
-            MKL_INT pt_row_next = ia[row+1];
-            for (MKL_INT pt = pt_row_curr; pt < pt_row_next; pt++) {
-                MKL_INT col = ja[pt];
-                res[row + col * dim] = val[pt];
-                if (sym && row != col) res[col + row * dim] = conjugate(val[pt]);
-            }
+        if(val != nullptr) {
+            delete [] val;
+            val = nullptr;
         }
-        return res;
+        if(ja != nullptr) {
+            delete [] ja;
+            ja = nullptr;
+        }
+        if(ia != nullptr) {
+            delete [] ia;
+            ia = nullptr;
+        }
+    }
+    
+    template <typename T>
+    void csr_mat<T>::prt() const
+    {
+        std::cout << "dim = " << dim << std::endl;
+        std::cout << "nnz = " << nnz << std::endl;
+        std::cout << (sym?"Upper triangle":"Full matrix") << std::endl;
+        for (MKL_INT i = 0; i < nnz; i++) std::cout << std::setw(8) << val[i];
+        std::cout << std::endl;
+        for (MKL_INT i = 0; i < nnz; i++) std::cout << std::setw(8) << ja[i];
+        std::cout << std::endl;
+        for (MKL_INT i = 0; i <= dim; i++) std::cout << std::setw(8) << ia[i];
+        std::cout << std::endl;
     }
     
     template <typename T>
@@ -210,19 +247,22 @@ namespace qbasis {
     //}
 
     template <typename T>
-    void csr_mat<T>::prt() const
+    std::vector<T> csr_mat<T>::to_dense() const
     {
-        std::cout << "dim = " << dim << std::endl;
-        std::cout << "nnz = " << nnz << std::endl;
-        std::cout << (sym?"Upper triangle":"Full matrix") << std::endl;
-        for (MKL_INT i = 0; i < nnz; i++) std::cout << std::setw(8) << val[i];
-        std::cout << std::endl;
-        for (MKL_INT i = 0; i < nnz; i++) std::cout << std::setw(8) << ja[i];
-        std::cout << std::endl;
-        for (MKL_INT i = 0; i <= dim; i++) std::cout << std::setw(8) << ia[i];
-        std::cout << std::endl;
+        if (dim > 500) std::cout << "Warning: converting a large matrix to dense format!!!" << std::endl;
+        std::vector<T> res(dim*dim,static_cast<T>(0.0));
+        for (MKL_INT row = 0; row < dim; row++) {
+            MKL_INT pt_row_curr = ia[row];
+            MKL_INT pt_row_next = ia[row+1];
+            for (MKL_INT pt = pt_row_curr; pt < pt_row_next; pt++) {
+                MKL_INT col = ja[pt];
+                res[row + col * dim] = val[pt];
+                if (sym && row != col) res[col + row * dim] = conjugate(val[pt]);
+            }
+        }
+        return res;
     }
-
+    
     template <typename T>
     void swap(csr_mat<T> &lhs, csr_mat<T> &rhs)
     {

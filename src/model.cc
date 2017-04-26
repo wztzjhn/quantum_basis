@@ -90,7 +90,6 @@ namespace qbasis {
             for (uint32_t orb = 0; orb < n_orbs; orb++) // the order is important
                 for (uint32_t site = 0; site < n_sites; site++) state_new.siteWrite(props, site, orb, dist[pos++]);
             
-            
             while (state_num < job_array[chunk+1]) {
                 // check if the symmetries are obeyed
                 bool flag = true;
@@ -113,15 +112,20 @@ namespace qbasis {
                 #pragma omp critical
                 {
                     dim_full += basis_temp_job.size();
-                    //basis_temp.push_back(basis_temp_job);
                     basis_temp.push_back(std::move(basis_temp_job));     // think how to make sure it is a move operation here
                 }
             }
         }
+        basis_temp.sort();
         std::cout << "Hilbert space size with symmetry: " << dim_full << std::endl;
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl << std::endl;
+        start = end;
         
         // pick the fruits
         basis_full.clear();
+        std::cout << "Moving temporary basis (" << basis_temp.size() << " pieces) to basis_full... ";
         for (auto it = basis_temp.begin(); it != basis_temp.end(); it++) {
             basis_full.reserve(basis_full.size() + it->size());
             basis_full.insert(basis_full.end(), std::make_move_iterator(it->begin()), std::make_move_iterator(it->end()));
@@ -129,10 +133,9 @@ namespace qbasis {
             it->shrink_to_fit();
         }
         assert(dim_full == static_cast<MKL_INT>(basis_full.size()));
-        
         end = std::chrono::system_clock::now();
-        std::chrono::duration<double> elapsed_seconds = end - start;
-        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl << std::endl;
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
         
         sort_basis_full();
     }

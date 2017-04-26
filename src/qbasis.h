@@ -666,7 +666,6 @@ namespace qbasis {
         friend class csr_mat<T>;
     public:
         // default constructor
-        //lil_mat() : mtx(nullptr) {}
         lil_mat() = default;
         
         // constructor with the Hilbert space dimension
@@ -675,26 +674,11 @@ namespace qbasis {
         // add one element
         void add(const MKL_INT &row, const MKL_INT &col, const T &val);
         
-        
         // explicitly destroy, free space
-        void destroy()
-        {
-            mat.clear();
-            mat.shrink_to_fit();
-//            if (mtx != nullptr) {
-//                delete [] mtx;
-//                mtx = nullptr;
-//            }
-        }
+        void destroy();
         
         // destructor
-        ~lil_mat()
-        {
-//            if (mtx != nullptr) {
-//                delete [] mtx;
-//                mtx = nullptr;
-//            }
-        }
+        ~lil_mat() {};
         
         MKL_INT dimension() const { return dim; }
         
@@ -711,7 +695,6 @@ namespace qbasis {
         MKL_INT dim;    // dimension of the matrix
         MKL_INT nnz;    // number of non-zero entries
         bool sym;       // if storing only upper triangle
-        //std::mutex *mtx; // mutex for adding elements in parallel
         std::vector<std::forward_list<lil_mat_elem<T>>> mat;
     };
     
@@ -730,39 +713,21 @@ namespace qbasis {
         csr_mat(csr_mat<T> &&old) noexcept;
         
         // copy assignment constructor and move assignment constructor, using "swap and copy"
-        csr_mat& operator=(csr_mat<T> old)
-        {
-            swap(*this, old);
-            return *this;
-        }
+        csr_mat& operator=(csr_mat<T> old) { swap(*this, old); return *this; }
+        
+        // explicitly destroy, free space
+        void destroy();
+        
+        // destructor
+        ~csr_mat();
+        
+        // print
+        void prt() const;
+        
+        MKL_INT dimension() const {return dim; }
         
         // construcotr from a lil_mat, and if sym_ == true, use only the upper triangle
         csr_mat(const lil_mat<T> &old);
-        
-        // explicitly destroy, free space
-        void destroy()
-        {
-            if(val != nullptr) {
-                delete [] val;
-                val = nullptr;
-            }
-            if(ja != nullptr){
-                delete [] ja;
-                ja = nullptr;
-            }
-            if(ia != nullptr){
-                delete [] ia;
-                ia = nullptr;
-            }
-        }
-        
-        // destructor
-        ~csr_mat()
-        {
-            if(val != nullptr) delete [] val;
-            if(ja != nullptr) delete [] ja;
-            if(ia != nullptr) delete [] ia;
-        }
         
         // matrix vector product
         void MultMv(const T *x, T *y) const;
@@ -772,12 +737,6 @@ namespace qbasis {
         
         // matrix matrix product, x and y of shape dim * n
         //void MultMm(const T *x, T *y, MKL_INT n) const;
-        
-        
-        MKL_INT dimension() const {return dim; }
-        
-        // print
-        void prt() const;
         
     private:
         MKL_INT dim;
@@ -870,6 +829,7 @@ namespace qbasis {
         // 2D: site = (i + j * L[0]) * num_sub + sub
         // 3D: site = (i + j * L[0] + k * L[0] * L[1]) * num_sub + sub
         void coor2site(const std::vector<int> &coor, const int &sub, uint32_t &site) const;
+        
         void site2coor(std::vector<int> &coor, int &sub, const uint32_t &site) const;
         
         // return a vector containing the positions of each site after translation
@@ -949,14 +909,19 @@ namespace qbasis {
         ~model() {}
         
         void prt_Ham_diag() { Ham_diag.prt(); }
+        
         void prt_Ham_offdiag() { Ham_off_diag.prt(); }
         
         void add_diagonal_Ham(const opr<T> &rhs)      { assert(rhs.q_diagonal()); Ham_diag += rhs; }
+        
         void add_diagonal_Ham(const opr_prod<T> &rhs) { assert(rhs.q_diagonal()); Ham_diag += rhs; }
+        
         void add_diagonal_Ham(const mopr<T> &rhs)     { assert(rhs.q_diagonal()); Ham_diag += rhs; }
         
         void add_offdiagonal_Ham(const opr<T> &rhs)      { Ham_off_diag += rhs; }
+        
         void add_offdiagonal_Ham(const opr_prod<T> &rhs) { Ham_off_diag += rhs; }
+        
         void add_offdiagonal_Ham(const mopr<T> &rhs)     { Ham_off_diag += rhs; }
         
         // naive way of enumerating all possible basis state
@@ -970,13 +935,27 @@ namespace qbasis {
         void basis_init_repr(const std::vector<int> &momentum, const lattice &latt);
         
         void generate_Ham_sparse_full(const bool &upper_triangle = true); // generate the full Hamiltonian in sparse matrix format
+        
         void generate_Ham_sparse_repr(const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr
         
+        // generate matrix on the fly
+        void MultMv_full(T *x, T *y);  // to be compatible with arpack++
+        
+        void MultMv_repr(T *x, T *y);  // to be compatible with arpack++
+        
         void locate_E0_full(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
+        
         void locate_E0_repr(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
         
         void locate_Emax_full(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
+        
         void locate_Emax_repr(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
+        
+        double energy_min() { return E0; }
+        
+        double energy_max() { return Emax; }
+        
+        double energy_gap() { return gap; }
         
         // lhs | phi >
         void moprXeigenvec(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col = 0);
@@ -985,10 +964,7 @@ namespace qbasis {
         // < phi | lhs1^\dagger lhs2 | phi >
         T measure(const mopr<T> &lhs1, const mopr<T> &lhs2, const MKL_INT &which_col=0);
         
-        double energy_min() { return E0; }
-        double energy_max() { return Emax; }
-        double energy_gap() { return gap; }
-        
+
         // later add conserved quantum operators and corresponding quantum numbers
         // later add measurement operators
     
