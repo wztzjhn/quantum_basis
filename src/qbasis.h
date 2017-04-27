@@ -675,6 +675,8 @@ namespace qbasis {
         void add(const MKL_INT &row, const MKL_INT &col, const T &val);
         
         // explicitly destroy, free space
+        void destroy(const MKL_INT &row);
+        
         void destroy();
         
         // destructor
@@ -727,7 +729,8 @@ namespace qbasis {
         MKL_INT dimension() const {return dim; }
         
         // construcotr from a lil_mat, and if sym_ == true, use only the upper triangle
-        csr_mat(const lil_mat<T> &old);
+        // then destroy the lil_mat
+        csr_mat(lil_mat<T> &old);
         
         // matrix vector product
         void MultMv(const T *x, T *y) const;

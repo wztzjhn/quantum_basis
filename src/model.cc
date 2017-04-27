@@ -280,7 +280,6 @@ namespace qbasis {
             }
         }
         HamMat_csr_full = csr_mat<T>(matrix_lil);
-        matrix_lil.destroy();
         std::cout << "Hamiltonian generated." << std::endl;
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
@@ -321,7 +320,6 @@ namespace qbasis {
             }
         }
         HamMat_csr_repr = csr_mat<std::complex<double>>(matrix_lil);
-        matrix_lil.destroy();
         std::cout << "Hamiltonian generated." << std::endl;
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
@@ -332,6 +330,7 @@ namespace qbasis {
     template <typename T>
     void model<T>::MultMv_full(T *x, T *y)
     {
+        for (MKL_INT j = 0; j < dim_full; j++) y[j] = static_cast<T>(0.0);
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim_full; i++) {
             std::vector<std::pair<MKL_INT, T>> mat_free{std::pair<MKL_INT, T>(i,static_cast<T>(0.0))};
@@ -346,7 +345,6 @@ namespace qbasis {
                 if (std::abs(ele_new.second) > opr_precision)
                     mat_free.emplace_back(j, conjugate(ele_new.second));
             }
-            y[i] = static_cast<T>(0.0);
             for (auto it = mat_free.begin(); it < mat_free.end(); it++)
                 y[i] += (x[it->first] * it->second);
         }

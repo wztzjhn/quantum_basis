@@ -48,6 +48,13 @@ namespace qbasis {
     }
 
     template <typename T>
+    void lil_mat<T>::destroy(const MKL_INT &row)
+    {
+        assert(row >= 0 && row < dim);
+        mat[row].clear();
+    }
+    
+    template <typename T>
     void lil_mat<T>::destroy()
     {
         mat.clear();
@@ -69,60 +76,7 @@ namespace qbasis {
         }
     }
 
-
-    template <typename T>
-    csr_mat<T>::csr_mat(const lil_mat<T> &old) : dim(old.dim), nnz(old.nnz), sym(old.sym)
-    {
-        assert(old.nnz>0);
-        std::cout << "Converting LIL to CSR: " << std::endl;
-        std::cout << "# of Row and col:      " << dim << std::endl;
-        std::cout << "# of nonzero elements: " << nnz << std::endl;
-        auto capacity= sym ? static_cast<long long>(dim+1) * static_cast<long long>(dim) / 2 : static_cast<long long>(dim) * static_cast<long long>(dim);
-        std::cout << "# of all elements:     " << capacity << std::endl;
-        std::cout << "Sparsity:              " << static_cast<double>(nnz) / capacity << std::endl;
-        std::cout << "Matrix usage:          " << (sym?"Upper triangle":"Full") << std::endl;
-        val = new T[nnz];
-        ja = new MKL_INT[nnz];
-        ia = new MKL_INT[dim+1];
-        MKL_INT counts = 0;
-        for (decltype(dim) i = 0; i < dim; i++) {
-            assert(! old.mat[i].empty());                                        // at least storing the diagonal element
-            ia[i] = counts;
-            auto it = old.mat[i].begin();
-            while (it != old.mat[i].end()) {
-                assert(old.sym ? i <= it->col : true);
-                ja[counts] = it->col;
-                val[counts] = it->val;
-                ++it;
-                ++counts;
-            }
-        }
-        assert(counts == nnz);
-        ia[dim] = counts;
-        
-        if (! sym) {                                                             // check if matrix is hermitian
-            for (decltype(dim) row = 0; row < dim; row++) {
-                for (decltype(dim) j = ia[row]; j < ia[row+1]; j++) {            // check for each element in current row
-                    auto col = ja[j];
-                    if(row == col) continue;
-                    auto i = ia[col];
-                    while (i < ia[col+1] && ja[i] != row) i++;                   // until it's conjugate found
-                    if (i == ia[col+1] || std::abs(val[j] - std::conj(val[i])) > sparse_precision) {
-                        std::cout << "Hermitian check failed!!!" << std::endl;
-                        std::cout << "(row, col)    = (" << row << ", " << col << ")" << std::endl;
-                        std::cout << "mat(row, col) = " << val[j] << std::endl;
-                        if (i == ia[col+1]) {
-                            std::cout << "mat(col, row) NOT found!" << std::endl;
-                        } else {
-                            std::cout << "mat(col, row) = " << val[i] << std::endl;
-                        }
-                        std::exit(99);
-                    }
-                }
-            }
-        }
-    }
-
+    // --------- implementation of class csr (compressed row sparse matrix data structure) ----------
     template <typename T>
     csr_mat<T>::csr_mat(const csr_mat<T> &old) :
         dim(old.dim), nnz(old.nnz), sym(old.sym)
@@ -144,6 +98,7 @@ namespace qbasis {
             ia  = nullptr;
         }
     }
+    
     template <typename T>
     csr_mat<T>::csr_mat(csr_mat<T> &&old) noexcept :
         dim(old.dim), nnz(old.nnz), sym(old.sym),
@@ -153,7 +108,7 @@ namespace qbasis {
         old.ja  = nullptr;
         old.ia  = nullptr;
     }
-    
+
     template <typename T>
     void csr_mat<T>::destroy()
     {
@@ -200,6 +155,61 @@ namespace qbasis {
         std::cout << std::endl;
         for (MKL_INT i = 0; i <= dim; i++) std::cout << std::setw(8) << ia[i];
         std::cout << std::endl;
+    }
+    
+    template <typename T>
+    csr_mat<T>::csr_mat(lil_mat<T> &old) : dim(old.dim), nnz(old.nnz), sym(old.sym)
+    {
+        assert(old.nnz>0);
+        std::cout << "Converting LIL to CSR: " << std::endl;
+        std::cout << "# of Row and col:      " << dim << std::endl;
+        std::cout << "# of nonzero elements: " << nnz << std::endl;
+        auto capacity= sym ? static_cast<long long>(dim+1) * static_cast<long long>(dim) / 2 : static_cast<long long>(dim) * static_cast<long long>(dim);
+        std::cout << "# of all elements:     " << capacity << std::endl;
+        std::cout << "Sparsity:              " << static_cast<double>(nnz) / capacity << std::endl;
+        std::cout << "Matrix usage:          " << (sym?"Upper triangle":"Full") << std::endl;
+        val = new T[nnz];
+        ja = new MKL_INT[nnz];
+        ia = new MKL_INT[dim+1];
+        MKL_INT counts = 0;
+        for (decltype(dim) i = 0; i < dim; i++) {
+            assert(! old.mat[i].empty());                                        // at least storing the diagonal element
+            ia[i] = counts;
+            auto it = old.mat[i].begin();
+            while (it != old.mat[i].end()) {
+                assert(old.sym ? i <= it->col : true);
+                ja[counts] = it->col;
+                val[counts] = it->val;
+                ++it;
+                ++counts;
+            }
+            old.destroy(i);
+        }
+        assert(counts == nnz);
+        ia[dim] = counts;
+        old.destroy();
+        
+        if (! sym) {                                                             // check if matrix is hermitian
+            for (decltype(dim) row = 0; row < dim; row++) {
+                for (decltype(dim) j = ia[row]; j < ia[row+1]; j++) {            // check for each element in current row
+                    auto col = ja[j];
+                    if(row == col) continue;
+                    auto i = ia[col];
+                    while (i < ia[col+1] && ja[i] != row) i++;                   // until it's conjugate found
+                    if (i == ia[col+1] || std::abs(val[j] - std::conj(val[i])) > sparse_precision) {
+                        std::cout << "Hermitian check failed!!!" << std::endl;
+                        std::cout << "(row, col)    = (" << row << ", " << col << ")" << std::endl;
+                        std::cout << "mat(row, col) = " << val[j] << std::endl;
+                        if (i == ia[col+1]) {
+                            std::cout << "mat(col, row) NOT found!" << std::endl;
+                        } else {
+                            std::cout << "mat(col, row) = " << val[i] << std::endl;
+                        }
+                        std::exit(99);
+                    }
+                }
+            }
+        }
     }
     
     template <typename T>
