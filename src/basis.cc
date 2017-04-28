@@ -14,6 +14,7 @@ namespace qbasis {
         dilute(dilute_)
     {
         bits_per_site = static_cast<uint8_t>(ceil(log2(static_cast<double>(dim_local)) - 1e-9));
+        name = "unknown";
         if (! dilute_) {
             num_bytes = static_cast<uint16_t>((bits_per_site * num_sites) / 8 + 1);
             bits_ignore = static_cast<uint8_t>(num_bytes * 8 - bits_per_site * num_sites);
@@ -24,7 +25,7 @@ namespace qbasis {
     }
     
     basis_prop::basis_prop(const uint32_t &n_sites, const std::string &s):
-        num_sites(n_sites)
+        num_sites(n_sites), name(s)
     {
         if (s == "spin-1/2") {
             dim_local = 2;                            // { |up>, |dn> }

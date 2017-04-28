@@ -174,6 +174,7 @@ namespace qbasis {
         uint16_t num_bytes;                     // for multi-orbital system, sum of num_bytes < 65536
         uint32_t num_sites;
         std::vector<uint32_t> Nfermion_map;     // Nfermion_map[i] corresponds to the number of fermions of state i
+        std::string name;                       // store the name of the basis
         bool dilute;                            // if dilute, bit-rep is not a good representation
     };
     
@@ -877,6 +878,8 @@ namespace qbasis {
         std::vector<std::string> bc;         // boundary condition
         std::vector<std::vector<double>> a;  // real space basis
         std::vector<std::vector<double>> b;  // momentum space basis
+        // one more variable here, denoting the divide and conquer partition
+        // if empty(false), then force to store the matrix when working with translational symmetry
         uint32_t dim;
         uint32_t num_sub;
         uint32_t Nsites;
@@ -950,13 +953,13 @@ namespace qbasis {
         void MultMv(const T *x, T *y) const;
         void MultMv(T *x, T *y);  // to be compatible with arpack++
         
-        void locate_E0_full(const MKL_INT &nev = 10, const MKL_INT &ncv = 20, const bool &matrix_free = true);
+        void locate_E0_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, const bool &matrix_free = true);
         
-        void locate_E0_repr(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
+        void locate_E0_repr(const MKL_INT &nev = 2, const MKL_INT &ncv = 6);
         
-        void locate_Emax_full(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
+        void locate_Emax_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6);
         
-        void locate_Emax_repr(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
+        void locate_Emax_repr(const MKL_INT &nev = 2, const MKL_INT &ncv = 6);
         
         double energy_min() { return E0; }
         
