@@ -6,6 +6,7 @@
 int main() {
     std::cout << std::setprecision(10);
     // parameters
+    bool matrix_free = false;
     double J1 = 1.0;
     int Lx = 4;
     int Ly = 2;
@@ -89,13 +90,15 @@ int main() {
     Heisenberg.enumerate_basis_full(lattice.total_sites(), {"spin-1/2"}, {Sz_total}, {Sz_total_val});
 
 
-    // generating matrix of the Hamiltonian in the full Hilbert space
-    Heisenberg.generate_Ham_sparse_full();
-    std::cout << std::endl;
+    if (! matrix_free) {
+        // generating matrix of the Hamiltonian in the full Hilbert space
+        Heisenberg.generate_Ham_sparse_full();
+        std::cout << std::endl;
+    }
 
 
     // obtaining the eigenvals of the matrix
-    Heisenberg.locate_E0_full();
+    Heisenberg.locate_E0_full(10,20,matrix_free);
     std::cout << std::endl;
 
 

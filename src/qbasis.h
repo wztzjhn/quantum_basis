@@ -780,8 +780,8 @@ namespace qbasis {
     //              b[3]  a[3] b[4]
     //                    ..  ..  ..    b[k-1]
     //                          b[k-1]  a[k-1]
-    template <typename T>
-    void lanczos(MKL_INT k, MKL_INT np, const csr_mat<T> &mat, double &rnorm, T resid[],
+    template <typename T, typename MAT>
+    void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const MAT &mat, double &rnorm, T resid[],
                  T v[], double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps = true);
     
     // if possible, add a block Arnoldi version here
@@ -813,8 +813,8 @@ namespace qbasis {
     // ncv: length of each individual lanczos process
     // 2 < nev + 2 <= ncv
     // when not using arpack++, we can modify the property of mat to be const
-    template <typename T>
-    void iram(csr_mat<T> &mat, T v0[], const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
+    template <typename T, typename MAT>
+    void iram(const MKL_INT &dim, MAT &mat, T v0[], const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
               const std::string &order, double eigenvals[], T eigenvecs[], const bool &use_arpack = true);
     
     
@@ -891,6 +891,7 @@ namespace qbasis {
 //                                                  threads_pool &);
     public:
         std::vector<basis_prop> props;
+        std::vector<bool> sym_translation;
         MKL_INT dim_full;
         MKL_INT dim_repr;
         mopr<T> Ham_diag;
@@ -928,9 +929,10 @@ namespace qbasis {
         void add_offdiagonal_Ham(const mopr<T> &rhs)     { Ham_off_diag += rhs; }
         
         // naive way of enumerating all possible basis state
-        void enumerate_basis_full(const uint32_t &n_sites, std::initializer_list<std::string> lst,
+        void enumerate_basis_full(const lattice &latt, std::initializer_list<std::string> lst,
                                   std::initializer_list<mopr<std::complex<double>>> conserve_lst = {},
-                                  std::initializer_list<double> val_lst = {});
+                                  std::initializer_list<double> val_lst = {},
+                                  const bool &use_translation = true);
         
         void sort_basis_full();
         
@@ -941,12 +943,14 @@ namespace qbasis {
         
         void generate_Ham_sparse_repr(const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr
         
+        // generate a dense matrix of the Hamiltonian
+        std::vector<std::complex<double>> to_dense();
+        
         // generate matrix on the fly
-        void MultMv_full(T *x, T *y);  // to be compatible with arpack++
+        void MultMv(const T *x, T *y) const;
+        void MultMv(T *x, T *y);  // to be compatible with arpack++
         
-        void MultMv_repr(T *x, T *y);  // to be compatible with arpack++
-        
-        void locate_E0_full(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
+        void locate_E0_full(const MKL_INT &nev = 10, const MKL_INT &ncv = 20, const bool &matrix_free = true);
         
         void locate_E0_repr(const MKL_INT &nev = 10, const MKL_INT &ncv = 20);
         
@@ -975,6 +979,9 @@ namespace qbasis {
         double Emax;
         double E0;
         double gap;
+        
+        // check if translational symmetry satisfied
+        void check_translation(const lattice &latt);
     };
     
     

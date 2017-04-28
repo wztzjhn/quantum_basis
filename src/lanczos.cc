@@ -9,11 +9,10 @@ namespace qbasis {
     // 1. ask lanczos to restart with a new linearly independent vector when v_m+1 = 0
     // 2. need add DGKS re-orthogonalization (when MemoSteps == true)
     // 3. add partial and selective re-orthogonalization (when MemoSteps == false)
-    template <typename T>
-    void lanczos(MKL_INT k, MKL_INT np, const csr_mat<T> &mat, double &rnorm, T resid[],
+    template <typename T, typename MAT>
+    void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const MAT &mat, double &rnorm, T resid[],
                  T v[], double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps)
     {
-        MKL_INT dim = mat.dimension();
         MKL_INT m   = k + np;
         assert(m <= ldh && k >= 0 && k < dim && np >=0 && np < dim);
         assert(m < dim);                                                          // # of orthogonal vectors: at most dim
@@ -241,22 +240,22 @@ namespace qbasis {
     }
 
     // interface to arpack++
-    void call_arpack(csr_mat<double> &mat, double v0[],
+    void call_arpack(const MKL_INT &dim, csr_mat<double> &mat, double v0[],
                      const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv, MKL_INT &niter,
                      const std::string &order, double eigenvals[], double eigenvecs[])
     {
         ARSymStdEig<double, csr_mat<double>>
-            prob(mat.dimension(), nev, &mat, &csr_mat<double>::MultMv, order, ncv, 0.0, 0, v0);
+            prob(dim, nev, &mat, &csr_mat<double>::MultMv, order, ncv, 0.0, 0, v0);
         prob.EigenValVectors(eigenvecs, eigenvals);
         nconv = prob.ConvergedEigenvalues();
         niter = prob.GetIter();
     }
-    void call_arpack(csr_mat<std::complex<double>> &mat, std::complex<double> v0[],
+    void call_arpack(const MKL_INT &dim, csr_mat<std::complex<double>> &mat, std::complex<double> v0[],
                      const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv, MKL_INT &niter,
                      const std::string &order, double eigenvals[], std::complex<double> eigenvecs[])
     {
         std::complex<double> *eigenvals_copy = new std::complex<double>[nev];
-        ARCompStdEig<double, csr_mat<std::complex<double>>> prob(mat.dimension(), nev, &mat,
+        ARCompStdEig<double, csr_mat<std::complex<double>>> prob(dim, nev, &mat,
                                                                  &csr_mat<std::complex<double>>::MultMv,
                                                                  order, ncv, 0.0, 0, v0);
         prob.EigenValVectors(eigenvecs, eigenvals_copy);
@@ -268,12 +267,28 @@ namespace qbasis {
         }
         delete [] eigenvals_copy;
     }
+    void call_arpack(const MKL_INT &dim, model<std::complex<double>> &mat, std::complex<double> v0[],
+                     const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv, MKL_INT &niter,
+                     const std::string &order, double eigenvals[], std::complex<double> eigenvecs[])
+    {
+        std::complex<double> *eigenvals_copy = new std::complex<double>[nev];
+        ARCompStdEig<double, model<std::complex<double>>> prob(dim, nev, &mat,
+                                                               &model<std::complex<double>>::MultMv,
+                                                               order, ncv, 0.0, 0, v0);
+        prob.EigenValVectors(eigenvecs, eigenvals_copy);
+        nconv = prob.ConvergedEigenvalues();
+        niter = prob.GetIter();
+        for (MKL_INT j = 0; j < nconv; j++) {
+            assert(std::abs(eigenvals_copy[j].imag()) < lanczos_precision);
+            eigenvals[j] = eigenvals_copy[j].real();
+        }
+        delete [] eigenvals_copy;
+    }
 
-    template <typename T>
-    void iram(csr_mat<T> &mat, T v0[], const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
+    template <typename T, typename MAT>
+    void iram(const MKL_INT &dim, MAT &mat, T v0[], const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
               const std::string &order, double eigenvals[], T eigenvecs[], const bool &use_arpack)
     {
-        MKL_INT dim = mat.dimension();
         MKL_INT np = ncv - nev;
         MKL_INT niter;
         
@@ -313,7 +328,7 @@ namespace qbasis {
             std::string order_cap(order);
             std::vector<T> eigenvecs_copy(nev*dim);
             std::transform(order_cap.begin(), order_cap.end(), order_cap.begin(), ::toupper);
-            call_arpack(mat, v0, nev, ncv, nconv, niter, order_cap, eigenvals, eigenvecs_copy.data());
+            call_arpack(dim, mat, v0, nev, ncv, nconv, niter, order_cap, eigenvals, eigenvecs_copy.data());
             // sort the arpack eigenvals
             assert(nconv > 0);
             std::vector<std::pair<double, MKL_INT>> eigenvals_copy(nconv);
@@ -352,14 +367,14 @@ namespace qbasis {
             double rnorm = nrm2(dim, v0, 1);
             axpy(dim, 1.0/rnorm, v0, 1, resid.data(), 1);                              // resid = v0 normalized
             rnorm = 0.0;
-            lanczos(0, ncv, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv, true);
+            lanczos(0, ncv, dim, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv, true);
 
             MKL_INT step = 0, step_max=100;
             while (step < step_max) {
                 select_shifts(hessenberg.data(), ncv, ncv, order, ritz.data());
                 perform_shifts(dim, ncv, np, ritz.data()+nev, rnorm, resid.data(), v.data(),
                                hessenberg.data(), ncv, Q.data(), ncv);
-                lanczos(nev, np, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv, true);
+                lanczos(nev, np, dim, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv, true);
                 for (MKL_INT j = 0; j < nev; j++) {
                     std::cout << std::setw(16) << ritz[j];
                 }
@@ -378,28 +393,42 @@ namespace qbasis {
     }
 
     // Explicit instantiation
-    template void lanczos(MKL_INT k, MKL_INT np, const csr_mat<double> &mat,
-                          double &rnorm, double resid[], double v[],
+//    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const csr_mat<double> &mat,
+//                          double &rnorm, double resid[], double v[],
+//                          double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps);
+    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const csr_mat<std::complex<double>> &mat,
+                          double &rnorm, std::complex<double> resid[], std::complex<double> v[],
                           double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps);
-    template void lanczos(MKL_INT k, MKL_INT np, const csr_mat<std::complex<double>> &mat,
+//    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const model<double> &mat,
+//                          double &rnorm, double resid[], double v[],
+//                          double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps);
+    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const model<std::complex<double>> &mat,
                           double &rnorm, std::complex<double> resid[], std::complex<double> v[],
                           double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps);
 
-    template void hess2matform(const double hessenberg[], double mat[], const MKL_INT &m, const MKL_INT &ldh);
+    //template void hess2matform(const double hessenberg[], double mat[], const MKL_INT &m, const MKL_INT &ldh);
     template void hess2matform(const double hessenberg[], std::complex<double> mat[], const MKL_INT &m, const MKL_INT &ldh);
 
-    template void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
-                                 double &rnorm, double resid[], double v[], double hessenberg[], const MKL_INT &ldh,
-                                 double Q[], const MKL_INT &ldq);
+//    template void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
+//                                 double &rnorm, double resid[], double v[], double hessenberg[], const MKL_INT &ldh,
+//                                 double Q[], const MKL_INT &ldq);
     template void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
                                  double &rnorm, std::complex<double> resid[], std::complex<double> v[], double hessenberg[], const MKL_INT &ldh,
                                  double Q[], const MKL_INT &ldq);
 
-    template void iram(csr_mat<double> &mat, double v0[],
+//    template void iram(const MKL_INT &dim, csr_mat<double> &mat, double v0[],
+//                       const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
+//                       const std::string &order, double eigenvals[], double eigenvecs[],
+//                       const bool &use_arpack);
+    template void iram(const MKL_INT &dim, csr_mat<std::complex<double>> &mat, std::complex<double> v0[],
                        const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
-                       const std::string &order, double eigenvals[], double eigenvecs[],
+                       const std::string &order, double eigenvals[], std::complex<double> eigenvecs[],
                        const bool &use_arpack);
-    template void iram(csr_mat<std::complex<double>> &mat, std::complex<double> v0[],
+//    template void iram(const MKL_INT &dim, model<double> &mat, double v0[],
+//                       const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
+//                       const std::string &order, double eigenvals[], double eigenvecs[],
+//                       const bool &use_arpack);
+    template void iram(const MKL_INT &dim, model<std::complex<double>> &mat, std::complex<double> v0[],
                        const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
                        const std::string &order, double eigenvals[], std::complex<double> eigenvecs[],
                        const bool &use_arpack);

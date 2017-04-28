@@ -9,6 +9,7 @@ int main() {
     std::cout << "E0 not checked by any means yet (haven't setup ALPS correctly)." << std::endl;
     std::cout << "If you know a good reference or tool (or alps scripts), please contact me. Thanks!" << std::endl << std::endl;
     // parameters
+    bool matrix_free = false;
     double t = 1;
     double J_Kondo = 1.1;
     double J_RKKY = 0.0;         // artificial RKKY
@@ -110,13 +111,14 @@ int main() {
     Kondo.enumerate_basis_full(lattice.total_sites(), {"electron","spin-1/2"}, {Nelec_total}, {Nelec_total_val});
 
 
-    // generating matrix of the Hamiltonian in the full Hilbert space
-    Kondo.generate_Ham_sparse_full();
-    std::cout << std::endl;
-
+    if (! matrix_free) {
+        // generating matrix of the Hamiltonian in the full Hilbert space
+        Kondo.generate_Ham_sparse_full();
+        std::cout << std::endl;
+    }
 
     // obtaining the eigenvals of the matrix
-    Kondo.locate_E0_full();
+    Kondo.locate_E0_full(10,20,matrix_free);
     std::cout << std::endl;
 
 

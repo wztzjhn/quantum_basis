@@ -6,6 +6,7 @@
 int main() {
     std::cout << std::setprecision(10);
     // parameters
+    bool matrix_free = false;
     double t = 1;
     double U = 1.1;
     int Lx = 3;
@@ -90,13 +91,15 @@ int main() {
     Hubbard.enumerate_basis_full(lattice.total_sites(), {"electron"}, {Nup,Ndown}, {Nup_total,Ndn_total});
 
 
-    // generating matrix of the Hamiltonian in the full Hilbert space
-    Hubbard.generate_Ham_sparse_full();
-    std::cout << std::endl;
+    if (! matrix_free) {
+        // generating matrix of the Hamiltonian in the full Hilbert space
+        Hubbard.generate_Ham_sparse_full();
+        std::cout << std::endl;
+    }
 
 
     // obtaining the eigenvals of the matrix
-    Hubbard.locate_E0_full();
+    Hubbard.locate_E0_full(10,20,matrix_free);
     std::cout << std::endl;
 
 

@@ -5,12 +5,29 @@
 #include "qbasis.h"
 
 namespace qbasis {
+    template <typename T>
+    void model<T>::check_translation(const lattice &latt)
+    {
+        std::cout << "Checking translational symmetry." << std::endl;
+        std::cout << "In the future replace this check with serious stuff!" << std::endl;
+        sym_translation.clear();
+        auto bc = latt.boundary();
+        for (uint32_t j = 0; j < latt.dimension(); j++) {
+            if (bc[j] == "pbc" || bc[j] == "PBC") {
+                sym_translation.push_back(true);
+            } else {
+                sym_translation.push_back(false);
+            }
+        }
+    }
+    
     
     // need further optimization! (for example, special treatment of dilute limit; special treatment of quantum numbers; quick sort of sign)
     template <typename T>
-    void model<T>::enumerate_basis_full(const uint32_t &n_sites, std::initializer_list<std::string> lst,
+    void model<T>::enumerate_basis_full(const lattice &latt, std::initializer_list<std::string> lst,
                                         std::initializer_list<mopr<std::complex<double>>> conserve_lst,
-                                        std::initializer_list<double> val_lst)
+                                        std::initializer_list<double> val_lst,
+                                        const bool &use_translation)
     {
         #pragma omp parallel
         {
@@ -326,9 +343,47 @@ namespace qbasis {
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
     
+    template <typename T>
+    std::vector<std::complex<double>> model<T>::to_dense()
+    {
+        assert(false);
+//        if (! latt_syms.empty()) {
+//            generate_Ham_sparse_repr();
+//            return HamMat_csr_repr.to_dense();
+//        } else {
+//            generate_Ham_sparse_full();
+//            auto temp = HamMat_csr_full.to_dense();
+//            std::vector<std::complex<double>> res(temp.size());
+//            for (decltype(temp.size()) j = 0; j < temp.size(); j++) res[j] = std::complex<double>(temp[j]);
+//            return res;
+//        }
+    }
     
     template <typename T>
-    void model<T>::MultMv_full(T *x, T *y)
+    void model<T>::MultMv(const T *x, T *y) const
+    {
+        for (MKL_INT j = 0; j < dim_full; j++) y[j] = static_cast<T>(0.0);
+        #pragma omp parallel for schedule(dynamic,1)
+        for (MKL_INT i = 0; i < dim_full; i++) {
+            std::vector<std::pair<MKL_INT, T>> mat_free{std::pair<MKL_INT, T>(i,static_cast<T>(0.0))};
+            for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
+                mat_free[0].second += basis_full[i].diagonal_operator(props, Ham_diag[cnt]);
+            qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[i], props);
+            intermediate_state.simplify();
+            for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
+                auto &ele_new = intermediate_state[cnt];
+                MKL_INT j = binary_search(basis_full, ele_new.first, 0, dim_full);       // < j | H | i > obtained
+                assert(j != -1);
+                if (std::abs(ele_new.second) > opr_precision)
+                    mat_free.emplace_back(j, conjugate(ele_new.second));
+            }
+            for (auto it = mat_free.begin(); it < mat_free.end(); it++)
+                y[i] += (x[it->first] * it->second);
+        }
+    }
+    
+    template <typename T>
+    void model<T>::MultMv(T *x, T *y)
     {
         for (MKL_INT j = 0; j < dim_full; j++) y[j] = static_cast<T>(0.0);
         #pragma omp parallel for schedule(dynamic,1)
@@ -352,16 +407,20 @@ namespace qbasis {
     
     
     template <typename T>
-    void model<T>::locate_E0_full(const MKL_INT &nev, const MKL_INT &ncv)
+    void model<T>::locate_E0_full(const MKL_INT &nev, const MKL_INT &ncv, const bool &matrix_free)
     {
         assert(ncv > nev + 1);
         std::cout << "Calculating ground state..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        std::vector<T> v0(HamMat_csr_full.dimension(), 1.0);
+        std::vector<T> v0(dim_full, 1.0);
         eigenvals_full.resize(nev);
-        eigenvecs_full.resize(HamMat_csr_full.dimension() * nev);
-        qbasis::iram(HamMat_csr_full, v0.data(), nev, ncv, nconv, "sr", eigenvals_full.data(), eigenvecs_full.data());
+        eigenvecs_full.resize(dim_full * nev);
+        if (matrix_free) {
+            iram(dim_full, *this, v0.data(), nev, ncv, nconv, "sr", eigenvals_full.data(), eigenvecs_full.data());
+        } else {
+            iram(dim_full, HamMat_csr_full, v0.data(), nev, ncv, nconv, "sr", eigenvals_full.data(), eigenvecs_full.data());
+        }
         assert(nconv > 1);
         E0 = eigenvals_full[0];
         gap = eigenvals_full[1] - eigenvals_full[0];
@@ -386,7 +445,7 @@ namespace qbasis {
         std::vector<std::complex<double>> v0(HamMat_csr_repr.dimension(), 1.0);
         eigenvals_repr.resize(nev);
         eigenvecs_repr.resize(HamMat_csr_repr.dimension() * nev);
-        qbasis::iram(HamMat_csr_repr, v0.data(), nev, ncv, nconv, "sr", eigenvals_repr.data(), eigenvecs_repr.data());
+        qbasis::iram(dim_repr, HamMat_csr_repr, v0.data(), nev, ncv, nconv, "sr", eigenvals_repr.data(), eigenvecs_repr.data());
         assert(nconv > 1);
         E0 = eigenvals_repr[0];
         gap = eigenvals_repr[1] - eigenvals_repr[0];
@@ -408,7 +467,7 @@ namespace qbasis {
         std::vector<T> v0(HamMat_csr_full.dimension(), 1.0);
         eigenvals_full.resize(nev);
         eigenvecs_full.resize(HamMat_csr_full.dimension() * nev);
-        qbasis::iram(HamMat_csr_full, v0.data(), nev, ncv, nconv, "lr", eigenvals_full.data(), eigenvecs_full.data());
+        qbasis::iram(dim_full, HamMat_csr_full, v0.data(), nev, ncv, nconv, "lr", eigenvals_full.data(), eigenvecs_full.data());
         assert(nconv > 0);
         Emax = eigenvals_full[0];
         end = std::chrono::system_clock::now();
@@ -431,7 +490,7 @@ namespace qbasis {
         std::vector<std::complex<double>> v0(HamMat_csr_repr.dimension(), 1.0);
         eigenvals_repr.resize(nev);
         eigenvecs_repr.resize(HamMat_csr_repr.dimension() * nev);
-        qbasis::iram(HamMat_csr_repr, v0.data(), nev, ncv, nconv, "lr", eigenvals_repr.data(), eigenvecs_repr.data());
+        qbasis::iram(dim_repr, HamMat_csr_repr, v0.data(), nev, ncv, nconv, "lr", eigenvals_repr.data(), eigenvecs_repr.data());
         assert(nconv > 0);
         Emax = eigenvals_repr[0];
         end = std::chrono::system_clock::now();
@@ -562,7 +621,7 @@ namespace qbasis {
     
     
     // Explicit instantiation
-    template class model<double>;
+    //template class model<double>;
     template class model<std::complex<double>>;
 
 }
