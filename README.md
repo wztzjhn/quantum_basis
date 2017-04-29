@@ -3,12 +3,13 @@ Basis of condensed matter quantum lattice problems, for usage in exact diagonali
 
 ## Examples
 To learn how to use this library to design ED code for your own models, please refer to the folder "examples" (each complete example is about 100 lines):
-- Heisenberg spin-1/2 Model on triangular lattice
+- Heisenberg spin-1/2 chain
+- Heisenberg spin-1 chain
+- Heisenberg spin-1/2 triangular lattice
 - Fermi-Hubbard Model on square lattice
-- Kondo Lattice model on a chain (currently the gap has been checked, but E0 not checked yet)
-- Bose-Hubbard Model on square lattice (to be filled up)
-- tJ model on kagome lattice (to be filled up)
-- xxz spin-1 model on kagome lattice (to be filled up)
+- Bose-Hubbard Model on square lattice
+- tJ Model on kagome lattice (to be filled up)
+- Kondo Lattice Model on a chain (currently the gap has been checked, but E0 not checked yet)
 
 ## Dependencies:
 - [MKL](https://software.intel.com/en-us/intel-mkl) (some old versions may not work)

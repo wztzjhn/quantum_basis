@@ -6,7 +6,7 @@
 int main() {
     std::cout << std::setprecision(10);
     // parameters
-    double J = 0.25;
+    double J = 1.0;
     int L = 16;
 
     std::cout << "L =       " << L << std::endl;
@@ -72,5 +72,5 @@ int main() {
 
 
     // for the parameters considered, we should obtain:
-    //assert(std::abs(Kondo.eigenvals_full[0] + 5.477455514) < 1e-8);
+    assert(std::abs(Heisenberg.eigenvals_full[0] + 7.142296361) < 1e-8);
 }
