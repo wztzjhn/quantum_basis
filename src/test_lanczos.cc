@@ -24,19 +24,7 @@ void test_lanczos_memoAll() {
     sp_lil.add(3,6,2.0);
     qbasis::csr_mat<std::complex<double>> sp_csr_uppper(sp_lil);
     
-    sp_lil.use_full_matrix();
-    sp_lil.add(3,2,8.0);
-    sp_lil.add(3,0,2.0);
-    sp_lil.add(4,2,std::complex<double>(9.0, -2.0));
-    sp_lil.add(3,1,5.0);
-    sp_lil.add(6,1,5.0);
-    sp_lil.add(7,1,4.0);
-    sp_lil.add(6,3,2.0);
-    qbasis::csr_mat<std::complex<double>> sp_csr_full(sp_lil);
-    sp_lil.destroy();
-    
-    sp_csr_full.prt();
-    auto dense_mat = sp_csr_full.to_dense();
+    auto dense_mat = sp_csr_uppper.to_dense();
     for (MKL_INT row = 0; row < dim; row++) {
         for (MKL_INT col = 0; col < dim; col++) {
             std::cout << dense_mat[row + col * dim] << "\t";
@@ -54,7 +42,7 @@ void test_lanczos_memoAll() {
     double betak_up = 0.0;
     for (MKL_INT i=0; i<dim; i++) resid_up[i] = x[i];
     
-    lanczos(0, m, sp_csr_uppper, betak_up, resid_up, v_up, hessenberg_up, ldh);
+    lanczos(0, m, dim, sp_csr_uppper, betak_up, resid_up, v_up, hessenberg_up, ldh);
     
     std::complex<double> *hess_up= new std::complex<double>[ldh*ldh];
     qbasis::hess2matform(hessenberg_up, hess_up, m, ldh);
@@ -88,7 +76,7 @@ void test_lanczos_memoAll() {
     double betak_full = 0.0;
     for (MKL_INT i=0; i<dim; i++) resid_full[i] = x[i];
     
-    lanczos(0, m, sp_csr_full, betak_full, resid_full, v_full, hessenberg_full, ldh);
+    lanczos(0, m, dim, sp_csr_uppper, betak_full, resid_full, v_full, hessenberg_full, ldh);
     
     assert(std::abs(betak_up - betak_full) < qbasis::lanczos_precision);
     for (MKL_INT j = 0; j < dim*m; j++) {
@@ -136,7 +124,7 @@ void test_iram()
     MKL_INT nev = 2, ncv = 5, nconv;
     std::vector<double> eigenvals(nev), tol(nev);
     std::vector<std::complex<double>> eigenvecs(nev * dim);
-    iram(sp_csr_uppper, x.data(), nev, ncv, nconv, "sr", eigenvals.data(), eigenvecs.data(), true);
+    iram(dim, sp_csr_uppper, x.data(), nev, ncv, nconv, "sr", eigenvals.data(), eigenvecs.data(), true);
     assert(nconv == 2);
     assert(std::abs(eigenvals[0] + 5.2955319) < 0.000001);
     assert(std::abs(eigenvals[1] + 3.3838164) < 0.000001);

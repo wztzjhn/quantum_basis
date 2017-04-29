@@ -37,6 +37,7 @@ int main() {
 
     // constructing the Hamiltonian in operator representation
     qbasis::model<std::complex<double>> Hubbard;
+    Hubbard.add_orbital(lattice.total_sites(), "electron");
     qbasis::mopr<std::complex<double>> Nup;   // operators representating total electron number
     qbasis::mopr<std::complex<double>> Ndown;
     for (int x = 0; x < Lx; x++) {
@@ -88,7 +89,7 @@ int main() {
 
 
     // constructing the Hilbert space basis
-    Hubbard.enumerate_basis_full(lattice.total_sites(), {"electron"}, {Nup,Ndown}, {Nup_total,Ndn_total});
+    Hubbard.enumerate_basis_full(lattice, {Nup,Ndown}, {Nup_total,Ndn_total});
 
 
     if (! matrix_free) {

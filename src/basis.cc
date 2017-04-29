@@ -24,7 +24,7 @@ namespace qbasis {
         
     }
     
-    basis_prop::basis_prop(const uint32_t &n_sites, const std::string &s):
+    basis_prop::basis_prop(const uint32_t &n_sites, const std::string &s, const extra_info &ex):
         num_sites(n_sites), name(s)
     {
         if (s == "spin-1/2") {
@@ -51,6 +51,13 @@ namespace qbasis {
             dim_local = 2;
             Nfermion_map = std::vector<uint32_t>{0,1};
             dilute = false;
+        } else if (s == "boson") {                    // { |0>, |1>, ... |Nmax> }
+            dim_local = ex.Nmax + 1;
+            Nfermion_map = std::vector<uint32_t>();
+            dilute = false;
+        } else {
+            std::cout << "basis " << s << " not provided yet" << std::endl;
+            assert(false);
         }
         bits_per_site = static_cast<uint8_t>(ceil(log2(static_cast<double>(dim_local)) - 1e-9));
         assert(bits_per_site <= 8);

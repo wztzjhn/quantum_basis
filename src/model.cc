@@ -24,7 +24,7 @@ namespace qbasis {
     
     // need further optimization! (for example, special treatment of dilute limit; special treatment of quantum numbers; quick sort of sign)
     template <typename T>
-    void model<T>::enumerate_basis_full(const lattice &latt, std::initializer_list<std::string> lst,
+    void model<T>::enumerate_basis_full(const lattice &latt,
                                         std::initializer_list<mopr<std::complex<double>>> conserve_lst,
                                         std::initializer_list<double> val_lst,
                                         const bool &use_translation)
@@ -38,9 +38,8 @@ namespace qbasis {
             }
         }
         
+        uint32_t n_sites = latt.total_sites();
         assert(conserve_lst.size() == val_lst.size());
-        props.clear();
-        for (auto &name : lst) props.emplace_back(n_sites,name);
         
         std::list<std::vector<mbasis_elem>> basis_temp;
         auto GS = mbasis_elem(props);

@@ -34,6 +34,7 @@ int main() {
 
     // constructing the Hamiltonian in operator representation
     qbasis::model<std::complex<double>> Heisenberg;
+    Heisenberg.add_orbital(lattice.total_sites(), "spin-1/2");
     for (int x = 0; x < L; x++) {
         uint32_t site_i, site_j;
         lattice.coor2site(std::vector<int>{x}, 0, site_i); // obtain site label of (x)
@@ -57,7 +58,7 @@ int main() {
 
 
     // constructing the Hilbert space basis
-    Heisenberg.enumerate_basis_full(lattice.total_sites(), {"spin-1/2"}, {}, {});
+    Heisenberg.enumerate_basis_full(lattice, {}, {});
 
 
     // generating matrix of the Hamiltonian in the full Hilbert space
@@ -66,7 +67,7 @@ int main() {
 
 
     // obtaining the eigenvals of the matrix
-    Heisenberg.locate_E0_full();
+    Heisenberg.locate_E0_full(10,20,false);
     std::cout << std::endl;
 
 

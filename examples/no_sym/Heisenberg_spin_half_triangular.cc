@@ -40,6 +40,7 @@ int main() {
 
     // constructing the Hamiltonian in operator representation
     qbasis::model<std::complex<double>> Heisenberg;
+    Heisenberg.add_orbital(lattice.total_sites(), "spin-1/2");
     qbasis::mopr<std::complex<double>> Sz_total;   // operators representating total Sz
     for (int m = 0; m < Lx; m++) {
         for (int n = 0; n < Ly; n++) {
@@ -87,7 +88,7 @@ int main() {
     }
 
     // constructing the Hilbert space basis
-    Heisenberg.enumerate_basis_full(lattice.total_sites(), {"spin-1/2"}, {Sz_total}, {Sz_total_val});
+    Heisenberg.enumerate_basis_full(lattice, {Sz_total}, {Sz_total_val});
 
 
     if (! matrix_free) {

@@ -149,8 +149,11 @@ namespace qbasis {
 
 //  --------------------  part 1: basis of the wave functions ------------------
 //  ----------------------------------------------------------------------------
-    
     // ------------ basic info of a particular basis -----------------
+    struct extra_info {
+        uint8_t Nmax;   // maximum number of particles
+    };
+    
     class basis_prop {
     public:
         basis_prop(const uint32_t &n_sites, const uint8_t &dim_local_,
@@ -164,7 +167,7 @@ namespace qbasis {
         // ***   electron            ***
         // ***   tJ                  ***
         // ***   spinless-fermion    ***
-        basis_prop(const uint32_t &n_sites, const std::string &s);
+        basis_prop(const uint32_t &n_sites, const std::string &s, const extra_info &ex = extra_info{0});
         
         bool q_fermion() const { return (! Nfermion_map.empty()); }
         
@@ -894,21 +897,26 @@ namespace qbasis {
 //                                                  threads_pool &);
     public:
         std::vector<basis_prop> props;
-        std::vector<bool> sym_translation;
-        MKL_INT dim_full;
-        MKL_INT dim_repr;
         mopr<T> Ham_diag;
         mopr<T> Ham_off_diag;
+        MKL_INT nconv;
+        
+        MKL_INT dim_full;
         std::vector<qbasis::mbasis_elem> basis_full;
+        std::vector<MKL_INT> Lin_Ja_full;                      // Lin table for the case no lattice symmetry used
+        std::vector<MKL_INT> Lin_Jb_full;
+        csr_mat<T> HamMat_csr_full;                            // corresponding to the full Hilbert space
+        std::vector<double> eigenvals_full;
+        std::vector<T> eigenvecs_full;
+        
+        std::vector<bool> sym_translation;
+        MKL_INT dim_repr;
         std::vector<MKL_INT> basis_belong;                     // size: dim_all, store the position of its repr
         std::vector<std::complex<double>> basis_coeff;         // size: dim_all, store the coeff
         std::vector<MKL_INT> basis_repr;
-        csr_mat<T> HamMat_csr_full;                            // corresponding to the full Hilbert space
+        // leave space for the 4-D arrays used for divide and conquer method
         csr_mat<std::complex<double>> HamMat_csr_repr;         // for the representative Hilbert space
-        MKL_INT nconv;
-        std::vector<double> eigenvals_full;
         std::vector<double> eigenvals_repr;
-        std::vector<T> eigenvecs_full;
         std::vector<std::complex<double>> eigenvecs_repr;
         
         model() = default;
@@ -918,6 +926,18 @@ namespace qbasis {
         void prt_Ham_diag() { Ham_diag.prt(); }
         
         void prt_Ham_offdiag() { Ham_off_diag.prt(); }
+        
+        void add_orbital(const uint32_t &n_sites, const uint8_t &dim_local_,
+                         const std::vector<uint32_t> &Nf_map = std::vector<uint32_t>(),
+                         const bool &dilute_ = false)
+        {
+            props.emplace_back(n_sites,dim_local_,Nf_map,dilute_);
+        }
+        
+        void add_orbital(const uint32_t &n_sites, const std::string &s, const extra_info &ex = extra_info{0})
+        {
+            props.emplace_back(n_sites, s, ex);
+        }
         
         void add_diagonal_Ham(const opr<T> &rhs)      { assert(rhs.q_diagonal()); Ham_diag += rhs; }
         
@@ -932,7 +952,7 @@ namespace qbasis {
         void add_offdiagonal_Ham(const mopr<T> &rhs)     { Ham_off_diag += rhs; }
         
         // naive way of enumerating all possible basis state
-        void enumerate_basis_full(const lattice &latt, std::initializer_list<std::string> lst,
+        void enumerate_basis_full(const lattice &latt,
                                   std::initializer_list<mopr<std::complex<double>>> conserve_lst = {},
                                   std::initializer_list<double> val_lst = {},
                                   const bool &use_translation = true);
