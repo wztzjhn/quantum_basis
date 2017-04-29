@@ -1033,9 +1033,18 @@ namespace qbasis {
     wavefunction<T> oprXphi(const opr<T> &lhs, const mbasis_elem &rhs, const std::vector<basis_prop> &props)
     {
         wavefunction<T> res;
-        assert(lhs.dim == props[lhs.orbital].dim_local);
+        auto dim = props[lhs.orbital].dim_local;
+        assert(lhs.dim == dim);
         uint32_t col = rhs.siteRead(props, lhs.site, lhs.orbital); // actually col <= 255
         uint32_t displacement = col * lhs.dim;
+        bool flag = true;
+        for (uint8_t row = 0; row < dim; row++) {
+            if (std::abs(lhs.mat[row + displacement]) > opr_precision) {
+                flag = false;
+                break;
+            }
+        }
+        if (flag) return res; // the full column == 0
         if (lhs.diagonal) {
             assert(! lhs.fermion);
             if (std::abs(lhs.mat[col]) > opr_precision)
@@ -1055,7 +1064,7 @@ namespace qbasis {
                     sgn = (sgn + props[lhs.orbital].Nfermion_map[rhs.siteRead(props, site_cnt, lhs.orbital)]) % 2;
                 }
             }
-            for (uint8_t row = 0; row < lhs.dim; row++) {
+            for (uint8_t row = 0; row < dim; row++) {
                 auto coeff = (sgn == 0 ? lhs.mat[row + displacement] : (-lhs.mat[row + displacement]));
                 if (std::abs(coeff) > opr_precision) {
                     mbasis_elem state_new(rhs);
