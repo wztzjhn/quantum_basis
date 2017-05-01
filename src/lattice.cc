@@ -1,3 +1,4 @@
+#include <iostream>
 #include "qbasis.h"
 
 namespace qbasis {
@@ -8,13 +9,14 @@ namespace qbasis {
         dim = static_cast<uint32_t>(L.size());
         a = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
         b = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
-        if (name == "chain") {
+        if (name == "chain" || name == "Chain" || name == "CHAIN") {
             assert(L.size() == 1);
             num_sub = 1;
             a[0][0] = 1.0;
             b[0][0] = 2.0 * pi;
             Nsites = L[0] * num_sub;
-        } else if (name == "square") {
+            dim_spec = 0;
+        } else if (name == "square" || name == "Square" || name == "SQUARE") {
             assert(L.size() == 2);
             num_sub = 1;
             a[0][0] = 1.0;      a[0][1] = 0.0;
@@ -22,7 +24,14 @@ namespace qbasis {
             b[0][0] = 2.0 * pi; b[0][1] = 0.0;
             b[1][0] = 0.0;      b[1][1] = 2.0 * pi;
             Nsites = L[0] * L[1] * num_sub;
-        } else if (name == "triangular") {
+            dim_spec = 0;
+            for (uint32_t d = 0; d < L.size(); d++) {
+                if (L[d] % 2 == 0) {
+                    dim_spec = d;
+                    break;
+                }
+            }
+        } else if (name == "triangular" || name == "Triangular" || name == "TRIANGULAR") {
             assert(L.size() == 2);
             num_sub = 1;
             a[0][0] = 1.0;      a[0][1] = 0.0;
@@ -30,7 +39,29 @@ namespace qbasis {
             b[0][0] = 2.0 * pi; b[0][1] = -2.0 * pi / sqrt(3.0);
             b[1][0] = 0.0;      b[1][1] = 4.0 * pi / sqrt(3.0);
             Nsites = L[0] * L[1] * num_sub;
-        } else if (name == "cubic") {
+            dim_spec = 0;
+            for (uint32_t d = 0; d < L.size(); d++) {
+                if (L[d] % 2 == 0) {
+                    dim_spec = d;
+                    break;
+                }
+            }
+        } else if (name == "kagome" || name == "Kagome" || name == "KAGOME") {
+            assert(L.size() == 2);
+            num_sub = 3;
+            a[0][0] = 1.0;      a[0][1] = 0.0;
+            a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);
+            b[0][0] = 2.0 * pi; b[0][1] = -2.0 * pi / sqrt(3.0);
+            b[1][0] = 0.0;      b[1][1] = 4.0 * pi / sqrt(3.0);
+            Nsites = L[0] * L[1] * num_sub;
+            dim_spec = 0;
+            for (uint32_t d = 0; d < L.size(); d++) {
+                if (L[d] % 2 == 0) {
+                    dim_spec = d;
+                    break;
+                }
+            }
+        } else if (name == "cubic" || name == "Cubic" || name == "CUBIC") {
             assert(L.size() == 3);
             num_sub = 1;
             a[0][0] = 1.0;      a[0][1] = 0.0;      a[0][2] = 0.0;
