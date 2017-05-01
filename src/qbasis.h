@@ -886,6 +886,7 @@ namespace qbasis {
         uint32_t dim;
         uint32_t num_sub;
         uint32_t Nsites;
+        uint32_t dim_spec;                   // the code starts labeling sites from a dimension which has even # of sites
     };
     
     

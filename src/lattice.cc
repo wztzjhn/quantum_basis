@@ -15,7 +15,6 @@ namespace qbasis {
             a[0][0] = 1.0;
             b[0][0] = 2.0 * pi;
             Nsites = L[0] * num_sub;
-            dim_spec = 0;
         } else if (name == "square" || name == "Square" || name == "SQUARE") {
             assert(L.size() == 2);
             num_sub = 1;
@@ -24,13 +23,6 @@ namespace qbasis {
             b[0][0] = 2.0 * pi; b[0][1] = 0.0;
             b[1][0] = 0.0;      b[1][1] = 2.0 * pi;
             Nsites = L[0] * L[1] * num_sub;
-            dim_spec = 0;
-            for (uint32_t d = 0; d < L.size(); d++) {
-                if (L[d] % 2 == 0) {
-                    dim_spec = d;
-                    break;
-                }
-            }
         } else if (name == "triangular" || name == "Triangular" || name == "TRIANGULAR") {
             assert(L.size() == 2);
             num_sub = 1;
@@ -39,13 +31,6 @@ namespace qbasis {
             b[0][0] = 2.0 * pi; b[0][1] = -2.0 * pi / sqrt(3.0);
             b[1][0] = 0.0;      b[1][1] = 4.0 * pi / sqrt(3.0);
             Nsites = L[0] * L[1] * num_sub;
-            dim_spec = 0;
-            for (uint32_t d = 0; d < L.size(); d++) {
-                if (L[d] % 2 == 0) {
-                    dim_spec = d;
-                    break;
-                }
-            }
         } else if (name == "kagome" || name == "Kagome" || name == "KAGOME") {
             assert(L.size() == 2);
             num_sub = 3;
@@ -54,13 +39,14 @@ namespace qbasis {
             b[0][0] = 2.0 * pi; b[0][1] = -2.0 * pi / sqrt(3.0);
             b[1][0] = 0.0;      b[1][1] = 4.0 * pi / sqrt(3.0);
             Nsites = L[0] * L[1] * num_sub;
-            dim_spec = 0;
-            for (uint32_t d = 0; d < L.size(); d++) {
-                if (L[d] % 2 == 0) {
-                    dim_spec = d;
-                    break;
-                }
-            }
+        } else if (name == "honeycomb" || name == "Honeycomb" || name == "HONEYCOMB") {
+            assert(L.size() == 2);
+            num_sub = 2;
+            a[0][0] = 1.0;      a[0][1] = 0.0;
+            a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);
+            b[0][0] = 2.0 * pi; b[0][1] = -2.0 * pi / sqrt(3.0);
+            b[1][0] = 0.0;      b[1][1] = 4.0 * pi / sqrt(3.0);
+            Nsites = L[0] * L[1] * num_sub;
         } else if (name == "cubic" || name == "Cubic" || name == "CUBIC") {
             assert(L.size() == 3);
             num_sub = 1;
@@ -71,7 +57,23 @@ namespace qbasis {
             b[1][0] = 0.0;      b[1][1] = 2.0 * pi; b[1][2] = 0.0;
             b[2][0] = 0.0;      b[2][1] = 0.0;      b[2][2] = 2.0 * pi;
             Nsites = L[0] * L[1] * L[2] * num_sub;
+        } else {
+            std::cout << "Lattice not recognized! " << std::endl;
+            assert(false);
         }
+        
+        if (num_sub % 2 == 0) {
+            dim_spec = dim;
+        } else {
+            dim_spec = 0;
+            for (uint32_t d = 0; d < dim; d++) {
+                if (L[d] % 2 == 0) {
+                    dim_spec = d;
+                    break;
+                }
+            }
+        }
+        
         for (uint32_t j = 0; j < dim; j++) {
             assert(bc[j] == "pbc" || bc[j] == "PBC" || bc[j] == "obc" || bc[j] == "OBC");
         }
@@ -81,18 +83,39 @@ namespace qbasis {
     void lattice::coor2site(const std::vector<int> &coor, const int &sub, uint32_t &site) const
     {
         assert(static_cast<uint32_t>(coor.size()) == dim);
+        std::vector<uint32_t> coor2, base;
+        std::vector<uint32_t> dim_arr;  // let dim_spec to be counted first
         int sub_temp = sub;
-        while (sub_temp < 0)        sub_temp += static_cast<int>(num_sub);
+        while (sub_temp < 0) sub_temp += static_cast<int>(num_sub);
         while (sub_temp >= static_cast<int>(num_sub)) sub_temp -= static_cast<int>(num_sub);
-        std::vector<uint32_t> coor2 = {static_cast<uint32_t>(sub_temp)};
-        for (uint32_t j = 0; j < dim; j++) {
-            int coor_temp = coor[j];
-            while (coor_temp < 0) coor_temp += L[j];
-            while (coor_temp >= static_cast<int>(L[j])) coor_temp -= L[j];
-            coor2.push_back(static_cast<uint32_t>(coor_temp));
+        
+        if (dim_spec != dim) {
+            dim_arr.push_back(dim_spec);
+            for (uint32_t j = 0; j < dim; j++) {
+                if (j != dim_spec) dim_arr.push_back(j);
+            }
+            for (uint32_t &j : dim_arr) {
+                int coor_temp = coor[j];
+                while (coor_temp < 0) coor_temp += L[j];
+                while (coor_temp >= static_cast<int>(L[j])) coor_temp -= L[j];
+                coor2.push_back(static_cast<uint32_t>(coor_temp));
+                base.push_back(L[j]);
+            }
+            coor2.push_back(static_cast<uint32_t>(sub_temp));
+            base.push_back(num_sub);
+        } else {
+            assert(num_sub % 2 == 0);
+            for (uint32_t j = 0; j < dim; j++) dim_arr.push_back(j);
+            coor2.push_back(static_cast<uint32_t>(sub_temp));
+            base.push_back(num_sub);
+            for (uint32_t &j : dim_arr) {
+                int coor_temp = coor[j];
+                while (coor_temp < 0) coor_temp += L[j];
+                while (coor_temp >= static_cast<int>(L[j])) coor_temp -= L[j];
+                coor2.push_back(static_cast<uint32_t>(coor_temp));
+                base.push_back(L[j]);
+            }
         }
-        std::vector<uint32_t> base = {num_sub};
-        base.insert(base.end(), L.begin(), L.end());
         site = dynamic_base(coor2, base);
     }
     
@@ -100,13 +123,26 @@ namespace qbasis {
     {
         assert(site < Nsites);
         coor.resize(dim);
-        sub = site % num_sub;
-        uint32_t temp = (site - static_cast<uint32_t>(sub)) / num_sub;  // temp == i + j * L[0] + k * L[0] * L[1] + ...
-        for (uint32_t n = 0; n < dim - 1; n++) {
-            coor[n] = temp % L[n];
-            temp = (temp - static_cast<uint32_t>(coor[n])) / L[n];
+        std::vector<uint32_t> base;
+        std::vector<uint32_t> dim_arr;  // let dim_spec to be counted first
+        if (dim_spec != dim) {
+            dim_arr.push_back(dim_spec);
+            for (uint32_t j = 0; j < dim; j++) {
+                if (j != dim_spec) dim_arr.push_back(j);
+            }
+            for (uint32_t &j : dim_arr) base.push_back(L[j]);
+            base.push_back(num_sub);
+            auto coor_temp = dynamic_base(site, base);
+            sub = static_cast<int>(coor_temp.back());
+            for (uint32_t j = 0; j < dim; j++) coor[dim_arr[j]] = coor_temp[j];
+        } else {
+            for (uint32_t j = 0; j < dim; j++)  dim_arr.push_back(j);
+            base.push_back(num_sub);
+            for (uint32_t &j : dim_arr) base.push_back(L[j]);
+            auto coor_temp = dynamic_base(site, base);
+            sub = static_cast<int>(coor_temp.front());
+            for (uint32_t j = 0; j < dim; j++) coor[dim_arr[j]] = coor_temp[j+1];
         }
-        coor[dim-1] = temp;
     }
     
     std::vector<uint32_t> lattice::translation_plan(const std::vector<int> &disp) const

@@ -20,4 +20,24 @@ void test_lattice() {
         std::cout << j << " -> " << plan[j] << std::endl;
     }
     std::cout << std::endl;
+    
+    qbasis::lattice kagome("kagome",std::vector<uint32_t>{2,3},std::vector<std::string>{"pbc", "pbc"});
+    for (uint32_t site = 0; site < kagome.total_sites(); site++) {
+        kagome.site2coor(coor, sub, site);
+        std::cout << "(" << coor[0] << "," << coor[1] << "," << sub << ") : " << site << std::endl;
+        uint32_t site2;
+        kagome.coor2site(coor, sub, site2);
+        assert(site == site2);
+    }
+    std::cout << std::endl;
+    
+    qbasis::lattice honeycomb("honeycomb",std::vector<uint32_t>{3,2},std::vector<std::string>{"pbc", "pbc"});
+    for (uint32_t site = 0; site < honeycomb.total_sites(); site++) {
+        honeycomb.site2coor(coor, sub, site);
+        std::cout << "(" << coor[0] << "," << coor[1] << "," << sub << ") : " << site << std::endl;
+        uint32_t site2;
+        honeycomb.coor2site(coor, sub, site2);
+        assert(site == site2);
+    }
+    
 }
