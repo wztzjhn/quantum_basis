@@ -6,6 +6,7 @@ To learn how to use this library to design ED code for your own models, please r
 - Heisenberg spin-1/2 chain
 - Heisenberg spin-1 chain
 - Heisenberg spin-1/2 triangular lattice
+- Spinless fermion on honeycomb lattice
 - Fermi-Hubbard Model on square lattice
 - Bose-Hubbard Model on square lattice
 - tJ Model on kagome lattice (to be filled up)
