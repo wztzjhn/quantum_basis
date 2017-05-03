@@ -62,10 +62,8 @@ namespace qbasis {
             assert(false);
         }
         
-        if (num_sub % 2 == 0) {
-            dim_spec = dim;
-        } else {
-            dim_spec = 0;
+        dim_spec = dim;
+        if (num_sub % 2 != 0) {
             for (uint32_t d = 0; d < dim; d++) {
                 if (L[d] % 2 == 0) {
                     dim_spec = d;
@@ -104,7 +102,6 @@ namespace qbasis {
             coor2.push_back(static_cast<uint32_t>(sub_temp));
             base.push_back(num_sub);
         } else {
-            assert(num_sub % 2 == 0);
             for (uint32_t j = 0; j < dim; j++) dim_arr.push_back(j);
             coor2.push_back(static_cast<uint32_t>(sub_temp));
             base.push_back(num_sub);
@@ -116,7 +113,7 @@ namespace qbasis {
                 base.push_back(L[j]);
             }
         }
-        site = dynamic_base(coor2, base);
+        site = dynamic_base<uint32_t,uint32_t>(coor2, base);
     }
     
     void lattice::site2coor(std::vector<int> &coor, int &sub, const uint32_t &site) const

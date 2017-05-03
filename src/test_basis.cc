@@ -109,4 +109,17 @@ void test_basis() {
 //    phi += basis2;
 //    phi.prt_states(props1);
     
+    qbasis::lattice lattice("chain",std::vector<uint32_t>{5},std::vector<std::string>{"pbc"});
+    
+    qbasis::model<std::complex<double>> test_model;
+    test_model.add_orbital(lattice.total_sites(), "spin-1/2");
+    test_model.add_orbital(lattice.total_sites(), "electron");
+    test_model.enumerate_basis_full(lattice);
+    for (MKL_INT j = 0; j < test_model.dim_full; j++) {
+        std::cout << "j= " << j << ", basis_label = " << test_model.basis_full[j].label(test_model.props) << std::endl;
+        assert(j == test_model.basis_full[j].label(test_model.props));
+    }
+    
+    
+    
 }

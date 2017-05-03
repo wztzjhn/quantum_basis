@@ -205,7 +205,7 @@ namespace qbasis {
         auto dim_local = props[orbital].dim_local;
         auto num_sites = props[orbital].num_sites;
         
-        if (int_pow(2, props[orbital].bits_per_site) == dim_local) {     // no waste bit
+        if (int_pow<uint8_t,uint64_t>(2, props[orbital].bits_per_site) == static_cast<uint64_t>(dim_local)) {     // no waste bit
             uint16_t byte_pos_bgn = 2;
             for (uint32_t orb = 0; orb < orbital; orb++) byte_pos_bgn += props[orb].num_bytes;
             uint16_t byte_pos_end = byte_pos_bgn + props[orbital].num_bytes;
@@ -271,7 +271,7 @@ namespace qbasis {
         assert(orbital < props.size());
         auto dim_local = props[orbital].dim_local;
         
-        if (int_pow(2, props[orbital].bits_per_site) == dim_local) {
+        if (int_pow<uint8_t,uint64_t>(2, props[orbital].bits_per_site) == static_cast<uint64_t>(dim_local)) {     // no waste bit
             uint16_t byte_pos_first = 2;
             uint16_t byte_pos_last;
             for (uint32_t orb = 0; orb < orbital; orb++) byte_pos_first += props[orb].num_bytes;
@@ -316,6 +316,43 @@ namespace qbasis {
         return true;
     }
     
+    uint64_t mbasis_elem::label(const std::vector<basis_prop> &props, const uint32_t &orbital) const
+    {
+        auto dim_local = props[orbital].dim_local;
+        auto num_sites = props[orbital].num_sites;
+        uint64_t res = 0;
+        
+        if (int_pow<uint8_t,uint64_t>(2, props[orbital].bits_per_site) == static_cast<uint64_t>(dim_local)) {     // no waste bit
+            uint16_t byte_pos_bgn = 2;
+            for (uint32_t orb = 0; orb < orbital; orb++) byte_pos_bgn += props[orb].num_bytes;
+            uint16_t byte_pos_end = byte_pos_bgn + props[orbital].num_bytes;
+            for (uint16_t byte_pos = byte_pos_end - 1; byte_pos > byte_pos_bgn; byte_pos--)
+                res = (res + mbits[byte_pos]) * 256;
+            res += mbits[byte_pos_bgn];
+        } else {
+            std::vector<uint8_t> nums;
+            std::vector<uint8_t> base(num_sites,dim_local);
+            for (decltype(num_sites) site = 0; site < num_sites; site++)
+                nums.push_back(siteRead(props, site, orbital));
+            res = dynamic_base<uint8_t, uint64_t>(nums, base);
+        }
+        return res;
+    }
+    
+    uint64_t mbasis_elem::label(const std::vector<basis_prop> &props) const
+    {
+        if (props.size() == 1) {
+            return label(props, 0);
+        } else {
+            std::vector<uint64_t> base, nums;
+            for (uint32_t orb = 0; orb < props.size(); orb++) {
+                nums.push_back(label(props,orb));
+                base.push_back(int_pow<uint32_t, uint64_t>(static_cast<uint32_t>(props[orb].dim_local), props[orb].num_sites));
+            }
+            return dynamic_base<uint64_t, uint64_t>(nums, base);
+        }
+    }
+    
     std::vector<uint32_t> mbasis_elem::statistics(const std::vector<basis_prop> &props, const uint32_t &orbital) const
     {
         std::vector<uint32_t> results(props[orbital].dim_local,0);
@@ -335,12 +372,12 @@ namespace qbasis {
         uint32_t total_sites    = props[0].num_sites;
         
         std::vector<uint32_t> results(local_dimension,0);
-        std::vector<uint32_t> state(total_orbitals);
-        std::vector<uint32_t> base(total_orbitals);
+        std::vector<uint8_t> state(total_orbitals);
+        std::vector<uint8_t> base(total_orbitals);
         for (uint32_t orb = 0; orb < total_orbitals; orb++) base[orb] = props[orb].dim_local;
         for (uint32_t site = 0; site < total_sites; site++) {
             for (uint32_t orb = 0; orb < total_orbitals; orb++) state[orb] = siteRead(props, site, orb);
-            results[dynamic_base(state, base)]++;
+            results[dynamic_base<uint8_t,uint32_t>(state, base)]++;
         }
         return results;
     }

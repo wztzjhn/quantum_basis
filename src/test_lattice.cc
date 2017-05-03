@@ -21,6 +21,7 @@ void test_lattice() {
     }
     std::cout << std::endl;
     
+    std::cout << "kagome" << std::endl;
     qbasis::lattice kagome("kagome",std::vector<uint32_t>{2,3},std::vector<std::string>{"pbc", "pbc"});
     for (uint32_t site = 0; site < kagome.total_sites(); site++) {
         kagome.site2coor(coor, sub, site);
@@ -31,6 +32,7 @@ void test_lattice() {
     }
     std::cout << std::endl;
     
+    std::cout << "honeycomb" << std::endl;
     qbasis::lattice honeycomb("honeycomb",std::vector<uint32_t>{3,2},std::vector<std::string>{"pbc", "pbc"});
     for (uint32_t site = 0; site < honeycomb.total_sites(); site++) {
         honeycomb.site2coor(coor, sub, site);

@@ -249,6 +249,11 @@ namespace qbasis {
         
         bool q_same_state_all_site(const std::vector<basis_prop> &props) const;
         
+        // get a label
+        uint64_t label(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
+        
+        uint64_t label(const std::vector<basis_prop> &props) const;
+        
         // return a vector of length dim_local (for orbital), reporting # of each state
         std::vector<uint32_t> statistics(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
         
@@ -832,9 +837,11 @@ namespace qbasis {
         lattice(const std::string &name, const std::vector<uint32_t> &L_, const std::vector<std::string> &bc_);
         
         // coordinates <-> site indices
+        // first find a direction (dim_spec) which has even size, if not successful, use the following:
         // 1D: site = i * num_sub + sub
         // 2D: site = (i + j * L[0]) * num_sub + sub
         // 3D: site = (i + j * L[0] + k * L[0] * L[1]) * num_sub + sub
+        // otherwise, the dim_spec should be counted first
         void coor2site(const std::vector<int> &coor, const int &sub, uint32_t &site) const;
         
         void site2coor(std::vector<int> &coor, int &sub, const uint32_t &site) const;
@@ -1024,7 +1031,8 @@ namespace qbasis {
     inline std::complex<double> conjugate(const std::complex<double> &rhs) { return std::conj(rhs); }
     
     // calculate base^index, in the case both are integers
-    MKL_INT int_pow(const MKL_INT &base, const MKL_INT &index);
+    template <typename T1, typename T2>
+    T2 int_pow(const T1 &base, const T1 &index);
     
     // given two arrays: num & base, get the result of:
     // num[0] + num[1] * base[0] + num[2] * base[0] * base[1] + num[3] * base[0] * base[1] * base[2] + ...
@@ -1034,8 +1042,8 @@ namespace qbasis {
     //                      |      |
     //                   num[1]   num[0]
     // 1 + 0 * 2 + 1 * 2^2 + 0 * 2^3 + 0 * 2^4
-    template <typename T>
-    T dynamic_base(const std::vector<T> &num, const std::vector<T> &base);
+    template <typename T1, typename T2>
+    T2 dynamic_base(const std::vector<T1> &nums, const std::vector<T1> &base);
     // the other way around
     template <typename T>
     std::vector<T> dynamic_base(const T &total, const std::vector<T> &base);

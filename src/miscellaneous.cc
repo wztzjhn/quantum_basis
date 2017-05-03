@@ -1,21 +1,23 @@
 #include "qbasis.h"
 
 namespace qbasis {
-    
-    MKL_INT int_pow(const MKL_INT &base, const MKL_INT &index)
+    template <typename T1, typename T2>
+    T2 int_pow(const T1 &base, const T1 &index)
     {
-        assert(index >= 0);
-        MKL_INT res = 1;
-        for (MKL_INT j = 0; j < index; j++) res *= base;
+        T2 res = 1;
+        for (T1 j = 0; j < index; j++) res *= base;
         return res;
     }
+    template uint64_t int_pow(const uint8_t &base, const uint8_t &index);
+    template uint64_t int_pow(const uint32_t &base, const uint32_t &index);
+    template MKL_INT int_pow(const MKL_INT &base, const MKL_INT &index);
     
-    template <typename T>
-    T dynamic_base(const std::vector<T> &nums, const std::vector<T> &base)
+    template <typename T1, typename T2>
+    T2 dynamic_base(const std::vector<T1> &nums, const std::vector<T1> &base)
     {
         assert(nums.size() == base.size());
         assert(nums.size() > 0);
-        T res = 0;
+        T2 res = 0;
         auto j = nums.size() - 1;
         while (nums[j] == 0 && j > 0) j--;
         while (j > 0) {
@@ -27,8 +29,11 @@ namespace qbasis {
         res += nums[0];
         return res;
     }
-    template MKL_INT dynamic_base(const std::vector<MKL_INT> &nums, const std::vector<MKL_INT> &base);
+    template uint32_t dynamic_base(const std::vector<uint8_t> &nums, const std::vector<uint8_t> &base);
+    template uint64_t dynamic_base(const std::vector<uint8_t> &nums, const std::vector<uint8_t> &base);
     template uint32_t dynamic_base(const std::vector<uint32_t> &nums, const std::vector<uint32_t> &base);
+    template uint64_t dynamic_base(const std::vector<uint64_t> &nums, const std::vector<uint64_t> &base);
+    template MKL_INT dynamic_base(const std::vector<MKL_INT> &nums, const std::vector<MKL_INT> &base);
     
     template <typename T>
     std::vector<T> dynamic_base(const T &total, const std::vector<T> &base)

@@ -72,7 +72,7 @@ namespace qbasis {
         start = std::chrono::system_clock::now();
         
         // Hilbert space size if without any symmetry
-        MKL_INT dim_total = int_pow(static_cast<MKL_INT>(dim_local), static_cast<MKL_INT>(n_sites));
+        MKL_INT dim_total = int_pow<MKL_INT,MKL_INT>(static_cast<MKL_INT>(dim_local), static_cast<MKL_INT>(n_sites));
         assert(dim_total > 0); // prevent overflow
         std::cout << "Hilbert space size **if** without any symmetry: " << dim_total << std::endl;
         
