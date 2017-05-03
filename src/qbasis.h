@@ -69,10 +69,15 @@ namespace qbasis {
     //class threads_pool;
     
     // ---------- basis -----------
+    void swap(mbasis_elem&, mbasis_elem&);
     bool operator<(const mbasis_elem&, const mbasis_elem&);
     bool operator==(const mbasis_elem&, const mbasis_elem&);
     bool operator!=(const mbasis_elem&, const mbasis_elem&);
     bool trans_equiv(const mbasis_elem&, const mbasis_elem&, const std::vector<basis_prop> &props, const lattice&);   // computational heavy, use with caution
+    // following zipper product definition in Weisse's PRE 87, 043305 (2013)
+    mbasis_elem zipper_prod(const std::vector<basis_prop> &props_a, const std::vector<basis_prop> &props_b,
+                            const std::vector<basis_prop> &props,
+                            const mbasis_elem &sub_a, const mbasis_elem &sub_b);
     
     template <typename T> void swap(wavefunction<T>&, wavefunction<T>&);
     template <typename T> wavefunction<T> operator+(const wavefunction<T>&, const wavefunction<T>&);

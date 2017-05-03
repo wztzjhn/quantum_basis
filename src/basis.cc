@@ -847,6 +847,25 @@ namespace qbasis {
         return false;
     }
     
+    mbasis_elem zipper_prod(const std::vector<basis_prop> &props_a, const std::vector<basis_prop> &props_b,
+                            const std::vector<basis_prop> &props,
+                            const mbasis_elem &sub_a, const mbasis_elem &sub_b)
+    {
+        uint32_t num_orb = props.size();
+        assert(props_a.size() == num_orb && props_b.size() == num_orb);
+        
+        mbasis_elem res(props);
+        for (uint32_t orb = 0; orb < num_orb; orb++) {
+            uint32_t num_sub_sites = props_a[orb].num_sites;
+            assert(props_b[orb].num_sites == num_sub_sites && props[orb].num_sites == 2 * num_sub_sites);
+            for (uint32_t site = 0; site < num_sub_sites; site++) {
+                res.siteWrite(props, site + site,     orb, sub_a.siteRead(props_a, site, orb)); // from sub_a
+                res.siteWrite(props, site + site + 1, orb, sub_b.siteRead(props_b, site, orb)); // from sub_b
+            }
+        }
+        return res;
+    }
+    
     // ----------------- implementation of wavefunction ------------------
     template <typename T>
     std::pair<mbasis_elem, T> &wavefunction<T>::operator[](uint32_t n)
