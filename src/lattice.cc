@@ -216,4 +216,24 @@ namespace qbasis {
         return res;
     }
     
+    lattice get_sublattice(const lattice &parent)
+    {
+        lattice child(parent);
+        auto dim_spec = parent.dim_spec;
+        auto dim = parent.dim;
+        assert(parent.total_sites() % 2 == 0);
+        if (dim_spec == dim) {
+            assert(parent.num_sub % 2 == 0);
+            child.num_sub /= 2;
+        } else {
+            child.L[dim_spec] /= 2;
+            for (uint32_t d = 0; d < dim; d++) {
+                child.a[dim_spec][d] *= 2;
+                child.b[dim_spec][d] /= 2;
+            }
+        }
+        child.Nsites /= 2;
+        return child;
+    }
+    
 }

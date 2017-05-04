@@ -31,6 +31,17 @@ void test_lattice() {
         assert(site == site2);
     }
     std::cout << std::endl;
+    std::cout << "kagome child" << std::endl;
+    auto kagome_child = qbasis::get_sublattice(kagome);
+    for (uint32_t site = 0; site < kagome_child.total_sites(); site++) {
+        kagome_child.site2coor(coor, sub, site);
+        std::cout << "(" << coor[0] << "," << coor[1] << "," << sub << ") : " << site << std::endl;
+        uint32_t site2;
+        kagome_child.coor2site(coor, sub, site2);
+        assert(site == site2);
+    }
+    std::cout << std::endl;
+    
     
     std::cout << "honeycomb" << std::endl;
     qbasis::lattice honeycomb("honeycomb",std::vector<uint32_t>{3,2},std::vector<std::string>{"pbc", "pbc"});
@@ -41,5 +52,16 @@ void test_lattice() {
         honeycomb.coor2site(coor, sub, site2);
         assert(site == site2);
     }
+    std::cout << std::endl;
+    std::cout << "honeycomb child" << std::endl;
+    auto honeycomb_child = qbasis::get_sublattice(honeycomb);
+    for (uint32_t site = 0; site < honeycomb_child.total_sites(); site++) {
+        honeycomb_child.site2coor(coor, sub, site);
+        std::cout << "(" << coor[0] << "," << coor[1] << "," << sub << ") : " << site << std::endl;
+        uint32_t site2;
+        honeycomb_child.coor2site(coor, sub, site2);
+        assert(site == site2);
+    }
+    std::cout << std::endl;
     
 }

@@ -148,7 +148,8 @@ namespace qbasis {
     
     template <typename T> void swap(csr_mat<T>&, csr_mat<T>&);
     
-    
+    // divide into two identical sublattices, if Nsites even. To be used in the divide and conquer method
+    lattice get_sublattice(const lattice &parent);
     
 
 
@@ -835,6 +836,7 @@ namespace qbasis {
 //  ----------------------------- part 5: Lattices  ----------------------------
 //  ----------------------------------------------------------------------------
     class lattice {
+        friend lattice get_sublattice(const lattice &parent);
     public:
         lattice() = default;
         
