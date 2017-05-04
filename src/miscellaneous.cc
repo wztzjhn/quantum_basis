@@ -35,27 +35,28 @@ namespace qbasis {
     template uint64_t dynamic_base(const std::vector<uint64_t> &nums, const std::vector<uint64_t> &base);
     template MKL_INT dynamic_base(const std::vector<MKL_INT> &nums, const std::vector<MKL_INT> &base);
     
-    template <typename T>
-    std::vector<T> dynamic_base(const T &total, const std::vector<T> &base)
+    template <typename T1, typename T2>
+    std::vector<T1> dynamic_base(const T2 &total, const std::vector<T1> &base)
     {
         assert(base.size() > 0);
         assert(total >= 0);
         auto len = base.size();
-        std::vector<T> res(len);
-        T temp = total;        // temp == i + j * base[0] + k * base[0] * base[1] + ...
+        std::vector<T1> res(len);
+        T2 temp = total;        // temp == i + j * base[0] + k * base[0] * base[1] + ...
         for (decltype(len) n = 0; n < len - 1; n++) {
-            res[n] = temp % base[n];
+            res[n] = static_cast<T1>(temp % base[n]);
             temp = (temp - res[n]) / base[n];
             if (temp == 0) {
                 for (decltype(len) j = n + 1; j < len - 1; j++) res[j] = 0;
                 break;
             }
         }
-        res[len-1] = temp;
-        assert(temp < base[len-1]);
+        res[len-1] = static_cast<T1>(temp);
+        assert(res[len-1] < base[len-1]);
         return res;
     }
     template std::vector<MKL_INT> dynamic_base(const MKL_INT &total, const std::vector<MKL_INT> &base);
+    template std::vector<uint8_t> dynamic_base(const uint64_t &total, const std::vector<uint8_t> &base);
     template std::vector<uint32_t> dynamic_base(const uint32_t &total, const std::vector<uint32_t> &base);
     
     template <typename T>

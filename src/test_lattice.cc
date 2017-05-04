@@ -32,7 +32,7 @@ void test_lattice() {
     }
     std::cout << std::endl;
     std::cout << "kagome child" << std::endl;
-    auto kagome_child = qbasis::get_sublattice(kagome);
+    auto kagome_child = qbasis::divide_lattice(kagome);
     for (uint32_t site = 0; site < kagome_child.total_sites(); site++) {
         kagome_child.site2coor(coor, sub, site);
         std::cout << "(" << coor[0] << "," << coor[1] << "," << sub << ") : " << site << std::endl;
@@ -54,7 +54,7 @@ void test_lattice() {
     }
     std::cout << std::endl;
     std::cout << "honeycomb child" << std::endl;
-    auto honeycomb_child = qbasis::get_sublattice(honeycomb);
+    auto honeycomb_child = qbasis::divide_lattice(honeycomb);
     for (uint32_t site = 0; site < honeycomb_child.total_sites(); site++) {
         honeycomb_child.site2coor(coor, sub, site);
         std::cout << "(" << coor[0] << "," << coor[1] << "," << sub << ") : " << site << std::endl;

@@ -866,6 +866,43 @@ namespace qbasis {
         return res;
     }
     
+    std::vector<mbasis_elem> enumerate_basis_all(const std::vector<basis_prop> &props)
+    {
+        uint32_t n_orbs  = props.size();
+        uint64_t dim_all = 1;
+        std::vector<uint8_t> base;
+        for (uint32_t orb = 0; orb < n_orbs; orb++) {
+            dim_all *= int_pow<uint32_t, uint64_t>(static_cast<uint32_t>(props[orb].dim_local), props[orb].num_sites);
+            for (uint32_t site = 0; site < props[orb].num_sites; site++)
+                base.push_back(props[orb].dim_local);
+        }
+        auto GS = mbasis_elem(props);
+        std::vector<mbasis_elem> res(dim_all, GS);
+        
+        // array to help distributing jobs to different threads
+        std::vector<uint64_t> job_array;
+        for (uint64_t j = 0; j < dim_all; j+=1000) job_array.push_back(j);
+        uint64_t total_chunks = job_array.size();
+        job_array.push_back(dim_all);
+        
+        #pragma omp parallel for schedule(dynamic,1)
+        for (uint64_t chunk = 0; chunk < total_chunks; chunk++) {
+            // get a new starting basis element
+            uint64_t state_num = job_array[chunk];
+            auto dist = dynamic_base<uint8_t,uint64_t>(state_num, base);
+            uint32_t pos = 0;
+            for (uint32_t orb = 0; orb < n_orbs; orb++)
+                for (uint32_t site = 0; site < props[orb].num_sites; site++) res[state_num].siteWrite(props, site, orb, dist[pos++]);
+            state_num++;
+            while (state_num < job_array[chunk + 1]) {
+                res[state_num] = res[state_num - 1];
+                res[state_num].increment(props);
+                state_num++;
+            }
+        }
+        return res;
+    }
+    
     // ----------------- implementation of wavefunction ------------------
     template <typename T>
     std::pair<mbasis_elem, T> &wavefunction<T>::operator[](uint32_t n)

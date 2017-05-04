@@ -216,7 +216,7 @@ namespace qbasis {
         return res;
     }
     
-    lattice get_sublattice(const lattice &parent)
+    lattice divide_lattice(const lattice &parent)
     {
         lattice child(parent);
         auto dim_spec = parent.dim_spec;

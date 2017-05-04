@@ -78,6 +78,8 @@ namespace qbasis {
     mbasis_elem zipper_prod(const std::vector<basis_prop> &props_a, const std::vector<basis_prop> &props_b,
                             const std::vector<basis_prop> &props,
                             const mbasis_elem &sub_a, const mbasis_elem &sub_b);
+    // generate every single possible state, without any symmetry
+    std::vector<mbasis_elem> enumerate_basis_all(const std::vector<basis_prop> &props);
     
     template <typename T> void swap(wavefunction<T>&, wavefunction<T>&);
     template <typename T> wavefunction<T> operator+(const wavefunction<T>&, const wavefunction<T>&);
@@ -149,7 +151,7 @@ namespace qbasis {
     template <typename T> void swap(csr_mat<T>&, csr_mat<T>&);
     
     // divide into two identical sublattices, if Nsites even. To be used in the divide and conquer method
-    lattice get_sublattice(const lattice &parent);
+    lattice divide_lattice(const lattice &parent);
     
 
 
@@ -836,7 +838,7 @@ namespace qbasis {
 //  ----------------------------- part 5: Lattices  ----------------------------
 //  ----------------------------------------------------------------------------
     class lattice {
-        friend lattice get_sublattice(const lattice &parent);
+        friend lattice divide_lattice(const lattice &parent);
     public:
         lattice() = default;
         
@@ -1052,8 +1054,8 @@ namespace qbasis {
     template <typename T1, typename T2>
     T2 dynamic_base(const std::vector<T1> &nums, const std::vector<T1> &base);
     // the other way around
-    template <typename T>
-    std::vector<T> dynamic_base(const T &total, const std::vector<T> &base);
+    template <typename T1, typename T2>
+    std::vector<T1> dynamic_base(const T2 &total, const std::vector<T1> &base);
     // nums + 1
     template <typename T>
     std::vector<T> dynamic_base_plus1(const std::vector<T> &nums, const std::vector<T> &base);

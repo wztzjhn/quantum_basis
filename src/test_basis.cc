@@ -29,6 +29,16 @@ void test_basis() {
     assert(basis1.siteRead(props1, 8, 0) == 1);
     std::cout << std::endl;
     
+    auto basis_list1 = qbasis::enumerate_basis_all(props1);
+    std::cout << "basis_list1: " << std::endl;
+    for (uint64_t j = 0; j < basis_list1.size(); j++) {
+        std::cout << "j = " << j << "\t";
+        basis_list1[j].prt_bits(props1);
+        assert(j == basis_list1[j].label(props1));
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+    
     props1.emplace_back(5,8);
     std::cout << "props1[1].bits_per_site = " << static_cast<unsigned>(props1[1].bits_per_site) << std::endl;
     qbasis::mbasis_elem basis2(props1);
@@ -109,7 +119,7 @@ void test_basis() {
 //    phi += basis2;
 //    phi.prt_states(props1);
     
-    qbasis::lattice lattice("chain",std::vector<uint32_t>{5},std::vector<std::string>{"pbc"});
+    qbasis::lattice lattice("chain",std::vector<uint32_t>{3},std::vector<std::string>{"pbc"});
     
     qbasis::model<std::complex<double>> test_model;
     test_model.add_orbital(lattice.total_sites(), "spin-1/2");
