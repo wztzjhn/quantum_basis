@@ -4,6 +4,8 @@
 #include "qbasis.h"
 
 void test_basis();
+void test_basis2();
+void test_basis3();
 
 void test_operator();
 
@@ -27,6 +29,10 @@ int main(){
     test_lanczos_memoAll();
     
     test_lattice();
+    
+    test_basis2();
+    
+    test_basis3();
     
     //test_dotc();
     

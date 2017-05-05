@@ -903,6 +903,68 @@ namespace qbasis {
         return res;
     }
     
+    void classify_translation(const std::vector<basis_prop> &props,
+                              const std::vector<mbasis_elem> &basis_all,
+                              const lattice &latt,
+                              const std::vector<bool> &trans_sym,
+                              std::vector<uint64_t> &belong2rep,
+                              std::vector<std::vector<int>> &dist2rep)
+    {
+        assert(latt.dimension() == trans_sym.size());
+        assert(is_sorted_norepeat(basis_all));
+        auto bc = latt.boundary();
+        auto L = latt.Linear_size();
+        uint64_t dim_all = basis_all.size();
+        uint64_t dim_all_theoretical = 1;
+        for (auto &prop : props)
+            dim_all_theoretical *= int_pow<uint32_t, uint64_t>(static_cast<uint32_t>(prop.dim_local), prop.num_sites);
+        for (uint32_t d = 0; d < latt.dimension(); d++) {
+            if (trans_sym[d]) assert(bc[d] == "pbc" || bc[d] == "PBC");
+        }
+        belong2rep.resize(dim_all);
+        dist2rep.resize(dim_all);
+        
+        uint64_t unreachable = dim_all + 10;
+        std::fill(belong2rep.begin(), belong2rep.end(), unreachable);
+        for (uint64_t i = 0; i < dim_all; i++) {
+            if (belong2rep[i] != unreachable) continue;  // already fixed
+            belong2rep[i] = i;
+            dist2rep[i] = std::vector<int>(latt.dimension(),0);
+            
+            std::vector<uint32_t> disp(latt.dimension(),0);
+            disp = dynamic_base_plus1(disp, L);
+            std::vector<int> disp2(latt.dimension(),0);
+            int sgn;
+            
+            while (! dynamic_base_overflow(disp, L)) {
+                bool allowed = true;                      // check if such disp allowed
+                for (uint32_t d = 0; d < latt.dimension(); d++) {
+                    if ((! trans_sym[d]) && (disp[d] != 0)) {
+                        allowed = false;
+                        break;
+                    }
+                }
+                if (! allowed) {
+                    disp = dynamic_base_plus1(disp, L);
+                    continue;                             // such translation forbidden
+                }
+                for (uint32_t d = 0; d < latt.dimension(); d++) disp2[d] = static_cast<int>(disp[d]);
+                auto basis_temp = basis_all[i];
+                basis_temp.translate(props, latt, disp2, sgn);
+                uint64_t j = binary_search<mbasis_elem,uint64_t>(basis_all, basis_temp, 0, dim_all);
+                if (j < dim_all) {                       // found
+                    if (belong2rep[j] == unreachable) {  // not fixed
+                        belong2rep[j] = i;
+                        dist2rep[j] = disp2;
+                    }
+                } else {
+                    assert(dim_all < dim_all_theoretical);
+                }
+                disp = dynamic_base_plus1(disp, L);
+            }
+        }
+    }
+    
     // ----------------- implementation of wavefunction ------------------
     template <typename T>
     std::pair<mbasis_elem, T> &wavefunction<T>::operator[](uint32_t n)

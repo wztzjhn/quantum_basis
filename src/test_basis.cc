@@ -39,7 +39,7 @@ void test_basis() {
     }
     std::cout << std::endl;
     
-    props1.emplace_back(5,8);
+    props1.emplace_back(9,8);
     std::cout << "props1[1].bits_per_site = " << static_cast<unsigned>(props1[1].bits_per_site) << std::endl;
     qbasis::mbasis_elem basis2(props1);
     basis2.siteWrite(props1, 2, 0, 1);
@@ -130,6 +130,57 @@ void test_basis() {
         assert(j == test_model.basis_full[j].label(test_model.props));
     }
     
+
+}
+
+void test_basis2()
+{
+    std::cout << "test basis2 " << std::endl;
+    std::vector<qbasis::basis_prop> props;
+    props.emplace_back(4,"spin-1/2");
+    
+    qbasis::lattice latt("chain",std::vector<uint32_t>{4},std::vector<std::string>{"pbc"});
+    
+    auto basis_list = qbasis::enumerate_basis_all(props);
     
     
+    std::vector<uint64_t> belong2rep;
+    std::vector<std::vector<int>> dist2rep;
+    qbasis::classify_translation(props, basis_list, latt, std::vector<bool>{true}, belong2rep, dist2rep);
+    
+    for (uint64_t j = 0; j < basis_list.size(); j++) {
+        std::cout << "j = " << j << ", ";
+        basis_list[j].prt_bits(props);
+        std::cout << "r = " << belong2rep[j] << ", dist = " << dist2rep[j][0] << std::endl << std::endl;
+    }
+    
+    std::cout << "haha" << std::endl;
+    
+    
+    
+}
+
+void test_basis3()
+{
+    std::cout << "test basis3 " << std::endl;
+    qbasis::lattice latt("triangular",std::vector<uint32_t>{2,3},std::vector<std::string>{"pbc","pbc"});
+    auto latt_child = qbasis::divide_lattice(latt);
+    
+    std::vector<qbasis::basis_prop> props;
+    props.emplace_back(latt_child.total_sites(),"spin-1/2");
+    
+    auto basis_list = qbasis::enumerate_basis_all(props);
+    
+    
+    std::vector<uint64_t> belong2rep;
+    std::vector<std::vector<int>> dist2rep;
+    qbasis::classify_translation(props, basis_list, latt_child, std::vector<bool>{true,true}, belong2rep, dist2rep);
+    
+    for (uint64_t j = 0; j < basis_list.size(); j++) {
+        std::cout << "j = " << j << ", ";
+        basis_list[j].prt_bits(props);
+        std::cout << "r = " << belong2rep[j] << ", dist = " << dist2rep[j][0] << "," << dist2rep[j][1] << std::endl << std::endl;
+    }
+    
+    std::cout << "haha" << std::endl;
 }

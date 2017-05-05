@@ -80,6 +80,13 @@ namespace qbasis {
                             const mbasis_elem &sub_a, const mbasis_elem &sub_b);
     // generate every single possible state, without any symmetry
     std::vector<mbasis_elem> enumerate_basis_all(const std::vector<basis_prop> &props);
+    // for a given list of full basis, classify according to translational symmetry
+    void classify_translation(const std::vector<basis_prop> &props,
+                              const std::vector<mbasis_elem> &basis_all,
+                              const lattice &latt,
+                              const std::vector<bool> &trans_sym,
+                              std::vector<uint64_t> &belong2rep,
+                              std::vector<std::vector<int>> &dist2rep);
     
     template <typename T> void swap(wavefunction<T>&, wavefunction<T>&);
     template <typename T> wavefunction<T> operator+(const wavefunction<T>&, const wavefunction<T>&);
@@ -1059,14 +1066,20 @@ namespace qbasis {
     // nums + 1
     template <typename T>
     std::vector<T> dynamic_base_plus1(const std::vector<T> &nums, const std::vector<T> &base);
+    // check if maximized
+    template <typename T>
+    bool dynamic_base_maximized(const std::vector<T> &nums, const std::vector<T> &base);
+    // check overflow
+    template <typename T>
+    bool dynamic_base_overflow(const std::vector<T> &nums, const std::vector<T> &base);
     
     template <typename T>
     bool is_sorted_norepeat(const std::vector<T> &array);
     
     // note: end means the position which has already passed the last element
-    template <typename T>
-    MKL_INT binary_search(const std::vector<T> &array, const T &val,
-                          const MKL_INT &bgn, const MKL_INT &end);
+    template <typename T1, typename T2>
+    T2 binary_search(const std::vector<T1> &array, const T1 &val,
+                     const T2 &bgn, const T2 &end);
     
     // return the number of exchanges happened during the bubble sort
     template <typename T>

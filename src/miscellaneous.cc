@@ -80,6 +80,35 @@ namespace qbasis {
     template std::vector<uint32_t> dynamic_base_plus1(const std::vector<uint32_t> &nums, const std::vector<uint32_t> &base);
     
     template <typename T>
+    bool dynamic_base_maximized(const std::vector<T> &nums, const std::vector<T> &base)
+    {
+        auto len = nums.size();
+        assert(len > 0);
+        assert(len == base.size());
+        for (decltype(len) j = 0; j < len; j++) {
+            assert(base[j] > 0 && nums[j] < base[j]);
+            if (nums[j] != base[j] - 1) return false;
+        }
+        return true;
+    }
+    template bool dynamic_base_maximized(const std::vector<uint8_t> &nums, const std::vector<uint8_t> &base);
+    template bool dynamic_base_maximized(const std::vector<uint32_t> &nums, const std::vector<uint32_t> &base);
+    
+    template <typename T>
+    bool dynamic_base_overflow(const std::vector<T> &nums, const std::vector<T> &base)
+    {
+        auto len = nums.size();
+        assert(len > 0);
+        assert(len == base.size());
+        for (decltype(len) j = 0; j < len; j++)
+            if (nums[j] > base[j] - 1) return true;
+        return false;
+    }
+    template bool dynamic_base_overflow(const std::vector<uint8_t> &nums, const std::vector<uint8_t> &base);
+    template bool dynamic_base_overflow(const std::vector<uint32_t> &nums, const std::vector<uint32_t> &base);
+    
+    
+    template <typename T>
     bool is_sorted_norepeat(const std::vector<T> &array)
     {
         auto it = array.begin();
@@ -93,25 +122,27 @@ namespace qbasis {
     template bool is_sorted_norepeat(const std::vector<MKL_INT> &array);
     template bool is_sorted_norepeat(const std::vector<mbasis_elem> &array);
     
-    template <typename T>
-    MKL_INT binary_search(const std::vector<T> &array, const T &val,
-                          const MKL_INT &bgn, const MKL_INT &end)
+    template <typename T1, typename T2>
+    T2 binary_search(const std::vector<T1> &array, const T1 &val,
+                          const T2 &bgn, const T2 &end)
     {
-        if(array.size() == 0 && bgn == end) return -1;            // not found
+        if(array.size() == 0 && bgn == end) return static_cast<T2>(array.size());            // not found
         assert(bgn < end);
-        assert(bgn >= 0 && bgn < static_cast<MKL_INT>(array.size()));
-        assert(end > 0 && end <= static_cast<MKL_INT>(array.size()));
-        MKL_INT low  = bgn;
-        MKL_INT high = end - 1;
-        MKL_INT mid;
+        assert(bgn >= 0 && bgn < static_cast<T2>(array.size()));
+        assert(end > 0 && end <= static_cast<T2>(array.size()));
+        T2 low  = bgn;
+        T2 high = end - 1;
+        T2 mid;
         while(low <= high) {
             mid = (low + high) / 2;
             if (val == array[mid]) return mid;
             else if (val < array[mid]) high = mid - 1;
             else low = mid + 1;
         }
-        return -1;
+        return static_cast<T2>(array.size());
     }
+    template uint64_t binary_search(const std::vector<mbasis_elem> &array, const mbasis_elem &val,
+                                   const uint64_t &bgn, const uint64_t &end);
     template MKL_INT binary_search(const std::vector<mbasis_elem> &array, const mbasis_elem &val,
                                    const MKL_INT &bgn, const MKL_INT &end);
     template MKL_INT binary_search(const std::vector<MKL_INT> &array, const MKL_INT &val,
