@@ -934,25 +934,25 @@ namespace qbasis {
             belong2rep[i] = (reps.size() - 1);
             dist2rep[i] = std::vector<int>(latt.dimension(),0);
             
-            std::vector<uint32_t> disp(latt.dimension(),0);
-            disp = dynamic_base_plus1(disp, L);
-            std::vector<int> disp2(latt.dimension(),0);
-            int sgn;
+            std::vector<uint32_t> base;
+            for (uint32_t d = 0; d < latt.dimension(); d++)
+                if (trans_sym[d]) base.push_back(L[d]);
+            std::vector<uint32_t> disp(base.size(),0);
+            if (! base.empty())
+                disp = dynamic_base_plus1(disp, base);
             
-            while (! dynamic_base_overflow(disp, L)) {
-                bool allowed = true;                      // check if such disp allowed
+            while ((! base.empty()) && (! dynamic_base_overflow(disp, base))) {
+                std::vector<int> disp2;
+                uint32_t pos = 0;
                 for (uint32_t d = 0; d < latt.dimension(); d++) {
-                    if ((! trans_sym[d]) && (disp[d] != 0)) {
-                        allowed = false;
-                        break;
+                    if (trans_sym[d]) {
+                        disp2.push_back(static_cast<int>(disp[pos++]));
+                    } else {
+                        disp2.push_back(0);
                     }
                 }
-                if (! allowed) {
-                    disp = dynamic_base_plus1(disp, L);
-                    continue;                             // such translation forbidden
-                }
-                for (uint32_t d = 0; d < latt.dimension(); d++) disp2[d] = static_cast<int>(disp[d]);
                 auto basis_temp = basis_all[i];
+                int sgn;
                 basis_temp.translate(props, latt, disp2, sgn);
                 uint64_t j = binary_search<mbasis_elem,uint64_t>(basis_all, basis_temp, 0, dim_all);
                 if (j < dim_all) {                        // found
@@ -963,7 +963,7 @@ namespace qbasis {
                 } else {
                     assert(dim_all < dim_all_theoretical);
                 }
-                disp = dynamic_base_plus1(disp, L);
+                disp = dynamic_base_plus1(disp, base);
             }
         }
     }
