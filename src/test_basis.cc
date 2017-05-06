@@ -143,11 +143,18 @@ void test_basis2()
     
     auto basis_list = qbasis::enumerate_basis_all(props);
     
-    
+    std::vector<qbasis::mbasis_elem> reps;
     std::vector<uint64_t> belong2rep;
     std::vector<std::vector<int>> dist2rep;
-    qbasis::classify_translation(props, basis_list, latt, std::vector<bool>{true}, belong2rep, dist2rep);
+    qbasis::classify_translation(props, basis_list, latt, std::vector<bool>{true}, reps, belong2rep, dist2rep);
     
+    std::cout << " ------- reps -------" << std::endl;
+    for (uint64_t j = 0; j < reps.size(); j++) {
+        std::cout << "i = " << j << ", ";
+        reps[j].prt_bits(props);
+    }
+    
+    std::cout << " ------- basis -------" << std::endl;
     for (uint64_t j = 0; j < basis_list.size(); j++) {
         std::cout << "j = " << j << ", ";
         basis_list[j].prt_bits(props);
@@ -171,10 +178,10 @@ void test_basis3()
     
     auto basis_list = qbasis::enumerate_basis_all(props);
     
-    
+    std::vector<qbasis::mbasis_elem> reps;
     std::vector<uint64_t> belong2rep;
     std::vector<std::vector<int>> dist2rep;
-    qbasis::classify_translation(props, basis_list, latt_child, std::vector<bool>{true,true}, belong2rep, dist2rep);
+    qbasis::classify_translation(props, basis_list, latt_child, std::vector<bool>{true,true}, reps,belong2rep, dist2rep);
     
     for (uint64_t j = 0; j < basis_list.size(); j++) {
         std::cout << "j = " << j << ", ";

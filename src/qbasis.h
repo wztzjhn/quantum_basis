@@ -85,6 +85,7 @@ namespace qbasis {
                               const std::vector<mbasis_elem> &basis_all,
                               const lattice &latt,
                               const std::vector<bool> &trans_sym,
+                              std::vector<mbasis_elem> &reps,
                               std::vector<uint64_t> &belong2rep,
                               std::vector<std::vector<int>> &dist2rep);
     

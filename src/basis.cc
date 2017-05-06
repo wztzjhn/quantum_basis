@@ -907,6 +907,7 @@ namespace qbasis {
                               const std::vector<mbasis_elem> &basis_all,
                               const lattice &latt,
                               const std::vector<bool> &trans_sym,
+                              std::vector<mbasis_elem> &reps,
                               std::vector<uint64_t> &belong2rep,
                               std::vector<std::vector<int>> &dist2rep)
     {
@@ -921,14 +922,16 @@ namespace qbasis {
         for (uint32_t d = 0; d < latt.dimension(); d++) {
             if (trans_sym[d]) assert(bc[d] == "pbc" || bc[d] == "PBC");
         }
+        reps.clear();
         belong2rep.resize(dim_all);
         dist2rep.resize(dim_all);
-        
         uint64_t unreachable = dim_all + 10;
         std::fill(belong2rep.begin(), belong2rep.end(), unreachable);
+        
         for (uint64_t i = 0; i < dim_all; i++) {
-            if (belong2rep[i] != unreachable) continue;  // already fixed
-            belong2rep[i] = i;
+            if (belong2rep[i] != unreachable) continue;   // already fixed
+            reps.push_back(basis_all[i]);
+            belong2rep[i] = (reps.size() - 1);
             dist2rep[i] = std::vector<int>(latt.dimension(),0);
             
             std::vector<uint32_t> disp(latt.dimension(),0);
@@ -952,9 +955,9 @@ namespace qbasis {
                 auto basis_temp = basis_all[i];
                 basis_temp.translate(props, latt, disp2, sgn);
                 uint64_t j = binary_search<mbasis_elem,uint64_t>(basis_all, basis_temp, 0, dim_all);
-                if (j < dim_all) {                       // found
-                    if (belong2rep[j] == unreachable) {  // not fixed
-                        belong2rep[j] = i;
+                if (j < dim_all) {                        // found
+                    if (belong2rep[j] == unreachable) {   // not fixed
+                        belong2rep[j] = (reps.size() - 1);
                         dist2rep[j] = disp2;
                     }
                 } else {
