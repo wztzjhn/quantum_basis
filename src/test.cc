@@ -12,6 +12,7 @@ void test_operator();
 void test_lanczos_memoAll();
 
 void test_lattice();
+void test_lattice2();
 
 void test_cfraction();
 void test_dotc();
@@ -24,15 +25,17 @@ int main(){
     
     test_basis();
     
+    test_basis2();
+    
+    test_basis3();
+    
     test_operator();
     
     test_lanczos_memoAll();
     
     test_lattice();
     
-    test_basis2();
-    
-    test_basis3();
+    test_lattice2();
     
     //test_dotc();
     

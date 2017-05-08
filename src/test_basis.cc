@@ -163,6 +163,23 @@ void test_basis2()
     
     std::cout << "haha" << std::endl;
     
+    assert(belong2rep[0] == 0);
+    assert(belong2rep[1] == 1);
+    assert(belong2rep[2] == 1);
+    assert(belong2rep[3] == 2);
+    assert(belong2rep[4] == 1);
+    assert(belong2rep[5] == 3);
+    assert(belong2rep[6] == 2);
+    assert(belong2rep[7] == 4);
+    assert(belong2rep[8] == 1);
+    assert(belong2rep[9] == 2);
+    assert(belong2rep[10] == 3);
+    assert(belong2rep[11] == 4);
+    assert(belong2rep[12] == 2);
+    assert(belong2rep[13] == 4);
+    assert(belong2rep[14] == 4);
+    assert(belong2rep[15] == 5);
+    
     
     
 }

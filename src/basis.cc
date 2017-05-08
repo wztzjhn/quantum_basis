@@ -919,9 +919,6 @@ namespace qbasis {
         uint64_t dim_all_theoretical = 1;
         for (auto &prop : props)
             dim_all_theoretical *= int_pow<uint32_t, uint64_t>(static_cast<uint32_t>(prop.dim_local), prop.num_sites);
-        for (uint32_t d = 0; d < latt.dimension(); d++) {
-            if (trans_sym[d]) assert(bc[d] == "pbc" || bc[d] == "PBC");
-        }
         reps.clear();
         belong2rep.resize(dim_all);
         dist2rep.resize(dim_all);
@@ -929,8 +926,12 @@ namespace qbasis {
         std::fill(belong2rep.begin(), belong2rep.end(), unreachable);
         
         std::vector<uint32_t> base;                       // for enumerating the possible translations
-        for (uint32_t d = 0; d < latt.dimension(); d++)
-            if (trans_sym[d]) base.push_back(L[d]);
+        for (uint32_t d = 0; d < latt.dimension(); d++) {
+            if (trans_sym[d]) {
+                assert(bc[d] == "pbc" || bc[d] == "PBC");
+                base.push_back(L[d]);
+            }
+        }
         std::vector<uint32_t> disp(base.size());
         std::vector<int> disp2;
         

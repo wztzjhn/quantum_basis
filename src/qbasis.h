@@ -900,6 +900,9 @@ namespace qbasis {
         uint32_t Ly() const { assert(L.size() > 1); return L[1]; }
         uint32_t Lz() const { assert(L.size() > 2); return L[2]; }
         
+        // obtain all possible divisors of a lattice, for the divide and conquer method
+        std::vector<std::vector<uint32_t>> divisor(const std::vector<bool> &trans_sym);
+        
     private:
         std::vector<uint32_t> L;             // linear size in each dimension
         std::vector<std::string> bc;         // boundary condition
