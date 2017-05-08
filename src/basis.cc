@@ -928,42 +928,44 @@ namespace qbasis {
         uint64_t unreachable = dim_all + 10;
         std::fill(belong2rep.begin(), belong2rep.end(), unreachable);
         
+        std::vector<uint32_t> base;                       // for enumerating the possible translations
+        for (uint32_t d = 0; d < latt.dimension(); d++)
+            if (trans_sym[d]) base.push_back(L[d]);
+        std::vector<uint32_t> disp(base.size());
+        std::vector<int> disp2;
+        
         for (uint64_t i = 0; i < dim_all; i++) {
-            if (belong2rep[i] != unreachable) continue;   // already fixed
+            if (belong2rep[i] != unreachable) continue;          // already fixed
             reps.push_back(basis_all[i]);
-            belong2rep[i] = (reps.size() - 1);
-            dist2rep[i] = std::vector<int>(latt.dimension(),0);
-            
-            std::vector<uint32_t> base;
-            for (uint32_t d = 0; d < latt.dimension(); d++)
-                if (trans_sym[d]) base.push_back(L[d]);
-            std::vector<uint32_t> disp(base.size(),0);
-            if (! base.empty())
+            belong2rep[i] = (reps.size() - 1);                   // fix now
+            dist2rep[i] = std::vector<int>(latt.dimension(),0);  // fix now
+            if (! base.empty()) {
+                std::fill(disp.begin(), disp.end(), 0);
                 disp = dynamic_base_plus1(disp, base);
-            
-            while ((! base.empty()) && (! dynamic_base_overflow(disp, base))) {
-                std::vector<int> disp2;
-                uint32_t pos = 0;
-                for (uint32_t d = 0; d < latt.dimension(); d++) {
-                    if (trans_sym[d]) {
-                        disp2.push_back(static_cast<int>(disp[pos++]));
+                while (! dynamic_base_overflow(disp, base)) {
+                    uint32_t pos = 0;
+                    disp2.clear();
+                    for (uint32_t d = 0; d < latt.dimension(); d++) {
+                        if (trans_sym[d]) {
+                            disp2.push_back(static_cast<int>(disp[pos++]));
+                        } else {
+                            disp2.push_back(0);
+                        }
+                    }
+                    auto basis_temp = basis_all[i];
+                    int sgn;
+                    basis_temp.translate(props, latt, disp2, sgn);
+                    uint64_t j = binary_search<mbasis_elem,uint64_t>(basis_all, basis_temp, 0, dim_all);
+                    if (j < dim_all) {                          // found
+                        if (belong2rep[j] == unreachable) {     // not fixed
+                            belong2rep[j] = (reps.size() - 1);  // fix now
+                            dist2rep[j] = disp2;                // fix now
+                        }
                     } else {
-                        disp2.push_back(0);
+                        assert(dim_all < dim_all_theoretical);
                     }
+                    disp = dynamic_base_plus1(disp, base);
                 }
-                auto basis_temp = basis_all[i];
-                int sgn;
-                basis_temp.translate(props, latt, disp2, sgn);
-                uint64_t j = binary_search<mbasis_elem,uint64_t>(basis_all, basis_temp, 0, dim_all);
-                if (j < dim_all) {                        // found
-                    if (belong2rep[j] == unreachable) {   // not fixed
-                        belong2rep[j] = (reps.size() - 1);
-                        dist2rep[j] = disp2;
-                    }
-                } else {
-                    assert(dim_all < dim_all_theoretical);
-                }
-                disp = dynamic_base_plus1(disp, base);
             }
         }
     }
