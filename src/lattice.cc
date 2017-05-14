@@ -142,39 +142,17 @@ namespace qbasis {
         }
     }
     
-    std::vector<std::vector<uint32_t>> lattice::divisor(const std::vector<bool> &trans_sym)
+    std::vector<std::vector<uint32_t>> lattice::divisor(const std::vector<bool> &trans_sym) const
     {
         assert(trans_sym.size() == dim);
-        std::vector<std::vector<uint32_t>> res;
-        std::vector<uint32_t> base;                       // for enumerating the possible translations
+        std::vector<std::vector<uint32_t>> res(dim, std::vector<uint32_t>{1});
+        
         for (uint32_t d = 0; d < dim; d++) {
             if (trans_sym[d]) {
                 assert(bc[d] == "pbc" || bc[d] == "PBC");
-                base.push_back(L[d]);
-            }
-        }
-        std::vector<uint32_t> disp(base.size(),0);
-        std::vector<uint32_t> disp2(dim,1);               // each dimension = disp[d] + 1
-        res.push_back(disp2);
-        if (! base.empty()) {
-            disp = dynamic_base_plus1(disp, base);
-            while (! dynamic_base_overflow(disp, base)) {
-                bool dividable = true;
-                uint32_t pos = 0;
-                disp2.clear();
-                for (uint32_t d = 0; d < dim; d++) {
-                    if (trans_sym[d]) {
-                        disp2.push_back(disp[pos++] + 1);
-                    } else {
-                        disp2.push_back(1);
-                    }
-                    if (L[d] % disp2[d] != 0) {
-                        dividable = false;
-                        break;
-                    }
+                for (uint32_t j = 2; j <= L[d]; j++) {
+                    if (L[d] % j == 0) res[d].push_back(j);
                 }
-                if (dividable) res.push_back(disp2);
-                disp = dynamic_base_plus1(disp, base);
             }
         }
         return res;

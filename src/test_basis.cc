@@ -146,7 +146,7 @@ void test_basis2()
     std::vector<qbasis::mbasis_elem> reps;
     std::vector<uint64_t> belong2rep;
     std::vector<std::vector<int>> dist2rep;
-    qbasis::classify_translation(props, basis_list, latt, std::vector<bool>{true}, reps, belong2rep, dist2rep);
+    qbasis::classify_trans_full2rep(props, basis_list, latt, std::vector<bool>{true}, reps, belong2rep, dist2rep);
     
     std::cout << " ------- reps -------" << std::endl;
     for (uint64_t j = 0; j < reps.size(); j++) {
@@ -198,7 +198,7 @@ void test_basis3()
     std::vector<qbasis::mbasis_elem> reps;
     std::vector<uint64_t> belong2rep;
     std::vector<std::vector<int>> dist2rep;
-    qbasis::classify_translation(props, basis_list, latt_child, std::vector<bool>{true,true}, reps,belong2rep, dist2rep);
+    qbasis::classify_trans_full2rep(props, basis_list, latt_child, std::vector<bool>{true,true}, reps,belong2rep, dist2rep);
     
     for (uint64_t j = 0; j < basis_list.size(); j++) {
         std::cout << "j = " << j << ", ";

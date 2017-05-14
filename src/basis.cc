@@ -903,13 +903,13 @@ namespace qbasis {
         return res;
     }
     
-    void classify_translation(const std::vector<basis_prop> &props,
-                              const std::vector<mbasis_elem> &basis_all,
-                              const lattice &latt,
-                              const std::vector<bool> &trans_sym,
-                              std::vector<mbasis_elem> &reps,
-                              std::vector<uint64_t> &belong2rep,
-                              std::vector<std::vector<int>> &dist2rep)
+    void classify_trans_full2rep(const std::vector<basis_prop> &props,
+                                 const std::vector<mbasis_elem> &basis_all,
+                                 const lattice &latt,
+                                 const std::vector<bool> &trans_sym,
+                                 std::vector<mbasis_elem> &reps,
+                                 std::vector<uint64_t> &belong2rep,
+                                 std::vector<std::vector<int>> &dist2rep)
     {
         assert(latt.dimension() == trans_sym.size());
         assert(is_sorted_norepeat(basis_all));

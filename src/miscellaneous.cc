@@ -121,6 +121,7 @@ namespace qbasis {
     }
     template bool is_sorted_norepeat(const std::vector<MKL_INT> &array);
     template bool is_sorted_norepeat(const std::vector<mbasis_elem> &array);
+    template bool is_sorted_norepeat(const std::vector<std::vector<uint32_t>> &array);
     
     template <typename T1, typename T2>
     T2 binary_search(const std::vector<T1> &array, const T1 &val,

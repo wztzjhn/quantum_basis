@@ -80,14 +80,21 @@ namespace qbasis {
                             const mbasis_elem &sub_a, const mbasis_elem &sub_b);
     // generate every single possible state, without any symmetry
     std::vector<mbasis_elem> enumerate_basis_all(const std::vector<basis_prop> &props);
-    // for a given list of full basis, classify according to translational symmetry
-    void classify_translation(const std::vector<basis_prop> &props,
-                              const std::vector<mbasis_elem> &basis_all,
-                              const lattice &latt,
-                              const std::vector<bool> &trans_sym,
-                              std::vector<mbasis_elem> &reps,
-                              std::vector<uint64_t> &belong2rep,
-                              std::vector<std::vector<int>> &dist2rep);
+    // for a given list of full basis, find the reps according to translational symmetry
+    void classify_trans_full2rep(const std::vector<basis_prop> &props,
+                                 const std::vector<mbasis_elem> &basis_all,
+                                 const lattice &latt,
+                                 const std::vector<bool> &trans_sym,
+                                 std::vector<mbasis_elem> &reps,
+                                 std::vector<uint64_t> &belong2rep,
+                                 std::vector<std::vector<int>> &dist2rep);
+    // for a given list of reps, find the corresponding translation group
+    void classify_trans_rep2group(const std::vector<basis_prop> &props,
+                                  const std::vector<mbasis_elem> &reps,
+                                  const lattice &latt,
+                                  const std::vector<bool> &trans_sym,
+                                  std::vector<uint32_t> &belong2group,
+                                  std::vector<uint32_t> &omega_g);
     
     template <typename T> void swap(wavefunction<T>&, wavefunction<T>&);
     template <typename T> wavefunction<T> operator+(const wavefunction<T>&, const wavefunction<T>&);
@@ -901,7 +908,8 @@ namespace qbasis {
         uint32_t Lz() const { assert(L.size() > 2); return L[2]; }
         
         // obtain all possible divisors of a lattice, for the divide and conquer method
-        std::vector<std::vector<uint32_t>> divisor(const std::vector<bool> &trans_sym);
+        // the returned value is a list of lists: {{divisors for Lx}, {divisors for Ly}, ...}
+        std::vector<std::vector<uint32_t>> divisor(const std::vector<bool> &trans_sym) const;
         
     private:
         std::vector<uint32_t> L;             // linear size in each dimension
