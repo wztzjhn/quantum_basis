@@ -1,5 +1,6 @@
 #include <iostream>
 #include <bitset>
+#include <algorithm>
 #include "qbasis.h"
 
 namespace qbasis {
@@ -967,6 +968,60 @@ namespace qbasis {
                     }
                     disp = dynamic_base_plus1(disp, base);
                 }
+            }
+        }
+    }
+    
+    void classify_trans_rep2group(const std::vector<basis_prop> &props,
+                                  const std::vector<mbasis_elem> &reps,
+                                  const lattice &latt,
+                                  const std::vector<bool> &trans_sym,
+                                  std::vector<std::vector<uint32_t>> &groups,
+                                  std::vector<uint32_t> &omega_g,
+                                  std::vector<uint32_t> &belong2group)
+    {
+        uint32_t dim = latt.dimension();
+        auto L = latt.Linear_size();
+        uint64_t dim_repr = reps.size();
+        
+        auto div_v1 = latt.divisor_v1(trans_sym);
+        groups = latt.divisor_v2(trans_sym);
+        uint32_t num_groups = 1;
+        for (uint32_t d = 0; d < dim; d++) {
+            assert(is_sorted_norepeat(div_v1[d]));
+            num_groups *= div_v1[d].size();
+        }
+        assert(num_groups == groups.size());
+        
+        belong2group.resize(dim_repr);
+        omega_g.resize(dim_repr);
+        std::fill(omega_g.begin(), omega_g.end(), 0);
+        
+        // divisor = x -> translate x to comeback
+        // for each representative, find its group, by trying translating according to the smallest possible divisor
+        for (uint64_t j = 0; j < dim_repr; j++) {
+            std::vector<uint32_t> div(dim,0); // set to 0, only for double checking purpose
+            for (uint32_t d = 0; d < dim; d++) {
+                for (auto it = div_v1[d].begin(); it != div_v1[d].end(); it++) {
+                    std::vector<int> disp(dim,0);
+                    disp[d] = static_cast<int>(*it);
+                    int sgn;
+                    auto basis_temp = reps[j];
+                    basis_temp.translate(props, latt, disp, sgn);
+                    if (basis_temp == reps[j]) {
+                        div[d] = *it;
+                        break;
+                    }
+                }
+                assert(div[d] != 0);
+            }
+            // now div obtained, we can find its group label
+            uint32_t g_label = binary_search<std::vector<uint32_t>,uint32_t>(groups, div, 0, num_groups);
+            assert(g_label < num_groups);
+            belong2group[j] = g_label;
+            if (omega_g[g_label] == 0) {
+                omega_g[g_label] = 1;
+                for (uint32_t d = 0; d < dim; d++) omega_g[g_label] *= div[d];
             }
         }
     }

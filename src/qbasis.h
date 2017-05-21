@@ -93,8 +93,9 @@ namespace qbasis {
                                   const std::vector<mbasis_elem> &reps,
                                   const lattice &latt,
                                   const std::vector<bool> &trans_sym,
-                                  std::vector<uint32_t> &belong2group,
-                                  std::vector<uint32_t> &omega_g);
+                                  std::vector<std::vector<uint32_t>> &groups,
+                                  std::vector<uint32_t> &omega_g,
+                                  std::vector<uint32_t> &belong2group);
     
     template <typename T> void swap(wavefunction<T>&, wavefunction<T>&);
     template <typename T> wavefunction<T> operator+(const wavefunction<T>&, const wavefunction<T>&);
@@ -909,7 +910,9 @@ namespace qbasis {
         
         // obtain all possible divisors of a lattice, for the divide and conquer method
         // the returned value is a list of lists: {{divisors for Lx}, {divisors for Ly}, ...}
-        std::vector<std::vector<uint32_t>> divisor(const std::vector<bool> &trans_sym) const;
+        std::vector<std::vector<uint32_t>> divisor_v1(const std::vector<bool> &trans_sym) const;
+        // {{1,1,1}, {1,1,2}, {1,1,5}, {1,2,1}, {1,2,2}, {1,2,5},...}, i.e., combine results from v1 to a single list
+        std::vector<std::vector<uint32_t>> divisor_v2(const std::vector<bool> &trans_sym) const;
         
     private:
         std::vector<uint32_t> L;             // linear size in each dimension

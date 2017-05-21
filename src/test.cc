@@ -25,9 +25,10 @@ int main(){
     
     test_basis();
     
-    test_basis2();
     
     test_basis3();
+    
+    
     
     test_operator();
     

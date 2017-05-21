@@ -120,6 +120,7 @@ namespace qbasis {
         return true;
     }
     template bool is_sorted_norepeat(const std::vector<MKL_INT> &array);
+    template bool is_sorted_norepeat(const std::vector<uint32_t> &array);
     template bool is_sorted_norepeat(const std::vector<mbasis_elem> &array);
     template bool is_sorted_norepeat(const std::vector<std::vector<uint32_t>> &array);
     
@@ -142,6 +143,8 @@ namespace qbasis {
         }
         return static_cast<T2>(array.size());
     }
+    template uint32_t binary_search(const std::vector<std::vector<uint32_t>> &array, const std::vector<uint32_t> &val,
+                                    const uint32_t &bgn, const uint32_t &end);
     template uint64_t binary_search(const std::vector<mbasis_elem> &array, const mbasis_elem &val,
                                    const uint64_t &bgn, const uint64_t &end);
     template MKL_INT binary_search(const std::vector<mbasis_elem> &array, const mbasis_elem &val,

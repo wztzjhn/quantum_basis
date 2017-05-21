@@ -181,6 +181,18 @@ void test_basis2()
     assert(belong2rep[15] == 5);
     
     
+    std::vector<std::vector<uint32_t>> groups;
+    std::vector<uint32_t> omega_g;
+    std::vector<uint32_t> belong2group;
+    qbasis::classify_trans_rep2group(props, reps, latt, std::vector<bool>{true}, groups, omega_g, belong2group);
+    for (uint32_t j = 0; j < groups.size(); j++) {
+        std::cout << "group: " << groups[j][0] << ", omega_g = " << omega_g[j] << std::endl;
+    }
+    for (uint64_t j = 0; j < reps.size(); j++) {
+        std::cout << "j = " << j <<  std::endl;
+        reps[j].prt_bits(props);
+        std::cout << "belong to group: " << belong2group[j] << std::endl;
+    }
     
 }
 

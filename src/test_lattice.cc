@@ -69,7 +69,7 @@ void test_lattice() {
 void test_lattice2() {
     std::cout << "chain: " << std::endl;
     qbasis::lattice chain("chain", std::vector<uint32_t>{10},std::vector<std::string>{"pbc"});
-    auto div = chain.divisor(std::vector<bool>{true});
+    auto div = chain.divisor_v1(std::vector<bool>{true});
     for (decltype(div.size()) j = 0; j < div.size(); j++) {
         std::cout << "dimension " << j << std::endl;
         for (uint32_t i = 0; i < div[j].size(); i++) {
@@ -80,7 +80,7 @@ void test_lattice2() {
     
     std::cout << "square: " << std::endl;
     qbasis::lattice square("square", std::vector<uint32_t>{10, 10},std::vector<std::string>{"pbc", "pbc"});
-    auto div2 = square.divisor(std::vector<bool>{false,true});
+    auto div2 = square.divisor_v1(std::vector<bool>{false,true});
     for (decltype(div2.size()) j = 0; j < div2.size(); j++) {
         std::cout << "dimension " << j << std::endl;
         for (uint32_t i = 0; i < div2[j].size(); i++) {
