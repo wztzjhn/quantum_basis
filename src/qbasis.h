@@ -31,6 +31,7 @@
 #include <initializer_list>
 #include <chrono>
 #include <cassert>
+#include <boost/multi_array.hpp>
 #include "mkl.h"
 //#include <boost/math/special_functions/binomial.hpp>
 
@@ -80,7 +81,7 @@ namespace qbasis {
                             const mbasis_elem &sub_a, const mbasis_elem &sub_b);
     // generate every single possible state, without any symmetry
     std::vector<mbasis_elem> enumerate_basis_all(const std::vector<basis_prop> &props);
-    // for a given list of full basis, find the reps according to translational symmetry
+    // (sublattice) for a given list of full basis, find the reps according to translational symmetry
     void classify_trans_full2rep(const std::vector<basis_prop> &props,
                                  const std::vector<mbasis_elem> &basis_all,
                                  const lattice &latt,

@@ -13,11 +13,15 @@ To learn how to use this library to design ED code for your own models, please r
 - Kondo Lattice Model on a chain (currently the gap has been checked, but E0 not checked yet)
 
 ## Dependencies:
+- [boost](http://www.boost.org/) (>=1.56)
 - [MKL](https://software.intel.com/en-us/intel-mkl) (some old versions may not work)
 - [arpack](https://github.com/opencollab/arpack-ng) (dependency to be removed in a future release)
 - [arpack++](https://github.com/wztzjhn/arpackpp) (dependency to be removed in a future release)
 
 **Note: using a modified version of arpack++ to be compatible with MKL.**
+
+## Restrictions on lattice:
+When using translational symmetry, at least one of the dimensions (Lx, Ly, Lz, or number of sublattices) has to be an even number (current implementation of Lin Table).
 
 ## Parallel scheme: 
 MKL + OpenMP
