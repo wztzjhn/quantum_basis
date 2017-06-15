@@ -476,6 +476,10 @@ namespace qbasis {
         // question if it is identity operator
         bool q_identity() const;
         
+        uint32_t pos_site() const { return site; }
+        
+        uint32_t pos_orb() const { return orbital; }
+        
         //    ------------ arithmetics -------------
         // \sqrt { sum_{i,j} |mat[i,j]|^2 }
         double norm() const;
@@ -564,6 +568,10 @@ namespace qbasis {
         bool q_prop_identity() const;
         
         uint32_t len() const;
+        
+        opr<T>& operator[](uint32_t n);
+        
+        const opr<T>& operator[](uint32_t n) const;
         
         //    ------------ arithmetics -------------
         // invert the sign

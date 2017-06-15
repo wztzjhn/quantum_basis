@@ -510,6 +510,24 @@ namespace qbasis {
     }
     
     template <typename T>
+    opr<T> &opr_prod<T>::operator[](uint32_t n)
+    {
+        assert(n < len());
+        auto it = mat_prod.begin();
+        for (decltype(n) i = 0; i < n; i++) ++it;
+        return *it;
+    }
+    
+    template <typename T>
+    const opr<T> &opr_prod<T>::operator[](uint32_t n) const
+    {
+        assert(n < len());
+        auto it = mat_prod.begin();
+        for (decltype(n) i = 0; i < n; i++) ++it;
+        return *it;
+    }
+    
+    template <typename T>
     opr_prod<T> &opr_prod<T>::negative()
     {
         coeff = -coeff;

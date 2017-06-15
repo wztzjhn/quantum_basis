@@ -586,7 +586,7 @@ namespace qbasis {
                 assert(lowest_coors[dim] >= 0 && lowest_coors[dim] < static_cast<int>(latt.Linear_size()[dim]));
                 assert(highest_coors[dim] >= 0 && highest_coors[dim] < static_cast<int>(latt.Linear_size()[dim]));
                 assert(lowest_coors[dim] <= highest_coors[dim]);
-                disp_vec[dim] = (latt.Linear_size()[dim] - 1 - highest_coors[dim] - lowest_coors[dim])/2;
+                disp_vec[dim] = static_cast<int>((latt.Linear_size()[dim]) - 1 - highest_coors[dim] - lowest_coors[dim])/2;
                 if (lowest_coors[dim] + disp_vec[dim]
                     > static_cast<int>(latt.Linear_size()[dim]) - 1 - (highest_coors[dim] + disp_vec[dim])) {
                     disp_vec[dim]--;
@@ -1252,22 +1252,22 @@ namespace qbasis {
         auto dim = props[lhs.orbital].dim_local;
         assert(lhs.dim == dim);
         uint32_t col = rhs.siteRead(props, lhs.site, lhs.orbital); // actually col <= 255
-        uint32_t displacement = col * lhs.dim;
-        bool flag = true;
-        for (uint8_t row = 0; row < dim; row++) {
-            if (std::abs(lhs.mat[row + displacement]) > opr_precision) {
-                flag = false;
-                break;
-            }
-        }
-        if (flag) return res; // the full column == 0
         if (lhs.diagonal) {
             assert(! lhs.fermion);
             if (std::abs(lhs.mat[col]) > opr_precision)
                 res += std::pair<mbasis_elem, T>(rhs, lhs.mat[col]);
         } else {
+            uint32_t displacement = col * lhs.dim;
+            bool flag = true;
+            for (uint8_t row = 0; row < dim; row++) {
+                if (std::abs(lhs.mat[row + displacement]) > opr_precision) {
+                    flag = false;
+                    break;
+                }
+            }
+            if (flag) return res;                                 // the full column == 0
             int sgn = 0;
-            if (lhs.fermion) {                         // count # of fermions traversed by this operator
+            if (lhs.fermion) {                                    // count # of fermions traversed by this operator
                 for (uint32_t orb_cnt = 0; orb_cnt < lhs.orbital; orb_cnt++) {
                     if (props[orb_cnt].q_fermion()) {
                         for (uint32_t site_cnt = 0; site_cnt < props[orb_cnt].num_sites; site_cnt++) {

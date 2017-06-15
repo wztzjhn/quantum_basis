@@ -10,9 +10,6 @@ EXEC      =
 test: $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o
 	$(CXX) $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o $(LIBS) -o ../bin/test.x
 
-xxz: $(OBJS) chain_xxz.o
-	$(CXX) $(OBJS) chain_xxz.o $(LIBS) -o ../bin/xxz.x
-
 libqbasis.a: $(OBJS)
 	ar rvs libqbasis.a $(OBJS)
 
