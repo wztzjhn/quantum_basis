@@ -4,15 +4,10 @@ LIBS      = -L${HOME}/opt/ARPACK_ILP64 -larpack -lgfortran -L${MKLROOT}/lib/inte
 
 OBJS      = lattice.o miscellaneous.o model.o lanczos.o sparse.o operators.o basis.o
 
-OPTS      = 
-
 EXEC      =
 
 test: $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o
 	$(CXX) $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o $(OPTS) $(LIBS) -o ../bin/test.x
-
-xxz: $(OBJS) chain_xxz.o
-	$(CXX) $(OBJS) chain_xxz.o $(OPTS) $(LIBS) -o ../bin/xxz.x
 
 libqbasis.a: $(OBJS)
 	ar rvs libqbasis.a $(OBJS)

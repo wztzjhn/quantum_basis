@@ -2,17 +2,12 @@ CXX       = g++
 CPPFLAGS  = -O2 -std=c++11 -Wall -Wextra -m64 -fopenmp -isystem ${BOOST_DIR}/include -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
 LIBS      = -L${HOME}/opt/ARPACK -larpack -lgfortran -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -fopenmp
 
-OBJS      = lattice.o miscellaneous.o model.o measure.o lanczos.o sparse.o operators.o basis.o
-
-OPTS      = 
+OBJS      = lattice.o miscellaneous.o model.o lanczos.o sparse.o operators.o basis.o
 
 EXEC      =
 
-test: $(OBJS) test.o
-	$(CXX) $(OBJS) test.o $(OPTS) $(LIBS) -o ../bin/test.x
-
-xxz: $(OBJS) chain_xxz.o
-	$(CXX) $(OBJS) chain_xxz.o $(OPTS) $(LIBS) -o ../bin/xxz.x
+test: $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o
+	$(CXX) $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o $(OPTS) $(LIBS) -o ../bin/test.x
 
 libqbasis.a: $(OBJS)
 	ar rvs libqbasis.a $(OBJS)
