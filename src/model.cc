@@ -33,8 +33,9 @@ namespace qbasis {
         {
             int tid = omp_get_thread_num();
             if (tid == 0) {
-                std::cout << "Number of threads = " << omp_get_num_threads() << std::endl;
-                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl << std::endl;
+                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
+                std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl;
+                std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
             }
         }
         
@@ -414,8 +415,9 @@ namespace qbasis {
         {
             int tid = omp_get_thread_num();
             if (tid == 0) {
-                std::cout << "Number of threads = " << omp_get_num_threads() << std::endl;
-                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl << std::endl;
+                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
+                std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl;
+                std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
             }
         }
         std::chrono::time_point<std::chrono::system_clock> start, end;
@@ -447,8 +449,9 @@ namespace qbasis {
         {
             int tid = omp_get_thread_num();
             if (tid == 0) {
-                std::cout << "Number of threads = " << omp_get_num_threads() << std::endl;
-                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl << std::endl;
+                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
+                std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl;
+                std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
             }
         }
         if (dim_repr < 1) {
