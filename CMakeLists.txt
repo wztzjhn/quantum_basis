@@ -55,7 +55,7 @@ endif()
 # -- DEPENDENCIES -------------------------------------------
 
 # Boost
-find_package(Boost 1.56.0 REQUIRED)
+find_package(Boost)
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 
 #MKL

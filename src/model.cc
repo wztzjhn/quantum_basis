@@ -410,6 +410,14 @@ namespace qbasis {
     {
         assert(ncv > nev + 1);
         std::cout << "Calculating ground state..." << std::endl;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) {
+                std::cout << "Number of threads = " << omp_get_num_threads() << std::endl;
+                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl << std::endl;
+            }
+        }
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         std::vector<T> v0(dim_full, 1.0);
@@ -435,6 +443,14 @@ namespace qbasis {
     {
         assert(ncv > nev + 1);
         std::cout << "Calculating ground state in the subspace..." << std::endl;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) {
+                std::cout << "Number of threads = " << omp_get_num_threads() << std::endl;
+                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl << std::endl;
+            }
+        }
         if (dim_repr < 1) {
             std::cout << "dim_repr = " << dim_repr << "!!!" << std::endl;
             return;
