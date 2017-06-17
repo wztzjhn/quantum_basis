@@ -35,9 +35,9 @@ namespace qbasis {
             if (tid == 0) {
                 std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
                 std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl;
-                std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
             }
         }
+        std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
         
         uint32_t n_sites = latt.total_sites();
         assert(conserve_lst.size() == val_lst.size());
@@ -417,9 +417,9 @@ namespace qbasis {
             if (tid == 0) {
                 std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
                 std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl;
-                std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
             }
         }
+        std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         std::vector<T> v0(dim_full, 1.0);
@@ -451,9 +451,9 @@ namespace qbasis {
             if (tid == 0) {
                 std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
                 std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl;
-                std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
             }
         }
+        std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
         if (dim_repr < 1) {
             std::cout << "dim_repr = " << dim_repr << "!!!" << std::endl;
             return;
