@@ -512,7 +512,10 @@ namespace qbasis {
         assert(latt.total_sites() == total_sites);
         uint32_t orb_smart = 0;
         while (orb_smart < total_orbitals && q_same_state_all_site(props, orb_smart)) orb_smart++;
-        if (orb_smart == total_orbitals) return *this; // if every site in the same state
+        if (orb_smart == total_orbitals) { // if every site in the same state
+            disp_vec = std::vector<int>(latt.dimension(),0.0);
+            return *this;
+        }
         
         auto statis = statistics(props, orb_smart);
         uint8_t state_smart = 0;

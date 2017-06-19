@@ -309,6 +309,7 @@ namespace qbasis {
                                const lattice &latt, const std::vector<int> &disp, int &sgn);
         
         // change to a basis element which is the unique (fully determined by the lattice and its state) among its translational equivalents
+        // Translation(disp_vec) * old state = new state
         mbasis_elem& translate_to_unique_state(const std::vector<basis_prop> &props,
                                                const lattice &latt, std::vector<int> &disp_vec);
         
