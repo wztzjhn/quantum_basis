@@ -17,4 +17,4 @@ all: $(EXEC)
 	$(CXX) $(CPPFLAGS) $< $(LIBS) -o $@
 
 clean:
-	$(RM) *.o *.x
+	$(RM) *.o *.a

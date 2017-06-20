@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include "qbasis.h"
+#include <fstream>
 
 // Fermi-Hubbard model on square lattice
 int main() {
@@ -13,6 +14,7 @@ int main() {
     int Ly = 3;
     double Nup_total = 5;
     double Ndn_total = 4;
+    int step = 150;
 
     std::cout << "Lx =      " << Lx << std::endl;
     std::cout << "Ly =      " << Ly << std::endl;
@@ -106,4 +108,92 @@ int main() {
 
     // for the parameters considered, we should obtain:
     assert(std::abs(Hubbard.eigenvals_full[0] + 12.68398173) < 1e-8);
+    
+    
+    // calculate dynamical structure factor Sz(q)*Sz(-q)
+    std::string output_name = "L"+std::to_string(Lx)+"x"+std::to_string(Ly)+ "_chi.dat";
+    std::ofstream fout(output_name, std::ios::out);
+    fout << std::scientific << std::right;
+    fout << std::setprecision(18);
+    fout << "Lx\t" << Lx << std::endl;
+    fout << "Ly\t" << Ly << std::endl;
+    fout << "U\t" << U << std::endl;
+    fout << "E0\t" << Hubbard.energy_min() << std::endl;
+    fout << "Gap\t" << Hubbard.energy_gap() << std::endl << std::endl;
+    
+    
+    // prepare list of momentum points for measurement
+    std::vector<std::vector<int>> q_list;
+    // along (0,0) -> (pi,0)
+    for (int m = 0; m < Lx/2; m++) {
+        int n = 0;
+        q_list.push_back(std::vector<int>{m,n});
+    }
+    // along (pi,0) -> (pi,pi)
+    for (int n = 0; n < Ly/2; n++) {
+        int m = Lx/2;
+        q_list.push_back(std::vector<int>{m,n});
+    }
+    // along (pi,pi) -> (0,0)
+    for (int m = Lx/2; m >= 0; m--) {
+        assert(Lx == Ly);
+        int n = m;
+        q_list.push_back(std::vector<int>{m,n});
+    }
+    // loop over all the q points
+    for (auto q : q_list) {
+        int m = q[0];
+        int n = q[1];
+        // construct Sz(-q)
+        qbasis::mopr<std::complex<double>> Szmq;
+        for (int x = 0; x < Lx; x++) {
+            for (int y = 0; y < Ly; y++) {
+                double qdotr = 2.0 * qbasis::pi * (m * x / static_cast<double>(Lx) + n * y / static_cast<double>(Ly));
+                auto coeff = 0.5 / sqrt(static_cast<double>(Lx * Ly)) * std::exp(std::complex<double>{0.0,-qdotr});
+                uint32_t site;
+                lattice.coor2site(std::vector<int>{x,y}, 0, site);
+                auto c_up_i    = qbasis::opr<std::complex<double>>(site,0,true,c_up);
+                auto c_dn_i    = qbasis::opr<std::complex<double>>(site,0,true,c_dn);
+                auto c_up_dg_i = c_up_i; c_up_dg_i.dagger();
+                auto c_dn_dg_i = c_dn_i; c_dn_dg_i.dagger();
+                auto n_up_i    = c_up_dg_i * c_up_i;
+                auto n_dn_i    = c_dn_dg_i * c_dn_i;
+                Szmq += coeff * (n_up_i - n_dn_i);
+            }
+        }
+        // prepare restart state
+        std::vector<std::complex<double>> phi0(Hubbard.dim_full, 0.0);
+        Hubbard.moprXeigenvec(Szmq, phi0.data());
+        // normalization of restart state
+        double phi0_nrm2 = qbasis::nrm2(Hubbard.dim_full, phi0.data(), 1);
+        double rnorm;
+        if (phi0_nrm2 > qbasis::lanczos_precision) {
+            std::cout << "phi_nrm2 = " << phi0_nrm2 << std::endl;
+            qbasis::scal(Hubbard.dim_full, 1.0/phi0_nrm2, phi0.data(), 1);
+        }
+        fout << "Q\t" << m << "," << n << std::endl;
+        fout << "nrm2\t" << phi0_nrm2 << std::endl;
+        // run Lanczos once again
+        std::cout << "Running continued fraction with " << step << " steps" << std::endl;
+        std::vector<std::complex<double>> v(Hubbard.dim_full * 3);
+        std::vector<double> hessenberg(step * 2, 0.0);
+        if (phi0_nrm2 > qbasis::lanczos_precision) {
+            qbasis::lanczos(0, step, Hubbard.dim_full, Hubbard.HamMat_csr_full, rnorm, phi0.data(), v.data(), hessenberg.data(), step, false);
+            fout << "b\t";
+            for (int i = 0; i < step; i++) {
+                fout << std::setw(30) << hessenberg[i];
+            }
+            fout << std::endl;
+            fout << "a\t";
+            for (MKL_INT i = step; i < 2 * step; i++) {
+                fout << std::setw(30) << hessenberg[i];
+            }
+            fout << std::endl;
+        } else {
+            fout << "b\t" << std::endl;
+            fout << "a\t" << std::endl;
+        }
+    }
+    
+    
 }

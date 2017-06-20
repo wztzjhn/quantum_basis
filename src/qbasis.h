@@ -31,6 +31,7 @@
 #include <initializer_list>
 #include <chrono>
 #include <cassert>
+#include <boost/multi_array.hpp>
 #include "mkl.h"
 //#include <boost/math/special_functions/binomial.hpp>
 
@@ -69,10 +70,33 @@ namespace qbasis {
     //class threads_pool;
     
     // ---------- basis -----------
+    void swap(mbasis_elem&, mbasis_elem&);
     bool operator<(const mbasis_elem&, const mbasis_elem&);
     bool operator==(const mbasis_elem&, const mbasis_elem&);
     bool operator!=(const mbasis_elem&, const mbasis_elem&);
     bool trans_equiv(const mbasis_elem&, const mbasis_elem&, const std::vector<basis_prop> &props, const lattice&);   // computational heavy, use with caution
+    // following zipper product definition in Weisse's PRE 87, 043305 (2013)
+    mbasis_elem zipper_prod(const std::vector<basis_prop> &props_a, const std::vector<basis_prop> &props_b,
+                            const std::vector<basis_prop> &props,
+                            const mbasis_elem &sub_a, const mbasis_elem &sub_b);
+    // generate every single possible state, without any symmetry
+    std::vector<mbasis_elem> enumerate_basis_all(const std::vector<basis_prop> &props);
+    // (sublattice) for a given list of full basis, find the reps according to translational symmetry
+    void classify_trans_full2rep(const std::vector<basis_prop> &props,
+                                 const std::vector<mbasis_elem> &basis_all,
+                                 const lattice &latt,
+                                 const std::vector<bool> &trans_sym,
+                                 std::vector<mbasis_elem> &reps,
+                                 std::vector<uint64_t> &belong2rep,
+                                 std::vector<std::vector<int>> &dist2rep);
+    // for a given list of reps, find the corresponding translation group
+    void classify_trans_rep2group(const std::vector<basis_prop> &props,
+                                  const std::vector<mbasis_elem> &reps,
+                                  const lattice &latt,
+                                  const std::vector<bool> &trans_sym,
+                                  std::vector<std::vector<uint32_t>> &groups,
+                                  std::vector<uint32_t> &omega_g,
+                                  std::vector<uint32_t> &belong2group);
     
     template <typename T> void swap(wavefunction<T>&, wavefunction<T>&);
     template <typename T> wavefunction<T> operator+(const wavefunction<T>&, const wavefunction<T>&);
@@ -143,7 +167,8 @@ namespace qbasis {
     
     template <typename T> void swap(csr_mat<T>&, csr_mat<T>&);
     
-    
+    // divide into two identical sublattices, if Nsites even. To be used in the divide and conquer method
+    lattice divide_lattice(const lattice &parent);
     
 
 
@@ -249,6 +274,11 @@ namespace qbasis {
         
         bool q_same_state_all_site(const std::vector<basis_prop> &props) const;
         
+        // get a label
+        uint64_t label(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
+        
+        uint64_t label(const std::vector<basis_prop> &props) const;
+        
         // return a vector of length dim_local (for orbital), reporting # of each state
         std::vector<uint32_t> statistics(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
         
@@ -279,6 +309,7 @@ namespace qbasis {
                                const lattice &latt, const std::vector<int> &disp, int &sgn);
         
         // change to a basis element which is the unique (fully determined by the lattice and its state) among its translational equivalents
+        // Translation(disp_vec) * old state = new state
         mbasis_elem& translate_to_unique_state(const std::vector<basis_prop> &props,
                                                const lattice &latt, std::vector<int> &disp_vec);
         
@@ -446,6 +477,10 @@ namespace qbasis {
         // question if it is identity operator
         bool q_identity() const;
         
+        uint32_t pos_site() const { return site; }
+        
+        uint32_t pos_orb() const { return orbital; }
+        
         //    ------------ arithmetics -------------
         // \sqrt { sum_{i,j} |mat[i,j]|^2 }
         double norm() const;
@@ -534,6 +569,10 @@ namespace qbasis {
         bool q_prop_identity() const;
         
         uint32_t len() const;
+        
+        opr<T>& operator[](uint32_t n);
+        
+        const opr<T>& operator[](uint32_t n) const;
         
         //    ------------ arithmetics -------------
         // invert the sign
@@ -773,7 +812,7 @@ namespace qbasis {
     // v_0, ..., v_{k-1} stored in v, v{k} stored in resid
     // alpha_0, ..., alpha_{k-1} in hessenberg matrix
     // beta_1,  ..., beta_{k-1} in hessenberg matrix, beta_k as rnorm
-    // if on entry k==0, then beta_k=rnorm=0, v_0=resid
+    // if on entry k==0, then beta_k=0, v_0=resid, entry value of rnorm irrelevant
     
     // ldh: leading dimension of hessenberg
     // alpha[j] = hessenberg[j+ldh], diagonal of hessenberg matrix
@@ -825,6 +864,7 @@ namespace qbasis {
 //  ----------------------------- part 5: Lattices  ----------------------------
 //  ----------------------------------------------------------------------------
     class lattice {
+        friend lattice divide_lattice(const lattice &parent);
     public:
         lattice() = default;
         
@@ -832,9 +872,11 @@ namespace qbasis {
         lattice(const std::string &name, const std::vector<uint32_t> &L_, const std::vector<std::string> &bc_);
         
         // coordinates <-> site indices
+        // first find a direction (dim_spec) which has even size, if not successful, use the following:
         // 1D: site = i * num_sub + sub
         // 2D: site = (i + j * L[0]) * num_sub + sub
         // 3D: site = (i + j * L[0] + k * L[0] * L[1]) * num_sub + sub
+        // otherwise, the dim_spec should be counted first
         void coor2site(const std::vector<int> &coor, const int &sub, uint32_t &site) const;
         
         void site2coor(std::vector<int> &coor, int &sub, const uint32_t &site) const;
@@ -876,6 +918,12 @@ namespace qbasis {
         uint32_t Ly() const { assert(L.size() > 1); return L[1]; }
         uint32_t Lz() const { assert(L.size() > 2); return L[2]; }
         
+        // obtain all possible divisors of a lattice, for the divide and conquer method
+        // the returned value is a list of lists: {{divisors for Lx}, {divisors for Ly}, ...}
+        std::vector<std::vector<uint32_t>> divisor_v1(const std::vector<bool> &trans_sym) const;
+        // {{1,1,1}, {1,1,2}, {1,1,5}, {1,2,1}, {1,2,2}, {1,2,5},...}, i.e., combine results from v1 to a single list
+        std::vector<std::vector<uint32_t>> divisor_v2(const std::vector<bool> &trans_sym) const;
+        
     private:
         std::vector<uint32_t> L;             // linear size in each dimension
         std::vector<std::string> bc;         // boundary condition
@@ -886,6 +934,7 @@ namespace qbasis {
         uint32_t dim;
         uint32_t num_sub;
         uint32_t Nsites;
+        uint32_t dim_spec;                   // the code starts labeling sites from a dimension which has even # of sites
     };
     
     
@@ -1023,7 +1072,8 @@ namespace qbasis {
     inline std::complex<double> conjugate(const std::complex<double> &rhs) { return std::conj(rhs); }
     
     // calculate base^index, in the case both are integers
-    MKL_INT int_pow(const MKL_INT &base, const MKL_INT &index);
+    template <typename T1, typename T2>
+    T2 int_pow(const T1 &base, const T1 &index);
     
     // given two arrays: num & base, get the result of:
     // num[0] + num[1] * base[0] + num[2] * base[0] * base[1] + num[3] * base[0] * base[1] * base[2] + ...
@@ -1033,22 +1083,28 @@ namespace qbasis {
     //                      |      |
     //                   num[1]   num[0]
     // 1 + 0 * 2 + 1 * 2^2 + 0 * 2^3 + 0 * 2^4
-    template <typename T>
-    T dynamic_base(const std::vector<T> &num, const std::vector<T> &base);
+    template <typename T1, typename T2>
+    T2 dynamic_base(const std::vector<T1> &nums, const std::vector<T1> &base);
     // the other way around
-    template <typename T>
-    std::vector<T> dynamic_base(const T &total, const std::vector<T> &base);
+    template <typename T1, typename T2>
+    std::vector<T1> dynamic_base(const T2 &total, const std::vector<T1> &base);
     // nums + 1
     template <typename T>
     std::vector<T> dynamic_base_plus1(const std::vector<T> &nums, const std::vector<T> &base);
+    // check if maximized
+    template <typename T>
+    bool dynamic_base_maximized(const std::vector<T> &nums, const std::vector<T> &base);
+    // check overflow
+    template <typename T>
+    bool dynamic_base_overflow(const std::vector<T> &nums, const std::vector<T> &base);
     
     template <typename T>
     bool is_sorted_norepeat(const std::vector<T> &array);
     
     // note: end means the position which has already passed the last element
-    template <typename T>
-    MKL_INT binary_search(const std::vector<T> &array, const T &val,
-                          const MKL_INT &bgn, const MKL_INT &end);
+    template <typename T1, typename T2>
+    T2 binary_search(const std::vector<T1> &array, const T1 &val,
+                     const T2 &bgn, const T2 &end);
     
     // return the number of exchanges happened during the bubble sort
     template <typename T>

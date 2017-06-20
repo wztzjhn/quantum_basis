@@ -33,10 +33,11 @@ namespace qbasis {
         {
             int tid = omp_get_thread_num();
             if (tid == 0) {
-                std::cout << "Number of threads = " << omp_get_num_threads() << std::endl;
-                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl << std::endl;
+                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
+                std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl;
             }
         }
+        std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
         
         uint32_t n_sites = latt.total_sites();
         assert(conserve_lst.size() == val_lst.size());
@@ -72,7 +73,7 @@ namespace qbasis {
         start = std::chrono::system_clock::now();
         
         // Hilbert space size if without any symmetry
-        MKL_INT dim_total = int_pow(static_cast<MKL_INT>(dim_local), static_cast<MKL_INT>(n_sites));
+        MKL_INT dim_total = int_pow<MKL_INT,MKL_INT>(static_cast<MKL_INT>(dim_local), static_cast<MKL_INT>(n_sites));
         assert(dim_total > 0); // prevent overflow
         std::cout << "Hilbert space size **if** without any symmetry: " << dim_total << std::endl;
         
@@ -222,7 +223,7 @@ namespace qbasis {
                 if (flag) continue;            // such translation forbidden by boundary condition
                 auto basis_temp = basis_full[i];
                 basis_temp.translate(props, latt, disp, sgn);
-                auto j = binary_search(basis_full, basis_temp, 0, dim_full);
+                auto j = binary_search<mbasis_elem,MKL_INT>(basis_full, basis_temp, 0, dim_full);
                 double exp_coef = 0.0;
                 for (uint32_t d = 0; d < latt.dimension(); d++) {
                     if (latt.boundary()[d] == "pbc" || latt.boundary()[d] == "PBC") {
@@ -286,7 +287,7 @@ namespace qbasis {
             qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[i], props);  // non-diagonal part:
             for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele_new = intermediate_state[cnt];
-                MKL_INT j = binary_search(basis_full, ele_new.first, 0, dim_full);       // < j | H | i > obtained
+                MKL_INT j = binary_search<mbasis_elem,MKL_INT>(basis_full, ele_new.first, 0, dim_full);       // < j | H | i > obtained
                 assert(j != -1);
                 if (upper_triangle) {
                     if (i <= j) matrix_lil.add(i, j, conjugate(ele_new.second));
@@ -322,10 +323,10 @@ namespace qbasis {
             qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[repr_i], props);  // non-diagonal part:
             for (uint32_t cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele_new = intermediate_state[cnt];
-                MKL_INT state_j = binary_search(basis_full, ele_new.first, 0, dim_full);
+                MKL_INT state_j = binary_search<mbasis_elem,MKL_INT>(basis_full, ele_new.first, 0, dim_full);
                 assert(state_j != -1);
                 auto repr_j = basis_belong[state_j];
-                auto j = binary_search(basis_repr, repr_j, 0, dim_repr);                 // < j |P'_k H | i > obtained
+                auto j = binary_search<MKL_INT,MKL_INT>(basis_repr, repr_j, 0, dim_repr);                 // < j |P'_k H | i > obtained
                 if (j < 0) continue;
                 auto coeff = basis_coeff[state_j]/std::sqrt(std::real(basis_coeff[repr_i] * basis_coeff[repr_j]));
                 if (upper_triangle) {
@@ -371,7 +372,7 @@ namespace qbasis {
             intermediate_state.simplify();
             for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele_new = intermediate_state[cnt];
-                MKL_INT j = binary_search(basis_full, ele_new.first, 0, dim_full);       // < j | H | i > obtained
+                MKL_INT j = binary_search<mbasis_elem,MKL_INT>(basis_full, ele_new.first, 0, dim_full);       // < j | H | i > obtained
                 assert(j != -1);
                 if (std::abs(ele_new.second) > opr_precision)
                     mat_free.emplace_back(j, conjugate(ele_new.second));
@@ -394,7 +395,7 @@ namespace qbasis {
             intermediate_state.simplify();
             for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele_new = intermediate_state[cnt];
-                MKL_INT j = binary_search(basis_full, ele_new.first, 0, dim_full);       // < j | H | i > obtained
+                MKL_INT j = binary_search<mbasis_elem,MKL_INT>(basis_full, ele_new.first, 0, dim_full);       // < j | H | i > obtained
                 assert(j != -1);
                 if (std::abs(ele_new.second) > opr_precision)
                     mat_free.emplace_back(j, conjugate(ele_new.second));
@@ -410,6 +411,15 @@ namespace qbasis {
     {
         assert(ncv > nev + 1);
         std::cout << "Calculating ground state..." << std::endl;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) {
+                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
+                std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl;
+            }
+        }
+        std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         std::vector<T> v0(dim_full, 1.0);
@@ -435,6 +445,15 @@ namespace qbasis {
     {
         assert(ncv > nev + 1);
         std::cout << "Calculating ground state in the subspace..." << std::endl;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) {
+                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
+                std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl;
+            }
+        }
+        std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
         if (dim_repr < 1) {
             std::cout << "dim_repr = " << dim_repr << "!!!" << std::endl;
             return;
@@ -528,7 +547,7 @@ namespace qbasis {
                         auto intermediate_state = oprXphi(A, basis_full[j], props);
                         for (uint32_t cnt = 0; cnt < intermediate_state.size(); cnt++) {
                             auto &ele = intermediate_state[cnt];
-                            values.push_back(std::pair<MKL_INT, T>(binary_search(basis_full, ele.first, 0, dim_full), temp * ele.second));
+                            values.push_back(std::pair<MKL_INT, T>(binary_search<mbasis_elem,MKL_INT>(basis_full, ele.first, 0, dim_full), temp * ele.second));
                         }
                     }
                 }

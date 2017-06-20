@@ -1,5 +1,6 @@
 #include <iostream>
 #include <bitset>
+#include <algorithm>
 #include "qbasis.h"
 
 namespace qbasis {
@@ -205,7 +206,7 @@ namespace qbasis {
         auto dim_local = props[orbital].dim_local;
         auto num_sites = props[orbital].num_sites;
         
-        if (int_pow(2, props[orbital].bits_per_site) == dim_local) {     // no waste bit
+        if (int_pow<uint8_t,uint64_t>(2, props[orbital].bits_per_site) == static_cast<uint64_t>(dim_local)) {     // no waste bit
             uint16_t byte_pos_bgn = 2;
             for (uint32_t orb = 0; orb < orbital; orb++) byte_pos_bgn += props[orb].num_bytes;
             uint16_t byte_pos_end = byte_pos_bgn + props[orbital].num_bytes;
@@ -271,7 +272,7 @@ namespace qbasis {
         assert(orbital < props.size());
         auto dim_local = props[orbital].dim_local;
         
-        if (int_pow(2, props[orbital].bits_per_site) == dim_local) {
+        if (int_pow<uint8_t,uint64_t>(2, props[orbital].bits_per_site) == static_cast<uint64_t>(dim_local)) {     // no waste bit
             uint16_t byte_pos_first = 2;
             uint16_t byte_pos_last;
             for (uint32_t orb = 0; orb < orbital; orb++) byte_pos_first += props[orb].num_bytes;
@@ -316,6 +317,43 @@ namespace qbasis {
         return true;
     }
     
+    uint64_t mbasis_elem::label(const std::vector<basis_prop> &props, const uint32_t &orbital) const
+    {
+        auto dim_local = props[orbital].dim_local;
+        auto num_sites = props[orbital].num_sites;
+        uint64_t res = 0;
+        
+        if (int_pow<uint8_t,uint64_t>(2, props[orbital].bits_per_site) == static_cast<uint64_t>(dim_local)) {     // no waste bit
+            uint16_t byte_pos_bgn = 2;
+            for (uint32_t orb = 0; orb < orbital; orb++) byte_pos_bgn += props[orb].num_bytes;
+            uint16_t byte_pos_end = byte_pos_bgn + props[orbital].num_bytes;
+            for (uint16_t byte_pos = byte_pos_end - 1; byte_pos > byte_pos_bgn; byte_pos--)
+                res = (res + mbits[byte_pos]) * 256;
+            res += mbits[byte_pos_bgn];
+        } else {
+            std::vector<uint8_t> nums;
+            std::vector<uint8_t> base(num_sites,dim_local);
+            for (decltype(num_sites) site = 0; site < num_sites; site++)
+                nums.push_back(siteRead(props, site, orbital));
+            res = dynamic_base<uint8_t, uint64_t>(nums, base);
+        }
+        return res;
+    }
+    
+    uint64_t mbasis_elem::label(const std::vector<basis_prop> &props) const
+    {
+        if (props.size() == 1) {
+            return label(props, 0);
+        } else {
+            std::vector<uint64_t> base, nums;
+            for (uint32_t orb = 0; orb < props.size(); orb++) {
+                nums.push_back(label(props,orb));
+                base.push_back(int_pow<uint32_t, uint64_t>(static_cast<uint32_t>(props[orb].dim_local), props[orb].num_sites));
+            }
+            return dynamic_base<uint64_t, uint64_t>(nums, base);
+        }
+    }
+    
     std::vector<uint32_t> mbasis_elem::statistics(const std::vector<basis_prop> &props, const uint32_t &orbital) const
     {
         std::vector<uint32_t> results(props[orbital].dim_local,0);
@@ -335,12 +373,12 @@ namespace qbasis {
         uint32_t total_sites    = props[0].num_sites;
         
         std::vector<uint32_t> results(local_dimension,0);
-        std::vector<uint32_t> state(total_orbitals);
-        std::vector<uint32_t> base(total_orbitals);
+        std::vector<uint8_t> state(total_orbitals);
+        std::vector<uint8_t> base(total_orbitals);
         for (uint32_t orb = 0; orb < total_orbitals; orb++) base[orb] = props[orb].dim_local;
         for (uint32_t site = 0; site < total_sites; site++) {
             for (uint32_t orb = 0; orb < total_orbitals; orb++) state[orb] = siteRead(props, site, orb);
-            results[dynamic_base(state, base)]++;
+            results[dynamic_base<uint8_t,uint32_t>(state, base)]++;
         }
         return results;
     }
@@ -474,7 +512,10 @@ namespace qbasis {
         assert(latt.total_sites() == total_sites);
         uint32_t orb_smart = 0;
         while (orb_smart < total_orbitals && q_same_state_all_site(props, orb_smart)) orb_smart++;
-        if (orb_smart == total_orbitals) return *this; // if every site in the same state
+        if (orb_smart == total_orbitals) { // if every site in the same state
+            disp_vec = std::vector<int>(latt.dimension(),0.0);
+            return *this;
+        }
         
         auto statis = statistics(props, orb_smart);
         uint8_t state_smart = 0;
@@ -548,7 +589,7 @@ namespace qbasis {
                 assert(lowest_coors[dim] >= 0 && lowest_coors[dim] < static_cast<int>(latt.Linear_size()[dim]));
                 assert(highest_coors[dim] >= 0 && highest_coors[dim] < static_cast<int>(latt.Linear_size()[dim]));
                 assert(lowest_coors[dim] <= highest_coors[dim]);
-                disp_vec[dim] = (latt.Linear_size()[dim] - 1 - highest_coors[dim] - lowest_coors[dim])/2;
+                disp_vec[dim] = static_cast<int>((latt.Linear_size()[dim]) - 1 - highest_coors[dim] - lowest_coors[dim])/2;
                 if (lowest_coors[dim] + disp_vec[dim]
                     > static_cast<int>(latt.Linear_size()[dim]) - 1 - (highest_coors[dim] + disp_vec[dim])) {
                     disp_vec[dim]--;
@@ -810,6 +851,184 @@ namespace qbasis {
         return false;
     }
     
+    mbasis_elem zipper_prod(const std::vector<basis_prop> &props_a, const std::vector<basis_prop> &props_b,
+                            const std::vector<basis_prop> &props,
+                            const mbasis_elem &sub_a, const mbasis_elem &sub_b)
+    {
+        uint32_t num_orb = props.size();
+        assert(props_a.size() == num_orb && props_b.size() == num_orb);
+        
+        mbasis_elem res(props);
+        for (uint32_t orb = 0; orb < num_orb; orb++) {
+            uint32_t num_sub_sites = props_a[orb].num_sites;
+            assert(props_b[orb].num_sites == num_sub_sites && props[orb].num_sites == 2 * num_sub_sites);
+            for (uint32_t site = 0; site < num_sub_sites; site++) {
+                res.siteWrite(props, site + site,     orb, sub_a.siteRead(props_a, site, orb)); // from sub_a
+                res.siteWrite(props, site + site + 1, orb, sub_b.siteRead(props_b, site, orb)); // from sub_b
+            }
+        }
+        return res;
+    }
+    
+    std::vector<mbasis_elem> enumerate_basis_all(const std::vector<basis_prop> &props)
+    {
+        uint32_t n_orbs  = props.size();
+        uint64_t dim_all = 1;
+        std::vector<uint8_t> base;
+        for (uint32_t orb = 0; orb < n_orbs; orb++) {
+            dim_all *= int_pow<uint32_t, uint64_t>(static_cast<uint32_t>(props[orb].dim_local), props[orb].num_sites);
+            for (uint32_t site = 0; site < props[orb].num_sites; site++)
+                base.push_back(props[orb].dim_local);
+        }
+        auto GS = mbasis_elem(props);
+        std::vector<mbasis_elem> res(dim_all, GS);
+        
+        // array to help distributing jobs to different threads
+        std::vector<uint64_t> job_array;
+        for (uint64_t j = 0; j < dim_all; j+=1000) job_array.push_back(j);
+        uint64_t total_chunks = job_array.size();
+        job_array.push_back(dim_all);
+        
+        #pragma omp parallel for schedule(dynamic,1)
+        for (uint64_t chunk = 0; chunk < total_chunks; chunk++) {
+            // get a new starting basis element
+            uint64_t state_num = job_array[chunk];
+            auto dist = dynamic_base<uint8_t,uint64_t>(state_num, base);
+            uint32_t pos = 0;
+            for (uint32_t orb = 0; orb < n_orbs; orb++)
+                for (uint32_t site = 0; site < props[orb].num_sites; site++) res[state_num].siteWrite(props, site, orb, dist[pos++]);
+            state_num++;
+            while (state_num < job_array[chunk + 1]) {
+                res[state_num] = res[state_num - 1];
+                res[state_num].increment(props);
+                state_num++;
+            }
+        }
+        return res;
+    }
+    
+    void classify_trans_full2rep(const std::vector<basis_prop> &props,
+                                 const std::vector<mbasis_elem> &basis_all,
+                                 const lattice &latt,
+                                 const std::vector<bool> &trans_sym,
+                                 std::vector<mbasis_elem> &reps,
+                                 std::vector<uint64_t> &belong2rep,
+                                 std::vector<std::vector<int>> &dist2rep)
+    {
+        assert(latt.dimension() == trans_sym.size());
+        assert(is_sorted_norepeat(basis_all));
+        auto bc = latt.boundary();
+        auto L = latt.Linear_size();
+        uint64_t dim_all = basis_all.size();
+        uint64_t dim_all_theoretical = 1;
+        for (auto &prop : props)
+            dim_all_theoretical *= int_pow<uint32_t, uint64_t>(static_cast<uint32_t>(prop.dim_local), prop.num_sites);
+        reps.clear();
+        belong2rep.resize(dim_all);
+        dist2rep.resize(dim_all);
+        uint64_t unreachable = dim_all + 10;
+        std::fill(belong2rep.begin(), belong2rep.end(), unreachable);
+        
+        std::vector<uint32_t> base;                       // for enumerating the possible translations
+        for (uint32_t d = 0; d < latt.dimension(); d++) {
+            if (trans_sym[d]) {
+                assert(bc[d] == "pbc" || bc[d] == "PBC");
+                base.push_back(L[d]);
+            }
+        }
+        std::vector<uint32_t> disp(base.size());
+        std::vector<int> disp2;
+        
+        for (uint64_t i = 0; i < dim_all; i++) {
+            if (belong2rep[i] != unreachable) continue;          // already fixed
+            reps.push_back(basis_all[i]);
+            belong2rep[i] = (reps.size() - 1);                   // fix now
+            dist2rep[i] = std::vector<int>(latt.dimension(),0);  // fix now
+            if (! base.empty()) {
+                std::fill(disp.begin(), disp.end(), 0);
+                disp = dynamic_base_plus1(disp, base);
+                while (! dynamic_base_overflow(disp, base)) {
+                    uint32_t pos = 0;
+                    disp2.clear();
+                    for (uint32_t d = 0; d < latt.dimension(); d++) {
+                        if (trans_sym[d]) {
+                            disp2.push_back(static_cast<int>(disp[pos++]));
+                        } else {
+                            disp2.push_back(0);
+                        }
+                    }
+                    auto basis_temp = basis_all[i];
+                    int sgn;
+                    basis_temp.translate(props, latt, disp2, sgn);
+                    uint64_t j = binary_search<mbasis_elem,uint64_t>(basis_all, basis_temp, 0, dim_all);
+                    if (j < dim_all) {                          // found
+                        if (belong2rep[j] == unreachable) {     // not fixed
+                            belong2rep[j] = (reps.size() - 1);  // fix now
+                            dist2rep[j] = disp2;                // fix now
+                        }
+                    } else {
+                        assert(dim_all < dim_all_theoretical);
+                    }
+                    disp = dynamic_base_plus1(disp, base);
+                }
+            }
+        }
+    }
+    
+    void classify_trans_rep2group(const std::vector<basis_prop> &props,
+                                  const std::vector<mbasis_elem> &reps,
+                                  const lattice &latt,
+                                  const std::vector<bool> &trans_sym,
+                                  std::vector<std::vector<uint32_t>> &groups,
+                                  std::vector<uint32_t> &omega_g,
+                                  std::vector<uint32_t> &belong2group)
+    {
+        uint32_t dim = latt.dimension();
+        auto L = latt.Linear_size();
+        uint64_t dim_repr = reps.size();
+        
+        auto div_v1 = latt.divisor_v1(trans_sym);
+        groups = latt.divisor_v2(trans_sym);
+        uint32_t num_groups = 1;
+        for (uint32_t d = 0; d < dim; d++) {
+            assert(is_sorted_norepeat(div_v1[d]));
+            num_groups *= div_v1[d].size();
+        }
+        assert(num_groups == groups.size());
+        
+        belong2group.resize(dim_repr);
+        omega_g.resize(dim_repr);
+        std::fill(omega_g.begin(), omega_g.end(), 0);
+        
+        // divisor = x -> translate x to comeback
+        // for each representative, find its group, by trying translating according to the smallest possible divisor
+        for (uint64_t j = 0; j < dim_repr; j++) {
+            std::vector<uint32_t> div(dim,0); // set to 0, only for double checking purpose
+            for (uint32_t d = 0; d < dim; d++) {
+                for (auto it = div_v1[d].begin(); it != div_v1[d].end(); it++) {
+                    std::vector<int> disp(dim,0);
+                    disp[d] = static_cast<int>(*it);
+                    int sgn;
+                    auto basis_temp = reps[j];
+                    basis_temp.translate(props, latt, disp, sgn);
+                    if (basis_temp == reps[j]) {
+                        div[d] = *it;
+                        break;
+                    }
+                }
+                assert(div[d] != 0);
+            }
+            // now div obtained, we can find its group label
+            uint32_t g_label = binary_search<std::vector<uint32_t>,uint32_t>(groups, div, 0, num_groups);
+            assert(g_label < num_groups);
+            belong2group[j] = g_label;
+            if (omega_g[g_label] == 0) {
+                omega_g[g_label] = 1;
+                for (uint32_t d = 0; d < dim; d++) omega_g[g_label] *= div[d];
+            }
+        }
+    }
+    
     // ----------------- implementation of wavefunction ------------------
     template <typename T>
     std::pair<mbasis_elem, T> &wavefunction<T>::operator[](uint32_t n)
@@ -1036,22 +1255,22 @@ namespace qbasis {
         auto dim = props[lhs.orbital].dim_local;
         assert(lhs.dim == dim);
         uint32_t col = rhs.siteRead(props, lhs.site, lhs.orbital); // actually col <= 255
-        uint32_t displacement = col * lhs.dim;
-        bool flag = true;
-        for (uint8_t row = 0; row < dim; row++) {
-            if (std::abs(lhs.mat[row + displacement]) > opr_precision) {
-                flag = false;
-                break;
-            }
-        }
-        if (flag) return res; // the full column == 0
         if (lhs.diagonal) {
             assert(! lhs.fermion);
             if (std::abs(lhs.mat[col]) > opr_precision)
                 res += std::pair<mbasis_elem, T>(rhs, lhs.mat[col]);
         } else {
+            uint32_t displacement = col * lhs.dim;
+            bool flag = true;
+            for (uint8_t row = 0; row < dim; row++) {
+                if (std::abs(lhs.mat[row + displacement]) > opr_precision) {
+                    flag = false;
+                    break;
+                }
+            }
+            if (flag) return res;                                 // the full column == 0
             int sgn = 0;
-            if (lhs.fermion) {                         // count # of fermions traversed by this operator
+            if (lhs.fermion) {                                    // count # of fermions traversed by this operator
                 for (uint32_t orb_cnt = 0; orb_cnt < lhs.orbital; orb_cnt++) {
                     if (props[orb_cnt].q_fermion()) {
                         for (uint32_t site_cnt = 0; site_cnt < props[orb_cnt].num_sites; site_cnt++) {

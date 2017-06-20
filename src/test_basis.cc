@@ -29,7 +29,17 @@ void test_basis() {
     assert(basis1.siteRead(props1, 8, 0) == 1);
     std::cout << std::endl;
     
-    props1.emplace_back(5,8);
+    auto basis_list1 = qbasis::enumerate_basis_all(props1);
+    std::cout << "basis_list1: " << std::endl;
+    for (uint64_t j = 0; j < basis_list1.size(); j++) {
+        std::cout << "j = " << j << "\t";
+        basis_list1[j].prt_bits(props1);
+        assert(j == basis_list1[j].label(props1));
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+    
+    props1.emplace_back(9,8);
     std::cout << "props1[1].bits_per_site = " << static_cast<unsigned>(props1[1].bits_per_site) << std::endl;
     qbasis::mbasis_elem basis2(props1);
     basis2.siteWrite(props1, 2, 0, 1);
@@ -109,4 +119,104 @@ void test_basis() {
 //    phi += basis2;
 //    phi.prt_states(props1);
     
+    qbasis::lattice lattice("chain",std::vector<uint32_t>{3},std::vector<std::string>{"pbc"});
+    
+    qbasis::model<std::complex<double>> test_model;
+    test_model.add_orbital(lattice.total_sites(), "spin-1/2");
+    test_model.add_orbital(lattice.total_sites(), "electron");
+    test_model.enumerate_basis_full(lattice);
+    for (MKL_INT j = 0; j < test_model.dim_full; j++) {
+        std::cout << "j= " << j << ", basis_label = " << test_model.basis_full[j].label(test_model.props) << std::endl;
+        assert(j == test_model.basis_full[j].label(test_model.props));
+    }
+    
+
+}
+
+void test_basis2()
+{
+    std::cout << "test basis2 " << std::endl;
+    std::vector<qbasis::basis_prop> props;
+    props.emplace_back(4,"spin-1/2");
+    
+    qbasis::lattice latt("chain",std::vector<uint32_t>{4},std::vector<std::string>{"pbc"});
+    
+    auto basis_list = qbasis::enumerate_basis_all(props);
+    
+    std::vector<qbasis::mbasis_elem> reps;
+    std::vector<uint64_t> belong2rep;
+    std::vector<std::vector<int>> dist2rep;
+    qbasis::classify_trans_full2rep(props, basis_list, latt, std::vector<bool>{true}, reps, belong2rep, dist2rep);
+    
+    std::cout << " ------- reps -------" << std::endl;
+    for (uint64_t j = 0; j < reps.size(); j++) {
+        std::cout << "i = " << j << ", ";
+        reps[j].prt_bits(props);
+    }
+    
+    std::cout << " ------- basis -------" << std::endl;
+    for (uint64_t j = 0; j < basis_list.size(); j++) {
+        std::cout << "j = " << j << ", ";
+        basis_list[j].prt_bits(props);
+        std::cout << "r = " << belong2rep[j] << ", dist = " << dist2rep[j][0] << std::endl << std::endl;
+    }
+    
+    std::cout << "haha" << std::endl;
+    
+    assert(belong2rep[0] == 0);
+    assert(belong2rep[1] == 1);
+    assert(belong2rep[2] == 1);
+    assert(belong2rep[3] == 2);
+    assert(belong2rep[4] == 1);
+    assert(belong2rep[5] == 3);
+    assert(belong2rep[6] == 2);
+    assert(belong2rep[7] == 4);
+    assert(belong2rep[8] == 1);
+    assert(belong2rep[9] == 2);
+    assert(belong2rep[10] == 3);
+    assert(belong2rep[11] == 4);
+    assert(belong2rep[12] == 2);
+    assert(belong2rep[13] == 4);
+    assert(belong2rep[14] == 4);
+    assert(belong2rep[15] == 5);
+    
+    
+    std::vector<std::vector<uint32_t>> groups;
+    std::vector<uint32_t> omega_g;
+    std::vector<uint32_t> belong2group;
+    qbasis::classify_trans_rep2group(props, reps, latt, std::vector<bool>{true}, groups, omega_g, belong2group);
+    for (uint32_t j = 0; j < groups.size(); j++) {
+        std::cout << "group: " << groups[j][0] << ", omega_g = " << omega_g[j] << std::endl;
+    }
+    for (uint64_t j = 0; j < reps.size(); j++) {
+        std::cout << "j = " << j <<  std::endl;
+        reps[j].prt_bits(props);
+        std::cout << "belong to group: " << belong2group[j] << std::endl;
+    }
+    
+}
+
+void test_basis3()
+{
+    std::cout << "test basis3 " << std::endl;
+    qbasis::lattice latt("triangular",std::vector<uint32_t>{2,3},std::vector<std::string>{"pbc","pbc"});
+    auto latt_child = qbasis::divide_lattice(latt);
+    
+    std::vector<qbasis::basis_prop> props;
+    props.emplace_back(latt_child.total_sites(),"spin-1/2");
+    
+    auto basis_list = qbasis::enumerate_basis_all(props);
+    
+    std::vector<qbasis::mbasis_elem> reps;
+    std::vector<uint64_t> belong2rep;
+    std::vector<std::vector<int>> dist2rep;
+    qbasis::classify_trans_full2rep(props, basis_list, latt_child, std::vector<bool>{true,true}, reps,belong2rep, dist2rep);
+    
+    for (uint64_t j = 0; j < basis_list.size(); j++) {
+        std::cout << "j = " << j << ", ";
+        basis_list[j].prt_bits(props);
+        std::cout << "r = " << belong2rep[j] << ", dist = " << dist2rep[j][0] << "," << dist2rep[j][1] << std::endl << std::endl;
+    }
+    
+    std::cout << "haha" << std::endl;
 }
