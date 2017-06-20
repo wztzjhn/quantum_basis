@@ -108,11 +108,11 @@ for q_idx in range(0,len(Q)):
         if (nrm2_z[q_idx] > 0.000000001):
             for w_idx in range(0,len(omega)):
                 intensity_00[w_idx] = sqw(omega[w_idx],broaden,a_z[q_idx],b_z[q_idx],steps,nrm2_z[q_idx])
-    elif (momentum[0] == Lx and momentum[1] == 0):
+    elif (momentum[0] == Lx/2 and momentum[1] == 0):
         if (nrm2_z[q_idx] > 0.000000001):
             for w_idx in range(0,len(omega)):
                 intensity_pi0[w_idx] = sqw(omega[w_idx],broaden,a_z[q_idx],b_z[q_idx],steps,nrm2_z[q_idx])
-    elif (momentum[0] == Lx and momentum[1] == Ly):
+    elif (momentum[0] == Lx/2 and momentum[1] == Ly/2):
         if (nrm2_z[q_idx] > 0.000000001):
             for w_idx in range(0,len(omega)):
                 intensity_pipi[w_idx] = sqw(omega[w_idx],broaden,a_z[q_idx],b_z[q_idx],steps,nrm2_z[q_idx])

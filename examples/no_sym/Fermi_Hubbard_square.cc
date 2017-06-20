@@ -125,17 +125,17 @@ int main() {
     // prepare list of momentum points for measurement
     std::vector<std::vector<int>> q_list;
     // along (0,0) -> (pi,0)
-    for (int m = 0; m < Lx; m++) {
+    for (int m = 0; m < Lx/2; m++) {
         int n = 0;
         q_list.push_back(std::vector<int>{m,n});
     }
     // along (pi,0) -> (pi,pi)
-    for (int n = 0; n < Ly; n++) {
-        int m = Lx;
+    for (int n = 0; n < Ly/2; n++) {
+        int m = Lx/2;
         q_list.push_back(std::vector<int>{m,n});
     }
     // along (pi,pi) -> (0,0)
-    for (int m = Lx; m >= 0; m--) {
+    for (int m = Lx/2; m >= 0; m--) {
         assert(Lx == Ly);
         int n = m;
         q_list.push_back(std::vector<int>{m,n});
