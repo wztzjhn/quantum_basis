@@ -45,7 +45,7 @@ for line in range(0,len(contents)):
         print 'Ly     =',Ly
     elif line_data[0] == 'U':
         U = float(line_data[1])
-        print 'U =',U
+        print 'U      =',U
     elif line_data[0] == 'E0':
         E0 = float(line_data[1])
         print 'E0    =',E0

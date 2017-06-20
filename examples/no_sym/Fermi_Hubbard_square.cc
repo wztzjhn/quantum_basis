@@ -189,6 +189,9 @@ int main() {
                 fout << std::setw(30) << hessenberg[i];
             }
             fout << std::endl;
+        } else {
+            fout << "b\t" << std::endl;
+            fout << "a\t" << std::endl;
         }
     }
     
