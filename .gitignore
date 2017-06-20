@@ -42,3 +42,4 @@ examples/no_sym/test
 # Other files
 *.nb
 *.lyx
+*.dat

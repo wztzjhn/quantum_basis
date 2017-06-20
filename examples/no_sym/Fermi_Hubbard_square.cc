@@ -117,6 +117,7 @@ int main() {
     fout << std::setprecision(18);
     fout << "Lx\t" << Lx << std::endl;
     fout << "Ly\t" << Ly << std::endl;
+    fout << "U\t" << U << std::endl;
     fout << "E0\t" << Hubbard.energy_min() << std::endl;
     fout << "Gap\t" << Hubbard.energy_gap() << std::endl << std::endl;
     
