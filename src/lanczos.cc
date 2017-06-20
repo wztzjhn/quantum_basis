@@ -82,6 +82,20 @@ namespace qbasis {
         }
         
     }
+    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const csr_mat<std::complex<double>> &mat,
+                          double &rnorm, std::complex<double> resid[], std::complex<double> v[],
+                          double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps);
+    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const model<std::complex<double>> &mat,
+                          double &rnorm, std::complex<double> resid[], std::complex<double> v[],
+                          double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps);
+    //    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const csr_mat<double> &mat,
+    //                          double &rnorm, double resid[], double v[],
+    //                          double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps);
+    //    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const model<double> &mat,
+    //                          double &rnorm, double resid[], double v[],
+    //                          double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps);
+    
+    
 
 
     template <typename T>
@@ -393,18 +407,7 @@ namespace qbasis {
     }
 
     // Explicit instantiation
-//    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const csr_mat<double> &mat,
-//                          double &rnorm, double resid[], double v[],
-//                          double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps);
-    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const csr_mat<std::complex<double>> &mat,
-                          double &rnorm, std::complex<double> resid[], std::complex<double> v[],
-                          double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps);
-//    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const model<double> &mat,
-//                          double &rnorm, double resid[], double v[],
-//                          double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps);
-    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const model<std::complex<double>> &mat,
-                          double &rnorm, std::complex<double> resid[], std::complex<double> v[],
-                          double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps);
+
 
     //template void hess2matform(const double hessenberg[], double mat[], const MKL_INT &m, const MKL_INT &ldh);
     template void hess2matform(const double hessenberg[], std::complex<double> mat[], const MKL_INT &m, const MKL_INT &ldh);

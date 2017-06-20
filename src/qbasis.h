@@ -812,7 +812,7 @@ namespace qbasis {
     // v_0, ..., v_{k-1} stored in v, v{k} stored in resid
     // alpha_0, ..., alpha_{k-1} in hessenberg matrix
     // beta_1,  ..., beta_{k-1} in hessenberg matrix, beta_k as rnorm
-    // if on entry k==0, then beta_k=rnorm=0, v_0=resid
+    // if on entry k==0, then beta_k=0, v_0=resid, entry value of rnorm irrelevant
     
     // ldh: leading dimension of hessenberg
     // alpha[j] = hessenberg[j+ldh], diagonal of hessenberg matrix
