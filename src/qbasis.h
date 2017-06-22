@@ -81,9 +81,12 @@ namespace qbasis {
     bool operator!=(const mbasis_elem&, const mbasis_elem&);
     bool trans_equiv(const mbasis_elem&, const mbasis_elem&, const std::vector<basis_prop> &props, const lattice&);   // computational heavy, use with caution
     // following zipper product definition in Weisse's PRE 87, 043305 (2013)
-    mbasis_elem zipper_prod(const std::vector<basis_prop> &props_a, const std::vector<basis_prop> &props_b,
-                            const std::vector<basis_prop> &props,
-                            const mbasis_elem &sub_a, const mbasis_elem &sub_b);
+    mbasis_elem zipper_basis(const std::vector<basis_prop> &props,
+                             const mbasis_elem &sub_a, const mbasis_elem &sub_b);
+    // split basis into two
+    void unzipper_basis(const std::vector<basis_prop> &props,
+                        const mbasis_elem &parent,
+                        mbasis_elem &sub_a, mbasis_elem &sub_b);
     // generate every single possible state, without any symmetry
     std::vector<mbasis_elem> enumerate_basis_all(const std::vector<basis_prop> &props);
     // (sublattice) for a given list of full basis, find the reps according to translational symmetry
@@ -981,9 +984,9 @@ namespace qbasis {
         
         ~model() {}
         
-        void prt_Ham_diag() { Ham_diag.prt(); }
+        void prt_Ham_diag() const { Ham_diag.prt(); }
         
-        void prt_Ham_offdiag() { Ham_off_diag.prt(); }
+        void prt_Ham_offdiag() const { Ham_off_diag.prt(); }
         
         void add_orbital(const uint32_t &n_sites, const uint8_t &dim_local_,
                          const std::vector<uint32_t> &Nf_map = std::vector<uint32_t>(),
@@ -996,6 +999,8 @@ namespace qbasis {
         {
             props.emplace_back(n_sites, s, ex);
         }
+        
+        uint32_t local_dimension() const;
         
         void add_diagonal_Ham(const opr<T> &rhs)      { assert(rhs.q_diagonal()); Ham_diag += rhs; }
         

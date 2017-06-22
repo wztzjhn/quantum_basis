@@ -6,6 +6,7 @@
 void test_basis();
 void test_basis2();
 void test_basis3();
+void test_basis4();
 
 void test_operator();
 
@@ -43,6 +44,8 @@ int main(){
     //test_bubble();
     
     //test_cfraction();
+    
+    test_basis4();
 }
 
 

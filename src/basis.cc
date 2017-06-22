@@ -881,23 +881,57 @@ namespace qbasis {
         return false;
     }
     
-    mbasis_elem zipper_prod(const std::vector<basis_prop> &props_a, const std::vector<basis_prop> &props_b,
-                            const std::vector<basis_prop> &props,
-                            const mbasis_elem &sub_a, const mbasis_elem &sub_b)
+    mbasis_elem zipper_basis(const std::vector<basis_prop> &props,
+                             const mbasis_elem &sub_a, const mbasis_elem &sub_b)
     {
         uint32_t num_orb = props.size();
-        assert(props_a.size() == num_orb && props_b.size() == num_orb);
+        std::vector<basis_prop> props_sub_a, props_sub_b;
+        basis_props_split(props, props_sub_a, props_sub_b);
         
         mbasis_elem res(props);
         for (uint32_t orb = 0; orb < num_orb; orb++) {
-            uint32_t num_sub_sites = props_a[orb].num_sites;
-            assert(props_b[orb].num_sites == num_sub_sites && props[orb].num_sites == 2 * num_sub_sites);
-            for (uint32_t site = 0; site < num_sub_sites; site++) {
-                res.siteWrite(props, site + site,     orb, sub_a.siteRead(props_a, site, orb)); // from sub_a
-                res.siteWrite(props, site + site + 1, orb, sub_b.siteRead(props_b, site, orb)); // from sub_b
+            uint32_t num_sub_sites_a = props_sub_a[orb].num_sites;
+            uint32_t num_sub_sites_b = props_sub_b[orb].num_sites;
+            uint32_t num_sites = props[orb].num_sites;
+            assert(num_sub_sites_a + num_sub_sites_b == num_sites);
+            assert(num_sub_sites_a >= num_sub_sites_b);
+            for (uint32_t site = 0; site < num_sub_sites_b; site++) {
+                res.siteWrite(props, site + site,     orb, sub_a.siteRead(props_sub_a, site, orb)); // from sub_a
+                res.siteWrite(props, site + site + 1, orb, sub_b.siteRead(props_sub_b, site, orb)); // from sub_b
+            }
+            if (num_sub_sites_a > num_sub_sites_b) {
+                assert(num_sub_sites_a == num_sub_sites_b + 1);
+                res.siteWrite(props, num_sites - 1, orb, sub_a.siteRead(props_sub_a, num_sub_sites_b, orb)); // from sub_a
             }
         }
         return res;
+    }
+    
+    void unzipper_basis(const std::vector<basis_prop> &props,
+                        const mbasis_elem &parent,
+                        mbasis_elem &sub_a, mbasis_elem &sub_b)
+    {
+        uint32_t num_orb = props.size();
+        std::vector<basis_prop> props_sub_a, props_sub_b;
+        basis_props_split(props, props_sub_a, props_sub_b);
+        
+        sub_a = mbasis_elem(props_sub_a);
+        sub_b = mbasis_elem(props_sub_b);
+        for (uint32_t orb = 0; orb < num_orb; orb++) {
+            uint32_t num_sub_sites_a = props_sub_a[orb].num_sites;
+            uint32_t num_sub_sites_b = props_sub_b[orb].num_sites;
+            uint32_t num_sites = props[orb].num_sites;
+            assert(num_sub_sites_a + num_sub_sites_b == num_sites);
+            assert(num_sub_sites_a >= num_sub_sites_b);
+            for (uint32_t site = 0; site < num_sub_sites_b; site++) {
+                sub_a.siteWrite(props_sub_a, site, orb, parent.siteRead(props, site + site,     orb)); // to sub_a
+                sub_b.siteWrite(props_sub_b, site, orb, parent.siteRead(props, site + site + 1, orb)); // to sub_b
+            }
+            if (num_sub_sites_a > num_sub_sites_b) {
+                assert(num_sub_sites_a == num_sub_sites_b + 1);
+                sub_a.siteWrite(props_sub_a, num_sub_sites_b, orb, parent.siteRead(props, num_sites - 1, orb)); // to sub_a
+            }
+        }
     }
     
     std::vector<mbasis_elem> enumerate_basis_all(const std::vector<basis_prop> &props)

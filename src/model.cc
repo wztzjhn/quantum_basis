@@ -6,6 +6,14 @@
 
 namespace qbasis {
     template <typename T>
+    uint32_t model<T>::local_dimension() const
+    {
+        uint32_t res = 1;
+        for (decltype(props.size()) j = 0; j < props.size(); j++) res *= props[j].dim_local;
+        return res;
+    }
+    
+    template <typename T>
     void model<T>::check_translation(const lattice &latt)
     {
         std::cout << "Checking translational symmetry." << std::endl;

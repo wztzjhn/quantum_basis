@@ -220,3 +220,29 @@ void test_basis3()
     
     std::cout << "haha" << std::endl;
 }
+
+void test_basis4()
+{
+    std::cout << "test basis 4" << std::endl;
+    qbasis::lattice latt("chain",std::vector<uint32_t>{5},std::vector<std::string>{"pbc"});
+    std::vector<qbasis::basis_prop> props;
+    props.emplace_back(latt.total_sites(),"spin-1/2");
+    
+    auto basis_list = qbasis::enumerate_basis_all(props);
+    
+    auto basis0 = basis_list[14];
+    basis0.prt_states(props);
+    basis0.prt_bits(props);
+    
+    qbasis::mbasis_elem sub_a, sub_b;
+    qbasis::unzipper_basis(props, basis0, sub_a, sub_b);
+    std::vector<qbasis::basis_prop> props_sub1, props_sub2;
+    qbasis::basis_props_split(props, props_sub1, props_sub2);
+    std::cout << "sub_a: " << std::endl;
+    sub_a.prt_bits(props_sub1);
+    std::cout << "sub_b: " << std::endl;
+    sub_b.prt_bits(props_sub2);
+    auto check = qbasis::zipper_basis(props, sub_a, sub_b);
+    assert(check == basis0);
+    
+}
