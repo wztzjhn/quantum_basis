@@ -70,6 +70,36 @@ namespace qbasis {
         }
     }
     
+    void basis_prop::split(basis_prop &sub1, basis_prop &sub2) const
+    {
+        sub1 = *this;
+        if (num_sites % 2 == 0) {
+            sub1.num_sites /= 2;
+            sub1.num_bytes = static_cast<uint16_t>((sub1.bits_per_site * sub1.num_sites) / 8 + 1);
+            sub1.bits_ignore = static_cast<uint8_t>(sub1.num_bytes * 8 - sub1.bits_per_site * sub1.num_sites);
+            sub2 = sub1;
+        } else {
+            sub1.num_sites = (sub1.num_sites + 1) / 2;
+            sub1.num_bytes = static_cast<uint16_t>((sub1.bits_per_site * sub1.num_sites) / 8 + 1);
+            sub1.bits_ignore = static_cast<uint8_t>(sub1.num_bytes * 8 - sub1.bits_per_site * sub1.num_sites);
+            sub2 = *this;
+            sub2.num_sites = (sub2.num_sites - 1) / 2;
+            sub2.num_bytes = static_cast<uint16_t>((sub2.bits_per_site * sub2.num_sites) / 8 + 1);
+            sub2.bits_ignore = static_cast<uint8_t>(sub2.num_bytes * 8 - sub2.bits_per_site * sub2.num_sites);
+            assert(sub1.num_sites + sub2.num_sites == num_sites);
+        }
+    }
+    
+    void basis_props_split(const std::vector<basis_prop> &parent,
+                           std::vector<basis_prop> &sub1,
+                           std::vector<basis_prop> &sub2)
+    {
+        auto num_orbs = parent.size();
+        sub1.resize(num_orbs);
+        sub2.resize(num_orbs);
+        for (decltype(num_orbs) orb = 0; orb < num_orbs; orb++)
+            parent[orb].split(sub1[orb], sub2[orb]);
+    }
     
     
     // ----------------- implementation of mbasis ------------------

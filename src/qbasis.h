@@ -69,6 +69,11 @@ namespace qbasis {
     template <typename> class model;
     //class threads_pool;
     
+    // ---------- basis_prop --------
+    void basis_props_split(const std::vector<basis_prop> &parent,
+                           std::vector<basis_prop> &sub1,
+                           std::vector<basis_prop> &sub2);
+    
     // ---------- basis -----------
     void swap(mbasis_elem&, mbasis_elem&);
     bool operator<(const mbasis_elem&, const mbasis_elem&);
@@ -181,6 +186,8 @@ namespace qbasis {
     
     class basis_prop {
     public:
+        basis_prop() = default;
+        
         basis_prop(const uint32_t &n_sites, const uint8_t &dim_local_,
                    const std::vector<uint32_t> &Nf_map = std::vector<uint32_t>(),
                    const bool &dilute_ = false);
@@ -195,6 +202,8 @@ namespace qbasis {
         basis_prop(const uint32_t &n_sites, const std::string &s, const extra_info &ex = extra_info{0});
         
         bool q_fermion() const { return (! Nfermion_map.empty()); }
+        
+        void split(basis_prop &sub1, basis_prop &sub2) const;
         
         uint8_t dim_local;                      // local (single-site, single-orbital) dimension < 256
         uint8_t bits_per_site;                  // <= 8
