@@ -2,6 +2,7 @@
 #include <iomanip>
 #include <fstream>
 #include "qbasis.h"
+#include "graph.h"
 
 void test_basis() {
     std::cout << "--------- test basis ---------" << std::endl;
@@ -127,7 +128,7 @@ void test_basis() {
     test_model.enumerate_basis_full(lattice);
     for (MKL_INT j = 0; j < test_model.dim_full; j++) {
         std::cout << "j= " << j << ", basis_label = " << test_model.basis_full[j].label(test_model.props) << std::endl;
-        assert(j == test_model.basis_full[j].label(test_model.props));
+        //assert(j == test_model.basis_full[j].label(test_model.props));
     }
     
 
@@ -224,25 +225,67 @@ void test_basis3()
 void test_basis4()
 {
     std::cout << "test basis 4" << std::endl;
-    qbasis::lattice latt("chain",std::vector<uint32_t>{5},std::vector<std::string>{"pbc"});
-    std::vector<qbasis::basis_prop> props;
-    props.emplace_back(latt.total_sites(),"spin-1/2");
     
-    auto basis_list = qbasis::enumerate_basis_all(props);
+    // local matrix representation
+    // Spins:
+    std::vector<std::vector<std::complex<double>>> Splus(2,std::vector<std::complex<double>>(2));
+    std::vector<std::vector<std::complex<double>>> Sminus(2,std::vector<std::complex<double>>(2));
+    std::vector<std::complex<double>> Sz(2);
+    Splus[0][0]  = 0.0;
+    Splus[0][1]  = 1.0;
+    Splus[1][0]  = 0.0;
+    Splus[1][1]  = 0.0;
+    Sminus[0][0] = 0.0;
+    Sminus[0][1] = 0.0;
+    Sminus[1][0] = 1.0;
+    Sminus[1][1] = 0.0;
+    Sz[0]        = 0.5;
+    Sz[1]        = -0.5;
     
-    auto basis0 = basis_list[14];
-    basis0.prt_states(props);
-    basis0.prt_bits(props);
+    qbasis::lattice latt("chain",std::vector<uint32_t>{6},std::vector<std::string>{"pbc"});
+//    std::vector<qbasis::basis_prop> props;
+//    props.emplace_back(latt.total_sites(),"spin-1/2");
     
-    qbasis::mbasis_elem sub_a, sub_b;
-    qbasis::unzipper_basis(props, basis0, sub_a, sub_b);
-    std::vector<qbasis::basis_prop> props_sub1, props_sub2;
-    qbasis::basis_props_split(props, props_sub1, props_sub2);
-    std::cout << "sub_a: " << std::endl;
-    sub_a.prt_bits(props_sub1);
-    std::cout << "sub_b: " << std::endl;
-    sub_b.prt_bits(props_sub2);
-    auto check = qbasis::zipper_basis(props, sub_a, sub_b);
-    assert(check == basis0);
+    qbasis::model<std::complex<double>> model_test4;
+    model_test4.add_orbital(latt.total_sites(), "spin-1/2");
+    qbasis::mopr<std::complex<double>> Sz_total;
+    
+    
+    for (int x = 0; x < latt.total_sites(); x++) {
+        uint32_t site_i;
+        latt.coor2site(std::vector<int>{x}, 0, site_i); // obtain site label of (x)
+        auto Sz_i      = qbasis::opr<std::complex<double>>(site_i,0,false,Sz);
+        Sz_total += Sz_i;
+    }
+    model_test4.enumerate_basis_full(latt, {Sz_total}, {0.0});
+    
+    model_test4.fill_Lin_table_full(latt);
+    
+    
+//    auto basis_list = qbasis::enumerate_basis_all(props);
+//    
+//    auto basis0 = basis_list[14];
+//    basis0.prt_states(props);
+//    basis0.prt_bits(props);
+//    
+//    qbasis::mbasis_elem sub_a, sub_b;
+//    qbasis::unzipper_basis(props, basis0, sub_a, sub_b);
+//    std::vector<qbasis::basis_prop> props_sub1, props_sub2;
+//    qbasis::basis_props_split(props, props_sub1, props_sub2);
+//    std::cout << "sub_a: " << std::endl;
+//    sub_a.prt_bits(props_sub1);
+//    std::cout << "sub_b: " << std::endl;
+//    sub_b.prt_bits(props_sub2);
+//    auto check = qbasis::zipper_basis(props, sub_a, sub_b);
+//    assert(check == basis0);
+    
+  
+//    qbasis::ALGraph ggg(5);
+//    ggg[0].i_a = 3;
+//    ggg[0].i_b = 4;
+//    std::cout << ggg[0].i_a << std::endl;
+//    
+//    ggg.add_edge(2,3);
+    
     
 }

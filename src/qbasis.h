@@ -34,6 +34,8 @@
 #include <boost/multi_array.hpp>
 #include "mkl.h"
 //#include <boost/math/special_functions/binomial.hpp>
+//#include <boost/graph/adjacency_list.hpp>
+//#include <boost/graph/breadth_first_search.hpp>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -1022,6 +1024,8 @@ namespace qbasis {
         
         void sort_basis_full();
         
+        void fill_Lin_table_full(const lattice &latt);
+        
         // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
         void basis_init_repr(const std::vector<int> &momentum, const lattice &latt);
         
@@ -1070,12 +1074,7 @@ namespace qbasis {
         void check_translation(const lattice &latt);
     };
     
-    
-    
-//  ---------------------------part 7: Measurements ----------------------------
-//  ----------------------------------------------------------------------------
-    
-    
+
     
 
     

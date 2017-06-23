@@ -3,6 +3,7 @@
 //#include <iomanip>
 #include <climits>
 #include "qbasis.h"
+#include "graph.h"
 
 namespace qbasis {
     template <typename T>
@@ -166,13 +167,17 @@ namespace qbasis {
         sort_basis_full();
     }
     
+    // sort according to Lin Table convention (Ib, then Ia)
     template <typename T>
     void model<T>::sort_basis_full()
     {
         bool sorted = true;
         for (MKL_INT j = 0; j < dim_full - 1; j++) {
             assert(basis_full[j] != basis_full[j+1]);
-            if (basis_full[j+1] < basis_full[j]) {
+            mbasis_elem sub_a1, sub_b1, sub_a2, sub_b2;
+            unzipper_basis(props, basis_full[j], sub_a1, sub_b1);
+            unzipper_basis(props, basis_full[j+1], sub_a2, sub_b2);
+            if (sub_b2 < sub_b1 || (sub_b2 == sub_b1 && sub_a2 < sub_a1)) {
                 sorted = false;
                 break;
             }
@@ -180,12 +185,152 @@ namespace qbasis {
         if (! sorted) {
             std::chrono::time_point<std::chrono::system_clock> start, end;
             start = std::chrono::system_clock::now();
-            std::cout << "sorting basis(full)... ";
-            std::sort(basis_full.begin(), basis_full.end());
+            std::cout << "sorting basis(full) according to Lin Table convention... ";
+            std::sort(basis_full.begin(), basis_full.end(),
+                      [this](const mbasis_elem &j1, const mbasis_elem &j2){
+                          mbasis_elem sub_a1, sub_b1, sub_a2, sub_b2;
+                          unzipper_basis(this->props, j1, sub_a1, sub_b1);
+                          unzipper_basis(this->props, j2, sub_a2, sub_b2);
+                          if (sub_b1 == sub_b2) {
+                              return sub_a1 < sub_a2;
+                          } else {
+                              return sub_b1 < sub_b2;
+                          }});
             end = std::chrono::system_clock::now();
             std::chrono::duration<double> elapsed_seconds = end - start;
             std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
         }
+    }
+    
+    template <typename T>
+    void model<T>::fill_Lin_table_full(const lattice &latt)
+    {
+        assert(dim_full > 0);
+        assert(basis_full.size() == dim_full);
+        
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        
+        uint32_t Nsites = latt.total_sites();
+        std::vector<basis_prop> props_sub_a, props_sub_b;
+        basis_props_split(props, props_sub_a, props_sub_b);
+        uint32_t Nsites_a = props_sub_a[0].num_sites;
+        uint32_t Nsites_b = props_sub_b[0].num_sites;
+        assert(Nsites_a >= Nsites_b && Nsites_a + Nsites_b == Nsites);
+        
+        std::cout << "Filling Lin Table for the full basis (" << Nsites_a << "+" << Nsites_b <<" sites)..." << std::endl;
+        
+        uint32_t local_dim = local_dimension();
+        uint64_t dim_sub_a = int_pow<uint32_t, uint64_t>(local_dim, Nsites_a);
+        uint64_t dim_sub_b = int_pow<uint32_t, uint64_t>(local_dim, Nsites_b);
+        
+        std::cout << "Basis size for sublattices (without any symmetry): " << dim_sub_a << " <-> " << dim_sub_b << std::endl;
+        Lin_Ja_full = std::vector<MKL_INT>(dim_sub_a,-1);
+        Lin_Jb_full = std::vector<MKL_INT>(dim_sub_b,-1);
+        
+        // first loop over the basis to generate the list (Ia, Ib, J)
+        // the element J may not be necessary, remove if not used
+        std::cout << "building the (Ia,Ib,J) table...\t\t\t";
+        std::vector<std::vector<MKL_INT>> table_pre(dim_full,std::vector<MKL_INT>(3));
+        #pragma omp parallel for schedule(dynamic,1)
+        for (MKL_INT j = 0; j < dim_full; j++) {
+            mbasis_elem sub_a, sub_b;
+            unzipper_basis(props, basis_full[j], sub_a, sub_b);
+            // value of table_pre[j][2] will be fixed later
+            table_pre[j][0] = static_cast<MKL_INT>(sub_a.label(props_sub_a));
+            table_pre[j][1] = static_cast<MKL_INT>(sub_b.label(props_sub_b));
+            table_pre[j][2] = j;
+        }
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        start = end;
+        
+        std::cout << "checking if table_pre sorted via I_b...\t";
+        for (MKL_INT j = 0; j < dim_full - 1; j++) {
+            if (table_pre[j][1] == table_pre[j+1][1]) {
+                assert(table_pre[j][0] < table_pre[j+1][0]);
+            } else {
+                assert(table_pre[j][1] < table_pre[j+1][1]);
+            }
+        }
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        start = end;
+        
+        // build a graph for the connectivity property of (Ia, Ib, J)
+        // i.e., for 2 different Js with either same Ia or Ib, they are connected.
+        // Also, 2 different Js connected to the same J are connected.
+        // Thus, J form a graph, with several pieces disconnected
+        ALGraph g(static_cast<uint64_t>(dim_full));
+        std::cout << "Initializing graph vertex info...\t\t";
+        for (MKL_INT j = 0; j < dim_full; j++) {
+            g[j].i_a = table_pre[j][0];
+            g[j].i_b = table_pre[j][1];
+        }
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        start = end;
+        
+        // loop over the sorted table_pre, connect all horizontal edges
+        std::cout << "building horizontal edges...\t\t\t";
+        for (MKL_INT idx = 1; idx < dim_full; idx++) {
+            assert(table_pre[idx][1] >= table_pre[idx-1][1]);
+            if (table_pre[idx][1] == table_pre[idx-1][1]) { // same i_a, connected
+                assert(table_pre[idx][0] > table_pre[idx-1][0]);
+                g.add_edge(static_cast<uint64_t>(table_pre[idx-1][2]), static_cast<uint64_t>(table_pre[idx][2]));
+            }
+        }
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        start = end;
+        
+        // sort table_pre according to ia, first connect all vertical edges
+        std::cout << "sorting talbe_pre according to I_a...\t";
+        std::sort(table_pre.begin(), table_pre.end(),
+                  [](const std::vector<MKL_INT> &a, const std::vector<MKL_INT> &b){
+                      if (a[0] == b[0]) {
+                          return a[1] < b[1];
+                      } else {
+                          return a[0] < b[0];
+                      }});
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        start = end;
+        // loop over the sorted table_pre
+        std::cout << "building vertical edges...\t\t\t\t";
+        for (MKL_INT idx = 1; idx < dim_full; idx++) {
+            if (table_pre[idx][0] == table_pre[idx-1][0]) { // same i_a, connected
+                g.add_edge(static_cast<uint64_t>(table_pre[idx-1][2]), static_cast<uint64_t>(table_pre[idx][2]));
+            }
+        }
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        start = end;
+        
+        //std::cout << "Num_edges = " << g.num_arcs() << std::endl;
+        table_pre.clear();
+        table_pre.shrink_to_fit();
+        
+        g.BSF_set_JaJb(Lin_Ja_full, Lin_Jb_full);
+        
+        // check with the original basis, delete later
+        std::cout << "double checking Lin Table validity...\t";
+        for (MKL_INT j = 0; j < dim_full; j++) {
+            mbasis_elem sub_a, sub_b;
+            unzipper_basis(props, basis_full[j], sub_a, sub_b);
+            auto i_a = sub_a.label(props_sub_a);
+            auto i_b = sub_b.label(props_sub_b);
+            assert(Lin_Ja_full[i_a] + Lin_Jb_full[i_b] == j);
+        }
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
     }
     
     template <typename T>
