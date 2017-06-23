@@ -6,6 +6,7 @@
 int main() {
     std::cout << std::setprecision(10);
     // parameters
+    bool matrix_free = true;
     double J = 1.0;
     int L = 12;
     double Sz_total_val = 0.0;
@@ -80,12 +81,13 @@ int main() {
 
 
     // generating matrix of the Hamiltonian in the full Hilbert space
-    Heisenberg.generate_Ham_sparse_full();
-    std::cout << std::endl;
-
+    if (! matrix_free) {
+        Heisenberg.generate_Ham_sparse_full();
+        std::cout << std::endl;
+    }
 
     // obtaining the eigenvals of the matrix
-    Heisenberg.locate_E0_full(10,20,false);
+    Heisenberg.locate_E0_full(2,12,matrix_free);
     std::cout << std::endl;
 
 

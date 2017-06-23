@@ -56,6 +56,7 @@ namespace qbasis {
 //  ----------------------------------------------------------------------------
     static const double pi = 3.141592653589793238462643;
     // later let's try to combine these three as a unified name "precision"
+    static const double machine_prec = std::numeric_limits<double>::epsilon();
     static const double opr_precision = 1e-12; // used as the threshold value in comparison
     static const double sparse_precision = 1e-14;
     static const double lanczos_precision = 1e-12;
@@ -1024,7 +1025,7 @@ namespace qbasis {
         
         void sort_basis_full();
         
-        void fill_Lin_table_full(const lattice &latt);
+        void fill_Lin_table_full();
         
         // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
         void basis_init_repr(const std::vector<int> &momentum, const lattice &latt);

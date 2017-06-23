@@ -259,33 +259,6 @@ void test_basis4()
     }
     model_test4.enumerate_basis_full(latt, {Sz_total}, {0.0});
     
-    model_test4.fill_Lin_table_full(latt);
-    
-    
-//    auto basis_list = qbasis::enumerate_basis_all(props);
-//    
-//    auto basis0 = basis_list[14];
-//    basis0.prt_states(props);
-//    basis0.prt_bits(props);
-//    
-//    qbasis::mbasis_elem sub_a, sub_b;
-//    qbasis::unzipper_basis(props, basis0, sub_a, sub_b);
-//    std::vector<qbasis::basis_prop> props_sub1, props_sub2;
-//    qbasis::basis_props_split(props, props_sub1, props_sub2);
-//    std::cout << "sub_a: " << std::endl;
-//    sub_a.prt_bits(props_sub1);
-//    std::cout << "sub_b: " << std::endl;
-//    sub_b.prt_bits(props_sub2);
-//    auto check = qbasis::zipper_basis(props, sub_a, sub_b);
-//    assert(check == basis0);
-    
-  
-//    qbasis::ALGraph ggg(5);
-//    ggg[0].i_a = 3;
-//    ggg[0].i_b = 4;
-//    std::cout << ggg[0].i_a << std::endl;
-//    
-//    ggg.add_edge(2,3);
-    
+    std::cout << std::numeric_limits<double>::epsilon() << std::endl;
     
 }

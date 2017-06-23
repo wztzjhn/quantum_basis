@@ -165,6 +165,8 @@ namespace qbasis {
         std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
         
         sort_basis_full();
+        
+        fill_Lin_table_full();
     }
     
     // sort according to Lin Table convention (Ib, then Ia)
@@ -203,7 +205,7 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::fill_Lin_table_full(const lattice &latt)
+    void model<T>::fill_Lin_table_full()
     {
         assert(dim_full > 0);
         assert(basis_full.size() == dim_full);
@@ -211,7 +213,7 @@ namespace qbasis {
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         
-        uint32_t Nsites = latt.total_sites();
+        uint32_t Nsites = props[0].num_sites;
         std::vector<basis_prop> props_sub_a, props_sub_b;
         basis_props_split(props, props_sub_a, props_sub_b);
         uint32_t Nsites_a = props_sub_a[0].num_sites;
@@ -247,6 +249,7 @@ namespace qbasis {
         start = end;
         
         std::cout << "checking if table_pre sorted via I_b...\t";
+        #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT j = 0; j < dim_full - 1; j++) {
             if (table_pre[j][1] == table_pre[j+1][1]) {
                 assert(table_pre[j][0] < table_pre[j+1][0]);
@@ -265,6 +268,7 @@ namespace qbasis {
         // Thus, J form a graph, with several pieces disconnected
         ALGraph g(static_cast<uint64_t>(dim_full));
         std::cout << "Initializing graph vertex info...\t\t";
+        #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT j = 0; j < dim_full; j++) {
             g[j].i_a = table_pre[j][0];
             g[j].i_b = table_pre[j][1];
@@ -321,6 +325,7 @@ namespace qbasis {
         
         // check with the original basis, delete later
         std::cout << "double checking Lin Table validity...\t";
+        #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT j = 0; j < dim_full; j++) {
             mbasis_elem sub_a, sub_b;
             unzipper_basis(props, basis_full[j], sub_a, sub_b);
@@ -429,6 +434,10 @@ namespace qbasis {
     template <typename T>
     void model<T>::generate_Ham_sparse_full(const bool &upper_triangle)
     {
+        assert(Lin_Ja_full.size() > 0 && Lin_Jb_full.size() > 0);
+        std::vector<basis_prop> props_sub_a, props_sub_b;
+        basis_props_split(props, props_sub_a, props_sub_b);
+        
         std::cout << "Generating Hamiltonian Matrix..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
@@ -438,10 +447,14 @@ namespace qbasis {
             for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)                                       // diagonal part:
                 matrix_lil.add(i, i, basis_full[i].diagonal_operator(props, Ham_diag[cnt]));
             qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[i], props);  // non-diagonal part:
+            mbasis_elem sub_a, sub_b;
             for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele_new = intermediate_state[cnt];
-                MKL_INT j = binary_search<mbasis_elem,MKL_INT>(basis_full, ele_new.first, 0, dim_full);       // < j | H | i > obtained
-                assert(j != -1);
+                unzipper_basis(props, ele_new.first, sub_a, sub_b);
+                auto i_a = sub_a.label(props_sub_a);
+                auto i_b = sub_b.label(props_sub_b);
+                MKL_INT j = Lin_Ja_full[i_a] + Lin_Jb_full[i_b];                                       // < j | H | i > obtained
+                assert(j >= 0 && j < dim_full);
                 if (upper_triangle) {
                     if (i <= j) matrix_lil.add(i, j, conjugate(ele_new.second));
                 } else {
@@ -480,7 +493,7 @@ namespace qbasis {
                 assert(state_j != -1);
                 auto repr_j = basis_belong[state_j];
                 auto j = binary_search<MKL_INT,MKL_INT>(basis_repr, repr_j, 0, dim_repr);                 // < j |P'_k H | i > obtained
-                if (j < 0) continue;
+                if (j < 0 || j >= dim_repr) continue;
                 auto coeff = basis_coeff[state_j]/std::sqrt(std::real(basis_coeff[repr_i] * basis_coeff[repr_j]));
                 if (upper_triangle) {
                     if (i <= j) matrix_lil.add(i, j, conjugate(ele_new.second) * coeff);
@@ -515,46 +528,62 @@ namespace qbasis {
     template <typename T>
     void model<T>::MultMv(const T *x, T *y) const
     {
-        for (MKL_INT j = 0; j < dim_full; j++) y[j] = static_cast<T>(0.0);
+        std::cout << "+" << std::flush;
+        assert(Lin_Ja_full.size() > 0 && Lin_Jb_full.size() > 0);
+        std::vector<basis_prop> props_sub_a, props_sub_b;
+        basis_props_split(props, props_sub_a, props_sub_b);
+        
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim_full; i++) {
-            std::vector<std::pair<MKL_INT, T>> mat_free{std::pair<MKL_INT, T>(i,static_cast<T>(0.0))};
-            for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
-                mat_free[0].second += basis_full[i].diagonal_operator(props, Ham_diag[cnt]);
+            y[i] = static_cast<T>(0.0);
+            if (std::abs(x[i]) > machine_prec) {
+                for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
+                    y[i] += x[i] * basis_full[i].diagonal_operator(props, Ham_diag[cnt]);
+            }
             qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[i], props);
-            intermediate_state.simplify();
+            mbasis_elem sub_a, sub_b;
             for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele_new = intermediate_state[cnt];
-                MKL_INT j = binary_search<mbasis_elem,MKL_INT>(basis_full, ele_new.first, 0, dim_full);       // < j | H | i > obtained
-                assert(j != -1);
-                if (std::abs(ele_new.second) > opr_precision)
-                    mat_free.emplace_back(j, conjugate(ele_new.second));
+                if (std::abs(ele_new.second) > opr_precision) {
+                    unzipper_basis(props, ele_new.first, sub_a, sub_b);
+                    auto i_a = sub_a.label(props_sub_a);
+                    auto i_b = sub_b.label(props_sub_b);
+                    MKL_INT j = Lin_Ja_full[i_a] + Lin_Jb_full[i_b];                // < j | H | i > obtained
+                    assert(j >= 0 && j < dim_full);
+                    if (std::abs(x[j]) > machine_prec) y[i] += (x[j] * conjugate(ele_new.second));
+                }
             }
-            for (auto it = mat_free.begin(); it < mat_free.end(); it++)
-                y[i] += (x[it->first] * it->second);
         }
     }
     
     template <typename T>
     void model<T>::MultMv(T *x, T *y)
     {
-        for (MKL_INT j = 0; j < dim_full; j++) y[j] = static_cast<T>(0.0);
+        std::cout << "+" << std::flush;
+        assert(Lin_Ja_full.size() > 0 && Lin_Jb_full.size() > 0);
+        std::vector<basis_prop> props_sub_a, props_sub_b;
+        basis_props_split(props, props_sub_a, props_sub_b);
+        
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim_full; i++) {
-            std::vector<std::pair<MKL_INT, T>> mat_free{std::pair<MKL_INT, T>(i,static_cast<T>(0.0))};
-            for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
-                mat_free[0].second += basis_full[i].diagonal_operator(props, Ham_diag[cnt]);
+            y[i] = static_cast<T>(0.0);
+            if (std::abs(x[i]) > machine_prec) {
+                for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
+                    y[i] += x[i] * basis_full[i].diagonal_operator(props, Ham_diag[cnt]);
+            }
             qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[i], props);
-            intermediate_state.simplify();
+            mbasis_elem sub_a, sub_b;
             for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele_new = intermediate_state[cnt];
-                MKL_INT j = binary_search<mbasis_elem,MKL_INT>(basis_full, ele_new.first, 0, dim_full);       // < j | H | i > obtained
-                assert(j != -1);
-                if (std::abs(ele_new.second) > opr_precision)
-                    mat_free.emplace_back(j, conjugate(ele_new.second));
+                if (std::abs(ele_new.second) > opr_precision) {
+                    unzipper_basis(props, ele_new.first, sub_a, sub_b);
+                    auto i_a = sub_a.label(props_sub_a);
+                    auto i_b = sub_b.label(props_sub_b);
+                    MKL_INT j = Lin_Ja_full[i_a] + Lin_Jb_full[i_b];                // < j | H | i > obtained
+                    assert(j >= 0 && j < dim_full);
+                    if (std::abs(x[j]) > machine_prec) y[i] += (x[j] * conjugate(ele_new.second));
+                }
             }
-            for (auto it = mat_free.begin(); it < mat_free.end(); it++)
-                y[i] += (x[it->first] * it->second);
         }
     }
     

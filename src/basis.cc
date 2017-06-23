@@ -659,7 +659,7 @@ namespace qbasis {
             for (const auto &op : lhs.mat_prod) {
                 assert(op.q_diagonal() && (! op.fermion) && op.dim == props[op.orbital].dim_local);
                 res *= diagonal_operator(props, op);
-                if (std::abs(res) < opr_precision) break;
+                if (std::abs(res) < machine_prec) break;
             }
             return res;
         }
@@ -674,7 +674,7 @@ namespace qbasis {
             for (const auto &op : lhs.mat_prod) {
                 assert(op.q_diagonal() && (! op.fermion) && op.dim == props[op.orbital].dim_local);
                 res *= diagonal_operator(props, op);
-                if (std::abs(res) < opr_precision) break;
+                if (std::abs(res) < machine_prec) break;
             }
             return res;
         }
@@ -1183,7 +1183,7 @@ namespace qbasis {
     template <typename T>
     wavefunction<T> &wavefunction<T>::operator+=(std::pair<mbasis_elem, T> ele)
     {
-        if (std::abs(ele.second) < opr_precision) return *this;
+        if (std::abs(ele.second) < machine_prec) return *this;
         if (elements.empty()) {
             elements.push_back(std::move(ele));
         } else {
@@ -1193,7 +1193,7 @@ namespace qbasis {
                 elements.insert(it, std::move(ele));
             } else if(ele.first == it->first) {
                 it->second += ele.second;
-                if (std::abs(it->second) < opr_precision) elements.erase(it);
+                if (std::abs(it->second) < machine_prec) elements.erase(it);
             } else {
                 elements.insert(it, std::move(ele));
             }
@@ -1224,7 +1224,7 @@ namespace qbasis {
     wavefunction<T> &wavefunction<T>::operator*=(const T &rhs)
     {
         if (elements.empty()) return *this;      // itself zero
-        if (std::abs(rhs) < opr_precision) {     // multiply by zero
+        if (std::abs(rhs) < machine_prec) {     // multiply by zero
             elements.clear();
             return *this;
         }
@@ -1250,7 +1250,7 @@ namespace qbasis {
         }
         it = elements.begin();
         while (it != elements.end()) { // remove all zero terms
-            if (std::abs(it->second) < opr_precision) {
+            if (std::abs(it->second) < machine_prec) {
                 it = elements.erase(it);
             } else {
                 it++;
@@ -1321,13 +1321,13 @@ namespace qbasis {
         uint32_t col = rhs.siteRead(props, lhs.site, lhs.orbital); // actually col <= 255
         if (lhs.diagonal) {
             assert(! lhs.fermion);
-            if (std::abs(lhs.mat[col]) > opr_precision)
+            if (std::abs(lhs.mat[col]) > machine_prec)
                 res += std::pair<mbasis_elem, T>(rhs, lhs.mat[col]);
         } else {
             uint32_t displacement = col * lhs.dim;
             bool flag = true;
             for (uint8_t row = 0; row < dim; row++) {
-                if (std::abs(lhs.mat[row + displacement]) > opr_precision) {
+                if (std::abs(lhs.mat[row + displacement]) > machine_prec) {
                     flag = false;
                     break;
                 }
@@ -1349,7 +1349,7 @@ namespace qbasis {
             }
             for (uint8_t row = 0; row < dim; row++) {
                 auto coeff = (sgn == 0 ? lhs.mat[row + displacement] : (-lhs.mat[row + displacement]));
-                if (std::abs(coeff) > opr_precision) {
+                if (std::abs(coeff) > machine_prec) {
                     mbasis_elem state_new(rhs);
                     state_new.siteWrite(props, lhs.site, lhs.orbital, row);
                     res += std::pair<mbasis_elem, T>(state_new, coeff);

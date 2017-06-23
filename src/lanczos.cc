@@ -365,7 +365,7 @@ namespace qbasis {
             }
             for (decltype(eigenvals_copy.size()) j = 0; j < eigenvals_copy.size(); j++)
                 eigenvals[j] = eigenvals_copy[j].first;
-            std::cout << "(nev,ncv,nconv) = (" << nev << "," << ncv << "," << nconv << ")" << std::endl;
+            std::cout << std::endl << "(nev,ncv,nconv) = (" << nev << "," << ncv << "," << nconv << ")" << std::endl;
             std::cout << "Number of implicit restarts: " << niter << std::endl;
             for (MKL_INT j = 0; j < nconv; j++) {
                 std::cout << "E_" << j << " = " << eigenvals[j] << std::endl;
