@@ -1,16 +1,20 @@
-CXX       = clang++
-CPPFLAGS  = -O3 -std=c++11 -Wall -Wextra -Wno-objc-missing-property-synthesis -isystem /usr/local/Cellar/boost/1.62.0/include -m64 -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
-LIBS      = -L/usr/local/lib -larpack -L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl
+CXX       = g++-7
+CPPFLAGS  = -O2 -std=c++11 -Wall -Wextra -m64 -fopenmp -isystem /usr/local/Cellar/boost/1.64.0_1/include -isystem -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
+LIBS      = -L/usr/local/lib -larpack -L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -fopenmp
 
-OBJS      = measure.o lanczos.o sparse.o operators.o basis.o chain_xxz.o
+OBJS      = graph.o lattice.o miscellaneous.o model.o lanczos.o sparse.o operators.o basis.o
 
-OPTS      = 
-
-EXEC      = ../bin/xxz.x
+EXEC      =
 
 
-all: $(OBJS)
-	$(CXX) $(OBJS) $(OPTS) $(LIBS) -o $(EXEC)
+test: $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o
+	$(CXX) $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o $(OPTS) $(LIBS) -o ../bin/test.x
+
+libqbasis.a: $(OBJS)
+	ar rvs libqbasis.a $(OBJS)
+
+install: libqbasis.a
+	$(RM) ${HOME}/installs/lib/libqbasis.*; cp libqbasis.a ${HOME}/installs/lib; cp qbasis.h ${HOME}/installs/include
 
 %.o: %.cc
 	$(CXX) $(CPPFLAGS)  -c -o $@ $<

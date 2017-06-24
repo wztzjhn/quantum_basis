@@ -6,9 +6,9 @@
 int main() {
     std::cout << std::setprecision(10);
     // parameters
-    bool matrix_free = true;
+    bool matrix_free = false;
     double J = 1.0;
-    int L = 12;
+    int L = 10;
     double Sz_total_val = 0.0;
 
     std::cout << "L =        " << L << std::endl;

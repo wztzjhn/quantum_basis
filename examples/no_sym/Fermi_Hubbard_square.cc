@@ -102,7 +102,7 @@ int main() {
 
 
     // obtaining the eigenvals of the matrix
-    Hubbard.locate_E0_full(10,20,matrix_free);
+    Hubbard.locate_E0_full(2,10,matrix_free);
     std::cout << std::endl;
 
 
