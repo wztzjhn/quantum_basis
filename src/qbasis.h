@@ -1047,7 +1047,7 @@ namespace qbasis {
         void MultMv(const T *x, T *y) const;
         void MultMv(T *x, T *y);  // to be compatible with arpack++
         
-        void locate_E0_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, const bool &matrix_free = true);
+        void locate_E0_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, const bool &matrix_free = false);
         
         void locate_E0_repr(const MKL_INT &nev = 2, const MKL_INT &ncv = 6);
         
