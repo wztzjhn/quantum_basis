@@ -294,6 +294,12 @@ namespace qbasis {
         
         uint64_t label(const std::vector<basis_prop> &props) const;
         
+        void label_sub(const std::vector<basis_prop> &props, const uint32_t &orbital,
+                       uint64_t &label1, uint64_t &label2) const;
+        
+        void label_sub(const std::vector<basis_prop> &props,
+                       uint64_t &label1, uint64_t &label2) const;
+        
         // return a vector of length dim_local (for orbital), reporting # of each state
         std::vector<uint32_t> statistics(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
         

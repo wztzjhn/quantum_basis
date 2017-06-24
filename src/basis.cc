@@ -384,6 +384,47 @@ namespace qbasis {
         }
     }
     
+    void mbasis_elem::label_sub(const std::vector<basis_prop> &props, const uint32_t &orbital,
+                                uint64_t &label1, uint64_t &label2) const
+    {
+        auto dim_local = props[orbital].dim_local;
+        uint32_t num_sites = props[orbital].num_sites;
+        uint32_t num_sites_sub1 = (num_sites + 1) / 2;
+        uint32_t num_sites_sub2 = num_sites - num_sites_sub1;
+        
+        std::vector<uint8_t> nums_sub1, nums_sub2;
+        std::vector<uint8_t> base_sub1(num_sites_sub1,dim_local), base_sub2(num_sites_sub2,dim_local);
+        for (uint32_t site = 0; site < num_sites_sub2; site++) {
+            nums_sub1.push_back(siteRead(props, site + site,     orbital));
+            nums_sub2.push_back(siteRead(props, site + site + 1, orbital));
+        }
+        if (num_sites_sub1 > num_sites_sub2) nums_sub1.push_back(siteRead(props, num_sites - 1, orbital));
+        label1 = dynamic_base<uint8_t, uint64_t>(nums_sub1, base_sub1);
+        label2 = dynamic_base<uint8_t, uint64_t>(nums_sub2, base_sub2);
+    }
+    
+    void mbasis_elem::label_sub(const std::vector<basis_prop> &props,
+                                uint64_t &label1, uint64_t &label2) const
+    {
+        auto N_orbs = props.size();
+        if (N_orbs == 1) {
+            label_sub(props, 0, label1, label2);
+        } else {
+            std::vector<uint64_t> base_sub1(N_orbs), base_sub2(N_orbs), nums_sub1(N_orbs), nums_sub2(N_orbs);
+            for (uint32_t orb = 0; orb < props.size(); orb++) {
+                uint32_t num_sites = props[orb].num_sites;
+                uint32_t num_sites_sub1 = (num_sites + 1) / 2;
+                uint32_t num_sites_sub2 = num_sites - num_sites_sub1;
+                uint32_t local_dim = static_cast<uint32_t>(props[orb].dim_local);
+                label_sub(props, orb, nums_sub1[orb], nums_sub2[orb]);
+                base_sub1[orb] = int_pow<uint32_t, uint64_t>(local_dim, num_sites_sub1);
+                base_sub2[orb] = int_pow<uint32_t, uint64_t>(local_dim, num_sites_sub2);
+            }
+            label1 = dynamic_base<uint64_t, uint64_t>(nums_sub1, base_sub1);
+            label2 = dynamic_base<uint64_t, uint64_t>(nums_sub2, base_sub2);
+        }
+    }
+    
     std::vector<uint32_t> mbasis_elem::statistics(const std::vector<basis_prop> &props, const uint32_t &orbital) const
     {
         std::vector<uint32_t> results(props[orbital].dim_local,0);
