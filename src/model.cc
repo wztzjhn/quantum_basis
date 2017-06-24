@@ -236,11 +236,11 @@ namespace qbasis {
         std::vector<std::vector<MKL_INT>> table_pre(dim_full,std::vector<MKL_INT>(3));
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT j = 0; j < dim_full; j++) {
-            mbasis_elem sub_a, sub_b;
-            unzipper_basis(props, basis_full[j], sub_a, sub_b);
+            uint64_t i_a, i_b;
+            basis_full[j].label_sub(props, i_a, i_b);
             // value of table_pre[j][2] will be fixed later
-            table_pre[j][0] = static_cast<MKL_INT>(sub_a.label(props_sub_a));
-            table_pre[j][1] = static_cast<MKL_INT>(sub_b.label(props_sub_b));
+            table_pre[j][0] = static_cast<MKL_INT>(i_a);
+            table_pre[j][1] = static_cast<MKL_INT>(i_b);
             table_pre[j][2] = j;
         }
         end = std::chrono::system_clock::now();
@@ -447,13 +447,11 @@ namespace qbasis {
             for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)                                       // diagonal part:
                 matrix_lil.add(i, i, basis_full[i].diagonal_operator(props, Ham_diag[cnt]));
             qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[i], props);  // non-diagonal part:
-            mbasis_elem sub_a, sub_b;
             for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele_new = intermediate_state[cnt];
-                unzipper_basis(props, ele_new.first, sub_a, sub_b);
-                auto i_a = sub_a.label(props_sub_a);
-                auto i_b = sub_b.label(props_sub_b);
-                MKL_INT j = Lin_Ja_full[i_a] + Lin_Jb_full[i_b];                                       // < j | H | i > obtained
+                uint64_t i_a, i_b;
+                ele_new.first.label_sub(props, i_a, i_b);
+                MKL_INT j = Lin_Ja_full[i_a] + Lin_Jb_full[i_b];                  // < j | H | i > obtained
                 assert(j >= 0 && j < dim_full);
                 if (upper_triangle) {
                     if (i <= j) matrix_lil.add(i, j, conjugate(ele_new.second));
@@ -541,13 +539,11 @@ namespace qbasis {
                     y[i] += x[i] * basis_full[i].diagonal_operator(props, Ham_diag[cnt]);
             }
             qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[i], props);
-            mbasis_elem sub_a, sub_b;
             for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele_new = intermediate_state[cnt];
                 if (std::abs(ele_new.second) > opr_precision) {
-                    unzipper_basis(props, ele_new.first, sub_a, sub_b);
-                    auto i_a = sub_a.label(props_sub_a);
-                    auto i_b = sub_b.label(props_sub_b);
+                    uint64_t i_a, i_b;
+                    ele_new.first.label_sub(props, i_a, i_b);
                     MKL_INT j = Lin_Ja_full[i_a] + Lin_Jb_full[i_b];                // < j | H | i > obtained
                     assert(j >= 0 && j < dim_full);
                     if (std::abs(x[j]) > machine_prec) y[i] += (x[j] * conjugate(ele_new.second));
@@ -572,13 +568,11 @@ namespace qbasis {
                     y[i] += x[i] * basis_full[i].diagonal_operator(props, Ham_diag[cnt]);
             }
             qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[i], props);
-            mbasis_elem sub_a, sub_b;
             for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele_new = intermediate_state[cnt];
                 if (std::abs(ele_new.second) > opr_precision) {
-                    unzipper_basis(props, ele_new.first, sub_a, sub_b);
-                    auto i_a = sub_a.label(props_sub_a);
-                    auto i_b = sub_b.label(props_sub_b);
+                    uint64_t i_a, i_b;
+                    ele_new.first.label_sub(props, i_a, i_b);
                     MKL_INT j = Lin_Ja_full[i_a] + Lin_Jb_full[i_b];                // < j | H | i > obtained
                     assert(j >= 0 && j < dim_full);
                     if (std::abs(x[j]) > machine_prec) y[i] += (x[j] * conjugate(ele_new.second));
