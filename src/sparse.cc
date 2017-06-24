@@ -215,7 +215,7 @@ namespace qbasis {
     template <typename T>
     void csr_mat<T>::MultMv(const T *x, T *y) const
     {
-        std::cout << "+" << std::flush;
+        std::cout << "*" << std::flush;
         assert(val != nullptr && ja != nullptr && ia != nullptr);
         if (sym) {
             char matdescar[7] = "HUNC";
@@ -231,7 +231,7 @@ namespace qbasis {
     template <typename T>
     void csr_mat<T>::MultMv(T *x, T *y)
     {
-        std::cout << "+" << std::flush;
+        std::cout << "*" << std::flush;
         assert(val != nullptr && ja != nullptr && ia != nullptr);
         if (sym) {
             char matdescar[7] = "HUNC";

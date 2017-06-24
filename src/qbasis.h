@@ -38,11 +38,17 @@
 //#include <boost/graph/breadth_first_search.hpp>
 
 #ifdef _OPENMP
-#include <omp.h>
+  #include <omp.h>
 #else
-#define omp_get_thread_num() -1
-#define omp_get_num_threads() 1
-#define omp_get_num_procs() 1
+  #define omp_get_thread_num() -1
+  #define omp_get_num_threads() 1
+  #define omp_get_num_procs() 1
+#endif
+
+#if defined(__clang__)
+#elif defined(__GNUC__) && defined(_OPENMP)
+  #include <parallel/algorithm>
+  #define use_gnu_parallel_sort
 #endif
 
 

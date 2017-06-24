@@ -187,17 +187,21 @@ namespace qbasis {
         if (! sorted) {
             std::chrono::time_point<std::chrono::system_clock> start, end;
             start = std::chrono::system_clock::now();
-            std::cout << "sorting basis(full) according to Lin Table convention... ";
-            std::sort(basis_full.begin(), basis_full.end(),
-                      [this](const mbasis_elem &j1, const mbasis_elem &j2){
-                          mbasis_elem sub_a1, sub_b1, sub_a2, sub_b2;
-                          unzipper_basis(this->props, j1, sub_a1, sub_b1);
-                          unzipper_basis(this->props, j2, sub_a2, sub_b2);
-                          if (sub_b1 == sub_b2) {
-                              return sub_a1 < sub_a2;
-                          } else {
-                              return sub_b1 < sub_b2;
-                          }});
+            std::cout << "sorting basis(full) according to Lin Table convention... " << std::flush;
+            auto cmp = [this](const mbasis_elem &j1, const mbasis_elem &j2){
+                              mbasis_elem sub_a1, sub_b1, sub_a2, sub_b2;
+                              unzipper_basis(this->props, j1, sub_a1, sub_b1);
+                              unzipper_basis(this->props, j2, sub_a2, sub_b2);
+                              if (sub_b1 == sub_b2) {
+                                  return sub_a1 < sub_a2;
+                              } else {
+                                  return sub_b1 < sub_b2;
+                              }};
+#ifdef use_gnu_parallel_sort
+            __gnu_parallel::sort(basis_full.begin(), basis_full.end(),cmp);
+#else
+            std::sort(basis_full.begin(), basis_full.end(),cmp);
+#endif
             end = std::chrono::system_clock::now();
             std::chrono::duration<double> elapsed_seconds = end - start;
             std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
@@ -232,7 +236,7 @@ namespace qbasis {
         
         // first loop over the basis to generate the list (Ia, Ib, J)
         // the element J may not be necessary, remove if not used
-        std::cout << "building the (Ia,Ib,J) table...\t\t\t";
+        std::cout << "building the (Ia,Ib,J) table...\t\t\t" << std::flush;
         std::vector<std::vector<MKL_INT>> table_pre(dim_full,std::vector<MKL_INT>(3));
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT j = 0; j < dim_full; j++) {
@@ -248,7 +252,7 @@ namespace qbasis {
         std::cout << elapsed_seconds.count() << "s." << std::endl;
         start = end;
         
-        std::cout << "checking if table_pre sorted via I_b...\t";
+        std::cout << "checking if table_pre sorted via I_b...\t" << std::flush;
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT j = 0; j < dim_full - 1; j++) {
             if (table_pre[j][1] == table_pre[j+1][1]) {
@@ -267,7 +271,7 @@ namespace qbasis {
         // Also, 2 different Js connected to the same J are connected.
         // Thus, J form a graph, with several pieces disconnected
         ALGraph g(static_cast<uint64_t>(dim_full));
-        std::cout << "Initializing graph vertex info...\t\t";
+        std::cout << "Initializing graph vertex info...\t\t" << std::flush;
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT j = 0; j < dim_full; j++) {
             g[j].i_a = table_pre[j][0];
@@ -279,7 +283,7 @@ namespace qbasis {
         start = end;
         
         // loop over the sorted table_pre, connect all horizontal edges
-        std::cout << "building horizontal edges...\t\t\t";
+        std::cout << "building horizontal edges...\t\t\t" << std::flush;
         for (MKL_INT idx = 1; idx < dim_full; idx++) {
             assert(table_pre[idx][1] >= table_pre[idx-1][1]);
             if (table_pre[idx][1] == table_pre[idx-1][1]) { // same i_a, connected
@@ -293,20 +297,24 @@ namespace qbasis {
         start = end;
         
         // sort table_pre according to ia, first connect all vertical edges
-        std::cout << "sorting talbe_pre according to I_a...\t";
-        std::sort(table_pre.begin(), table_pre.end(),
-                  [](const std::vector<MKL_INT> &a, const std::vector<MKL_INT> &b){
+        std::cout << "sorting talbe_pre according to I_a...\t" << std::flush;
+        auto cmp = [](const std::vector<MKL_INT> &a, const std::vector<MKL_INT> &b){
                       if (a[0] == b[0]) {
                           return a[1] < b[1];
                       } else {
                           return a[0] < b[0];
-                      }});
+                      }};
+#ifdef use_gnu_parallel_sort
+        __gnu_parallel::sort(table_pre.begin(), table_pre.end(), cmp);
+#else
+        std::sort(table_pre.begin(), table_pre.end(), cmp);
+#endif
         end = std::chrono::system_clock::now();
         elapsed_seconds = end - start;
         std::cout << elapsed_seconds.count() << "s." << std::endl;
         start = end;
         // loop over the sorted table_pre
-        std::cout << "building vertical edges...\t\t\t\t";
+        std::cout << "building vertical edges...\t\t\t\t" << std::flush;
         for (MKL_INT idx = 1; idx < dim_full; idx++) {
             if (table_pre[idx][0] == table_pre[idx-1][0]) { // same i_a, connected
                 g.add_edge(static_cast<uint64_t>(table_pre[idx-1][2]), static_cast<uint64_t>(table_pre[idx][2]));
@@ -324,7 +332,7 @@ namespace qbasis {
         g.BSF_set_JaJb(Lin_Ja_full, Lin_Jb_full);
         
         // check with the original basis, delete later
-        std::cout << "double checking Lin Table validity...\t";
+        std::cout << "double checking Lin Table validity...\t" << std::flush;
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT j = 0; j < dim_full; j++) {
             mbasis_elem sub_a, sub_b;
@@ -526,7 +534,7 @@ namespace qbasis {
     template <typename T>
     void model<T>::MultMv(const T *x, T *y) const
     {
-        std::cout << "+" << std::flush;
+        std::cout << "*" << std::flush;
         assert(Lin_Ja_full.size() > 0 && Lin_Jb_full.size() > 0);
         std::vector<basis_prop> props_sub_a, props_sub_b;
         basis_props_split(props, props_sub_a, props_sub_b);
@@ -555,7 +563,7 @@ namespace qbasis {
     template <typename T>
     void model<T>::MultMv(T *x, T *y)
     {
-        std::cout << "+" << std::flush;
+        std::cout << "*" << std::flush;
         assert(Lin_Ja_full.size() > 0 && Lin_Jb_full.size() > 0);
         std::vector<basis_prop> props_sub_a, props_sub_b;
         basis_props_split(props, props_sub_a, props_sub_b);
