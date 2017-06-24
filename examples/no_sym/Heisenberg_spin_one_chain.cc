@@ -87,10 +87,10 @@ int main() {
     }
 
     // obtaining the eigenvals of the matrix
-    Heisenberg.locate_E0_full(2,12,matrix_free);
+    Heisenberg.locate_E0_full(2,8,matrix_free);
     std::cout << std::endl;
 
 
     // for the parameters considered, we should obtain:
-    //assert(std::abs(Heisenberg.eigenvals_full[0] + 1.78557409) < 1e-8);
+    assert(std::abs(Heisenberg.eigenvals_full[0] + 14.09412995) < 1e-8);
 }
