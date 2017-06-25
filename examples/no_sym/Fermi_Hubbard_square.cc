@@ -178,7 +178,11 @@ int main() {
         std::vector<std::complex<double>> v(Hubbard.dim_full * 3);
         std::vector<double> hessenberg(step * 2, 0.0);
         if (phi0_nrm2 > qbasis::lanczos_precision) {
-            qbasis::lanczos(0, step, Hubbard.dim_full, Hubbard.HamMat_csr_full, rnorm, phi0.data(), v.data(), hessenberg.data(), step, false);
+            if (matrix_free) {
+                qbasis::lanczos(0, step, Hubbard.dim_full, Hubbard, rnorm, phi0.data(), v.data(), hessenberg.data(), step, false);
+            } else {
+                qbasis::lanczos(0, step, Hubbard.dim_full, Hubbard.HamMat_csr_full, rnorm, phi0.data(), v.data(), hessenberg.data(), step, false);
+            }
             fout << "b\t";
             for (int i = 0; i < step; i++) {
                 fout << std::setw(30) << hessenberg[i];
@@ -193,6 +197,7 @@ int main() {
             fout << "b\t" << std::endl;
             fout << "a\t" << std::endl;
         }
+        std::cout << std::endl << std::endl;
     }
     
     
