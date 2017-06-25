@@ -75,8 +75,11 @@ Q_grid = np.arange(len(Q))
 xx, yy = np.meshgrid(Q_grid,omega)
 intensity_z = np.zeros((len(omega),len(Q)))
 intensity_00   = np.zeros(len(omega))
+intensity_hpi0 = np.zeros(len(omega)) #(pi/2, 0)
 intensity_pi0  = np.zeros(len(omega))
+intensity_pihpi = np.zeros(len(omega)) #(pi, pi/2)
 intensity_pipi = np.zeros(len(omega))
+intensity_hpihpi = np.zeros(len(omega)) #(pi/2, pi/2)
 
 
 def cfraction(a,b,length):
@@ -108,14 +111,26 @@ for q_idx in range(0,len(Q)):
         if (nrm2_z[q_idx] > 0.000000001):
             for w_idx in range(0,len(omega)):
                 intensity_00[w_idx] = sqw(omega[w_idx],broaden,a_z[q_idx],b_z[q_idx],steps,nrm2_z[q_idx])
-    elif (momentum[0] == Lx/2 and momentum[1] == 0):
+    elif (momentum[0] * 4 == Lx and momentum[1] == 0):
+        if (nrm2_z[q_idx] > 0.000000001):
+            for w_idx in range(0,len(omega)):
+                intensity_hpi0[w_idx] = sqw(omega[w_idx],broaden,a_z[q_idx],b_z[q_idx],steps,nrm2_z[q_idx])
+    elif (momentum[0] * 2 == Lx and momentum[1] == 0):
         if (nrm2_z[q_idx] > 0.000000001):
             for w_idx in range(0,len(omega)):
                 intensity_pi0[w_idx] = sqw(omega[w_idx],broaden,a_z[q_idx],b_z[q_idx],steps,nrm2_z[q_idx])
-    elif (momentum[0] == Lx/2 and momentum[1] == Ly/2):
+    elif (momentum[0] * 2 == Lx and momentum[1] * 4 == Ly):
+        if (nrm2_z[q_idx] > 0.000000001):
+            for w_idx in range(0,len(omega)):
+                intensity_pihpi[w_idx] = sqw(omega[w_idx],broaden,a_z[q_idx],b_z[q_idx],steps,nrm2_z[q_idx])
+    elif (momentum[0] * 2 == Lx and momentum[1] * 2 == Ly):
         if (nrm2_z[q_idx] > 0.000000001):
             for w_idx in range(0,len(omega)):
                 intensity_pipi[w_idx] = sqw(omega[w_idx],broaden,a_z[q_idx],b_z[q_idx],steps,nrm2_z[q_idx])
+    elif (momentum[0] * 4 == Lx and momentum[1] * 4 == Ly):
+        if (nrm2_z[q_idx] > 0.000000001):
+            for w_idx in range(0,len(omega)):
+                intensity_hpihpi[w_idx] = sqw(omega[w_idx],broaden,a_z[q_idx],b_z[q_idx],steps,nrm2_z[q_idx])
 
 fig, ax = plt.subplots(1, 1, sharey=True)
 
@@ -131,8 +146,9 @@ ax.set_xlabel('$Q$')
 #cs1 = ax[1].contourf(xx,yy,intensity_y,levels,cmap=cmap,vmin=0.0,vmax=max_color)
 #fig.colorbar(cs1, ax=ax[1])
 #ax[1].set_xlabel('$Q$')
-
-
+labels = ["$(0,0)$", "$(\pi/2,0)$", "$(\pi,0)$",
+          "$(\pi,\pi/2)$", "$(\pi,\pi)$", "$(\pi/2,\pi/2)$", "$(0,0)$"]
+ax.set_xticklabels(labels)
 ax.set_ylabel('$\omega/J$')
 ax.set_title('$S^{zz}$')
 #ax[1].set_title('$S^{yy}$')
@@ -147,6 +163,18 @@ plt.plot(omega,intensity_00,label="$Q=(0,0)$")
 plt.plot(omega,intensity_pi0,label="$Q=(\pi,0)$")
 plt.plot(omega,intensity_pipi,label="$Q=(\pi,\pi)$")
 plt.legend()
+plt.xlim(0,10)
+plt.ylim(0,1.5)
+plt.xlabel('$\omega/J$')
+plt.ylabel("intensity")
+
+plt.figure(3)
+plt.plot(omega,intensity_hpi0,label="$Q=(\pi/2,0)$")
+plt.plot(omega,intensity_pihpi,label="$Q=(\pi,\pi/2)$")
+plt.plot(omega,intensity_hpihpi,label="$Q=(\pi/2,\pi/2)$")
+plt.legend()
+plt.xlim(0,10)
+plt.ylim(0,1.5)
 plt.xlabel('$\omega/J$')
 plt.ylabel("intensity")
 
