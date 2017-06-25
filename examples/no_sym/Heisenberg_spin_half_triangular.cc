@@ -6,7 +6,7 @@
 int main() {
     std::cout << std::setprecision(10);
     // parameters
-    bool matrix_free = false;
+    bool matrix_free = true;
     double J1 = 1.0;
     int Lx = 4;
     int Ly = 2;
@@ -39,7 +39,7 @@ int main() {
 
 
     // constructing the Hamiltonian in operator representation
-    qbasis::model<std::complex<double>> Heisenberg;
+    qbasis::model<std::complex<double>> Heisenberg(matrix_free);
     Heisenberg.add_orbital(lattice.total_sites(), "spin-1/2");
     qbasis::mopr<std::complex<double>> Sz_total;   // operators representating total Sz
     for (int m = 0; m < Lx; m++) {
@@ -99,7 +99,7 @@ int main() {
 
 
     // obtaining the eigenvals of the matrix
-    Heisenberg.locate_E0_full(10,20,matrix_free);
+    Heisenberg.locate_E0_full(10,20);
     std::cout << std::endl;
 
 

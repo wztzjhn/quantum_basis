@@ -6,7 +6,7 @@
 int main() {
     std::cout << std::setprecision(10);
     // parameters
-    bool matrix_free = false;
+    bool matrix_free = true;
     double t = 1;
     double U = 1.1;
     int Lx = 3;
@@ -37,7 +37,7 @@ int main() {
     
 
     // initialize the Hamiltonian
-    qbasis::model<std::complex<double>> Hubbard;
+    qbasis::model<std::complex<double>> Hubbard(matrix_free);
     Hubbard.add_orbital(lattice.total_sites(), "boson", boson_limit);
     
     qbasis::mopr<std::complex<double>> Nboson;   // operators representating total boson number
@@ -91,7 +91,7 @@ int main() {
     
     
     // obtaining the eigenvals of the matrix
-    Hubbard.locate_E0_full(10,20,matrix_free);
+    Hubbard.locate_E0_full();
     std::cout << std::endl;
     
     

@@ -32,7 +32,7 @@ int main() {
 
 
     // initialize the Hamiltonian
-    qbasis::model<std::complex<double>> spinless;
+    qbasis::model<std::complex<double>> spinless(matrix_free);
     spinless.add_orbital(lattice.total_sites(), "spinless-fermion");
     double constant = 0.0; // the constant energy correction from \sum_{\langle i,j \rangle} V1/4
 
@@ -117,7 +117,7 @@ int main() {
 
     // obtaining the eigenvals of the matrix
     std::cout << "Energy correction per site   = " << (constant / lattice.total_sites()) << std::endl;
-    spinless.locate_E0_full(5,10,matrix_free);
+    spinless.locate_E0_full(5,10);
     std::cout << "Energy correction = " << constant << std::endl;
     std::cout << "Energy per site   = " << ( spinless.energy_min() + constant ) / lattice.total_sites() << std::endl;
     std::cout << std::endl;

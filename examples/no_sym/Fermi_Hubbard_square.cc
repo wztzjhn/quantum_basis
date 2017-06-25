@@ -38,7 +38,7 @@ int main() {
 
 
     // constructing the Hamiltonian in operator representation
-    qbasis::model<std::complex<double>> Hubbard;
+    qbasis::model<std::complex<double>> Hubbard(matrix_free);
     Hubbard.add_orbital(lattice.total_sites(), "electron");
     qbasis::mopr<std::complex<double>> Nup;   // operators representating total electron number
     qbasis::mopr<std::complex<double>> Ndown;
@@ -102,7 +102,7 @@ int main() {
 
 
     // obtaining the eigenvals of the matrix
-    Hubbard.locate_E0_full(2,10,matrix_free);
+    Hubbard.locate_E0_full(2,10);
     std::cout << std::endl;
 
 
@@ -163,7 +163,7 @@ int main() {
         }
         // prepare restart state
         std::vector<std::complex<double>> phi0(Hubbard.dim_full, 0.0);
-        Hubbard.moprXeigenvec(Szmq, phi0.data());
+        Hubbard.moprXeigenvec_full(Szmq, phi0.data());
         // normalization of restart state
         double phi0_nrm2 = qbasis::nrm2(Hubbard.dim_full, phi0.data(), 1);
         double rnorm;

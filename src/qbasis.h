@@ -972,6 +972,7 @@ namespace qbasis {
 //        friend MKL_INT generate_Ham_all_AtRow <> (model<T> &,
 //                                                  threads_pool &);
     public:
+        bool matrix_free;
         std::vector<basis_prop> props;
         mopr<T> Ham_diag;
         mopr<T> Ham_off_diag;
@@ -995,7 +996,9 @@ namespace qbasis {
         std::vector<double> eigenvals_repr;
         std::vector<std::complex<double>> eigenvecs_repr;
         
-        model() = default;
+        model() { matrix_free = false; }
+        
+        model(const bool &mat_free) : matrix_free(mat_free) {}
         
         ~model() {}
         
@@ -1053,11 +1056,11 @@ namespace qbasis {
         void MultMv(const T *x, T *y) const;
         void MultMv(T *x, T *y);  // to be compatible with arpack++
         
-        void locate_E0_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, const bool &matrix_free = false);
-        
-        void locate_E0_repr(const MKL_INT &nev = 2, const MKL_INT &ncv = 6);
+        void locate_E0_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6);
         
         void locate_Emax_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6);
+        
+        void locate_E0_repr(const MKL_INT &nev = 2, const MKL_INT &ncv = 6);
         
         void locate_Emax_repr(const MKL_INT &nev = 2, const MKL_INT &ncv = 6);
         
@@ -1068,7 +1071,7 @@ namespace qbasis {
         double energy_gap() { return gap; }
         
         // lhs | phi >
-        void moprXeigenvec(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col = 0);
+        void moprXeigenvec_full(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col = 0);
         // < phi | lhs | phi >
         T measure(const mopr<T> &lhs, const MKL_INT &which_col=0);
         // < phi | lhs1^\dagger lhs2 | phi >

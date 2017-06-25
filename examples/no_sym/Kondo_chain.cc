@@ -52,7 +52,7 @@ int main() {
 
     // constructing the Hamiltonian in operator representation
     // electrons on orbital 0, local spins on orbital 1
-    qbasis::model<std::complex<double>> Kondo;
+    qbasis::model<std::complex<double>> Kondo(matrix_free);
     Kondo.add_orbital(lattice.total_sites(), "electron");
     Kondo.add_orbital(lattice.total_sites(), "spin-1/2");
     qbasis::mopr<std::complex<double>> Nelec_total;   // operators representating total electron number
@@ -120,7 +120,7 @@ int main() {
     }
 
     // obtaining the eigenvals of the matrix
-    Kondo.locate_E0_full(10,20,matrix_free);
+    Kondo.locate_E0_full(10,20);
     std::cout << std::endl;
 
 
