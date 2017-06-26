@@ -237,7 +237,7 @@ namespace qbasis {
         
         // first loop over the basis to generate the list (Ia, Ib, J)
         // the element J may not be necessary, remove if not used
-        std::cout << "building the (Ia,Ib,J) table...\t\t\t" << std::flush;
+        std::cout << "building the (Ia,Ib,J) table...                    " << std::flush;
         std::vector<std::vector<MKL_INT>> table_pre(dim_full,std::vector<MKL_INT>(3));
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT j = 0; j < dim_full; j++) {
@@ -253,7 +253,7 @@ namespace qbasis {
         std::cout << elapsed_seconds.count() << "s." << std::endl;
         start = end;
         
-        std::cout << "checking if table_pre sorted via I_b...\t" << std::flush;
+        std::cout << "checking if table_pre sorted via I_b               " << std::flush;
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT j = 0; j < dim_full - 1; j++) {
             if (table_pre[j][1] == table_pre[j+1][1]) {
@@ -272,7 +272,7 @@ namespace qbasis {
         // Also, 2 different Js connected to the same J are connected.
         // Thus, J form a graph, with several pieces disconnected
         ALGraph g(static_cast<uint64_t>(dim_full));
-        std::cout << "Initializing graph vertex info...\t\t" << std::flush;
+        std::cout << "Initializing graph vertex info...                  " << std::flush;
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT j = 0; j < dim_full; j++) {
             g[j].i_a = table_pre[j][0];
@@ -284,7 +284,7 @@ namespace qbasis {
         start = end;
         
         // loop over the sorted table_pre, connect all horizontal edges
-        std::cout << "building horizontal edges...\t\t\t" << std::flush;
+        std::cout << "building horizontal edges...                       " << std::flush;
         for (MKL_INT idx = 1; idx < dim_full; idx++) {
             assert(table_pre[idx][1] >= table_pre[idx-1][1]);
             if (table_pre[idx][1] == table_pre[idx-1][1]) { // same i_a, connected
@@ -298,7 +298,7 @@ namespace qbasis {
         start = end;
         
         // sort table_pre according to ia, first connect all vertical edges
-        std::cout << "sorting talbe_pre according to I_a...\t" << std::flush;
+        std::cout << "sorting talbe_pre according to I_a...              " << std::flush;
         auto cmp = [](const std::vector<MKL_INT> &a, const std::vector<MKL_INT> &b){
                       if (a[0] == b[0]) {
                           return a[1] < b[1];
@@ -315,7 +315,7 @@ namespace qbasis {
         std::cout << elapsed_seconds.count() << "s." << std::endl;
         start = end;
         // loop over the sorted table_pre
-        std::cout << "building vertical edges...\t\t\t\t" << std::flush;
+        std::cout << "building vertical edges...                         " << std::flush;
         for (MKL_INT idx = 1; idx < dim_full; idx++) {
             if (table_pre[idx][0] == table_pre[idx-1][0]) { // same i_a, connected
                 g.add_edge(static_cast<uint64_t>(table_pre[idx-1][2]), static_cast<uint64_t>(table_pre[idx][2]));
@@ -333,7 +333,7 @@ namespace qbasis {
         g.BSF_set_JaJb(Lin_Ja_full, Lin_Jb_full);
         
         // check with the original basis, delete later
-        std::cout << "double checking Lin Table validity...\t" << std::flush;
+        std::cout << "double checking Lin Table validity...              " << std::flush;
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT j = 0; j < dim_full; j++) {
             mbasis_elem sub_a, sub_b;
