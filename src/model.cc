@@ -1,7 +1,8 @@
 #include <iostream>
 //#include <fstream>
-//#include <iomanip>
+#include <iomanip>
 #include <climits>
+#include <random>
 #include "qbasis.h"
 #include "graph.h"
 
@@ -631,6 +632,71 @@ namespace qbasis {
             gap = eigenvals_full[1] - eigenvals_full[0];
             std::cout << "Gap  = " << gap << std::endl;
         }
+    }
+    
+    template <typename T>
+    void model<T>::locate_E0_full_lanczos()
+    {
+        assert(false);
+        std::cout << "Calculating ground state (with simple Lanczos)..." << std::endl;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) {
+                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
+                std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl;
+            }
+        }
+        std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        
+        std::default_random_engine generator;
+        std::uniform_real_distribution<double> distribution(-1.0,1.0);
+        std::vector<T> resid(dim_full), v(dim_full*3);
+        for (MKL_INT j = 0; j < dim_full; j++) resid[j] = static_cast<T>(distribution(generator));
+        double rnorm = nrm2(dim_full, resid.data(), 1);
+        scal(dim_full, 1.0 / rnorm, resid.data(), 1);
+        MKL_INT ldh = 2000;                                     // at most 2000 steps
+        std::vector<double> hessenberg(ldh, 0.0), ritz(ldh), e(ldh-1);
+        
+        MKL_INT total_steps = 0;
+        MKL_INT step = 6;
+        E0 = 1.0e10;
+        std::vector<std::pair<double, MKL_INT>> eigenvals(ldh);
+        eigenvals[0].first = 1.0e9;
+        while (std::abs(E0 - eigenvals[0].first) > lanczos_precision && total_steps < ldh) {
+            if (eigenvals[0].first < E0) {
+                E0 = eigenvals[0].first;
+            }
+            if (matrix_free) {
+                lanczos(0, step, dim_full, *this, rnorm, resid.data(), v.data(), hessenberg.data(), 2000, false);
+            } else {
+                lanczos(0, step, dim_full, HamMat_csr_full, rnorm, resid.data(), v.data(), hessenberg.data(), 2000, false);
+            }
+            total_steps += step;
+            copy(total_steps, hessenberg.data() + ldh, 1, ritz.data(), 1);
+            copy(total_steps-1, hessenberg.data() + 1, 1, e.data(), 1);
+            int info = sterf(total_steps, ritz.data(), e.data());
+            assert(info == 0);
+            for (decltype(eigenvals.size()) j = 0; j < eigenvals.size(); j++) {
+                eigenvals[j].first = ritz[j];
+                eigenvals[j].second = static_cast<MKL_INT>(j);
+            }
+            std::sort(eigenvals.begin(), eigenvals.end(),
+                      [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return a.first < b.first; });
+            std::cout << "Lanczos steps: " << total_steps << std::endl;
+            std::cout << "Ritz values: "
+                      << std::setw(25) << eigenvals[0].first << std::setw(25) << eigenvals[1].first
+                      << std::setw(25) << eigenvals[2].first << std::setw(25) << eigenvals[3].first
+                      << std::setw(25) << eigenvals[4].first << std::endl;
+        }
+        assert(total_steps < ldh);
+        
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+        std::cout << "E0   = " << E0 << std::endl;
     }
     
     template <typename T>

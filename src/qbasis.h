@@ -1058,6 +1058,9 @@ namespace qbasis {
         
         void locate_E0_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6);
         
+        // Don't use! Accuracy not good enough yet.
+        void locate_E0_full_lanczos();
+        
         void locate_Emax_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6);
         
         void locate_E0_repr(const MKL_INT &nev = 2, const MKL_INT &ncv = 6);

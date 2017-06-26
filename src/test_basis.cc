@@ -226,6 +226,8 @@ void test_basis4()
 {
     std::cout << "test basis 4" << std::endl;
     
+    uint32_t L = 6;
+    
     // local matrix representation
     // Spins:
     std::vector<std::vector<std::complex<double>>> Splus(2,std::vector<std::complex<double>>(2));
@@ -242,23 +244,52 @@ void test_basis4()
     Sz[0]        = 0.5;
     Sz[1]        = -0.5;
     
-    qbasis::lattice latt("chain",std::vector<uint32_t>{6},std::vector<std::string>{"pbc"});
+    std::vector<std::string> bc{"pbc"};
+    qbasis::lattice lattice("chain",std::vector<uint32_t>{L},bc);
 //    std::vector<qbasis::basis_prop> props;
 //    props.emplace_back(latt.total_sites(),"spin-1/2");
     
-    qbasis::model<std::complex<double>> model_test4;
-    model_test4.add_orbital(latt.total_sites(), "spin-1/2");
+    qbasis::model<std::complex<double>> model_test4(false);
+    model_test4.add_orbital(lattice.total_sites(), "spin-1/2");
+    
+    for (int x = 0; x < L; x++) {
+        uint32_t site_i, site_j;
+        lattice.coor2site(std::vector<int>{x}, 0, site_i); // obtain site label of (x)
+        // construct operators on each site
+        // spin
+        auto Splus_i   = qbasis::opr<std::complex<double>>(site_i,0,false,Splus);
+        auto Sminus_i  = qbasis::opr<std::complex<double>>(site_i,0,false,Sminus);
+        auto Sz_i      = qbasis::opr<std::complex<double>>(site_i,0,false,Sz);
+        
+        // with neighbor (x+1)
+        if (bc[0] == "pbc" || (bc[0] == "obc" && x < L - 1)) {
+            lattice.coor2site(std::vector<int>{x+1}, 0, site_j);
+            // spin exchanges
+            auto Splus_j   = qbasis::opr<std::complex<double>>(site_j,0,false,Splus);
+            auto Sminus_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sminus);
+            auto Sz_j      = qbasis::opr<std::complex<double>>(site_j,0,false,Sz);
+            model_test4.add_offdiagonal_Ham(std::complex<double>(0.5,0.0) * (Splus_i * Sminus_j + Sminus_i * Splus_j));
+            model_test4.add_diagonal_Ham(std::complex<double>(1.0,0.0) * (Sz_i * Sz_j));
+        }
+    }
+    
     qbasis::mopr<std::complex<double>> Sz_total;
     
     
-    for (int x = 0; x < latt.total_sites(); x++) {
+    for (int x = 0; x < lattice.total_sites(); x++) {
         uint32_t site_i;
-        latt.coor2site(std::vector<int>{x}, 0, site_i); // obtain site label of (x)
+        lattice.coor2site(std::vector<int>{x}, 0, site_i); // obtain site label of (x)
         auto Sz_i      = qbasis::opr<std::complex<double>>(site_i,0,false,Sz);
         Sz_total += Sz_i;
     }
-    model_test4.enumerate_basis_full(latt, {Sz_total}, {0.0});
+    model_test4.enumerate_basis_full(lattice, {Sz_total}, {0.0});
+    
+    
     
     std::cout << std::numeric_limits<double>::epsilon() << std::endl;
+    
+    model_test4.generate_Ham_sparse_full();
+    
+    model_test4.locate_E0_full();
     
 }

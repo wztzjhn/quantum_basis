@@ -31,7 +31,7 @@ namespace qbasis {
         copy(dim, resid, 1, vpt[k], 1);                                           // v_k = resid
         if(k > 0) hessenberg[k] = rnorm;                                          // beta_k = rnorm
         if (k == 0 && m > 1) {                                                    // prepare at least 2 vectors to start
-            assert(std::abs(hessenberg[0]) < lanczos_precision);
+            hessenberg[0] = 0.0;
             mat.MultMv(vpt[0], vpt[1]);                                           // w_0, not orthogonal to v[0] yet
             hessenberg[ldh] = std::real(dotc(dim, vpt[0], 1, vpt[1], 1));         // alpha[0]
             axpy(dim, -hessenberg[ldh], vpt[0], 1, vpt[1], 1);                    // w_0, orthogonal but not normalized yet
@@ -393,7 +393,7 @@ namespace qbasis {
                     std::cout << std::setw(16) << ritz[j];
                 }
                 std::cout << std::endl;
-                //std::cout << "ritz0 = " << ritz[0] << std::endl;
+                std::cout << "ritz = " << ritz[0] << "\t" << ritz[0] << std::endl;
                 step++;
             }
             nconv = 1;
@@ -402,6 +402,7 @@ namespace qbasis {
             std::cout << "Caution: IRAM may miss a few degenerate eigenstates!" << std::endl;
             std::cout << "(in these cases, try a different set of {nev, ncv} may help finding the missing eigenstates)" << std::endl;
         }
+        assert(nconv > 0);
 
 
     }
