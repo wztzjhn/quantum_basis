@@ -598,10 +598,12 @@ namespace qbasis {
     
     
     template <typename T>
-    void model<T>::locate_E0_full(const MKL_INT &nev, const MKL_INT &ncv)
+    void model<T>::locate_E0_full(const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
     {
         assert(nev > 0);
         assert(ncv > nev + 1);
+        if (maxit <= 0) maxit = nev * 100; // arpack default
+        
         std::cout << "Calculating ground state..." << std::endl;
         #pragma omp parallel
         {
@@ -618,9 +620,9 @@ namespace qbasis {
         eigenvals_full.resize(nev);
         eigenvecs_full.resize(dim_full * nev);
         if (matrix_free) {
-            iram(dim_full, *this, v0.data(), nev, ncv, nconv, "sr", eigenvals_full.data(), eigenvecs_full.data());
+            iram(dim_full, *this, v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_full.data(), eigenvecs_full.data());
         } else {
-            iram(dim_full, HamMat_csr_full, v0.data(), nev, ncv, nconv, "sr", eigenvals_full.data(), eigenvecs_full.data());
+            iram(dim_full, HamMat_csr_full, v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_full.data(), eigenvecs_full.data());
         }
         assert(nconv > 0);
         E0 = eigenvals_full[0];
@@ -700,9 +702,10 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::locate_Emax_full(const MKL_INT &nev, const MKL_INT &ncv)
+    void model<T>::locate_Emax_full(const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
     {
         assert(ncv > nev + 1);
+        if (maxit <= 0) maxit = nev * 100; // arpack default
         std::cout << "Calculating highest energy state..." << std::endl;
         #pragma omp parallel
         {
@@ -719,9 +722,9 @@ namespace qbasis {
         eigenvals_full.resize(nev);
         eigenvecs_full.resize(HamMat_csr_full.dimension() * nev);
         if (matrix_free) {
-            iram(dim_full, *this, v0.data(), nev, ncv, nconv, "lr", eigenvals_full.data(), eigenvecs_full.data());
+            iram(dim_full, *this, v0.data(), nev, ncv, maxit, "lr", nconv, eigenvals_full.data(), eigenvecs_full.data());
         } else {
-            iram(dim_full, HamMat_csr_full, v0.data(), nev, ncv, nconv, "lr", eigenvals_full.data(), eigenvecs_full.data());
+            iram(dim_full, HamMat_csr_full, v0.data(), nev, ncv, maxit, "lr", nconv, eigenvals_full.data(), eigenvecs_full.data());
         }
         assert(nconv > 0);
         Emax = eigenvals_full[0];
@@ -732,9 +735,10 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::locate_E0_repr(const MKL_INT &nev, const MKL_INT &ncv)
+    void model<T>::locate_E0_repr(const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
     {
         assert(ncv > nev + 1);
+        if (maxit <= 0) maxit = nev * 100; // arpack default
         std::cout << "Calculating ground state in the subspace..." << std::endl;
         #pragma omp parallel
         {
@@ -754,7 +758,7 @@ namespace qbasis {
         std::vector<std::complex<double>> v0(HamMat_csr_repr.dimension(), 1.0);
         eigenvals_repr.resize(nev);
         eigenvecs_repr.resize(HamMat_csr_repr.dimension() * nev);
-        qbasis::iram(dim_repr, HamMat_csr_repr, v0.data(), nev, ncv, nconv, "sr", eigenvals_repr.data(), eigenvecs_repr.data());
+        iram(dim_repr, HamMat_csr_repr, v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_repr.data(), eigenvecs_repr.data());
         assert(nconv > 1);
         E0 = eigenvals_repr[0];
         gap = eigenvals_repr[1] - eigenvals_repr[0];
@@ -766,9 +770,10 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::locate_Emax_repr(const MKL_INT &nev, const MKL_INT &ncv)
+    void model<T>::locate_Emax_repr(const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
     {
         assert(ncv > nev + 1);
+        if (maxit <= 0) maxit = nev * 100; // arpack default
         std::cout << "Calculating highest energy state in the subspace..." << std::endl;
         if (dim_repr < 1) {
             std::cout << "dim_repr = " << dim_repr << "!!!" << std::endl;
@@ -779,7 +784,7 @@ namespace qbasis {
         std::vector<std::complex<double>> v0(HamMat_csr_repr.dimension(), 1.0);
         eigenvals_repr.resize(nev);
         eigenvecs_repr.resize(HamMat_csr_repr.dimension() * nev);
-        qbasis::iram(dim_repr, HamMat_csr_repr, v0.data(), nev, ncv, nconv, "lr", eigenvals_repr.data(), eigenvecs_repr.data());
+        iram(dim_repr, HamMat_csr_repr, v0.data(), nev, ncv, maxit, "lr", nconv, eigenvals_repr.data(), eigenvecs_repr.data());
         assert(nconv > 0);
         Emax = eigenvals_repr[0];
         end = std::chrono::system_clock::now();

@@ -884,8 +884,10 @@ namespace qbasis {
     // 2 < nev + 2 <= ncv
     // when not using arpack++, we can modify the property of mat to be const
     template <typename T, typename MAT>
-    void iram(const MKL_INT &dim, MAT &mat, T v0[], const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
-              const std::string &order, double eigenvals[], T eigenvecs[], const bool &use_arpack = true);
+    void iram(const MKL_INT &dim, MAT &mat, T v0[], const MKL_INT &nev, const MKL_INT &ncv,
+              const MKL_INT &maxit, const std::string &order,
+              MKL_INT &nconv, double eigenvals[], T eigenvecs[],
+              const bool &use_arpack = true);
     
     
 //  ----------------------------- part 5: Lattices  ----------------------------
@@ -1056,16 +1058,16 @@ namespace qbasis {
         void MultMv(const T *x, T *y) const;
         void MultMv(T *x, T *y);  // to be compatible with arpack++
         
-        void locate_E0_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6);
+        void locate_E0_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
         
         // Don't use! Accuracy not good enough yet.
         void locate_E0_full_lanczos();
         
-        void locate_Emax_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6);
+        void locate_Emax_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
         
-        void locate_E0_repr(const MKL_INT &nev = 2, const MKL_INT &ncv = 6);
+        void locate_E0_repr(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
         
-        void locate_Emax_repr(const MKL_INT &nev = 2, const MKL_INT &ncv = 6);
+        void locate_Emax_repr(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
         
         double energy_min() { return E0; }
         

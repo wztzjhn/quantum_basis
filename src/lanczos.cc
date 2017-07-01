@@ -255,23 +255,37 @@ namespace qbasis {
 
     // interface to arpack++
     void call_arpack(const MKL_INT &dim, csr_mat<double> &mat, double v0[],
-                     const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv, MKL_INT &niter,
+                     const MKL_INT &nev, const MKL_INT &ncv, const MKL_INT &maxit, MKL_INT &nconv, MKL_INT &niter,
                      const std::string &order, double eigenvals[], double eigenvecs[])
     {
         ARSymStdEig<double, csr_mat<double>>
             prob(dim, nev, &mat, &csr_mat<double>::MultMv, order, ncv, 0.0, 0, v0);
+        prob.Trace();
+        std::cout << "ARPACK info:" << std::endl;
+        std::cout << "(nev, ncv)    = (" << prob.GetNev() << "," << prob.GetNcv() << ")" << std::endl;
+        std::cout << "Max iteration = " << prob.GetMaxit() << " -> ";
+        prob.ChangeMaxit(maxit);
+        std::cout << prob.GetMaxit() << std::endl;
+        std::cout << "Max Mat*Vec   = " << prob.GetMaxit() * (ncv - nev) << std::endl;
         prob.EigenValVectors(eigenvecs, eigenvals);
         nconv = prob.ConvergedEigenvalues();
         niter = prob.GetIter();
     }
     void call_arpack(const MKL_INT &dim, csr_mat<std::complex<double>> &mat, std::complex<double> v0[],
-                     const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv, MKL_INT &niter,
+                     const MKL_INT &nev, const MKL_INT &ncv, const MKL_INT &maxit, MKL_INT &nconv, MKL_INT &niter,
                      const std::string &order, double eigenvals[], std::complex<double> eigenvecs[])
     {
         std::complex<double> *eigenvals_copy = new std::complex<double>[nev];
         ARCompStdEig<double, csr_mat<std::complex<double>>> prob(dim, nev, &mat,
                                                                  &csr_mat<std::complex<double>>::MultMv,
                                                                  order, ncv, 0.0, 0, v0);
+        prob.Trace();
+        std::cout << "ARPACK info:" << std::endl;
+        std::cout << "(nev, ncv)    = (" << prob.GetNev() << "," << prob.GetNcv() << ")" << std::endl;
+        std::cout << "Max iteration = " << prob.GetMaxit() << " -> ";
+        prob.ChangeMaxit(maxit);
+        std::cout << prob.GetMaxit() << std::endl;
+        std::cout << "Max Mat*Vec   = " << prob.GetMaxit() * (ncv - nev) << std::endl;
         prob.EigenValVectors(eigenvecs, eigenvals_copy);
         nconv = prob.ConvergedEigenvalues();
         niter = prob.GetIter();
@@ -282,13 +296,20 @@ namespace qbasis {
         delete [] eigenvals_copy;
     }
     void call_arpack(const MKL_INT &dim, model<std::complex<double>> &mat, std::complex<double> v0[],
-                     const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv, MKL_INT &niter,
+                     const MKL_INT &nev, const MKL_INT &ncv, const MKL_INT &maxit, MKL_INT &nconv, MKL_INT &niter,
                      const std::string &order, double eigenvals[], std::complex<double> eigenvecs[])
     {
         std::complex<double> *eigenvals_copy = new std::complex<double>[nev];
         ARCompStdEig<double, model<std::complex<double>>> prob(dim, nev, &mat,
                                                                &model<std::complex<double>>::MultMv,
                                                                order, ncv, 0.0, 0, v0);
+        prob.Trace();
+        std::cout << "ARPACK info:" << std::endl;
+        std::cout << "(nev, ncv)    = (" << prob.GetNev() << "," << prob.GetNcv() << ")" << std::endl;
+        std::cout << "Max iteration = " << prob.GetMaxit() << " -> ";
+        prob.ChangeMaxit(maxit);
+        std::cout << prob.GetMaxit() << std::endl;
+        std::cout << "Max Mat*Vec   = " << prob.GetMaxit() * (ncv - nev) << std::endl;
         prob.EigenValVectors(eigenvecs, eigenvals_copy);
         nconv = prob.ConvergedEigenvalues();
         niter = prob.GetIter();
@@ -300,9 +321,12 @@ namespace qbasis {
     }
 
     template <typename T, typename MAT>
-    void iram(const MKL_INT &dim, MAT &mat, T v0[], const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
-              const std::string &order, double eigenvals[], T eigenvecs[], const bool &use_arpack)
+    void iram(const MKL_INT &dim, MAT &mat, T v0[], const MKL_INT &nev, const MKL_INT &ncv,
+              const MKL_INT &maxit, const std::string &order,
+              MKL_INT &nconv, double eigenvals[], T eigenvecs[],
+              const bool &use_arpack)
     {
+        assert(maxit >= 20);
         MKL_INT np = ncv - nev;
         MKL_INT niter;
         
@@ -342,7 +366,7 @@ namespace qbasis {
             std::string order_cap(order);
             std::vector<T> eigenvecs_copy(nev*dim);
             std::transform(order_cap.begin(), order_cap.end(), order_cap.begin(), ::toupper);
-            call_arpack(dim, mat, v0, nev, ncv, nconv, niter, order_cap, eigenvals, eigenvecs_copy.data());
+            call_arpack(dim, mat, v0, nev, ncv, maxit, nconv, niter, order_cap, eigenvals, eigenvecs_copy.data());
             // sort the arpack eigenvals
             assert(nconv > 0);
             std::vector<std::pair<double, MKL_INT>> eigenvals_copy(nconv);
@@ -425,16 +449,18 @@ namespace qbasis {
 //                       const std::string &order, double eigenvals[], double eigenvecs[],
 //                       const bool &use_arpack);
     template void iram(const MKL_INT &dim, csr_mat<std::complex<double>> &mat, std::complex<double> v0[],
-                       const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
-                       const std::string &order, double eigenvals[], std::complex<double> eigenvecs[],
+                       const MKL_INT &nev, const MKL_INT &ncv,
+                       const MKL_INT &maxit, const std::string &order,
+                       MKL_INT &nconv, double eigenvals[], std::complex<double> eigenvecs[],
                        const bool &use_arpack);
 //    template void iram(const MKL_INT &dim, model<double> &mat, double v0[],
 //                       const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
 //                       const std::string &order, double eigenvals[], double eigenvecs[],
 //                       const bool &use_arpack);
     template void iram(const MKL_INT &dim, model<std::complex<double>> &mat, std::complex<double> v0[],
-                       const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
-                       const std::string &order, double eigenvals[], std::complex<double> eigenvecs[],
+                       const MKL_INT &nev, const MKL_INT &ncv,
+                       const MKL_INT &maxit, const std::string &order,
+                       MKL_INT &nconv, double eigenvals[], std::complex<double> eigenvecs[],
                        const bool &use_arpack);
 
 }

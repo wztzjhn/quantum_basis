@@ -124,7 +124,7 @@ void test_iram()
     MKL_INT nev = 2, ncv = 5, nconv;
     std::vector<double> eigenvals(nev), tol(nev);
     std::vector<std::complex<double>> eigenvecs(nev * dim);
-    iram(dim, sp_csr_uppper, x.data(), nev, ncv, nconv, "sr", eigenvals.data(), eigenvecs.data(), true);
+    qbasis::iram(dim, sp_csr_uppper, x.data(), nev, ncv, 0, "sr", nconv, eigenvals.data(), eigenvecs.data(), true);
     assert(nconv == 2);
     assert(std::abs(eigenvals[0] + 5.2955319) < 0.000001);
     assert(std::abs(eigenvals[1] + 3.3838164) < 0.000001);
