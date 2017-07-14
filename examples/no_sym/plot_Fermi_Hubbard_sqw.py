@@ -70,7 +70,7 @@ for line in range(0,len(contents)):
             temp.append(float(line_data[i]))
         b_z.append(np.array(temp))
 
-omega = np.linspace(0,omega_max,100+1)
+omega = np.linspace(0,omega_max,200+1)
 Q_grid = np.arange(len(Q))
 xx, yy = np.meshgrid(Q_grid,omega)
 intensity_z = np.zeros((len(omega),len(Q)))
@@ -94,7 +94,7 @@ def sqw(w,eta,a,b,length,nrm2):
     for j in range(0,length):
         a2.append(w + E0 + complex(0,eta) - a[j])
     denorminator = cfraction(a2,b,length)
-    return -(nrm2*nrm2 / np.pi / denorminator).imag
+    return -2.0 * (nrm2*nrm2 / denorminator).imag
 
 intensity_max = 0
 for q_idx in range(0,len(Q)):
@@ -175,6 +175,42 @@ plt.plot(omega,intensity_hpihpi,label="$Q=(\pi/2,\pi/2)$")
 plt.legend()
 plt.xlim(0,10)
 plt.ylim(0,1.5)
+plt.xlabel('$\omega$')
+plt.ylabel("intensity")
+
+
+writefile = open("sqw_plot.dat", "w")
+writefile.write("#(1)\t")
+for i in range(2,7):
+    writefile.write("(" + str(i) + ")" + "\t")
+writefile.write("(" + str(i+1) + ")" + "\n")
+writefile.write("omega\t")
+writefile.write("(0,0)\t")
+writefile.write("(pi/2,0)\t")
+writefile.write("(pi,0)\t")
+writefile.write("(pi,pi/2)\t")
+writefile.write("(pi,pi)\t")
+writefile.write("(pi/2,pi/2)\n")
+for omega_label in range(0,len(omega)):
+    omega_val = omega[omega_label]
+    writefile.write(str(omega_val)+"\t")
+    writefile.write(str(intensity_00[omega_label])+"\t")
+    writefile.write(str(intensity_hpi0[omega_label])+"\t")
+    writefile.write(str(intensity_pi0[omega_label])+"\t")
+    writefile.write(str(intensity_pihpi[omega_label])+"\t")
+    writefile.write(str(intensity_pipi[omega_label])+"\t")
+    writefile.write(str(intensity_hpihpi[omega_label])+"\n")
+writefile.close()
+
+plt.figure(4)
+plt.plot(omega,intensity_00,label="$Q=(0,0)$")
+plt.plot(omega,intensity_hpi0,label="$Q=(\pi/2,0)$")
+plt.plot(omega,intensity_pi0,label="$Q=(\pi,0)$")
+plt.plot(omega,intensity_pihpi,label="$Q=(\pi,\pi/2)$")
+plt.plot(omega,intensity_pipi,label="$Q=(\pi,\pi)$")
+plt.plot(omega,intensity_hpihpi,label="$Q=(\pi/2,\pi/2)$")
+plt.legend()
+plt.xlim(0,10)
 plt.xlabel('$\omega$')
 plt.ylabel("intensity")
 

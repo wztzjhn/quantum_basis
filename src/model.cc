@@ -798,7 +798,7 @@ namespace qbasis {
     {
         assert(which_col >= 0 && which_col < nconv);
         std::cout << "mopr * eigenvec ..." << std::endl;
-        for (MKL_INT j = 0; j < HamMat_csr_full.dimension(); j++) vec_new[j] = 0.0;
+        for (MKL_INT j = 0; j < dim_full; j++) vec_new[j] = 0.0;
 //        // leave these lines for a while, for openmp debugging purpose
 //        static MKL_INT debug_flag = 0;
 //        std::vector<std::list<MKL_INT>> jobid_list(100);
@@ -881,6 +881,7 @@ namespace qbasis {
         
     }
     
+    // need full rewrite below
     template <typename T>
     T model<T>::measure(const mopr<T> &lhs, const MKL_INT &which_col)
     {

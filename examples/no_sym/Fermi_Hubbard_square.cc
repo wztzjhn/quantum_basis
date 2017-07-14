@@ -167,8 +167,9 @@ int main() {
         // normalization of restart state
         double phi0_nrm2 = qbasis::nrm2(Hubbard.dim_full, phi0.data(), 1);
         double rnorm;
+        std::cout << "Q\t" << m << "," << n << std::endl;
+        std::cout << "phi_nrm2 = " << phi0_nrm2 << std::endl;
         if (phi0_nrm2 > qbasis::lanczos_precision) {
-            std::cout << "phi_nrm2 = " << phi0_nrm2 << std::endl;
             qbasis::scal(Hubbard.dim_full, 1.0/phi0_nrm2, phi0.data(), 1);
         }
         fout << "Q\t" << m << "," << n << std::endl;
@@ -178,6 +179,9 @@ int main() {
         std::vector<std::complex<double>> v(Hubbard.dim_full * 3);
         std::vector<double> hessenberg(step * 2, 0.0);
         if (phi0_nrm2 > qbasis::lanczos_precision) {
+            std::cout << "Running continued fraction with " << step << " steps" << std::endl;
+            std::vector<std::complex<double>> v(Hubbard.dim_full * 3);
+            std::vector<double> hessenberg(step * 2, 0.0);
             if (matrix_free) {
                 qbasis::lanczos(0, step, Hubbard.dim_full, Hubbard, rnorm, phi0.data(), v.data(), hessenberg.data(), step, false);
             } else {
