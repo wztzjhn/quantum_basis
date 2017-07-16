@@ -6,42 +6,41 @@
 int main() {
     std::cout << std::setprecision(10);
     // parameters
-    bool matrix_free = true;
     double t = 1;
     double U = 1.1;
     int Lx = 3;
     int Ly = 3;
     double N_total = 9; // total number of bosons on lattice
     uint8_t Nmax = 2;   // maximal number of bosons on each site, set this # to N_total yields the exact result
-    
+
     qbasis::extra_info boson_limit; // (optional in other models)
     boson_limit.Nmax = Nmax;
-    
+
     std::cout << "Lx =      " << Lx << std::endl;
     std::cout << "Ly =      " << Ly << std::endl;
     std::cout << "t =       " << t << std::endl;
     std::cout << "U =       " << U << std::endl;
     std::cout << "Nmax =    " << static_cast<unsigned>(Nmax) << std::endl;
     std::cout << "N =       " << N_total << std::endl;
-    
-    
+
+
     // lattice object
     std::vector<std::string> bc{"pbc", "pbc"};
     qbasis::lattice lattice("square",std::vector<uint32_t>{static_cast<uint32_t>(Lx), static_cast<uint32_t>(Ly)},bc);
 
-    
+
     // local matrix representation
     auto b = std::vector<std::vector<std::complex<double>>>(Nmax+1,std::vector<std::complex<double>>(Nmax+1, 0.0));
     for (uint8_t d = 0; d < Nmax; d++)
         b[d][d+1] = std::complex<double>(sqrt(static_cast<double>(d+1)),0.0);
-    
+
 
     // initialize the Hamiltonian
-    qbasis::model<std::complex<double>> Hubbard(matrix_free);
+    qbasis::model<std::complex<double>> Hubbard;
     Hubbard.add_orbital(lattice.total_sites(), "boson", boson_limit);
-    
+
     qbasis::mopr<std::complex<double>> Nboson;   // operators representating total boson number
-    
+
     // constructing the Hamiltonian in operator representation
     for (int x = 0; x < Lx; x++) {
         for (int y = 0; y < Ly; y++) {
@@ -51,7 +50,7 @@ int main() {
             auto b_i    = qbasis::opr<std::complex<double>>(site_i,0,false,b);
             auto b_dg_i = b_i; b_dg_i.dagger();
             auto n_i    = b_dg_i * b_i;
-            
+
             // hopping to neighbor (x+1, y)
             if (bc[0] == "pbc" || (bc[0] == "obc" && x < Lx - 1)) {
                 lattice.coor2site(std::vector<int>{x+1,y}, 0, site_j);
@@ -69,10 +68,10 @@ int main() {
                 Hubbard.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( b_dg_i * b_j ));
                 Hubbard.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( b_dg_j * b_i ));
             }
-            
+
             // Hubbard repulsion, note that this operator is a sum (over sites) of diagonal matrices
             Hubbard.add_diagonal_Ham(std::complex<double>(0.5*U,0.0) * (n_i * n_i - n_i));
-            
+
             // total boson operator
             Nboson += n_i;
         }
@@ -81,20 +80,19 @@ int main() {
 
     // constructing the Hilbert space basis
     Hubbard.enumerate_basis_full(lattice, {Nboson}, {N_total});
-    
-    
-    if (! matrix_free) {
-        // generating matrix of the Hamiltonian in the full Hilbert space
-        Hubbard.generate_Ham_sparse_full();
-        std::cout << std::endl;
-    }
-    
-    
+
+
+    // optional, will use more memory and give higher speed
+    // generating matrix of the Hamiltonian in the full Hilbert space
+    //Hubbard.generate_Ham_sparse_full();
+    //std::cout << std::endl;
+
+
     // obtaining the eigenvals of the matrix
     Hubbard.locate_E0_full();
     std::cout << std::endl;
-    
-    
+
+
     // for the parameters considered, we should obtain:
     assert(std::abs(Hubbard.eigenvals_full[0] + 25.81136094) < 1e-8);
 }

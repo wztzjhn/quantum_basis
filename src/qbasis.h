@@ -776,7 +776,7 @@ namespace qbasis {
         friend void swap <> (csr_mat<T>&, csr_mat<T>&);
     public:
         // default constructor
-        csr_mat() : val(nullptr), ja(nullptr), ia(nullptr) {}
+        csr_mat() : dim(0), nnz(0), val(nullptr), ja(nullptr), ia(nullptr) {}
         
         // copy constructor
         csr_mat(const csr_mat<T> &old);
@@ -998,9 +998,7 @@ namespace qbasis {
         std::vector<double> eigenvals_repr;
         std::vector<std::complex<double>> eigenvecs_repr;
         
-        model() { matrix_free = false; }
-        
-        model(const bool &mat_free) : matrix_free(mat_free) {}
+        model() { matrix_free = true; }
         
         ~model() {}
         

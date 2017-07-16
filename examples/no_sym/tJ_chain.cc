@@ -8,7 +8,6 @@ int main() {
     std::cout << "ground state energy checked correct. 1st excited state inconsistent with ALPS!" << std::endl;
     std::cout << std::setprecision(10);
     // parameters
-    bool matrix_free = false;
     double t = 1.0;
     double J = 1.0;
     int Lx = 12;
@@ -35,7 +34,7 @@ int main() {
 
 
     // constructing the Hamiltonian in operator representation
-    qbasis::model<std::complex<double>> tJ(matrix_free);
+    qbasis::model<std::complex<double>> tJ;
     tJ.add_orbital(lattice.total_sites(), "tJ");
     qbasis::mopr<std::complex<double>> Sz_total;   // operators representating total Sz
     qbasis::mopr<std::complex<double>> N_total;    // operators representating total N
@@ -85,11 +84,10 @@ int main() {
     tJ.enumerate_basis_full(lattice, {Sz_total, N_total}, {Sz_total_val, N_total_val});
 
 
-    if (! matrix_free) {
-        // generating matrix of the Hamiltonian in the full Hilbert space
-        tJ.generate_Ham_sparse_full();
-        std::cout << std::endl;
-    }
+    // optional, will use more memory and give higher speed
+    // generating matrix of the Hamiltonian in the full Hilbert space
+    tJ.generate_Ham_sparse_full();
+    std::cout << std::endl;
 
 
     // obtaining the eigenvals of the matrix

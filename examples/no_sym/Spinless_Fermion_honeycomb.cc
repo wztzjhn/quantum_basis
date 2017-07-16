@@ -7,7 +7,6 @@
 int main() {
     std::cout << std::setprecision(10);
     // parameters
-    bool matrix_free = false;
     double t = 1;
     double V1 = 4.0;
     int Lx = 3;
@@ -32,7 +31,7 @@ int main() {
 
 
     // initialize the Hamiltonian
-    qbasis::model<std::complex<double>> spinless(matrix_free);
+    qbasis::model<std::complex<double>> spinless;
     spinless.add_orbital(lattice.total_sites(), "spinless-fermion");
     double constant = 0.0; // the constant energy correction from \sum_{\langle i,j \rangle} V1/4
 
@@ -108,11 +107,10 @@ int main() {
     // constructing the Hilbert space basis
     spinless.enumerate_basis_full(lattice, {Nfermion}, {N_total});
 
-    if (! matrix_free) {
-        // generating matrix of the Hamiltonian in the full Hilbert space
-        spinless.generate_Ham_sparse_full(false);
-        std::cout << std::endl;
-    }
+    // optional, will use more memory and give higher speed
+    // generating matrix of the Hamiltonian in the full Hilbert space
+    spinless.generate_Ham_sparse_full(false);
+    std::cout << std::endl;
 
 
     // obtaining the eigenvals of the matrix

@@ -9,7 +9,6 @@ int main() {
     std::cout << "E0 not checked by any means yet (haven't setup ALPS correctly)." << std::endl;
     std::cout << "If you know a good reference or tool (or alps scripts), please contact me. Thanks!" << std::endl << std::endl;
     // parameters
-    bool matrix_free = false;
     double t = 1;
     double J_Kondo = 1.1;
     double J_RKKY = 0.0;         // artificial RKKY
@@ -52,7 +51,7 @@ int main() {
 
     // constructing the Hamiltonian in operator representation
     // electrons on orbital 0, local spins on orbital 1
-    qbasis::model<std::complex<double>> Kondo(matrix_free);
+    qbasis::model<std::complex<double>> Kondo;
     Kondo.add_orbital(lattice.total_sites(), "electron");
     Kondo.add_orbital(lattice.total_sites(), "spin-1/2");
     qbasis::mopr<std::complex<double>> Nelec_total;   // operators representating total electron number
@@ -113,11 +112,10 @@ int main() {
     Kondo.enumerate_basis_full(lattice, {Nelec_total}, {Nelec_total_val});
 
 
-    if (! matrix_free) {
-        // generating matrix of the Hamiltonian in the full Hilbert space
-        Kondo.generate_Ham_sparse_full();
-        std::cout << std::endl;
-    }
+    // optional, will use more memory and give higher speed
+    // generating matrix of the Hamiltonian in the full Hilbert space
+    Kondo.generate_Ham_sparse_full();
+    std::cout << std::endl;
 
     // obtaining the eigenvals of the matrix
     Kondo.locate_E0_full(10,20);

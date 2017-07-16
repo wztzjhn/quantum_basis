@@ -443,15 +443,12 @@ namespace qbasis {
     template <typename T>
     void model<T>::generate_Ham_sparse_full(const bool &upper_triangle)
     {
-        if (matrix_free) {
-            std::cout << "Flag matrix_free == true, CSR Matrix not generated." << std::endl;
-            return;
-        }
+        if (matrix_free) matrix_free = false;     //
         assert(Lin_Ja_full.size() > 0 && Lin_Jb_full.size() > 0);
         std::vector<basis_prop> props_sub_a, props_sub_b;
         basis_props_split(props, props_sub_a, props_sub_b);
         
-        std::cout << "Generating Hamiltonian Matrix..." << std::endl;
+        std::cout << "Generating LIL Hamiltonian matrix..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         lil_mat<T> matrix_lil(dim_full, upper_triangle);
@@ -474,7 +471,7 @@ namespace qbasis {
             }
         }
         HamMat_csr_full = csr_mat<T>(matrix_lil);
-        std::cout << "Hamiltonian generated." << std::endl;
+        std::cout << "Hamiltonian CSR matrix generated." << std::endl;
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;

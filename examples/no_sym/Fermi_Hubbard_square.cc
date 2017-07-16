@@ -7,7 +7,6 @@
 int main() {
     std::cout << std::setprecision(10);
     // parameters
-    bool matrix_free = false;
     double t = 1;
     double U = 1.1;
     int Lx = 3;
@@ -38,7 +37,7 @@ int main() {
 
 
     // constructing the Hamiltonian in operator representation
-    qbasis::model<std::complex<double>> Hubbard(matrix_free);
+    qbasis::model<std::complex<double>> Hubbard;
     Hubbard.add_orbital(lattice.total_sites(), "electron");
     qbasis::mopr<std::complex<double>> Nup;   // operators representating total electron number
     qbasis::mopr<std::complex<double>> Ndown;
@@ -94,11 +93,10 @@ int main() {
     Hubbard.enumerate_basis_full(lattice, {Nup,Ndown}, {Nup_total,Ndn_total});
 
 
-    if (! matrix_free) {
-        // generating matrix of the Hamiltonian in the full Hilbert space
-        Hubbard.generate_Ham_sparse_full();
-        std::cout << std::endl;
-    }
+    // optional, will use more memory and give higher speed
+    // generating matrix of the Hamiltonian in the full Hilbert space
+    Hubbard.generate_Ham_sparse_full();
+    std::cout << std::endl;
 
 
     // obtaining the eigenvals of the matrix
@@ -108,8 +106,8 @@ int main() {
 
     // for the parameters considered, we should obtain:
     assert(std::abs(Hubbard.eigenvals_full[0] + 12.68398173) < 1e-8);
-    
-    
+
+
     // calculate dynamical structure factor Sz(q)*Sz(-q)
     std::string output_name = "L"+std::to_string(Lx)+"x"+std::to_string(Ly)+ "_chi.dat";
     std::ofstream fout(output_name, std::ios::out);
@@ -120,8 +118,8 @@ int main() {
     fout << "U\t" << U << std::endl;
     fout << "E0\t" << Hubbard.energy_min() << std::endl;
     fout << "Gap\t" << Hubbard.energy_gap() << std::endl << std::endl;
-    
-    
+
+
     // prepare list of momentum points for measurement
     std::vector<std::vector<int>> q_list;
     // along (0,0) -> (pi,0)
@@ -182,10 +180,10 @@ int main() {
             std::cout << "Running continued fraction with " << step << " steps" << std::endl;
             std::vector<std::complex<double>> v(Hubbard.dim_full * 3);
             std::vector<double> hessenberg(step * 2, 0.0);
-            if (matrix_free) {
-                qbasis::lanczos(0, step, Hubbard.dim_full, Hubbard, rnorm, phi0.data(), v.data(), hessenberg.data(), step, false);
-            } else {
+            if (Hubbard.HamMat_csr_full.dimension() == Hubbard.dim_full) {
                 qbasis::lanczos(0, step, Hubbard.dim_full, Hubbard.HamMat_csr_full, rnorm, phi0.data(), v.data(), hessenberg.data(), step, false);
+            } else {
+                qbasis::lanczos(0, step, Hubbard.dim_full, Hubbard, rnorm, phi0.data(), v.data(), hessenberg.data(), step, false);
             }
             fout << "b\t";
             for (int i = 0; i < step; i++) {
@@ -203,6 +201,6 @@ int main() {
         }
         std::cout << std::endl << std::endl;
     }
-    
-    
+
+
 }

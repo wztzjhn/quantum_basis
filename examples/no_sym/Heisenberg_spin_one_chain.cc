@@ -6,7 +6,6 @@
 int main() {
     std::cout << std::setprecision(10);
     // parameters
-    bool matrix_free = false;
     double J = 1.0;
     int L = 10;
     double Sz_total_val = 0.0;
@@ -50,7 +49,7 @@ int main() {
     Sz[2]     = -1.0;
 
     // constructing the Hamiltonian in operator representation
-    qbasis::model<std::complex<double>> Heisenberg(matrix_free);
+    qbasis::model<std::complex<double>> Heisenberg;
     Heisenberg.add_orbital(lattice.total_sites(), "spin-1");
     qbasis::mopr<std::complex<double>> Sz_total;
     for (int x = 0; x < L; x++) {
@@ -80,11 +79,10 @@ int main() {
     Heisenberg.enumerate_basis_full(lattice, {Sz_total}, {Sz_total_val});
 
 
+    // optional, will use more memory and give higher speed
     // generating matrix of the Hamiltonian in the full Hilbert space
-    if (! matrix_free) {
-        Heisenberg.generate_Ham_sparse_full();
-        std::cout << std::endl;
-    }
+    Heisenberg.generate_Ham_sparse_full();
+    std::cout << std::endl;
 
     // obtaining the eigenvals of the matrix
     Heisenberg.locate_E0_full(2,8);
