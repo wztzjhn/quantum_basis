@@ -8,7 +8,8 @@ EXEC = Heisenberg_spin_half_chain.x \
        Spinless_Fermion_honeycomb.x \
        Fermi_Hubbard_square.x \
        Bose_Hubbard_square.x \
-       Kondo_chain.x
+       Kondo_chain.x \
+       tJ_kagome.x
 
 all: $(EXEC)
 	@echo '************  COMPILED!  ************'
