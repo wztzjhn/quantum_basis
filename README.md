@@ -6,11 +6,13 @@ To learn how to use this library to design ED code for your own models, please r
 - Heisenberg spin-1/2 chain
 - Heisenberg spin-1 chain
 - Heisenberg spin-1/2 triangular lattice
+- Heisenberg spin-1/2 kagome lattice
 - Spinless fermion on honeycomb lattice
 - Fermi-Hubbard Model on square lattice
 - Bose-Hubbard Model on square lattice
-- tJ Model on kagome lattice (to be filled up)
 - Kondo Lattice Model on a chain (currently the gap has been checked, but E0 not checked yet)
+- tJ Model on chain lattice (E0 checked, but E1 inconsistent with ALPS)
+- tJ Model on kagome lattice (E0 checked, but E1 inconsistent with ALPS)
 
 ## Dependencies:
 - [boost](http://www.boost.org/)

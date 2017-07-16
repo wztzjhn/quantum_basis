@@ -5,10 +5,12 @@ LIBS      = -L ${HOME}/installs/lib -lqbasis -L/usr/local/lib -larpack -L${MKLRO
 EXEC = Heisenberg_spin_half_chain.x \
        Heisenberg_spin_one_chain.x \
        Heisenberg_spin_half_triangular.x \
+       Heisenberg_spin_half_kagome.x \
        Spinless_Fermion_honeycomb.x \
        Fermi_Hubbard_square.x \
        Bose_Hubbard_square.x \
        Kondo_chain.x \
+       tJ_chain.x \
        tJ_kagome.x
 
 all: $(EXEC)
