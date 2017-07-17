@@ -1078,6 +1078,7 @@ namespace qbasis {
                 }
             }
         }
+        assert(is_sorted_norepeat(reps));
     }
     
     void classify_trans_rep2group(const std::vector<basis_prop> &props,
@@ -1086,7 +1087,6 @@ namespace qbasis {
                                   const std::vector<bool> &trans_sym,
                                   std::vector<std::vector<uint32_t>> &groups,
                                   std::vector<uint32_t> &omega_g,
-                                  std::vector<mbasis_elem> &group_examples,
                                   std::vector<uint32_t> &belong2group)
     {
         uint32_t dim = latt.dimension();
@@ -1105,7 +1105,6 @@ namespace qbasis {
         belong2group.resize(dim_repr);
         omega_g.resize(num_groups);
         std::fill(omega_g.begin(), omega_g.end(), 0);
-        group_examples.resize(num_groups);
         
         // divisor = x -> translate x to comeback
         // for each representative, find its group, by trying translating according to the smallest possible divisor
@@ -1132,7 +1131,6 @@ namespace qbasis {
             if (omega_g[g_label] == 0) {
                 omega_g[g_label] = 1;
                 for (uint32_t d = 0; d < dim; d++) omega_g[g_label] *= div[d];
-                group_examples[g_label] = reps[j];
             }
         }
     }

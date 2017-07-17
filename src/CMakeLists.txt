@@ -1,6 +1,7 @@
 set(QBASIS_SRC
   lattice.cc
   model.cc
+  multi_array.cc
   graph.cc
   lanczos.cc
   sparse.cc

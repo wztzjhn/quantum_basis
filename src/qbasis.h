@@ -34,8 +34,6 @@
 #include <boost/multi_array.hpp>
 #include "mkl.h"
 //#include <boost/math/special_functions/binomial.hpp>
-//#include <boost/graph/adjacency_list.hpp>
-//#include <boost/graph/breadth_first_search.hpp>
 
 #ifdef _OPENMP
   #include <omp.h>
@@ -1004,6 +1002,7 @@ namespace qbasis {
         std::vector<MKL_INT> Lin_Jb_full;
         std::vector<qbasis::mbasis_elem> basis_sub_full;
         std::vector<qbasis::mbasis_elem> basis_sub_repr;
+        //std::vector<qbasis::mbasis_elem> group_examples_sub;
         std::vector<uint64_t> belong2rep_sub;
         std::vector<std::vector<int>> dist2rep_sub;
         std::vector<std::vector<uint32_t>> groups_sub;
