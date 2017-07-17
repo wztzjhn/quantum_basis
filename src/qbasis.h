@@ -31,8 +31,9 @@
 #include <initializer_list>
 #include <chrono>
 #include <cassert>
-#include <boost/multi_array.hpp>
+#include "multi_array.h"
 #include "mkl.h"
+//#include <boost/multi_array.hpp>
 //#include <boost/math/special_functions/binomial.hpp>
 
 #ifdef _OPENMP
@@ -64,6 +65,8 @@ namespace qbasis {
     static const double opr_precision = 1e-12; // used as the threshold value in comparison
     static const double sparse_precision = 1e-14;
     static const double lanczos_precision = 1e-12;
+    
+    typedef multi_array<std::pair<std::vector<uint32_t>,std::vector<uint32_t>>> array_4D;
     
     class basis_prop;
     class mbasis_elem;
@@ -111,8 +114,18 @@ namespace qbasis {
                                   const std::vector<bool> &trans_sym,
                                   std::vector<std::vector<uint32_t>> &groups,
                                   std::vector<uint32_t> &omega_g,
-                                  std::vector<mbasis_elem> &group_examples,
                                   std::vector<uint32_t> &belong2group);
+    // tabulate the 4-dim tables for (ga,gb,ja,jb) -> (i,j)
+    void classify_rep_tables(const std::vector<basis_prop> &props,
+                             const std::vector<mbasis_elem> &reps,
+                             const lattice &latt,
+                             const std::vector<bool> &trans_sym,
+                             const std::vector<std::vector<uint32_t>> &groups,
+                             const std::vector<uint32_t> &omega_g,
+                             const std::vector<uint32_t> &belong2group,
+                             array_4D &table_lt,
+                             array_4D &table_eq,
+                             array_4D &table_gt);
     
     template <typename T> void swap(wavefunction<T>&, wavefunction<T>&);
     template <typename T> wavefunction<T> operator+(const wavefunction<T>&, const wavefunction<T>&);

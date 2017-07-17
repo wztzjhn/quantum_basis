@@ -1135,6 +1135,83 @@ namespace qbasis {
         }
     }
     
+    void classify_rep_tables(const std::vector<basis_prop> &props,
+                             const std::vector<mbasis_elem> &reps,
+                             const lattice &latt,
+                             const std::vector<bool> &trans_sym,
+                             const std::vector<std::vector<uint32_t>> &groups,
+                             const std::vector<uint32_t> &omega_g,
+                             const std::vector<uint32_t> &belong2group,
+                             array_4D &table_lt,
+                             array_4D &table_eq,
+                             array_4D &table_gt)
+    {
+        assert(latt.dimension() == 1);
+        uint64_t dim_repr     = reps.size();
+        uint32_t num_groups   = groups.size();
+        uint32_t latt_Nsites  = latt.total_sites();
+        uint32_t latt_dim     = latt.dimension();
+        auto latt_linear_size = latt.Linear_size();
+        
+        // gather a list of examples for different groups
+        std::vector<std::vector<mbasis_elem>> examples(num_groups);
+        for (uint64_t j = 0; j < dim_repr; j++) {
+            auto group_label = belong2group[j];
+            examples[group_label].push_back(reps[j]);
+        }
+        
+        // automatic determines the shape of array_4D
+        std::vector<uint64_t> linear_size;
+        linear_size.push_back(static_cast<uint64_t>(num_groups));
+        linear_size.push_back(static_cast<uint64_t>(num_groups));
+        for (uint32_t j = 0; j < latt_dim; j++) {
+            if (trans_sym[j]) linear_size.push_back(static_cast<uint64_t>(latt_linear_size[j]));
+        }
+        table_lt = array_4D(linear_size);
+        table_eq = array_4D(linear_size);
+        table_gt = array_4D(linear_size);
+        
+        for (uint32_t ga = 0; ga < num_groups; ga++) {
+            assert(examples[ga].size() > 0);
+            for (uint32_t gb = 0; gb < num_groups; gb++) {
+                bool flag_lt, flag_eq, flag_gt;
+                if (ga != gb) { // then it is impossible to pick ra == rb, table_eq not available
+                    flag_eq = false;
+                    if (examples[ga].back() < examples[gb].front()) {
+                        flag_gt = false;
+                        flag_lt = true;
+                    } else if (examples[gb].back() < examples[ga].front()) {
+                        flag_gt = true;
+                        flag_lt = false;
+                    } else {
+                        flag_gt = true;
+                        flag_lt = true;
+                    }
+                } else {
+                    flag_eq = true;
+                    if (groups[ga].size() > 1) {
+                        flag_lt = true;
+                        flag_gt = true;
+                    } else {
+                        flag_lt = false;
+                        flag_gt = false;
+                    }
+                }
+                // build table_lt
+                if (flag_lt) {
+                    auto ra = examples[ga].front();
+                    auto rb = examples[gb].back();
+                    assert(ra < rb);
+                    
+                    
+                }
+                
+                
+            }
+        }
+        
+    }
+    
     // ----------------- implementation of wavefunction ------------------
     template <typename T>
     std::pair<mbasis_elem, T> &wavefunction<T>::operator[](uint32_t n)
