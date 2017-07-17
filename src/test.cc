@@ -26,11 +26,13 @@ int main(){
     
     test_basis();
     
+    test_basis2();
     
     test_basis3();
     
+    test_basis4();
     
-    
+    /*
     test_operator();
     
     test_lanczos_memoAll();
@@ -44,8 +46,8 @@ int main(){
     //test_bubble();
     
     //test_cfraction();
+    */
     
-    test_basis4();
 }
 
 

@@ -1102,7 +1102,7 @@ namespace qbasis {
         assert(num_groups == groups.size());
         
         belong2group.resize(dim_repr);
-        omega_g.resize(dim_repr);
+        omega_g.resize(num_groups);
         std::fill(omega_g.begin(), omega_g.end(), 0);
         
         // divisor = x -> translate x to comeback

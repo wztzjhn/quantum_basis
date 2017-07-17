@@ -31,14 +31,14 @@ void test_basis() {
     std::cout << std::endl;
     
     auto basis_list1 = qbasis::enumerate_basis_all(props1);
-    std::cout << "basis_list1: " << std::endl;
+    //std::cout << "basis_list1: " << std::endl;
     for (uint64_t j = 0; j < basis_list1.size(); j++) {
-        std::cout << "j = " << j << "\t";
-        basis_list1[j].prt_bits(props1);
+        //std::cout << "j = " << j << "\t";
+        //basis_list1[j].prt_bits(props1);
         assert(j == basis_list1[j].label(props1));
-        std::cout << std::endl;
+        //std::cout << std::endl;
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
     
     props1.emplace_back(9,8);
     std::cout << "props1[1].bits_per_site = " << static_cast<unsigned>(props1[1].bits_per_site) << std::endl;
@@ -126,17 +126,17 @@ void test_basis() {
     test_model.add_orbital(lattice.total_sites(), "spin-1/2");
     test_model.add_orbital(lattice.total_sites(), "electron");
     test_model.enumerate_basis_full(lattice);
+    /*
     for (MKL_INT j = 0; j < test_model.dim_full; j++) {
         std::cout << "j= " << j << ", basis_label = " << test_model.basis_full[j].label(test_model.props) << std::endl;
-        //assert(j == test_model.basis_full[j].label(test_model.props));
     }
-    
+    */
 
 }
 
 void test_basis2()
 {
-    std::cout << "test basis2 " << std::endl;
+    std::cout << "--------- test basis2 ---------" << std::endl;
     std::vector<qbasis::basis_prop> props;
     props.emplace_back(4,"spin-1/2");
     
@@ -194,12 +194,13 @@ void test_basis2()
         reps[j].prt_bits(props);
         std::cout << "belong to group: " << belong2group[j] << std::endl;
     }
+    std::cout << std::endl;
     
 }
 
 void test_basis3()
 {
-    std::cout << "test basis3 " << std::endl;
+    std::cout << "--------- test basis3 ---------" << std::endl;
     qbasis::lattice latt("triangular",std::vector<uint32_t>{2,3},std::vector<std::string>{"pbc","pbc"});
     auto latt_child = qbasis::divide_lattice(latt);
     
@@ -219,12 +220,12 @@ void test_basis3()
         std::cout << "r = " << belong2rep[j] << ", dist = " << dist2rep[j][0] << "," << dist2rep[j][1] << std::endl << std::endl;
     }
     
-    std::cout << "haha" << std::endl;
+    std::cout << "haha" << std::endl << std::endl;
 }
 
 void test_basis4()
 {
-    std::cout << "test basis 4" << std::endl;
+    std::cout << "--------- test basis4 ---------" << std::endl;
     
     uint32_t L = 6;
     
@@ -246,11 +247,11 @@ void test_basis4()
     
     std::vector<std::string> bc{"pbc"};
     qbasis::lattice lattice("chain",std::vector<uint32_t>{L},bc);
-//    std::vector<qbasis::basis_prop> props;
-//    props.emplace_back(latt.total_sites(),"spin-1/2");
     
-    qbasis::model<std::complex<double>> model_test4(false);
+    qbasis::model<std::complex<double>> model_test4;
     model_test4.add_orbital(lattice.total_sites(), "spin-1/2");
+    
+    qbasis::mopr<std::complex<double>> Sz_total;
     
     for (int x = 0; x < L; x++) {
         uint32_t site_i, site_j;
@@ -271,25 +272,22 @@ void test_basis4()
             model_test4.add_offdiagonal_Ham(std::complex<double>(0.5,0.0) * (Splus_i * Sminus_j + Sminus_i * Splus_j));
             model_test4.add_diagonal_Ham(std::complex<double>(1.0,0.0) * (Sz_i * Sz_j));
         }
-    }
-    
-    qbasis::mopr<std::complex<double>> Sz_total;
-    
-    
-    for (int x = 0; x < lattice.total_sites(); x++) {
-        uint32_t site_i;
-        lattice.coor2site(std::vector<int>{x}, 0, site_i); // obtain site label of (x)
-        auto Sz_i      = qbasis::opr<std::complex<double>>(site_i,0,false,Sz);
+        
         Sz_total += Sz_i;
     }
+    
     model_test4.enumerate_basis_full(lattice, {Sz_total}, {0.0});
     
-    
-    
     std::cout << std::numeric_limits<double>::epsilon() << std::endl;
+    
+    model_test4.divide_and_conquer_prep(lattice);
     
     model_test4.generate_Ham_sparse_full();
     
     model_test4.locate_E0_full();
+    
+    assert(std::abs(model_test4.eigenvals_full[0] + 2.80278) < 0.00001);
+    assert(std::abs(model_test4.eigenvals_full[1] + 2.11803) < 0.00001);
+    std::cout << std::endl;
     
 }

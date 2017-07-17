@@ -982,13 +982,12 @@ namespace qbasis {
         
         MKL_INT dim_full;
         std::vector<qbasis::mbasis_elem> basis_full;
-        std::vector<MKL_INT> Lin_Ja_full;                      // Lin table for the case no lattice symmetry used
-        std::vector<MKL_INT> Lin_Jb_full;
+        
         csr_mat<T> HamMat_csr_full;                            // corresponding to the full Hilbert space
         std::vector<double> eigenvals_full;
         std::vector<T> eigenvecs_full;
         
-        std::vector<bool> sym_translation;
+        std::vector<bool> trans_sym;
         MKL_INT dim_repr;
         std::vector<MKL_INT> basis_belong;                     // size: dim_all, store the position of its repr
         std::vector<std::complex<double>> basis_coeff;         // size: dim_all, store the coeff
@@ -998,7 +997,19 @@ namespace qbasis {
         std::vector<double> eigenvals_repr;
         std::vector<std::complex<double>> eigenvecs_repr;
         
-        model() { matrix_free = true; }
+        // info of sublattice, for Lin Table, and the divide and conquer method
+        std::vector<basis_prop> props_sub_a, props_sub_b;
+        std::vector<MKL_INT> Lin_Ja_full;                      // Lin table for the full basis
+        std::vector<MKL_INT> Lin_Jb_full;
+        std::vector<qbasis::mbasis_elem> basis_sub_full;
+        std::vector<qbasis::mbasis_elem> basis_sub_repr;
+        std::vector<uint64_t> belong2rep_sub;
+        std::vector<std::vector<int>> dist2rep_sub;
+        std::vector<std::vector<uint32_t>> groups_sub;
+        std::vector<uint32_t> omega_g_sub;
+        std::vector<uint32_t> belong2group_sub;
+        
+        model();
         
         ~model() {}
         
@@ -1041,6 +1052,8 @@ namespace qbasis {
         void sort_basis_full();
         
         void fill_Lin_table_full();
+        
+        void divide_and_conquer_prep(const lattice &latt);
         
         // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
         void basis_init_repr(const std::vector<int> &momentum, const lattice &latt);

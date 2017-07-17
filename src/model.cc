@@ -8,6 +8,10 @@
 
 namespace qbasis {
     template <typename T>
+    model<T>::model(): matrix_free(true), nconv(0), dim_full(0), dim_repr(0)
+    { }
+    
+    template <typename T>
     uint32_t model<T>::local_dimension() const
     {
         uint32_t res = 1;
@@ -20,17 +24,16 @@ namespace qbasis {
     {
         std::cout << "Checking translational symmetry." << std::endl;
         std::cout << "In the future replace this check with serious stuff!" << std::endl;
-        sym_translation.clear();
+        trans_sym.clear();
         auto bc = latt.boundary();
         for (uint32_t j = 0; j < latt.dimension(); j++) {
             if (bc[j] == "pbc" || bc[j] == "PBC") {
-                sym_translation.push_back(true);
+                trans_sym.push_back(true);
             } else {
-                sym_translation.push_back(false);
+                trans_sym.push_back(false);
             }
         }
     }
-    
     
     // need further optimization! (for example, special treatment of dilute limit; special treatment of quantum numbers; quick sort of sign)
     template <typename T>
@@ -218,9 +221,9 @@ namespace qbasis {
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         
-        uint32_t Nsites = props[0].num_sites;
-        std::vector<basis_prop> props_sub_a, props_sub_b;
         basis_props_split(props, props_sub_a, props_sub_b);
+        
+        uint32_t Nsites = props[0].num_sites;
         uint32_t Nsites_a = props_sub_a[0].num_sites;
         uint32_t Nsites_b = props_sub_b[0].num_sites;
         assert(Nsites_a >= Nsites_b && Nsites_a + Nsites_b == Nsites);
@@ -298,7 +301,7 @@ namespace qbasis {
         start = end;
         
         // sort table_pre according to ia, first connect all vertical edges
-        std::cout << "sorting talbe_pre according to I_a...              " << std::flush;
+        std::cout << "sorting table_pre according to I_a...              " << std::flush;
         auto cmp = [](const std::vector<MKL_INT> &a, const std::vector<MKL_INT> &b){
                       if (a[0] == b[0]) {
                           return a[1] < b[1];
@@ -345,6 +348,40 @@ namespace qbasis {
         end = std::chrono::system_clock::now();
         elapsed_seconds = end - start;
         std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
+    }
+    
+    template <typename T>
+    void model<T>::divide_and_conquer_prep(const lattice &latt)
+    {
+        assert(Lin_Ja_full.size() > 0 && Lin_Ja_full.size() == Lin_Jb_full.size());
+        
+        // first check translation symmetry
+        check_translation(latt);
+        
+        std::cout << "Preparing info for the divide and conquer method... " << std::endl;
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        
+        auto props_sub = props_sub_a;
+        uint32_t Nsites = props[0].num_sites;
+        uint32_t Nsites_sub = props_sub[0].num_sites;
+        
+        auto latt_sub = divide_lattice(latt);
+        basis_sub_full = enumerate_basis_all(props_sub);
+        
+        classify_trans_full2rep(props_sub, basis_sub_full, latt_sub, trans_sym, basis_sub_repr, belong2rep_sub, dist2rep_sub);
+        classify_trans_rep2group(props_sub, basis_sub_repr, latt_sub, trans_sym, groups_sub, omega_g_sub, belong2group_sub);
+        
+        uint64_t check_dim_sub_full = 0;
+        for (decltype(basis_sub_repr.size()) j = 0; j < basis_sub_repr.size(); j++) check_dim_sub_full += omega_g_sub[belong2group_sub[j]];
+        //std::cout << "check_dim_sub_full    = " << check_dim_sub_full << std::endl;
+        //std::cout << "basis_sub_full.size() = " << basis_sub_full.size() << std::endl;
+        assert(check_dim_sub_full == static_cast<uint64_t>(basis_sub_full.size()));
+        
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        std::cout << std::endl;
     }
     
     template <typename T>
@@ -520,17 +557,9 @@ namespace qbasis {
     template <typename T>
     std::vector<std::complex<double>> model<T>::to_dense()
     {
-        assert(false);
-//        if (! latt_syms.empty()) {
-//            generate_Ham_sparse_repr();
-//            return HamMat_csr_repr.to_dense();
-//        } else {
-//            generate_Ham_sparse_full();
-//            auto temp = HamMat_csr_full.to_dense();
-//            std::vector<std::complex<double>> res(temp.size());
-//            for (decltype(temp.size()) j = 0; j < temp.size(); j++) res[j] = std::complex<double>(temp[j]);
-//            return res;
-//        }
+        std::cout << "Fall back to use matrix explicitly." << std::endl;
+        generate_Ham_sparse_full();
+        return HamMat_csr_full.to_dense();
     }
     
     template <typename T>
