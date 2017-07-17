@@ -358,7 +358,6 @@ namespace qbasis {
         // first check translation symmetry
         check_translation(latt);
         
-        std::cout << "Preparing info for the divide and conquer method... " << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         
@@ -367,19 +366,30 @@ namespace qbasis {
         uint32_t Nsites_sub = props_sub[0].num_sites;
         
         auto latt_sub = divide_lattice(latt);
+        std::cout << "Generating sublattice full basis... " << std::flush;
         basis_sub_full = enumerate_basis_all(props_sub);
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        start = end;
         
+        std::cout << "Classifying sublattice basis... " << std::flush;
         classify_trans_full2rep(props_sub, basis_sub_full, latt_sub, trans_sym, basis_sub_repr, belong2rep_sub, dist2rep_sub);
         classify_trans_rep2group(props_sub, basis_sub_repr, latt_sub, trans_sym, groups_sub, omega_g_sub, belong2group_sub);
-        
         uint64_t check_dim_sub_full = 0;
         for (decltype(basis_sub_repr.size()) j = 0; j < basis_sub_repr.size(); j++) check_dim_sub_full += omega_g_sub[belong2group_sub[j]];
         //std::cout << "check_dim_sub_full    = " << check_dim_sub_full << std::endl;
         //std::cout << "basis_sub_full.size() = " << basis_sub_full.size() << std::endl;
         assert(check_dim_sub_full == static_cast<uint64_t>(basis_sub_full.size()));
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        start = end;
+        
+        
         
         end = std::chrono::system_clock::now();
-        std::chrono::duration<double> elapsed_seconds = end - start;
+        elapsed_seconds = end - start;
         std::cout << elapsed_seconds.count() << "s." << std::endl;
         std::cout << std::endl;
     }
