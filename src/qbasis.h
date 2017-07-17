@@ -106,13 +106,14 @@ namespace qbasis {
                                  std::vector<mbasis_elem> &reps,
                                  std::vector<uint64_t> &belong2rep,
                                  std::vector<std::vector<int>> &dist2rep);
-    // for a given list of reps, find the corresponding translation group
+    // (sublattice) for a given list of reps, find the corresponding translation group
     void classify_trans_rep2group(const std::vector<basis_prop> &props,
                                   const std::vector<mbasis_elem> &reps,
                                   const lattice &latt,
                                   const std::vector<bool> &trans_sym,
                                   std::vector<std::vector<uint32_t>> &groups,
                                   std::vector<uint32_t> &omega_g,
+                                  std::vector<mbasis_elem> &group_examples,
                                   std::vector<uint32_t> &belong2group);
     
     template <typename T> void swap(wavefunction<T>&, wavefunction<T>&);
