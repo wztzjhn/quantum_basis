@@ -922,55 +922,55 @@ namespace qbasis {
         return false;
     }
     
-    mbasis_elem zipper_basis(const std::vector<basis_prop> &props,
+    mbasis_elem zipper_basis(const std::vector<basis_prop> &props_parent,
+                             const std::vector<basis_prop> &props_sub_a,
+                             const std::vector<basis_prop> &props_sub_b,
                              const mbasis_elem &sub_a, const mbasis_elem &sub_b)
     {
-        uint32_t num_orb = props.size();
-        std::vector<basis_prop> props_sub_a, props_sub_b;
-        basis_props_split(props, props_sub_a, props_sub_b);
+        uint32_t num_orb = props_parent.size();
         
-        mbasis_elem res(props);
+        mbasis_elem res(props_parent);
         for (uint32_t orb = 0; orb < num_orb; orb++) {
             uint32_t num_sub_sites_a = props_sub_a[orb].num_sites;
             uint32_t num_sub_sites_b = props_sub_b[orb].num_sites;
-            uint32_t num_sites = props[orb].num_sites;
+            uint32_t num_sites = props_parent[orb].num_sites;
             assert(num_sub_sites_a + num_sub_sites_b == num_sites);
             assert(num_sub_sites_a >= num_sub_sites_b);
             for (uint32_t site = 0; site < num_sub_sites_b; site++) {
-                res.siteWrite(props, site + site,     orb, sub_a.siteRead(props_sub_a, site, orb)); // from sub_a
-                res.siteWrite(props, site + site + 1, orb, sub_b.siteRead(props_sub_b, site, orb)); // from sub_b
+                res.siteWrite(props_parent, site + site,     orb, sub_a.siteRead(props_sub_a, site, orb)); // from sub_a
+                res.siteWrite(props_parent, site + site + 1, orb, sub_b.siteRead(props_sub_b, site, orb)); // from sub_b
             }
             if (num_sub_sites_a > num_sub_sites_b) {
                 assert(num_sub_sites_a == num_sub_sites_b + 1);
-                res.siteWrite(props, num_sites - 1, orb, sub_a.siteRead(props_sub_a, num_sub_sites_b, orb)); // from sub_a
+                res.siteWrite(props_parent, num_sites - 1, orb, sub_a.siteRead(props_sub_a, num_sub_sites_b, orb)); // from sub_a
             }
         }
         return res;
     }
     
-    void unzipper_basis(const std::vector<basis_prop> &props,
+    void unzipper_basis(const std::vector<basis_prop> &props_parent,
+                        const std::vector<basis_prop> &props_sub_a,
+                        const std::vector<basis_prop> &props_sub_b,
                         const mbasis_elem &parent,
                         mbasis_elem &sub_a, mbasis_elem &sub_b)
     {
-        uint32_t num_orb = props.size();
-        std::vector<basis_prop> props_sub_a, props_sub_b;
-        basis_props_split(props, props_sub_a, props_sub_b);
+        uint32_t num_orb = props_parent.size();
         
         sub_a = mbasis_elem(props_sub_a);
         sub_b = mbasis_elem(props_sub_b);
         for (uint32_t orb = 0; orb < num_orb; orb++) {
             uint32_t num_sub_sites_a = props_sub_a[orb].num_sites;
             uint32_t num_sub_sites_b = props_sub_b[orb].num_sites;
-            uint32_t num_sites = props[orb].num_sites;
+            uint32_t num_sites = props_parent[orb].num_sites;
             assert(num_sub_sites_a + num_sub_sites_b == num_sites);
             assert(num_sub_sites_a >= num_sub_sites_b);
             for (uint32_t site = 0; site < num_sub_sites_b; site++) {
-                sub_a.siteWrite(props_sub_a, site, orb, parent.siteRead(props, site + site,     orb)); // to sub_a
-                sub_b.siteWrite(props_sub_b, site, orb, parent.siteRead(props, site + site + 1, orb)); // to sub_b
+                sub_a.siteWrite(props_sub_a, site, orb, parent.siteRead(props_parent, site + site,     orb)); // to sub_a
+                sub_b.siteWrite(props_sub_b, site, orb, parent.siteRead(props_parent, site + site + 1, orb)); // to sub_b
             }
             if (num_sub_sites_a > num_sub_sites_b) {
                 assert(num_sub_sites_a == num_sub_sites_b + 1);
-                sub_a.siteWrite(props_sub_a, num_sub_sites_b, orb, parent.siteRead(props, num_sites - 1, orb)); // to sub_a
+                sub_a.siteWrite(props_sub_a, num_sub_sites_b, orb, parent.siteRead(props_parent, num_sites - 1, orb)); // to sub_a
             }
         }
     }
@@ -1135,9 +1135,10 @@ namespace qbasis {
         }
     }
     
-    void classify_rep_tables(const std::vector<basis_prop> &props,
-                             const std::vector<mbasis_elem> &reps,
-                             const lattice &latt,
+    void classify_rep_tables(const std::vector<basis_prop> &props_parent,
+                             const std::vector<basis_prop> &props_sub,
+                             const std::vector<mbasis_elem> &reps_sub,
+                             const lattice &latt_parent,
                              const std::vector<bool> &trans_sym,
                              const std::vector<std::vector<uint32_t>> &groups,
                              const std::vector<uint32_t> &omega_g,
@@ -1146,26 +1147,36 @@ namespace qbasis {
                              array_4D &table_eq,
                              array_4D &table_gt)
     {
-        assert(latt.dimension() == 1);
-        uint64_t dim_repr     = reps.size();
-        uint32_t num_groups   = groups.size();
-        uint32_t latt_Nsites  = latt.total_sites();
-        uint32_t latt_dim     = latt.dimension();
-        auto latt_linear_size = latt.Linear_size();
+        auto latt_sub = divide_lattice(latt_parent);
+        uint64_t dim_repr         = reps_sub.size();
+        uint32_t num_groups       = groups.size();
+        uint32_t latt_Nsites      = latt_sub.total_sites();
+        uint32_t latt_sub_dim     = latt_sub.dimension();
+        auto latt_sub_linear_size = latt_sub.Linear_size();
+        auto base                 = latt_parent.Linear_size();
+        bool flag_trans           = false;
+        for (uint32_t j = 0; j < latt_sub_dim; j++) {
+            if (! trans_sym[j]) {
+                base[j] = 1;
+            } else {
+                flag_trans = true;
+            }
+        }
+        assert(flag_trans);
         
         // gather a list of examples for different groups
         std::vector<std::vector<mbasis_elem>> examples(num_groups);
         for (uint64_t j = 0; j < dim_repr; j++) {
             auto group_label = belong2group[j];
-            examples[group_label].push_back(reps[j]);
+            examples[group_label].push_back(reps_sub[j]);
         }
         
-        // automatic determines the shape of array_4D
+        // automatically determines the shape of array_4D
         std::vector<uint64_t> linear_size;
         linear_size.push_back(static_cast<uint64_t>(num_groups));
         linear_size.push_back(static_cast<uint64_t>(num_groups));
-        for (uint32_t j = 0; j < latt_dim; j++) {
-            if (trans_sym[j]) linear_size.push_back(static_cast<uint64_t>(latt_linear_size[j]));
+        for (uint32_t j = 0; j < latt_sub_dim; j++) {
+            if (trans_sym[j]) linear_size.push_back(static_cast<uint64_t>(latt_sub_linear_size[j]));
         }
         table_lt = array_4D(linear_size);
         table_eq = array_4D(linear_size);
@@ -1202,8 +1213,34 @@ namespace qbasis {
                     auto ra = examples[ga].front();
                     auto rb = examples[gb].back();
                     assert(ra < rb);
+                    // loop over disp_j
+                    std::vector<uint32_t> disp_j(latt_sub_dim,0);
+                    while (! dynamic_base_overflow(disp_j, groups[gb])) {
+                        // generate |ra> z \tilde{T}^j |rb>
+                        auto rb_new = rb;
+                        std::vector<int> disp_j_int(latt_sub_dim);
+                        for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
+                        int sgn;
+                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
+                        auto ra_z_j_rb = zipper_basis(props_parent, props_sub, props_sub, ra, rb_new);
+                        
+                        // loop over disp_i
+                        std::vector<uint32_t> disp_i(latt_sub_dim,0);
+                        while (! dynamic_base_overflow(disp_i, base)) {
+                            
+                            
+                            disp_i = dynamic_base_plus1(disp_i, base);
+                        }
+                        
+                        disp_j = dynamic_base_plus1(disp_j, groups[gb]);
+                    }
                     
                     
+                }
+                if (flag_gt) {
+                    auto ra = examples[ga].back();
+                    auto rb = examples[gb].front();
+                    assert(rb < ra);
                 }
                 
                 

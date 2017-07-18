@@ -181,8 +181,8 @@ namespace qbasis {
         for (MKL_INT j = 0; j < dim_full - 1; j++) {
             assert(basis_full[j] != basis_full[j+1]);
             mbasis_elem sub_a1, sub_b1, sub_a2, sub_b2;
-            unzipper_basis(props, basis_full[j], sub_a1, sub_b1);
-            unzipper_basis(props, basis_full[j+1], sub_a2, sub_b2);
+            unzipper_basis(props, props_sub_a, props_sub_b, basis_full[j], sub_a1, sub_b1);
+            unzipper_basis(props, props_sub_a, props_sub_b, basis_full[j+1], sub_a2, sub_b2);
             if (sub_b2 < sub_b1 || (sub_b2 == sub_b1 && sub_a2 < sub_a1)) {
                 sorted = false;
                 break;
@@ -194,8 +194,8 @@ namespace qbasis {
             std::cout << "sorting basis(full) according to Lin Table convention... " << std::flush;
             auto cmp = [this](const mbasis_elem &j1, const mbasis_elem &j2){
                               mbasis_elem sub_a1, sub_b1, sub_a2, sub_b2;
-                              unzipper_basis(this->props, j1, sub_a1, sub_b1);
-                              unzipper_basis(this->props, j2, sub_a2, sub_b2);
+                              unzipper_basis(this->props, this->props_sub_a, this->props_sub_b, j1, sub_a1, sub_b1);
+                              unzipper_basis(this->props, this->props_sub_a, this->props_sub_b, j2, sub_a2, sub_b2);
                               if (sub_b1 == sub_b2) {
                                   return sub_a1 < sub_a2;
                               } else {
@@ -220,8 +220,6 @@ namespace qbasis {
         
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        
-        basis_props_split(props, props_sub_a, props_sub_b);
         
         uint32_t Nsites = props[0].num_sites;
         uint32_t Nsites_a = props_sub_a[0].num_sites;
@@ -340,7 +338,7 @@ namespace qbasis {
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT j = 0; j < dim_full; j++) {
             mbasis_elem sub_a, sub_b;
-            unzipper_basis(props, basis_full[j], sub_a, sub_b);
+            unzipper_basis(props, props_sub_a, props_sub_b, basis_full[j], sub_a, sub_b);
             auto i_a = sub_a.label(props_sub_a);
             auto i_b = sub_b.label(props_sub_b);
             assert(Lin_Ja_full[i_a] + Lin_Jb_full[i_b] == j);
@@ -389,7 +387,7 @@ namespace qbasis {
         std::cout << "Generating 4-dim tables (ga,gb,ja,jb) -> (i,j)... " << std::flush;
         uint32_t num_groups = groups_sub.size();
         array_4D table_lt, table_eq, table_gt;
-        classify_rep_tables(props_sub, basis_sub_repr, latt, trans_sym, groups_sub, omega_g_sub, belong2group_sub, table_lt, table_eq, table_gt);
+        classify_rep_tables(props, props_sub, basis_sub_repr, latt, trans_sym, groups_sub, omega_g_sub, belong2group_sub, table_lt, table_eq, table_gt);
         
         
         
@@ -497,8 +495,6 @@ namespace qbasis {
     {
         if (matrix_free) matrix_free = false;     //
         assert(Lin_Ja_full.size() > 0 && Lin_Jb_full.size() > 0);
-        std::vector<basis_prop> props_sub_a, props_sub_b;
-        basis_props_split(props, props_sub_a, props_sub_b);
         
         std::cout << "Generating LIL Hamiltonian matrix..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
@@ -583,8 +579,6 @@ namespace qbasis {
         assert(matrix_free);
         std::cout << "*" << std::flush;
         assert(Lin_Ja_full.size() > 0 && Lin_Jb_full.size() > 0);
-        std::vector<basis_prop> props_sub_a, props_sub_b;
-        basis_props_split(props, props_sub_a, props_sub_b);
         
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim_full; i++) {
@@ -613,8 +607,6 @@ namespace qbasis {
         assert(matrix_free);
         std::cout << "*" << std::flush;
         assert(Lin_Ja_full.size() > 0 && Lin_Jb_full.size() > 0);
-        std::vector<basis_prop> props_sub_a, props_sub_b;
-        basis_props_split(props, props_sub_a, props_sub_b);
         
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim_full; i++) {

@@ -91,10 +91,14 @@ namespace qbasis {
     bool operator!=(const mbasis_elem&, const mbasis_elem&);
     bool trans_equiv(const mbasis_elem&, const mbasis_elem&, const std::vector<basis_prop> &props, const lattice&);   // computational heavy, use with caution
     // following zipper product definition in Weisse's PRE 87, 043305 (2013)
-    mbasis_elem zipper_basis(const std::vector<basis_prop> &props,
+    mbasis_elem zipper_basis(const std::vector<basis_prop> &props_parent,
+                             const std::vector<basis_prop> &props_sub_a,
+                             const std::vector<basis_prop> &props_sub_b,
                              const mbasis_elem &sub_a, const mbasis_elem &sub_b);
     // split basis into two
-    void unzipper_basis(const std::vector<basis_prop> &props,
+    void unzipper_basis(const std::vector<basis_prop> &props_parent,
+                        const std::vector<basis_prop> &props_sub_a,
+                        const std::vector<basis_prop> &props_sub_b,
                         const mbasis_elem &parent,
                         mbasis_elem &sub_a, mbasis_elem &sub_b);
     // generate every single possible state, without any symmetry
@@ -116,9 +120,10 @@ namespace qbasis {
                                   std::vector<uint32_t> &omega_g,
                                   std::vector<uint32_t> &belong2group);
     // tabulate the 4-dim tables for (ga,gb,ja,jb) -> (i,j)
-    void classify_rep_tables(const std::vector<basis_prop> &props,
-                             const std::vector<mbasis_elem> &reps,
-                             const lattice &latt,
+    void classify_rep_tables(const std::vector<basis_prop> &props_parent,
+                             const std::vector<basis_prop> &props_sub,
+                             const std::vector<mbasis_elem> &reps_sub,
+                             const lattice &latt_parent,
                              const std::vector<bool> &trans_sym,
                              const std::vector<std::vector<uint32_t>> &groups,
                              const std::vector<uint32_t> &omega_g,
@@ -1035,11 +1040,13 @@ namespace qbasis {
                          const bool &dilute_ = false)
         {
             props.emplace_back(n_sites,dim_local_,Nf_map,dilute_);
+            basis_props_split(props, props_sub_a, props_sub_b);
         }
         
         void add_orbital(const uint32_t &n_sites, const std::string &s, const extra_info &ex = extra_info{0})
         {
             props.emplace_back(n_sites, s, ex);
+            basis_props_split(props, props_sub_a, props_sub_b);
         }
         
         uint32_t local_dimension() const;
