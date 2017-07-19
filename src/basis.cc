@@ -1137,9 +1137,12 @@ namespace qbasis {
     
     void classify_rep_tables(const std::vector<basis_prop> &props_parent,
                              const std::vector<basis_prop> &props_sub,
-                             const std::vector<mbasis_elem> &reps_sub,
+                             const std::vector<mbasis_elem> &basis_sub_full,
+                             const std::vector<mbasis_elem> &basis_sub_repr,
                              const lattice &latt_parent,
                              const std::vector<bool> &trans_sym,
+                             const std::vector<uint64_t> &belong2rep,
+                             const std::vector<std::vector<int>> &dist2rep,
                              const std::vector<std::vector<uint32_t>> &groups,
                              const std::vector<uint32_t> &omega_g,
                              const std::vector<uint32_t> &belong2group,
@@ -1148,7 +1151,7 @@ namespace qbasis {
                              array_4D &table_gt)
     {
         auto latt_sub = divide_lattice(latt_parent);
-        uint64_t dim_repr         = reps_sub.size();
+        uint64_t dim_repr         = basis_sub_repr.size();
         uint32_t num_groups       = groups.size();
         uint32_t latt_Nsites      = latt_sub.total_sites();
         uint32_t latt_sub_dim     = latt_sub.dimension();
@@ -1168,7 +1171,7 @@ namespace qbasis {
         std::vector<std::vector<mbasis_elem>> examples(num_groups);
         for (uint64_t j = 0; j < dim_repr; j++) {
             auto group_label = belong2group[j];
-            examples[group_label].push_back(reps_sub[j]);
+            examples[group_label].push_back(basis_sub_repr[j]);
         }
         
         // automatically determines the shape of array_4D
@@ -1212,6 +1215,13 @@ namespace qbasis {
                 if (flag_lt) {
                     auto ra = examples[ga].front();
                     auto rb = examples[gb].back();
+                    /*
+                    std::cout << "ra: " << std::endl;
+                    ra.prt_bits(props_sub);
+                    std::cout << "rb: " << std::endl;
+                    rb.prt_bits(props_sub);
+                    std::cout << std::endl;
+                    */
                     assert(ra < rb);
                     // loop over disp_j
                     std::vector<uint32_t> disp_j(latt_sub_dim,0);
@@ -1222,11 +1232,55 @@ namespace qbasis {
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         int sgn;
                         rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
-                        auto ra_z_j_rb = zipper_basis(props_parent, props_sub, props_sub, ra, rb_new);
+                        auto ra_z_Tj_rb = zipper_basis(props_parent, props_sub, props_sub, ra, rb_new);
+                        /*
+                        std::cout << "ra_z_Tj_rb: " << std::endl;
+                        ra_z_Tj_rb.prt_bits(props_parent);
+                        std::cout << std::endl;
+                        */
                         
                         // loop over disp_i
                         std::vector<uint32_t> disp_i(latt_sub_dim,0);
                         while (! dynamic_base_overflow(disp_i, base)) {
+                            std::vector<int> disp_i_int(latt_sub_dim);
+                            for (uint32_t j = 0; j < latt_sub_dim; j++) disp_i_int[j] = static_cast<int>(disp_i[j]);
+                            auto Ti_ra_z_Tj_rb = ra_z_Tj_rb;
+                            Ti_ra_z_Tj_rb.translate(props_parent, latt_parent, disp_i_int, sgn);  // Ti (|ra> z Tj |rb>) obtained!!!
+                            /*
+                            std::cout << "Ti_ra_z_Tj_rb: " << std::endl;
+                            Ti_ra_z_Tj_rb.prt_bits(props_parent);
+                            std::cout << std::endl;
+                            */
+                            
+                            // now need find ja, jb
+                            mbasis_elem state_sub1, state_sub2;
+                            unzipper_basis(props_parent, props_sub, props_sub, Ti_ra_z_Tj_rb, state_sub1, state_sub2);
+                            auto state_sub1_label = state_sub1.label(props_sub);
+                            auto state_sub2_label = state_sub2.label(props_sub);
+                            /*
+                            std::cout << "state_sub1: " << std::endl;
+                            state_sub1.prt_bits(props_sub);
+                            std::cout << "state_sub2: " << std::endl;
+                            state_sub2.prt_bits(props_sub);
+                            std::cout << std::endl;
+                            */
+                            
+                            assert(basis_sub_full[state_sub1_label] == state_sub1);
+                            assert(basis_sub_full[state_sub2_label] == state_sub2);
+                            auto state_rep1_label = belong2rep[state_sub1_label];
+                            auto state_rep2_label = belong2rep[state_sub2_label];
+                            auto &state_rep1 = basis_sub_repr[state_rep1_label];
+                            auto &state_rep2 = basis_sub_repr[state_rep2_label];
+                            auto &dist2rep1  = dist2rep[state_sub1_label];
+                            auto &dist2rep2  = dist2rep[state_sub2_label];
+                            
+                            if (state_rep1 < state_rep2) {
+                                assert(state_rep1 == ra && state_rep2 == rb);
+                                
+                            } else {
+                                assert(state_rep1 == rb && state_rep2 == ra);
+                            }
+                            
                             
                             
                             disp_i = dynamic_base_plus1(disp_i, base);

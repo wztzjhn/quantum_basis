@@ -122,9 +122,12 @@ namespace qbasis {
     // tabulate the 4-dim tables for (ga,gb,ja,jb) -> (i,j)
     void classify_rep_tables(const std::vector<basis_prop> &props_parent,
                              const std::vector<basis_prop> &props_sub,
-                             const std::vector<mbasis_elem> &reps_sub,
+                             const std::vector<mbasis_elem> &basis_sub_full,
+                             const std::vector<mbasis_elem> &basis_sub_repr,
                              const lattice &latt_parent,
                              const std::vector<bool> &trans_sym,
+                             const std::vector<uint64_t> &belong2rep,
+                             const std::vector<std::vector<int>> &dist2rep,
                              const std::vector<std::vector<uint32_t>> &groups,
                              const std::vector<uint32_t> &omega_g,
                              const std::vector<uint32_t> &belong2group,

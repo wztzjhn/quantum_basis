@@ -387,7 +387,9 @@ namespace qbasis {
         std::cout << "Generating 4-dim tables (ga,gb,ja,jb) -> (i,j)... " << std::flush;
         uint32_t num_groups = groups_sub.size();
         array_4D table_lt, table_eq, table_gt;
-        classify_rep_tables(props, props_sub, basis_sub_repr, latt, trans_sym, groups_sub, omega_g_sub, belong2group_sub, table_lt, table_eq, table_gt);
+        classify_rep_tables(props, props_sub, basis_sub_full, basis_sub_repr, latt, trans_sym,
+                            belong2rep_sub, dist2rep_sub, groups_sub, omega_g_sub, belong2group_sub,
+                            table_lt, table_eq, table_gt);
         
         
         
