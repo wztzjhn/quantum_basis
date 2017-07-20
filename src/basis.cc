@@ -1181,9 +1181,12 @@ namespace qbasis {
         for (uint32_t j = 0; j < latt_sub_dim; j++) {
             if (trans_sym[j]) linear_size.push_back(static_cast<uint64_t>(latt_sub_linear_size[j]));
         }
-        table_lt = array_4D(linear_size);
-        table_eq = array_4D(linear_size);
-        table_gt = array_4D(linear_size);
+        std::pair<std::vector<uint32_t>,std::vector<uint32_t>> default_value;
+        default_value.first  = std::vector<uint32_t>(latt_sub_dim,19900917);
+        default_value.second = default_value.first;
+        table_lt = array_4D(linear_size, default_value);
+        table_eq = array_4D(linear_size, default_value);
+        table_gt = array_4D(linear_size, default_value);
         
         for (uint32_t ga = 0; ga < num_groups; ga++) {
             assert(examples[ga].size() > 0);

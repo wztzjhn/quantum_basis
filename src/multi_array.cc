@@ -15,6 +15,25 @@ namespace qbasis {
     }
     
     template <typename T>
+    multi_array<T>::multi_array(const std::vector<uint64_t> &linear_size_input, const T &element):
+        dim(linear_size_input.size()),
+        linear_size(linear_size_input)
+    {
+        assert(dim > 0);
+        size = linear_size[0];
+        for (decltype(linear_size.size()) j = 1; j < linear_size.size(); j++)
+            size *= linear_size[j];
+        data = std::vector<T>(size, element);
+    }
+    
+    template <typename T>
+    multi_array<T>& multi_array<T>::operator=(const T &element)
+    {
+        for (uint64_t j = 0; j < size; j++) data[j] = element;
+        return *this;
+    }
+    
+    template <typename T>
     T& multi_array<T>::index(const std::vector<uint64_t> &pos)
     {
         assert(pos.size() == linear_size.size());

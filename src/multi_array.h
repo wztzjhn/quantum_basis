@@ -22,6 +22,8 @@ namespace qbasis {
         
         multi_array(const std::vector<uint64_t> &linear_size_input);
         
+        multi_array(const std::vector<uint64_t> &linear_size_input, const T &element);
+        
         // copy constructor
         multi_array(const multi_array<T> &old):
             dim(old.dim),
@@ -38,6 +40,8 @@ namespace qbasis {
         
         // copy assignment constructor and move assignment constructor, using "swap and copy"
         multi_array& operator=(multi_array<T> old) { swap(*this, old); return *this; }
+        
+        multi_array& operator=(const T &element);
         
         ~multi_array() {}
         
