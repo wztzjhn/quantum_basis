@@ -1021,6 +1021,7 @@ namespace qbasis {
         std::vector<basis_prop> props_sub_a, props_sub_b;
         std::vector<MKL_INT> Lin_Ja_full;                      // Lin table for the full basis
         std::vector<MKL_INT> Lin_Jb_full;
+        array_4D table_lt, table_eq, table_gt;                 // lookup tables for translational symmetry
         std::vector<qbasis::mbasis_elem> basis_sub_full;
         std::vector<qbasis::mbasis_elem> basis_sub_repr;
         //std::vector<qbasis::mbasis_elem> group_examples_sub;

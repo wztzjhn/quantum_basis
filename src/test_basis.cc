@@ -227,7 +227,7 @@ void test_basis4()
 {
     std::cout << "--------- test basis4 ---------" << std::endl;
     
-    uint32_t L = 6;
+    uint32_t L = 8;
     
     // local matrix representation
     // Spins:
@@ -282,12 +282,14 @@ void test_basis4()
     
     model_test4.divide_and_conquer_prep(lattice);
     
+    
+    
     model_test4.generate_Ham_sparse_full();
     
     model_test4.locate_E0_full();
     
-    assert(std::abs(model_test4.eigenvals_full[0] + 2.80278) < 0.00001);
-    assert(std::abs(model_test4.eigenvals_full[1] + 2.11803) < 0.00001);
+    assert(std::abs(model_test4.eigenvals_full[0] + 3.65109) < 0.00001);
+    assert(std::abs(model_test4.eigenvals_full[1] + 3.12842) < 0.00001);
     std::cout << std::endl;
     
 }

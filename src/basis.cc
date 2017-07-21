@@ -1156,16 +1156,29 @@ namespace qbasis {
         uint32_t latt_Nsites      = latt_sub.total_sites();
         uint32_t latt_sub_dim     = latt_sub.dimension();
         auto latt_sub_linear_size = latt_sub.Linear_size();
-        auto base                 = latt_parent.Linear_size();
+        auto base_parent          = latt_parent.Linear_size();
+        auto base_sub             = latt_sub.Linear_size();
         bool flag_trans           = false;
         for (uint32_t j = 0; j < latt_sub_dim; j++) {
             if (! trans_sym[j]) {
-                base[j] = 1;
+                base_parent[j] = 1;
+                base_sub[j]    = 1;
             } else {
                 flag_trans = true;
             }
         }
         assert(flag_trans);
+        
+        
+        for (decltype(belong2group.size()) j = 0; j < belong2group.size(); j++) {
+            std::cout << "r: " << j << std::endl;
+            basis_sub_repr[j].prt_bits(props_sub);
+            std::cout << "omega[" << j << "] = " << omega_g[belong2group[j]] << std::endl;
+            std::cout << "belong2group[" << j << "] = " << belong2group[j] << std::endl;
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
+        
         
         // gather a list of examples for different groups
         std::vector<std::vector<mbasis_elem>> examples(num_groups);
@@ -1181,8 +1194,12 @@ namespace qbasis {
         for (uint32_t j = 0; j < latt_sub_dim; j++) {
             if (trans_sym[j]) linear_size.push_back(static_cast<uint64_t>(latt_sub_linear_size[j]));
         }
+        for (uint32_t j = 0; j < latt_sub_dim; j++) {
+            if (trans_sym[j]) linear_size.push_back(static_cast<uint64_t>(latt_sub_linear_size[j]));
+        }
         std::pair<std::vector<uint32_t>,std::vector<uint32_t>> default_value;
-        default_value.first  = std::vector<uint32_t>(latt_sub_dim,19900917);
+        assert(latt_parent.total_sites() < 999999999);
+        default_value.first  = std::vector<uint32_t>(latt_sub_dim,999999999);
         default_value.second = default_value.first;
         table_lt = array_4D(linear_size, default_value);
         table_eq = array_4D(linear_size, default_value);
@@ -1206,7 +1223,7 @@ namespace qbasis {
                     }
                 } else {
                     flag_eq = true;
-                    if (groups[ga].size() > 1) {
+                    if (examples[ga].size() > 1) {
                         flag_lt = true;
                         flag_gt = true;
                     } else {
@@ -1244,7 +1261,7 @@ namespace qbasis {
                         
                         // loop over disp_i
                         std::vector<uint32_t> disp_i(latt_sub_dim,0);
-                        while (! dynamic_base_overflow(disp_i, base)) {
+                        while (! dynamic_base_overflow(disp_i, base_parent)) {
                             std::vector<int> disp_i_int(latt_sub_dim);
                             for (uint32_t j = 0; j < latt_sub_dim; j++) disp_i_int[j] = static_cast<int>(disp_i[j]);
                             auto Ti_ra_z_Tj_rb = ra_z_Tj_rb;
@@ -1272,21 +1289,32 @@ namespace qbasis {
                             assert(basis_sub_full[state_sub2_label] == state_sub2);
                             auto state_rep1_label = belong2rep[state_sub1_label];
                             auto state_rep2_label = belong2rep[state_sub2_label];
-                            auto &state_rep1 = basis_sub_repr[state_rep1_label];
-                            auto &state_rep2 = basis_sub_repr[state_rep2_label];
-                            auto &dist2rep1  = dist2rep[state_sub1_label];
-                            auto &dist2rep2  = dist2rep[state_sub2_label];
+                            auto &state_rep1      = basis_sub_repr[state_rep1_label];
+                            auto &state_rep2      = basis_sub_repr[state_rep2_label];
+                            auto &dist2rep1       = dist2rep[state_sub1_label];
+                            auto &dist2rep2       = dist2rep[state_sub2_label];
                             
+                            std::vector<uint64_t> pos{ga, gb};
                             if (state_rep1 < state_rep2) {
                                 assert(state_rep1 == ra && state_rep2 == rb);
+                                pos.insert(pos.end(), dist2rep1.begin(), dist2rep1.end());  // ja
+                                pos.insert(pos.end(), dist2rep2.begin(), dist2rep2.end());  // jb
+                                assert(pos.size() == linear_size.size());
+                                if (disp_j < table_lt.index(pos).second ||
+                                    (disp_j == table_lt.index(pos).second && disp_i < table_lt.index(pos).first)) {
+                                    table_lt.index(pos).first  = disp_i;
+                                    table_lt.index(pos).second = disp_j;
+                                }
                                 
-                            } else {
-                                assert(state_rep1 == rb && state_rep2 == ra);
                             }
+//                            else {
+//                                assert(state_rep1 == rb && state_rep2 == ra);
+//                                pos.insert(pos.end(), dist2rep2.begin(), dist2rep2.end());  // ja
+//                                pos.insert(pos.end(), dist2rep1.begin(), dist2rep1.end());  // jb
+//                            }
                             
                             
-                            
-                            disp_i = dynamic_base_plus1(disp_i, base);
+                            disp_i = dynamic_base_plus1(disp_i, base_parent);
                         }
                         
                         disp_j = dynamic_base_plus1(disp_j, groups[gb]);
@@ -1298,11 +1326,123 @@ namespace qbasis {
                     auto ra = examples[ga].back();
                     auto rb = examples[gb].front();
                     assert(rb < ra);
+                    
+                    
+                    // ****************** change here ****************
+                    
+                    
+//                    // loop over disp_j
+//                    std::vector<uint32_t> disp_j(latt_sub_dim,0);
+//                    while (! dynamic_base_overflow(disp_j, groups[gb])) {
+//                        // generate |ra> z \tilde{T}^j |rb>
+//                        auto rb_new = rb;
+//                        std::vector<int> disp_j_int(latt_sub_dim);
+//                        for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
+//                        int sgn;
+//                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
+//                        auto ra_z_Tj_rb = zipper_basis(props_parent, props_sub, props_sub, ra, rb_new);
+//                        /*
+//                         std::cout << "ra_z_Tj_rb: " << std::endl;
+//                         ra_z_Tj_rb.prt_bits(props_parent);
+//                         std::cout << std::endl;
+//                         */
+//                        
+//                        // loop over disp_i
+//                        std::vector<uint32_t> disp_i(latt_sub_dim,0);
+//                        while (! dynamic_base_overflow(disp_i, base)) {
+//                            std::vector<int> disp_i_int(latt_sub_dim);
+//                            for (uint32_t j = 0; j < latt_sub_dim; j++) disp_i_int[j] = static_cast<int>(disp_i[j]);
+//                            auto Ti_ra_z_Tj_rb = ra_z_Tj_rb;
+//                            Ti_ra_z_Tj_rb.translate(props_parent, latt_parent, disp_i_int, sgn);  // Ti (|ra> z Tj |rb>) obtained!!!
+//                            /*
+//                             std::cout << "Ti_ra_z_Tj_rb: " << std::endl;
+//                             Ti_ra_z_Tj_rb.prt_bits(props_parent);
+//                             std::cout << std::endl;
+//                             */
+//                            
+//                            // now need find ja, jb
+//                            mbasis_elem state_sub1, state_sub2;
+//                            unzipper_basis(props_parent, props_sub, props_sub, Ti_ra_z_Tj_rb, state_sub1, state_sub2);
+//                            auto state_sub1_label = state_sub1.label(props_sub);
+//                            auto state_sub2_label = state_sub2.label(props_sub);
+//                            /*
+//                             std::cout << "state_sub1: " << std::endl;
+//                             state_sub1.prt_bits(props_sub);
+//                             std::cout << "state_sub2: " << std::endl;
+//                             state_sub2.prt_bits(props_sub);
+//                             std::cout << std::endl;
+//                             */
+//                            
+//                            assert(basis_sub_full[state_sub1_label] == state_sub1);
+//                            assert(basis_sub_full[state_sub2_label] == state_sub2);
+//                            auto state_rep1_label = belong2rep[state_sub1_label];
+//                            auto state_rep2_label = belong2rep[state_sub2_label];
+//                            auto &state_rep1      = basis_sub_repr[state_rep1_label];
+//                            auto &state_rep2      = basis_sub_repr[state_rep2_label];
+//                            auto &dist2rep1       = dist2rep[state_sub1_label];
+//                            auto &dist2rep2       = dist2rep[state_sub2_label];
+//                            
+//                            std::vector<uint64_t> pos{ga, gb};
+//                            if (state_rep1 < state_rep2) {
+//                                assert(state_rep1 == ra && state_rep2 == rb);
+//                                pos.insert(pos.end(), dist2rep1.begin(), dist2rep1.end());  // ja
+//                                pos.insert(pos.end(), dist2rep2.begin(), dist2rep2.end());  // jb
+//                            } else {
+//                                assert(state_rep1 == rb && state_rep2 == ra);
+//                                pos.insert(pos.end(), dist2rep2.begin(), dist2rep2.end());  // ja
+//                                pos.insert(pos.end(), dist2rep1.begin(), dist2rep1.end());  // jb
+//                            }
+//                            assert(pos.size() == linear_size.size());
+//                            table_lt.index(pos).first  = disp_i;
+//                            table_lt.index(pos).second = disp_j;
+//                            
+//                            disp_i = dynamic_base_plus1(disp_i, base);
+//                        }
+//                        
+//                        disp_j = dynamic_base_plus1(disp_j, groups[gb]);
+//                    }
+                    
+                    
+
+                    
+                    // ****************** change here ****************
+                    
+                    
                 }
                 
                 
             }
         }
+        
+        
+        
+        std::cout << "print out e<" << std::endl;
+        for (uint32_t ga = 0; ga < num_groups; ga++) {
+            for (uint32_t gb = 0; gb < num_groups; gb++) {
+                std::cout << "***************" << std::endl;
+                std::cout << "ga,    gb    = " << ga << ", " << gb << std::endl;
+                std::vector<uint32_t> disp_ja(latt_sub_dim,0);
+                while (! dynamic_base_overflow(disp_ja, base_sub)) {
+                    std::vector<uint32_t> disp_jb(latt_sub_dim,0);
+                    while (! dynamic_base_overflow(disp_jb, base_sub)) {
+                        auto res = table_lt.index(std::vector<uint64_t>{ga,gb,disp_ja[0],disp_jb[0]});
+                        if (res.first[0] != 999999999 || res.second[0] != 999999999) {
+                            
+                            std::cout << "ja[0], jb[0] = " << disp_ja[0] << ", " << disp_jb[0] << std::endl;
+                            std::cout << "i[0],  j[0]  = " << res.first[0] << ", " << res.second[0] << std::endl;
+                            std::cout << std::endl;
+                        }
+                        
+                        
+                        disp_jb = dynamic_base_plus1(disp_jb, base_sub);
+                    }
+                    
+                    
+                    disp_ja = dynamic_base_plus1(disp_ja, base_sub);
+                }
+            }
+        }
+        
         
     }
     
