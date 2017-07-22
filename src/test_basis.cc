@@ -348,8 +348,6 @@ void test_basis4()
     check.second = std::vector<uint32_t>{3};
     assert(model_test4.table_lt.index(std::vector<uint64_t>{2,2,3,2}) == check);
     
-    
-    
     check.first  = std::vector<uint32_t>{1};
     check.second = std::vector<uint32_t>{0};
     assert(model_test4.table_gt.index(std::vector<uint64_t>{0,0,0,0}) == check);
@@ -428,6 +426,56 @@ void test_basis4()
     check.second = std::vector<uint32_t>{3};
     assert(model_test4.table_gt.index(std::vector<uint64_t>{2,2,3,3}) == check);
     
+    check.first  = std::vector<uint32_t>{0};
+    check.second = std::vector<uint32_t>{0};
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{0,0,0,0}) == check);
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{1,1,0,0}) == check);
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,0,0}) == check);
+    check.first  = std::vector<uint32_t>{1};
+    check.second = std::vector<uint32_t>{0};
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{1,1,1,0}) == check);
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,1,0}) == check);
+    check.first  = std::vector<uint32_t>{2};
+    check.second = std::vector<uint32_t>{0};
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{1,1,1,1}) == check);
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,1,1}) == check);
+    check.first  = std::vector<uint32_t>{3};
+    check.second = std::vector<uint32_t>{0};
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{1,1,0,1}) == check);
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,2,1}) == check);
+    check.first  = std::vector<uint32_t>{4};
+    check.second = std::vector<uint32_t>{0};
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,2,2}) == check);
+    check.first  = std::vector<uint32_t>{5};
+    check.second = std::vector<uint32_t>{0};
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,3,2}) == check);
+    check.first  = std::vector<uint32_t>{6};
+    check.second = std::vector<uint32_t>{0};
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,3,3}) == check);
+    check.first  = std::vector<uint32_t>{7};
+    check.second = std::vector<uint32_t>{0};
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,0,3}) == check);
+    check.first  = std::vector<uint32_t>{1};
+    check.second = std::vector<uint32_t>{1};
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,2,0}) == check);
+    check.first  = std::vector<uint32_t>{2};
+    check.second = std::vector<uint32_t>{1};
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,1,2}) == check);
+    check.first  = std::vector<uint32_t>{3};
+    check.second = std::vector<uint32_t>{1};
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,3,1}) == check);
+    check.first  = std::vector<uint32_t>{4};
+    check.second = std::vector<uint32_t>{1};
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,2,3}) == check);
+    check.first  = std::vector<uint32_t>{5};
+    check.second = std::vector<uint32_t>{1};
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,0,2}) == check);
+    check.first  = std::vector<uint32_t>{6};
+    check.second = std::vector<uint32_t>{1};
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,3,0}) == check);
+    check.first  = std::vector<uint32_t>{7};
+    check.second = std::vector<uint32_t>{1};
+    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,1,3}) == check);
     
     
     model_test4.generate_Ham_sparse_full();
