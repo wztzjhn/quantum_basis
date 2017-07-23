@@ -78,6 +78,7 @@ namespace qbasis {
     }
 
     // explicit instantiation
+    template class multi_array<std::vector<uint32_t>>;
     template class multi_array<double>;
     template class multi_array<std::pair<std::vector<uint32_t>,std::vector<uint32_t>>>;
     

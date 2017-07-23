@@ -225,7 +225,7 @@ void test_basis3()
 
 void test_basis4()
 {
-    std::cout << "--------- test basis4 (divide and conquer) ---------" << std::endl;
+    std::cout << "--------- test basis4 (check divide and conquer on 1D chain) ---------" << std::endl;
     
     uint32_t L = 8;
     
@@ -280,202 +280,224 @@ void test_basis4()
     
     std::cout << std::numeric_limits<double>::epsilon() << std::endl;
     
-    model_test4.divide_and_conquer_prep(lattice);
+    model_test4.fill_Weiss_table(lattice);
     std::pair<std::vector<uint32_t>,std::vector<uint32_t>> check;
     check.first  = std::vector<uint32_t>{0};
     check.second = std::vector<uint32_t>{0};
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{0,0,0,0}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{0,1,0,0}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{0,2,0,0}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{1,0,0,0}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{1,2,0,0}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,0,0,0}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,1,0,0}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,2,0,0}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{0,0,0,0}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{0,1,0,0}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{0,2,0,0}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{1,0,0,0}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{1,2,0,0}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,0,0,0}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,1,0,0}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,2,0,0}) == check);
     check.first  = std::vector<uint32_t>{2};
     check.second = std::vector<uint32_t>{0};
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{0,1,0,1}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{0,2,0,1}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{1,0,1,0}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{1,2,1,1}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,0,1,0}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,1,1,1}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,2,1,1}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{0,1,0,1}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{0,2,0,1}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{1,0,1,0}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{1,2,1,1}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,0,1,0}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,1,1,1}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,2,1,1}) == check);
     check.first  = std::vector<uint32_t>{4};
     check.second = std::vector<uint32_t>{0};
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{0,2,0,2}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{1,2,0,2}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,0,2,0}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,1,2,0}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,2,2,2}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{0,2,0,2}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{1,2,0,2}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,0,2,0}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,1,2,0}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,2,2,2}) == check);
     check.first  = std::vector<uint32_t>{6};
     check.second = std::vector<uint32_t>{0};
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{0,2,0,3}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{1,2,1,3}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,0,3,0}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,1,3,1}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,2,3,3}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{0,2,0,3}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{1,2,1,3}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,0,3,0}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,1,3,1}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,2,3,3}) == check);
     check.first  = std::vector<uint32_t>{0};
     check.second = std::vector<uint32_t>{1};
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{1,2,0,1}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,1,0,1}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,2,0,1}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{1,2,0,1}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,1,0,1}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,2,0,1}) == check);
     check.first  = std::vector<uint32_t>{2};
     check.second = std::vector<uint32_t>{1};
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{1,2,1,2}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,1,1,0}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,2,1,2}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{1,2,1,2}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,1,1,0}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,2,1,2}) == check);
     check.first  = std::vector<uint32_t>{4};
     check.second = std::vector<uint32_t>{1};
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{1,2,0,3}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,1,2,1}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,2,2,3}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{1,2,0,3}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,1,2,1}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,2,2,3}) == check);
     check.first  = std::vector<uint32_t>{6};
     check.second = std::vector<uint32_t>{1};
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{1,2,1,0}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,1,3,0}) == check);
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,2,3,0}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{1,2,1,0}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,1,3,0}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,2,3,0}) == check);
     check.first  = std::vector<uint32_t>{0};
     check.second = std::vector<uint32_t>{3};
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,2,0,3}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,2,0,3}) == check);
     check.first  = std::vector<uint32_t>{2};
     check.second = std::vector<uint32_t>{3};
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,2,1,0}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,2,1,0}) == check);
     check.first  = std::vector<uint32_t>{4};
     check.second = std::vector<uint32_t>{3};
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,2,2,1}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,2,2,1}) == check);
     check.first  = std::vector<uint32_t>{6};
     check.second = std::vector<uint32_t>{3};
-    assert(model_test4.table_lt.index(std::vector<uint64_t>{2,2,3,2}) == check);
+    assert(model_test4.table_e_lt.index(std::vector<uint64_t>{2,2,3,2}) == check);
     
     check.first  = std::vector<uint32_t>{1};
     check.second = std::vector<uint32_t>{0};
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{0,0,0,0}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{0,1,0,0}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{0,2,0,0}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{1,0,1,0}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{1,2,1,0}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,0,1,0}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,1,1,0}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,2,1,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{0,0,0,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{0,1,0,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{0,2,0,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{1,0,1,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{1,2,1,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,0,1,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,1,1,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,2,1,0}) == check);
     check.first  = std::vector<uint32_t>{3};
     check.second = std::vector<uint32_t>{0};
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{0,1,0,1}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{0,2,0,1}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{1,0,0,0}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{1,2,0,1}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,0,2,0}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,1,2,1}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,2,2,1}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{0,1,0,1}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{0,2,0,1}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{1,0,0,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{1,2,0,1}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,0,2,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,1,2,1}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,2,2,1}) == check);
     check.first  = std::vector<uint32_t>{5};
     check.second = std::vector<uint32_t>{0};
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{0,2,0,2}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{1,2,1,2}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,0,3,0}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,1,3,0}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,2,3,2}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{0,2,0,2}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{1,2,1,2}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,0,3,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,1,3,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,2,3,2}) == check);
     check.first  = std::vector<uint32_t>{7};
     check.second = std::vector<uint32_t>{0};
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{0,2,0,3}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{1,2,0,3}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,0,0,0}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,1,0,1}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,2,0,3}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{0,2,0,3}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{1,2,0,3}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,0,0,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,1,0,1}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,2,0,3}) == check);
     check.first  = std::vector<uint32_t>{1};
     check.second = std::vector<uint32_t>{1};
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{1,2,0,0}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,1,2,0}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,2,2,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{1,2,0,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,1,2,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,2,2,0}) == check);
     check.first  = std::vector<uint32_t>{3};
     check.second = std::vector<uint32_t>{1};
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{1,2,1,1}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,1,3,1}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,2,3,1}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{1,2,1,1}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,1,3,1}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,2,3,1}) == check);
     check.first  = std::vector<uint32_t>{5};
     check.second = std::vector<uint32_t>{1};
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{1,2,0,2}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,1,0,0}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,2,0,2}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{1,2,0,2}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,1,0,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,2,0,2}) == check);
     check.first  = std::vector<uint32_t>{7};
     check.second = std::vector<uint32_t>{1};
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{1,2,1,3}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,1,1,1}) == check);
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,2,1,3}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{1,2,1,3}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,1,1,1}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,2,1,3}) == check);
     check.first  = std::vector<uint32_t>{1};
     check.second = std::vector<uint32_t>{2};
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,2,3,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,2,3,0}) == check);
     check.first  = std::vector<uint32_t>{3};
     check.second = std::vector<uint32_t>{2};
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,2,0,1}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,2,0,1}) == check);
     check.first  = std::vector<uint32_t>{5};
     check.second = std::vector<uint32_t>{2};
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,2,1,2}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,2,1,2}) == check);
     check.first  = std::vector<uint32_t>{7};
     check.second = std::vector<uint32_t>{2};
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,2,2,3}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,2,2,3}) == check);
     check.first  = std::vector<uint32_t>{1};
     check.second = std::vector<uint32_t>{3};
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,2,0,0}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,2,0,0}) == check);
     check.first  = std::vector<uint32_t>{3};
     check.second = std::vector<uint32_t>{3};
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,2,1,1}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,2,1,1}) == check);
     check.first  = std::vector<uint32_t>{5};
     check.second = std::vector<uint32_t>{3};
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,2,2,2}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,2,2,2}) == check);
     check.first  = std::vector<uint32_t>{7};
     check.second = std::vector<uint32_t>{3};
-    assert(model_test4.table_gt.index(std::vector<uint64_t>{2,2,3,3}) == check);
+    assert(model_test4.table_e_gt.index(std::vector<uint64_t>{2,2,3,3}) == check);
     
     check.first  = std::vector<uint32_t>{0};
     check.second = std::vector<uint32_t>{0};
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{0,0,0,0}) == check);
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{1,1,0,0}) == check);
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,0,0}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{0,0,0,0}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{1,1,0,0}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{2,2,0,0}) == check);
     check.first  = std::vector<uint32_t>{1};
     check.second = std::vector<uint32_t>{0};
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{1,1,1,0}) == check);
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,1,0}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{1,1,1,0}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{2,2,1,0}) == check);
     check.first  = std::vector<uint32_t>{2};
     check.second = std::vector<uint32_t>{0};
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{1,1,1,1}) == check);
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,1,1}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{1,1,1,1}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{2,2,1,1}) == check);
     check.first  = std::vector<uint32_t>{3};
     check.second = std::vector<uint32_t>{0};
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{1,1,0,1}) == check);
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,2,1}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{1,1,0,1}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{2,2,2,1}) == check);
     check.first  = std::vector<uint32_t>{4};
     check.second = std::vector<uint32_t>{0};
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,2,2}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{2,2,2,2}) == check);
     check.first  = std::vector<uint32_t>{5};
     check.second = std::vector<uint32_t>{0};
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,3,2}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{2,2,3,2}) == check);
     check.first  = std::vector<uint32_t>{6};
     check.second = std::vector<uint32_t>{0};
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,3,3}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{2,2,3,3}) == check);
     check.first  = std::vector<uint32_t>{7};
     check.second = std::vector<uint32_t>{0};
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,0,3}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{2,2,0,3}) == check);
     check.first  = std::vector<uint32_t>{1};
     check.second = std::vector<uint32_t>{1};
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,2,0}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{2,2,2,0}) == check);
     check.first  = std::vector<uint32_t>{2};
     check.second = std::vector<uint32_t>{1};
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,1,2}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{2,2,1,2}) == check);
     check.first  = std::vector<uint32_t>{3};
     check.second = std::vector<uint32_t>{1};
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,3,1}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{2,2,3,1}) == check);
     check.first  = std::vector<uint32_t>{4};
     check.second = std::vector<uint32_t>{1};
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,2,3}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{2,2,2,3}) == check);
     check.first  = std::vector<uint32_t>{5};
     check.second = std::vector<uint32_t>{1};
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,0,2}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{2,2,0,2}) == check);
     check.first  = std::vector<uint32_t>{6};
     check.second = std::vector<uint32_t>{1};
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,3,0}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{2,2,3,0}) == check);
     check.first  = std::vector<uint32_t>{7};
     check.second = std::vector<uint32_t>{1};
-    assert(model_test4.table_eq.index(std::vector<uint64_t>{2,2,1,3}) == check);
+    assert(model_test4.table_e_eq.index(std::vector<uint64_t>{2,2,1,3}) == check);
+    
+    
+    
+    assert(model_test4.table_w_lt.index(std::vector<uint64_t>{0,0,0}) == std::vector<uint32_t>{2});
+    assert(model_test4.table_w_lt.index(std::vector<uint64_t>{0,1,0}) == std::vector<uint32_t>{4});
+    assert(model_test4.table_w_lt.index(std::vector<uint64_t>{0,2,0}) == std::vector<uint32_t>{8});
+    assert(model_test4.table_w_lt.index(std::vector<uint64_t>{1,0,0}) == std::vector<uint32_t>{4});
+    assert(model_test4.table_w_lt.index(std::vector<uint64_t>{1,2,0}) == std::vector<uint32_t>{8});
+    assert(model_test4.table_w_lt.index(std::vector<uint64_t>{1,2,1}) == std::vector<uint32_t>{8});
+    assert(model_test4.table_w_lt.index(std::vector<uint64_t>{2,0,0}) == std::vector<uint32_t>{8});
+    assert(model_test4.table_w_lt.index(std::vector<uint64_t>{2,1,0}) == std::vector<uint32_t>{8});
+    assert(model_test4.table_w_lt.index(std::vector<uint64_t>{2,1,1}) == std::vector<uint32_t>{8});
+    assert(model_test4.table_w_lt.index(std::vector<uint64_t>{2,2,0}) == std::vector<uint32_t>{8});
+    assert(model_test4.table_w_lt.index(std::vector<uint64_t>{2,2,1}) == std::vector<uint32_t>{8});
+    assert(model_test4.table_w_lt.index(std::vector<uint64_t>{2,2,2}) == std::vector<uint32_t>{8});
+    assert(model_test4.table_w_lt.index(std::vector<uint64_t>{2,2,3}) == std::vector<uint32_t>{8});
+    
+    assert(model_test4.table_w_eq.index(std::vector<uint64_t>{0,0,0}) == std::vector<uint32_t>{1});
+    assert(model_test4.table_w_eq.index(std::vector<uint64_t>{1,1,0}) == std::vector<uint32_t>{4});
+    assert(model_test4.table_w_eq.index(std::vector<uint64_t>{2,2,0}) == std::vector<uint32_t>{8});
+    assert(model_test4.table_w_eq.index(std::vector<uint64_t>{2,2,1}) == std::vector<uint32_t>{8});
+    
     
     
     model_test4.generate_Ham_sparse_full();
@@ -487,3 +509,93 @@ void test_basis4()
     std::cout << std::endl;
     
 }
+
+
+
+void test_basis5()
+{
+    std::cout << "--------- test basis5 (check divide and conquer on square lattice) ---------" << std::endl;
+    
+    uint32_t Lx = 2, Ly = 4;
+    
+    // local matrix representation
+    // Spins:
+    std::vector<std::vector<std::complex<double>>> Splus(2,std::vector<std::complex<double>>(2));
+    std::vector<std::vector<std::complex<double>>> Sminus(2,std::vector<std::complex<double>>(2));
+    std::vector<std::complex<double>> Sz(2);
+    Splus[0][0]  = 0.0;
+    Splus[0][1]  = 1.0;
+    Splus[1][0]  = 0.0;
+    Splus[1][1]  = 0.0;
+    Sminus[0][0] = 0.0;
+    Sminus[0][1] = 0.0;
+    Sminus[1][0] = 1.0;
+    Sminus[1][1] = 0.0;
+    Sz[0]        = 0.5;
+    Sz[1]        = -0.5;
+    
+    std::vector<std::string> bc{"pbc", "pbc"};
+    qbasis::lattice lattice("square",std::vector<uint32_t>{Lx, Ly},bc);
+    
+    qbasis::model<std::complex<double>> model_test5;
+    model_test5.add_orbital(lattice.total_sites(), "spin-1/2");
+    
+    qbasis::mopr<std::complex<double>> Sz_total;
+    
+    for (int x = 0; x < Lx; x++) {
+        for (int y = 0; y < Ly; y++) {
+            uint32_t site_i, site_j;
+            lattice.coor2site(std::vector<int>{x,y}, 0, site_i); // obtain site label of (x,y)
+            // construct operators on each site
+            // spin
+            auto Splus_i   = qbasis::opr<std::complex<double>>(site_i,0,false,Splus);
+            auto Sminus_i  = qbasis::opr<std::complex<double>>(site_i,0,false,Sminus);
+            auto Sz_i      = qbasis::opr<std::complex<double>>(site_i,0,false,Sz);
+        
+            // with neighbor (x+1, y)
+            if (bc[0] == "pbc" || (bc[0] == "obc" && x < Lx - 1)) {
+                lattice.coor2site(std::vector<int>{x+1,y}, 0, site_j);
+                // spin exchanges
+                auto Splus_j   = qbasis::opr<std::complex<double>>(site_j,0,false,Splus);
+                auto Sminus_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sminus);
+                auto Sz_j      = qbasis::opr<std::complex<double>>(site_j,0,false,Sz);
+                model_test5.add_offdiagonal_Ham(std::complex<double>(0.5,0.0) * (Splus_i * Sminus_j + Sminus_i * Splus_j));
+                model_test5.add_diagonal_Ham(std::complex<double>(1.0,0.0) * (Sz_i * Sz_j));
+            }
+            
+            // with neighbor (x, y+1)
+            if (bc[1] == "pbc" || (bc[1] == "obc" && y < Ly - 1)) {
+                lattice.coor2site(std::vector<int>{x,y+1}, 0, site_j);
+                auto Splus_j   = qbasis::opr<std::complex<double>>(site_j,0,false,Splus);
+                auto Sminus_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sminus);
+                auto Sz_j      = qbasis::opr<std::complex<double>>(site_j,0,false,Sz);
+                model_test5.add_offdiagonal_Ham(std::complex<double>(0.5,0.0) * (Splus_i * Sminus_j + Sminus_i * Splus_j));
+                model_test5.add_diagonal_Ham(std::complex<double>(1.0,0.0) * (Sz_i * Sz_j));
+            }
+            
+            Sz_total += Sz_i;
+        }
+    }
+    
+    model_test5.enumerate_basis_full(lattice, {Sz_total}, {0.0});
+    
+    std::cout << std::numeric_limits<double>::epsilon() << std::endl;
+    
+    model_test5.fill_Weiss_table(lattice);
+//    std::pair<std::vector<uint32_t>,std::vector<uint32_t>> check;
+//    check.first  = std::vector<uint32_t>{0};
+//    check.second = std::vector<uint32_t>{0};
+//    assert(model_test5.table_lt.index(std::vector<uint64_t>{0,0,0,0}) == check);
+
+    model_test5.generate_Ham_sparse_full();
+    
+    model_test5.locate_E0_full();
+    
+//    assert(std::abs(model_test5.eigenvals_full[0] + 3.65109) < 0.00001);
+//    assert(std::abs(model_test5.eigenvals_full[1] + 3.12842) < 0.00001);
+    std::cout << std::endl;
+    
+}
+
+
+

@@ -349,7 +349,7 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::divide_and_conquer_prep(const lattice &latt)
+    void model<T>::fill_Weiss_table(const lattice &latt)
     {
         assert(Lin_Ja_full.size() > 0 && Lin_Ja_full.size() == Lin_Jb_full.size());
         
@@ -386,9 +386,9 @@ namespace qbasis {
         
         std::cout << "Generating 4-dim tables (ga,gb,ja,jb) -> (i,j)... " << std::flush;
         uint32_t num_groups = groups_sub.size();
-        classify_rep_tables(props, props_sub, basis_sub_full, basis_sub_repr, latt, trans_sym,
+        classify_Weisse_tables(props, props_sub, basis_sub_full, basis_sub_repr, latt, trans_sym,
                             belong2rep_sub, dist2rep_sub, groups_sub, omega_g_sub, belong2group_sub,
-                            table_lt, table_eq, table_gt);
+                            table_e_lt, table_e_eq, table_e_gt, table_w_lt, table_w_eq);
         
         
         

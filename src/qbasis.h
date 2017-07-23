@@ -66,6 +66,8 @@ namespace qbasis {
     static const double sparse_precision = 1e-14;
     static const double lanczos_precision = 1e-12;
     
+    // for the Weisse Table
+    typedef multi_array<std::vector<uint32_t>> array_3D;
     typedef multi_array<std::pair<std::vector<uint32_t>,std::vector<uint32_t>>> array_4D;
     
     class basis_prop;
@@ -120,7 +122,7 @@ namespace qbasis {
                                   std::vector<uint32_t> &omega_g,
                                   std::vector<uint32_t> &belong2group);
     // tabulate the 4-dim tables for (ga,gb,ja,jb) -> (i,j)
-    void classify_rep_tables(const std::vector<basis_prop> &props_parent,
+    void classify_Weisse_tables(const std::vector<basis_prop> &props_parent,
                              const std::vector<basis_prop> &props_sub,
                              const std::vector<mbasis_elem> &basis_sub_full,
                              const std::vector<mbasis_elem> &basis_sub_repr,
@@ -131,9 +133,11 @@ namespace qbasis {
                              const std::vector<std::vector<uint32_t>> &groups,
                              const std::vector<uint32_t> &omega_g,
                              const std::vector<uint32_t> &belong2group,
-                             array_4D &table_lt,
-                             array_4D &table_eq,
-                             array_4D &table_gt);
+                             array_4D &table_e_lt,
+                             array_4D &table_e_eq,
+                             array_4D &table_e_gt,
+                             array_3D &table_w_lt,
+                             array_3D &table_w_eq);
     
     template <typename T> void swap(wavefunction<T>&, wavefunction<T>&);
     template <typename T> wavefunction<T> operator+(const wavefunction<T>&, const wavefunction<T>&);
@@ -1021,7 +1025,8 @@ namespace qbasis {
         std::vector<basis_prop> props_sub_a, props_sub_b;
         std::vector<MKL_INT> Lin_Ja_full;                      // Lin table for the full basis
         std::vector<MKL_INT> Lin_Jb_full;
-        array_4D table_lt, table_eq, table_gt;                 // lookup tables for translational symmetry
+        array_4D table_e_lt, table_e_eq, table_e_gt;           // lookup tables for translational symmetry
+        array_3D table_w_lt, table_w_eq;
         std::vector<qbasis::mbasis_elem> basis_sub_full;
         std::vector<qbasis::mbasis_elem> basis_sub_repr;
         //std::vector<qbasis::mbasis_elem> group_examples_sub;
@@ -1077,7 +1082,7 @@ namespace qbasis {
         
         void fill_Lin_table_full();
         
-        void divide_and_conquer_prep(const lattice &latt);
+        void fill_Weiss_table(const lattice &latt);
         
         // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
         void basis_init_repr(const std::vector<int> &momentum, const lattice &latt);

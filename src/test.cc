@@ -8,6 +8,7 @@ void test_basis();
 void test_basis2();
 void test_basis3();
 void test_basis4();
+void test_basis5();
 
 void test_operator();
 
@@ -32,6 +33,8 @@ int main(){
     test_basis3();
     
     test_basis4();
+    
+    //test_basis5();
     
     /*
     test_operator();
