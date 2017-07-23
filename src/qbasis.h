@@ -31,10 +31,7 @@
 #include <initializer_list>
 #include <chrono>
 #include <cassert>
-#include "multi_array.h"
 #include "mkl.h"
-//#include <boost/multi_array.hpp>
-//#include <boost/math/special_functions/binomial.hpp>
 
 #ifdef _OPENMP
   #include <omp.h>
@@ -67,6 +64,7 @@ namespace qbasis {
     static const double lanczos_precision = 1e-12;
     
     // for the Weisse Table
+    template <typename> class multi_array;
     typedef multi_array<std::vector<uint32_t>> array_3D;
     typedef multi_array<std::pair<std::vector<uint32_t>,std::vector<uint32_t>>> array_4D;
     
@@ -211,7 +209,55 @@ namespace qbasis {
     // divide into two identical sublattices, if Nsites even. To be used in the divide and conquer method
     lattice divide_lattice(const lattice &parent);
     
+    template <typename T> void swap(multi_array<T>&, multi_array<T>&);
+    
 
+    
+//  ------------------------ Multi_array data structure ------------------------
+//  ----------------------------------------------------------------------------
+    
+    template <typename T> class multi_array {
+        friend void swap <> (multi_array<T>&, multi_array<T>&);
+    public:
+        uint32_t dim;
+        uint64_t size;
+        std::vector<uint64_t> linear_size;
+        
+        multi_array(): dim(0), size(0) {}
+        
+        multi_array(const std::vector<uint64_t> &linear_size_input);
+        
+        multi_array(const std::vector<uint64_t> &linear_size_input, const T &element);
+        
+        // copy constructor
+        multi_array(const multi_array<T> &old):
+        dim(old.dim),
+        size(old.size),
+        linear_size(old.linear_size),
+        data(old.data) {}
+        
+        // move constructor
+        multi_array(multi_array<T> &&old) noexcept :
+        dim(old.dim),
+        size(old.size),
+        linear_size(std::move(old.linear_size)),
+        data(std::move(old.data)) {}
+        
+        // copy assignment constructor and move assignment constructor, using "swap and copy"
+        multi_array& operator=(multi_array<T> old) { swap(*this, old); return *this; }
+        
+        multi_array& operator=(const T &element);
+        
+        ~multi_array() {}
+        
+        T& index(const std::vector<uint64_t> &pos);
+        
+        const T& index(const std::vector<uint64_t> &pos) const;
+        
+    private:
+        std::vector<T> data;
+    };
+    
 
 //  --------------------  part 1: basis of the wave functions ------------------
 //  ----------------------------------------------------------------------------
@@ -1075,8 +1121,7 @@ namespace qbasis {
         // naive way of enumerating all possible basis state
         void enumerate_basis_full(const lattice &latt,
                                   std::initializer_list<mopr<std::complex<double>>> conserve_lst = {},
-                                  std::initializer_list<double> val_lst = {},
-                                  const bool &use_translation = true);
+                                  std::initializer_list<double> val_lst = {});
         
         void sort_basis_full();
         
@@ -1085,7 +1130,7 @@ namespace qbasis {
         void fill_Weiss_table(const lattice &latt);
         
         // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
-        void basis_init_repr(const std::vector<int> &momentum, const lattice &latt);
+        void basis_init_repr_deprecated(const std::vector<int> &momentum, const lattice &latt);
         
         void generate_Ham_sparse_full(const bool &upper_triangle = true); // generate the full Hamiltonian in sparse matrix format
         
@@ -1191,9 +1236,6 @@ namespace qbasis {
     //            a2 + ...
     template <typename T>
     T continued_fraction(T a[], T b[], const MKL_INT &len); // b0 not used
-    
-    
-    
     
     
 }

@@ -36,6 +36,7 @@ int main() {
 
     // constructing the Hamiltonian in operator representation
     qbasis::model<std::complex<double>> Hubbard;
+    Hubbard.add_orbital(lattice.total_sites(), "electron");
     qbasis::mopr<std::complex<double>> Nup;   // an operator representating total electron number
     qbasis::mopr<std::complex<double>> Ndown;
     for (int x = 0; x < Lx; x++) {
@@ -87,21 +88,21 @@ int main() {
 
 
     // constructing the Hilbert space basis
-    Hubbard.enumerate_basis_full(lattice.total_sites(), {"electron"}, {Nup,Ndown}, {Nup_total,Ndn_total});
+    Hubbard.enumerate_basis_full(lattice, {Nup,Ndown}, {Nup_total,Ndn_total});
 
 
     std::vector<double> energies;
     for (int i = 0; i < Lx; i++) {
         for (int j = 0; j < Ly; j++) {
             // constructing the subspace basis
-            Hubbard.basis_init_repr(std::vector<int>{i,j}, lattice);
+            Hubbard.basis_init_repr_deprecated(std::vector<int>{i,j}, lattice);
 
             // generating matrix of the Hamiltonian in the subspace
             Hubbard.generate_Ham_sparse_repr();
             std::cout << std::endl;
 
             // obtaining the lowest eigenvals of the matrix
-            Hubbard.locate_E0_repr();
+            Hubbard.locate_E0_repr(2,10);
             std::cout << std::endl;
             energies.push_back(Hubbard.eigenvals_repr[0]);
         }

@@ -39,8 +39,7 @@ namespace qbasis {
     template <typename T>
     void model<T>::enumerate_basis_full(const lattice &latt,
                                         std::initializer_list<mopr<std::complex<double>>> conserve_lst,
-                                        std::initializer_list<double> val_lst,
-                                        const bool &use_translation)
+                                        std::initializer_list<double> val_lst)
     {
         #pragma omp parallel
         {
@@ -401,14 +400,16 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::basis_init_repr(const std::vector<int> &momentum, const lattice &latt)
+    void model<T>::basis_init_repr_deprecated(const std::vector<int> &momentum, const lattice &latt)
     {
         assert(latt.dimension() == static_cast<uint32_t>(momentum.size()));
+        check_translation(latt);
+        
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         std::cout << "Classifying states according to momentum: (";
         for (uint32_t j = 0; j < momentum.size(); j++) {
-            if (latt.boundary()[j] == "pbc" || latt.boundary()[j] == "PBC") {
+            if (trans_sym[j]) {
                 std::cout << momentum[j] << "\t";
             } else {
                 std::cout << "NA\t";
@@ -435,18 +436,20 @@ namespace qbasis {
                 latt.site2coor(disp, sub, site);
                 bool flag = false;
                 for (uint32_t d = 0; d < latt.dimension(); d++) {
-                    if (latt.boundary()[d] != "pbc" && latt.boundary()[d] != "PBC" && disp[d] != 0) {
+                    if (!trans_sym[d] && disp[d] != 0) {
                         flag = true;
                         break;
                     }
                 }
-                if (flag) continue;            // such translation forbidden by boundary condition
+                if (flag) continue;            // such translation forbidden
                 auto basis_temp = basis_full[i];
                 basis_temp.translate(props, latt, disp, sgn);
-                auto j = binary_search<mbasis_elem,MKL_INT>(basis_full, basis_temp, 0, dim_full);
+                uint64_t i_a, i_b;
+                basis_temp.label_sub(props, i_a, i_b);
+                MKL_INT j = Lin_Ja_full[i_a] + Lin_Jb_full[i_b];
                 double exp_coef = 0.0;
                 for (uint32_t d = 0; d < latt.dimension(); d++) {
-                    if (latt.boundary()[d] == "pbc" || latt.boundary()[d] == "PBC") {
+                    if (trans_sym[d]) {
                         exp_coef += momentum[d] * disp[d] / static_cast<double>(L[d]);
                     }
                 }
@@ -548,8 +551,10 @@ namespace qbasis {
             qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[repr_i], props);  // non-diagonal part:
             for (uint32_t cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele_new = intermediate_state[cnt];
-                MKL_INT state_j = binary_search<mbasis_elem,MKL_INT>(basis_full, ele_new.first, 0, dim_full);
-                assert(state_j != -1);
+                uint64_t i_a, i_b;
+                ele_new.first.label_sub(props, i_a, i_b);
+                MKL_INT state_j = Lin_Ja_full[i_a] + Lin_Jb_full[i_b];
+                assert(state_j >= 0 && state_j < dim_full);
                 auto repr_j = basis_belong[state_j];
                 auto j = binary_search<MKL_INT,MKL_INT>(basis_repr, repr_j, 0, dim_repr);                 // < j |P'_k H | i > obtained
                 if (j < 0 || j >= dim_repr) continue;

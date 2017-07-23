@@ -2,7 +2,6 @@
 #include <iomanip>
 #include <fstream>
 #include "qbasis.h"
-#include "multi_array.h"
 
 void test_basis();
 void test_basis2();

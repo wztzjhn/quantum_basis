@@ -52,6 +52,8 @@ int main() {
     // constructing the Hamiltonian in operator representation
     // electrons on orbital 0, local spins on orbital 1
     qbasis::model<std::complex<double>> Kondo;
+    Kondo.add_orbital(lattice.total_sites(), "electron");
+    Kondo.add_orbital(lattice.total_sites(), "spin-1/2");
     qbasis::mopr<std::complex<double>> Nelec_total;   // operators representating total electron number
     qbasis::mopr<std::complex<double>> Sz_total;
     for (int x = 0; x < L; x++) {
@@ -107,13 +109,13 @@ int main() {
 
     // constructing the Hilbert space basis
     //Kondo.enumerate_basis_full(lattice.total_sites(), {"electron","spin-1/2"}, {Nelec_total,Sz_total}, {static_cast<double>(Nelec_total_val),Sz_total_val});
-    Kondo.enumerate_basis_full(lattice.total_sites(), {"electron","spin-1/2"}, {Nelec_total}, {Nelec_total_val});
+    Kondo.enumerate_basis_full(lattice, {Nelec_total}, {Nelec_total_val});
 
 
     std::vector<double> energies;
     for (int i = 0; i < L; i++) {
         // constructing the subspace basis
-        Kondo.basis_init_repr(std::vector<int>{i}, lattice);
+        Kondo.basis_init_repr_deprecated(std::vector<int>{i}, lattice);
 
         // generating matrix of the Hamiltonian in the subspace
         Kondo.generate_Ham_sparse_repr();
