@@ -231,17 +231,17 @@ namespace qbasis {
         
         // copy constructor
         multi_array(const multi_array<T> &old):
-        dim(old.dim),
-        size(old.size),
-        linear_size(old.linear_size),
-        data(old.data) {}
+            dim(old.dim),
+            size(old.size),
+            linear_size(old.linear_size),
+            data(old.data) {}
         
         // move constructor
         multi_array(multi_array<T> &&old) noexcept :
-        dim(old.dim),
-        size(old.size),
-        linear_size(std::move(old.linear_size)),
-        data(std::move(old.data)) {}
+            dim(old.dim),
+            size(old.size),
+            linear_size(std::move(old.linear_size)),
+            data(std::move(old.data)) {}
         
         // copy assignment constructor and move assignment constructor, using "swap and copy"
         multi_array& operator=(multi_array<T> old) { swap(*this, old); return *this; }
@@ -1127,10 +1127,14 @@ namespace qbasis {
         
         void fill_Lin_table_full();
         
-        void fill_Weiss_table(const lattice &latt);
+        void enumerate_basis_repr(const lattice &latt,
+                                  std::initializer_list<mopr<std::complex<double>>> conserve_lst = {},
+                                  std::initializer_list<double> val_lst = {});
         
         // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
         void basis_init_repr_deprecated(const std::vector<int> &momentum, const lattice &latt);
+        
+        void fill_Weiss_table(const lattice &latt);
         
         void generate_Ham_sparse_full(const bool &upper_triangle = true); // generate the full Hamiltonian in sparse matrix format
         

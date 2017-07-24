@@ -1199,12 +1199,20 @@ namespace qbasis {
         linear_size.push_back(static_cast<uint64_t>(num_groups));
         linear_size.push_back(static_cast<uint64_t>(num_groups));
         for (uint32_t j = 0; j < latt_sub_dim; j++) {
-            if (trans_sym[j]) linear_size.push_back(static_cast<uint64_t>(latt_sub_linear_size[j]));
+            if (trans_sym[j]) {
+                linear_size.push_back(static_cast<uint64_t>(latt_sub_linear_size[j]));
+            } else {
+                linear_size.push_back(1);
+            }
         }
         table_w_lt = array_3D(linear_size, std::vector<uint32_t>(latt_sub_dim,999999999));
         table_w_eq = array_3D(linear_size, std::vector<uint32_t>(latt_sub_dim,999999999));
         for (uint32_t j = 0; j < latt_sub_dim; j++) {
-            if (trans_sym[j]) linear_size.push_back(static_cast<uint64_t>(latt_sub_linear_size[j]));
+            if (trans_sym[j]) {
+                linear_size.push_back(static_cast<uint64_t>(latt_sub_linear_size[j]));
+            } else {
+                linear_size.push_back(1);
+            }
         }
         table_e_lt = array_4D(linear_size, default_value);
         table_e_eq = array_4D(linear_size, default_value);

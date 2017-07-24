@@ -347,57 +347,6 @@ namespace qbasis {
         std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
     }
     
-    template <typename T>
-    void model<T>::fill_Weiss_table(const lattice &latt)
-    {
-        assert(Lin_Ja_full.size() > 0 && Lin_Ja_full.size() == Lin_Jb_full.size());
-        
-        // first check translation symmetry
-        check_translation(latt);
-        
-        std::chrono::time_point<std::chrono::system_clock> start, end;
-        start = std::chrono::system_clock::now();
-        
-        auto props_sub = props_sub_a;
-        uint32_t Nsites = props[0].num_sites;
-        uint32_t Nsites_sub = props_sub[0].num_sites;
-        
-        auto latt_sub = divide_lattice(latt);
-        std::cout << "Generating sublattice full basis... " << std::flush;
-        basis_sub_full = enumerate_basis_all(props_sub);
-        end = std::chrono::system_clock::now();
-        std::chrono::duration<double> elapsed_seconds = end - start;
-        std::cout << elapsed_seconds.count() << "s." << std::endl;
-        start = end;
-        
-        std::cout << "Classifying sublattice basis... " << std::flush;
-        classify_trans_full2rep(props_sub, basis_sub_full, latt_sub, trans_sym, basis_sub_repr, belong2rep_sub, dist2rep_sub);
-        classify_trans_rep2group(props_sub, basis_sub_repr, latt_sub, trans_sym, groups_sub, omega_g_sub, belong2group_sub);
-        uint64_t check_dim_sub_full = 0;
-        for (decltype(basis_sub_repr.size()) j = 0; j < basis_sub_repr.size(); j++) check_dim_sub_full += omega_g_sub[belong2group_sub[j]];
-        //std::cout << "check_dim_sub_full    = " << check_dim_sub_full << std::endl;
-        //std::cout << "basis_sub_full.size() = " << basis_sub_full.size() << std::endl;
-        assert(check_dim_sub_full == static_cast<uint64_t>(basis_sub_full.size()));
-        end = std::chrono::system_clock::now();
-        elapsed_seconds = end - start;
-        std::cout << elapsed_seconds.count() << "s." << std::endl;
-        start = end;
-        
-        std::cout << "Generating 4-dim tables (ga,gb,ja,jb) -> (i,j)... " << std::flush;
-        uint32_t num_groups = groups_sub.size();
-        classify_Weisse_tables(props, props_sub, basis_sub_full, basis_sub_repr, latt, trans_sym,
-                            belong2rep_sub, dist2rep_sub, groups_sub, omega_g_sub, belong2group_sub,
-                            table_e_lt, table_e_eq, table_e_gt, table_w_lt, table_w_eq);
-        
-        
-        
-        
-        
-        end = std::chrono::system_clock::now();
-        elapsed_seconds = end - start;
-        std::cout << elapsed_seconds.count() << "s." << std::endl;
-        std::cout << std::endl;
-    }
     
     template <typename T>
     void model<T>::basis_init_repr_deprecated(const std::vector<int> &momentum, const lattice &latt)
@@ -493,6 +442,82 @@ namespace qbasis {
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+    }
+    
+    
+    template <typename T>
+    void model<T>::enumerate_basis_repr(const lattice &latt,
+                                        std::initializer_list<mopr<std::complex<double>>> conserve_lst,
+                                        std::initializer_list<double> val_lst)
+    {
+        assert(basis_sub_repr.size() > 0);
+        auto latt_sub = divide_lattice(latt);
+        auto base_sub = latt_sub.Linear_size();
+        for (decltype(latt_sub.dimension()) j = 0; j < latt_sub.dimension(); j++) {
+            if (! trans_sym[j]) base_sub[j]    = 1;
+        }
+    
+        
+        for (decltype(basis_sub_repr.size()) ra = 0; ra < basis_sub_repr.size(); ra++) {
+            auto ga = belong2group_sub[ra];
+            for (decltype(ra) rb = ra; rb < basis_sub_repr.size(); rb++) {
+                auto gb = belong2group_sub[rb];
+                
+                
+                
+            }
+        }
+        
+        
+    }
+    
+    
+    
+    template <typename T>
+    void model<T>::fill_Weiss_table(const lattice &latt)
+    {
+        assert(Lin_Ja_full.size() > 0 && Lin_Ja_full.size() == Lin_Jb_full.size());
+        
+        // first check translation symmetry
+        check_translation(latt);
+        
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        
+        auto props_sub = props_sub_a;
+        uint32_t Nsites = props[0].num_sites;
+        uint32_t Nsites_sub = props_sub[0].num_sites;
+        
+        auto latt_sub = divide_lattice(latt);
+        std::cout << "Generating sublattice full basis... " << std::flush;
+        basis_sub_full = enumerate_basis_all(props_sub);
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        start = end;
+        
+        std::cout << "Classifying sublattice basis... " << std::flush;
+        classify_trans_full2rep(props_sub, basis_sub_full, latt_sub, trans_sym, basis_sub_repr, belong2rep_sub, dist2rep_sub);
+        classify_trans_rep2group(props_sub, basis_sub_repr, latt_sub, trans_sym, groups_sub, omega_g_sub, belong2group_sub);
+        uint64_t check_dim_sub_full = 0;
+        for (decltype(basis_sub_repr.size()) j = 0; j < basis_sub_repr.size(); j++) check_dim_sub_full += omega_g_sub[belong2group_sub[j]];
+        //std::cout << "check_dim_sub_full    = " << check_dim_sub_full << std::endl;
+        //std::cout << "basis_sub_full.size() = " << basis_sub_full.size() << std::endl;
+        assert(check_dim_sub_full == static_cast<uint64_t>(basis_sub_full.size()));
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        start = end;
+        
+        std::cout << "Generating 4-dim tables (ga,gb,ja,jb) -> (i,j)... " << std::flush;
+        uint32_t num_groups = groups_sub.size();
+        classify_Weisse_tables(props, props_sub, basis_sub_full, basis_sub_repr, latt, trans_sym,
+                               belong2rep_sub, dist2rep_sub, groups_sub, omega_g_sub, belong2group_sub,
+                               table_e_lt, table_e_eq, table_e_gt, table_w_lt, table_w_eq);
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        std::cout << std::endl;
     }
     
     
