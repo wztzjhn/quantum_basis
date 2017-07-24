@@ -1132,6 +1132,8 @@ namespace qbasis {
                                   std::initializer_list<mopr<std::complex<double>>> conserve_lst = {},
                                   std::initializer_list<double> val_lst = {});
         
+        void sort_basis_repr();
+        
         // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
         void basis_init_repr_deprecated(const std::vector<int> &momentum, const lattice &latt);
         

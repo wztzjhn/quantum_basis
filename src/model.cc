@@ -494,8 +494,6 @@ namespace qbasis {
                             it_opr++;
                             it_val++;
                         }
-                        
-                        
                         if (flag) basis_repr.push_back(ra_z_Tj_rb);
                     }
                     disp_j = dynamic_base_plus1(disp_j, groups_sub[gb]);
@@ -506,8 +504,49 @@ namespace qbasis {
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout <<  elapsed_seconds.count() << "s." << std::endl;
         std::cout << "dim_repr (without removing dulplicates) = " << basis_repr.size() << std::endl;
+        
+        sort_basis_repr();
     }
     
+    
+    // sort according to Lin Table convention (Ib, then Ia)
+    template <typename T>
+    void model<T>::sort_basis_repr()
+    {
+        bool sorted = true;
+        for (decltype(basis_repr.size()) j = 0; j < basis_repr.size() - 1; j++) {
+            assert(basis_repr[j] != basis_repr[j+1]);
+            mbasis_elem sub_a1, sub_b1, sub_a2, sub_b2;
+            unzipper_basis(props, props_sub_a, props_sub_b, basis_repr[j], sub_a1, sub_b1);
+            unzipper_basis(props, props_sub_a, props_sub_b, basis_repr[j+1], sub_a2, sub_b2);
+            if (sub_b2 < sub_b1 || (sub_b2 == sub_b1 && sub_a2 < sub_a1)) {
+                sorted = false;
+                break;
+            }
+        }
+        if (! sorted) {
+            std::chrono::time_point<std::chrono::system_clock> start, end;
+            start = std::chrono::system_clock::now();
+            std::cout << "sorting basis(repr) according to Lin Table convention... " << std::flush;
+            auto cmp = [this](const mbasis_elem &j1, const mbasis_elem &j2){
+                mbasis_elem sub_a1, sub_b1, sub_a2, sub_b2;
+                unzipper_basis(this->props, this->props_sub_a, this->props_sub_b, j1, sub_a1, sub_b1);
+                unzipper_basis(this->props, this->props_sub_a, this->props_sub_b, j2, sub_a2, sub_b2);
+                if (sub_b1 == sub_b2) {
+                    return sub_a1 < sub_a2;
+                } else {
+                    return sub_b1 < sub_b2;
+                }};
+#ifdef use_gnu_parallel_sort
+            __gnu_parallel::sort(basis_repr.begin(), basis_repr.end(),cmp);
+#else
+            std::sort(basis_repr.begin(), basis_repr.end(),cmp);
+#endif
+            end = std::chrono::system_clock::now();
+            std::chrono::duration<double> elapsed_seconds = end - start;
+            std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
+        }
+    }
     
     
     template <typename T>
