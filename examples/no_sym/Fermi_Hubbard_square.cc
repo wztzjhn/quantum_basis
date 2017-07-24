@@ -160,30 +160,30 @@ int main() {
             }
         }
         // prepare restart state
-        std::vector<std::complex<double>> phi0(Hubbard.dim_full, 0.0);
+        std::vector<std::complex<double>> phi0(Hubbard.dim_target_full, 0.0);
         Hubbard.moprXeigenvec_full(Szmq, phi0.data());
         // normalization of restart state
-        double phi0_nrm2 = qbasis::nrm2(Hubbard.dim_full, phi0.data(), 1);
+        double phi0_nrm2 = qbasis::nrm2(Hubbard.dim_target_full, phi0.data(), 1);
         double rnorm;
         std::cout << "Q\t" << m << "," << n << std::endl;
         std::cout << "phi_nrm2 = " << phi0_nrm2 << std::endl;
         if (phi0_nrm2 > qbasis::lanczos_precision) {
-            qbasis::scal(Hubbard.dim_full, 1.0/phi0_nrm2, phi0.data(), 1);
+            qbasis::scal(Hubbard.dim_target_full, 1.0/phi0_nrm2, phi0.data(), 1);
         }
         fout << "Q\t" << m << "," << n << std::endl;
         fout << "nrm2\t" << phi0_nrm2 << std::endl;
         // run Lanczos once again
         std::cout << "Running continued fraction with " << step << " steps" << std::endl;
-        std::vector<std::complex<double>> v(Hubbard.dim_full * 3);
+        std::vector<std::complex<double>> v(Hubbard.dim_target_full * 3);
         std::vector<double> hessenberg(step * 2, 0.0);
         if (phi0_nrm2 > qbasis::lanczos_precision) {
             std::cout << "Running continued fraction with " << step << " steps" << std::endl;
-            std::vector<std::complex<double>> v(Hubbard.dim_full * 3);
+            std::vector<std::complex<double>> v(Hubbard.dim_target_full * 3);
             std::vector<double> hessenberg(step * 2, 0.0);
-            if (Hubbard.HamMat_csr_full.dimension() == Hubbard.dim_full) {
-                qbasis::lanczos(0, step, Hubbard.dim_full, Hubbard.HamMat_csr_full, rnorm, phi0.data(), v.data(), hessenberg.data(), step, false);
+            if (Hubbard.HamMat_csr_full.dimension() == Hubbard.dim_target_full) {
+                qbasis::lanczos(0, step, Hubbard.dim_target_full, Hubbard.HamMat_csr_full, rnorm, phi0.data(), v.data(), hessenberg.data(), step, false);
             } else {
-                qbasis::lanczos(0, step, Hubbard.dim_full, Hubbard, rnorm, phi0.data(), v.data(), hessenberg.data(), step, false);
+                qbasis::lanczos(0, step, Hubbard.dim_target_full, Hubbard, rnorm, phi0.data(), v.data(), hessenberg.data(), step, false);
             }
             fout << "b\t";
             for (int i = 0; i < step; i++) {

@@ -507,7 +507,7 @@ void test_basis4()
     model_test4.enumerate_basis_repr(lattice, {Sz_total}, {0.0});
     
     model_test4.basis_init_repr_deprecated(std::vector<int>{7}, lattice);
-    std::cout << "dim_repr = " << model_test4.dim_repr << std::endl;
+    std::cout << "dim_repr = " << model_test4.dim_target_repr << std::endl;
     
     assert(std::abs(model_test4.eigenvals_full[0] + 3.65109) < 0.00001);
     assert(std::abs(model_test4.eigenvals_full[1] + 3.12842) < 0.00001);

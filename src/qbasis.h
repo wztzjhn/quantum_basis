@@ -1046,42 +1046,52 @@ namespace qbasis {
     public:
         bool matrix_free;
         std::vector<basis_prop> props;
+        std::vector<basis_prop> props_sub_a, props_sub_b;
         mopr<T> Ham_diag;
         mopr<T> Ham_off_diag;
         MKL_INT nconv;
         
-        MKL_INT dim_full;
-        std::vector<qbasis::mbasis_elem> basis_full;
+        std::vector<bool> trans_sym;
         
-        csr_mat<T> HamMat_csr_full;                            // corresponding to the full Hilbert space
+        MKL_INT dim_target_full;
+        MKL_INT dim_excite_full;
+        MKL_INT dim_target_repr;
+        MKL_INT dim_excite_repr;
+        std::vector<qbasis::mbasis_elem> basis_target_full;    // full basis for ground state sector, without translation sym
+        std::vector<qbasis::mbasis_elem> basis_excite_full;    // full basis for some intermeidate state sector (e.g. calculating correlation functions)
+        std::vector<qbasis::mbasis_elem> basis_target_repr;
+        std::vector<qbasis::mbasis_elem> basis_excite_repr;
+        std::vector<qbasis::mbasis_elem> basis_sub_full;       // basis for half lattice, used for building Weisse Table
+        std::vector<qbasis::mbasis_elem> basis_sub_repr;       // reps for half lattice
+        
+        
+        csr_mat<T> HamMat_csr_full;
+        csr_mat<std::complex<double>> HamMat_csr_repr;         // for the representative Hilbert space
+        
         std::vector<double> eigenvals_full;
         std::vector<T> eigenvecs_full;
-        
-        std::vector<bool> trans_sym;
-        std::vector<qbasis::mbasis_elem> basis_repr;
-        MKL_INT dim_repr;
-        std::vector<MKL_INT> basis_belong;                     // size: dim_all, store the position of its repr
-        std::vector<std::complex<double>> basis_coeff;         // size: dim_all, store the coeff
-        std::vector<MKL_INT> basis_repr_deprecated;
-        // leave space for the 4-D arrays used for divide and conquer method
-        csr_mat<std::complex<double>> HamMat_csr_repr;         // for the representative Hilbert space
         std::vector<double> eigenvals_repr;
         std::vector<std::complex<double>> eigenvecs_repr;
         
-        // info of sublattice, for Lin Table, and the divide and conquer method
-        std::vector<basis_prop> props_sub_a, props_sub_b;
-        std::vector<MKL_INT> Lin_Ja_full;                      // Lin table for the full basis
+        
+        std::vector<MKL_INT> Lin_Ja_full;                      // Lin tables for the full basis
         std::vector<MKL_INT> Lin_Jb_full;
-        array_4D table_e_lt, table_e_eq, table_e_gt;           // lookup tables for translational symmetry
+        array_4D table_e_lt, table_e_eq, table_e_gt;           // Weisse Tables for translation symmetry
         array_3D table_w_lt, table_w_eq;
-        std::vector<qbasis::mbasis_elem> basis_sub_full;
-        std::vector<qbasis::mbasis_elem> basis_sub_repr;
-        //std::vector<qbasis::mbasis_elem> group_examples_sub;
+        
         std::vector<uint64_t> belong2rep_sub;
         std::vector<std::vector<int>> dist2rep_sub;
         std::vector<std::vector<uint32_t>> groups_sub;
         std::vector<uint32_t> omega_g_sub;
         std::vector<uint32_t> belong2group_sub;
+        
+        
+        // ---------------- deprecated --------------------
+        std::vector<MKL_INT> basis_belong;                // size: dim_target_full, store the position of its repr
+        std::vector<std::complex<double>> basis_coeff;    // size: dim_target_full, store the coeff
+        std::vector<MKL_INT> basis_repr_deprecated;
+        // ---------------- deprecated --------------------
+        
         
         model();
         
@@ -1182,6 +1192,10 @@ namespace qbasis {
         double Emax;
         double E0;
         double gap;
+        
+        
+        
+        
         
         // check if translational symmetry satisfied
         void check_translation(const lattice &latt);
