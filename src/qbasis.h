@@ -1058,10 +1058,11 @@ namespace qbasis {
         std::vector<T> eigenvecs_full;
         
         std::vector<bool> trans_sym;
+        std::vector<qbasis::mbasis_elem> basis_repr;
         MKL_INT dim_repr;
         std::vector<MKL_INT> basis_belong;                     // size: dim_all, store the position of its repr
         std::vector<std::complex<double>> basis_coeff;         // size: dim_all, store the coeff
-        std::vector<MKL_INT> basis_repr;
+        std::vector<MKL_INT> basis_repr_deprecated;
         // leave space for the 4-D arrays used for divide and conquer method
         csr_mat<std::complex<double>> HamMat_csr_repr;         // for the representative Hilbert space
         std::vector<double> eigenvals_repr;
@@ -1134,7 +1135,7 @@ namespace qbasis {
         // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
         void basis_init_repr_deprecated(const std::vector<int> &momentum, const lattice &latt);
         
-        void fill_Weiss_table(const lattice &latt);
+        void fill_Weisse_table(const lattice &latt);
         
         void generate_Ham_sparse_full(const bool &upper_triangle = true); // generate the full Hamiltonian in sparse matrix format
         

@@ -1583,7 +1583,7 @@ namespace qbasis {
                 
                 std::vector<uint32_t> disp_i(latt_sub_dim,0);  // fixed to ja=0
                 std::vector<uint32_t> disp_j(latt_sub_dim,0);  // now also serves the job of jb
-                while (! dynamic_base_overflow(disp_j, base_sub)) {
+                while (! dynamic_base_overflow(disp_j, groups[gb])) {
                     std::vector<uint64_t> pos_e{ga,gb};
                     std::vector<uint64_t> pos_w{ga,gb};
                     pos_e.insert(pos_e.end(), disp_i.begin(), disp_i.end());
@@ -1656,7 +1656,7 @@ namespace qbasis {
                     }
                     
                     
-                    disp_j = dynamic_base_plus1(disp_j, base_sub);
+                    disp_j = dynamic_base_plus1(disp_j, groups[gb]);
                 }
             }
         }

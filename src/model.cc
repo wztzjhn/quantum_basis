@@ -436,9 +436,9 @@ namespace qbasis {
         }
         assert(dim_repr == static_cast<MKL_INT>(temp_repr.size()));
         if (redundant > 0) std::cout << redundant << " redundant reprs removed." << std::endl;
-        basis_repr.resize(dim_repr);
-        std::copy(temp_repr.begin(), temp_repr.end(), basis_repr.begin());
-        assert(is_sorted_norepeat(basis_repr));
+        basis_repr_deprecated.resize(dim_repr);
+        std::copy(temp_repr.begin(), temp_repr.end(), basis_repr_deprecated.begin());
+        assert(is_sorted_norepeat(basis_repr_deprecated));
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
@@ -450,31 +450,68 @@ namespace qbasis {
                                         std::initializer_list<mopr<std::complex<double>>> conserve_lst,
                                         std::initializer_list<double> val_lst)
     {
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        std::cout << "Enumerating basis_repr... " << std::flush;
+        
+        assert(conserve_lst.size() == val_lst.size());
         assert(basis_sub_repr.size() > 0);
         auto latt_sub = divide_lattice(latt);
         auto base_sub = latt_sub.Linear_size();
         for (decltype(latt_sub.dimension()) j = 0; j < latt_sub.dimension(); j++) {
             if (! trans_sym[j]) base_sub[j]    = 1;
         }
+        basis_repr.clear();
     
-        
+        std::vector<uint32_t> default_val(latt_sub.dimension(),0);
         for (decltype(basis_sub_repr.size()) ra = 0; ra < basis_sub_repr.size(); ra++) {
             auto ga = belong2group_sub[ra];
+            int sgn;
             for (decltype(ra) rb = ra; rb < basis_sub_repr.size(); rb++) {
                 auto gb = belong2group_sub[rb];
-                
-                
-                
+                std::vector<uint32_t> disp_j(latt_sub.dimension(),0);
+                std::vector<int> disp_j_int(disp_j.size());
+                while (! dynamic_base_overflow(disp_j, groups_sub[gb])) {
+                    auto pos = std::vector<uint64_t>{ga,gb};
+                    pos.insert(pos.end(), disp_j.begin(), disp_j.end());
+                    auto val = (ra < rb)?(table_w_lt.index(pos)):(table_w_eq.index(pos));
+                    if (val != default_val) {  // valid representative
+                        mbasis_elem rb_new = basis_sub_repr[rb];
+                        for (uint32_t j = 0; j < latt_sub.dimension(); j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
+                        rb_new.translate(props_sub_b, latt_sub, disp_j_int, sgn);
+                        auto ra_z_Tj_rb = zipper_basis(props, props_sub_a, props_sub_b, basis_sub_repr[ra], rb_new);
+                        
+                        // check if the symmetries are obeyed
+                        bool flag = true;
+                        auto it_opr = conserve_lst.begin();
+                        auto it_val = val_lst.begin();
+                        while (it_opr != conserve_lst.end()) {
+                            auto temp = ra_z_Tj_rb.diagonal_operator(props, *it_opr);
+                            if (std::abs(temp - *it_val) >= 1e-5) {
+                                flag = false;
+                                break;
+                            }
+                            it_opr++;
+                            it_val++;
+                        }
+                        
+                        
+                        if (flag) basis_repr.push_back(ra_z_Tj_rb);
+                    }
+                    disp_j = dynamic_base_plus1(disp_j, groups_sub[gb]);
+                }
             }
         }
-        
-        
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout <<  elapsed_seconds.count() << "s." << std::endl;
+        std::cout << "dim_repr (without removing dulplicates) = " << basis_repr.size() << std::endl;
     }
     
     
     
     template <typename T>
-    void model<T>::fill_Weiss_table(const lattice &latt)
+    void model<T>::fill_Weisse_table(const lattice &latt)
     {
         assert(Lin_Ja_full.size() > 0 && Lin_Ja_full.size() == Lin_Jb_full.size());
         
@@ -570,7 +607,7 @@ namespace qbasis {
         lil_mat<std::complex<double>> matrix_lil(dim_repr, upper_triangle);
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim_repr; i++) {
-            auto repr_i = basis_repr[i];
+            auto repr_i = basis_repr_deprecated[i];
             for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)                                            // diagonal part:
                 matrix_lil.add(i, i, basis_full[repr_i].diagonal_operator(props,Ham_diag[cnt]));
             qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[repr_i], props);  // non-diagonal part:
@@ -581,7 +618,7 @@ namespace qbasis {
                 MKL_INT state_j = Lin_Ja_full[i_a] + Lin_Jb_full[i_b];
                 assert(state_j >= 0 && state_j < dim_full);
                 auto repr_j = basis_belong[state_j];
-                auto j = binary_search<MKL_INT,MKL_INT>(basis_repr, repr_j, 0, dim_repr);                 // < j |P'_k H | i > obtained
+                auto j = binary_search<MKL_INT,MKL_INT>(basis_repr_deprecated, repr_j, 0, dim_repr);                 // < j |P'_k H | i > obtained
                 if (j < 0 || j >= dim_repr) continue;
                 auto coeff = basis_coeff[state_j]/std::sqrt(std::real(basis_coeff[repr_i] * basis_coeff[repr_j]));
                 if (upper_triangle) {
