@@ -2,9 +2,7 @@ CXX       = icpc
 CPPFLAGS  = -O2 -std=c++11 -w3 -wd383,981 -qopenmp -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
 LIBS      = -L/usr/local/lib -larpack -L${MKLROOT}/lib/intel64 -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -qopenmp
 
-OBJS      = multi_array.o \
-            graph.o \
-            lattice.o \
+OBJS      = lattice.o \
             miscellaneous.o \
             model.o \
             lanczos.o \

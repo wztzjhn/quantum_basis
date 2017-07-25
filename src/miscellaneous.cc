@@ -1,4 +1,5 @@
 #include "qbasis.h"
+#include "graph.h"
 
 namespace qbasis {
     template <typename T1, typename T2>
@@ -194,6 +195,165 @@ namespace qbasis {
     }
     template double continued_fraction(double a[], double b[], const MKL_INT &len);
     template std::complex<double> continued_fraction(std::complex<double> a[], std::complex<double> b[], const MKL_INT &len);
+    
+    
+    
+
+    //  -------------- Multi-dimensional array data structure ------------------
+    template <typename T>
+    multi_array<T>::multi_array(const std::vector<uint64_t> &linear_size_input):
+    dim_(linear_size_input.size()),
+    linear_size_(linear_size_input)
+    {
+        assert(dim_ > 0);
+        size_ = linear_size_[0];
+        for (decltype(linear_size_.size()) j = 1; j < linear_size_.size(); j++)
+            size_ *= linear_size_[j];
+        data = std::vector<T>(size_);
+    }
+    
+    template <typename T>
+    multi_array<T>::multi_array(const std::vector<uint64_t> &linear_size_input, const T &element):
+    dim_(linear_size_input.size()),
+    linear_size_(linear_size_input)
+    {
+        assert(dim_ > 0);
+        size_ = linear_size_[0];
+        for (decltype(linear_size_.size()) j = 1; j < linear_size_.size(); j++)
+            size_ *= linear_size_[j];
+        data = std::vector<T>(size_, element);
+    }
+    
+    template <typename T>
+    multi_array<T>& multi_array<T>::operator=(const T &element)
+    {
+        for (uint64_t j = 0; j < size_; j++) data[j] = element;
+        return *this;
+    }
+    
+    template <typename T>
+    T& multi_array<T>::index(const std::vector<uint64_t> &pos)
+    {
+        assert(pos.size() == linear_size_.size());
+        uint64_t res = 0;
+        auto j = linear_size_.size() - 1;
+        while (pos[j] == 0 && j > 0) j--;
+        while (j > 0) {
+            assert(pos[j] < linear_size_[j]);
+            res = (res + pos[j]) * linear_size_[j-1];
+            j--;
+        }
+        assert(pos[0] < linear_size_[0]);
+        res += pos[0];
+        return data[res];
+    }
+    
+    template <typename T>
+    const T& multi_array<T>::index(const std::vector<uint64_t> &pos) const
+    {
+        assert(pos.size() == linear_size_.size());
+        uint64_t res = 0;
+        auto j = linear_size_.size() - 1;
+        while (pos[j] == 0 && j > 0) j--;
+        while (j > 0) {
+            assert(pos[j] < linear_size_[j]);
+            res = (res + pos[j]) * linear_size_[j-1];
+            j--;
+        }
+        assert(pos[0] < linear_size_[0]);
+        res += pos[0];
+        return data[res];
+    }
+    
+    template <typename T>
+    void swap(multi_array<T> &lhs, multi_array<T> &rhs)
+    {
+        using std::swap;
+        swap(lhs.dim_, rhs.dim_);
+        swap(lhs.size_, rhs.size_);
+        swap(lhs.linear_size_, rhs.linear_size_);
+        swap(lhs.data, rhs.data);
+    }
+    
+    // explicit instantiation
+    template class multi_array<double>;
+    template class multi_array<std::vector<uint32_t>>;
+    template class multi_array<std::pair<std::vector<uint32_t>,std::vector<uint32_t>>>;
+    
+    template void swap(multi_array<double>&, multi_array<double>&);
+    template void swap(multi_array<std::vector<uint32_t>>&, multi_array<std::vector<uint32_t>>&);
+    template void swap(multi_array<std::pair<std::vector<uint32_t>,std::vector<uint32_t>>>&,
+                       multi_array<std::pair<std::vector<uint32_t>,std::vector<uint32_t>>>&);
+    
+    
+    
+    //  ----------------------- graph data structure ---------------------------
+    void ALGraph::add_edge(const uint64_t &n1, const uint64_t &n2)
+    {
+        assert(n1 != n2);
+        assert(n1 < vertices.size() && n2 < vertices.size());
+        vertices[n1].arcs.push_back(n2);
+        vertices[n2].arcs.push_back(n1);
+        arcnum++;
+    }
+    
+    void ALGraph::prt() const
+    {
+        for (uint64_t v = 0; v < vertices.size(); v++) {
+            std::cout << v << " -> ";
+            for (auto w : vertices[v].arcs) {
+                std::cout << w << ",";
+            }
+            std::cout << std::endl;
+        }
+    }
+    
+    void ALGraph::BSF_set_JaJb(std::vector<MKL_INT> &ja, std::vector<MKL_INT> &jb)
+    {
+        MKL_INT magic = -19900917;
+        for (decltype(ja.size()) j = 0; j < ja.size(); j++) ja[j] = magic;
+        for (decltype(jb.size()) j = 0; j < jb.size(); j++) jb[j] = magic;
+        
+        std::vector<bool> visited(vertices.size(),false);
+        std::list<uint64_t> Q;
+        for (uint64_t v = 0; v < vertices.size(); v++) {
+            if (! visited[v]) {
+                visited[v] = true;
+                // ja, jb arbitrary for this node
+                //std::cout << "v = " << v << std::endl;
+                assert(ja[vertices[v].i_a] == magic && jb[vertices[v].i_b] == magic);
+                jb[vertices[v].i_b] = static_cast<MKL_INT>(v)/2;
+                ja[vertices[v].i_a] = static_cast<MKL_INT>(v) - jb[vertices[v].i_b];
+                //std::cout << "ia,ib -> ja,jb : " << vertices[v].i_a << "," << vertices[v].i_b << " -> " <<
+                //ja[vertices[v].i_a] << "," << jb[vertices[v].i_b] << std::endl;
+                Q.push_back(v);
+                while (Q.size() != 0) {
+                    uint64_t u = Q.front();
+                    Q.pop_front();
+                    auto u_arcs = vertices[u].arcs;
+                    for (auto w : u_arcs) {
+                        if (! visited[w]) {
+                            visited[w] = true;
+                            // ja, jb fixed from connected neighbors
+                            //std::cout << "w = " << w << std::endl;
+                            if (ja[vertices[w].i_a] == magic) {
+                                assert(jb[vertices[w].i_b] != magic);
+                                ja[vertices[w].i_a] = static_cast<MKL_INT>(w) - jb[vertices[w].i_b];
+                            } else if (jb[vertices[w].i_b] == magic) {
+                                assert(ja[vertices[w].i_a] != magic);
+                                jb[vertices[w].i_b] = static_cast<MKL_INT>(w) - ja[vertices[w].i_a];
+                            } else {
+                                assert(ja[vertices[w].i_a] + jb[vertices[w].i_b] == static_cast<MKL_INT>(w));
+                            }
+                            //std::cout << "ia,ib -> ja,jb : " << vertices[w].i_a << "," << vertices[w].i_b << " -> " <<
+                            //ja[vertices[w].i_a] << "," << jb[vertices[w].i_b] << std::endl;
+                            Q.push_back(w);
+                        }
+                    }
+                }
+            }
+        }
+    }
     
 }
 
