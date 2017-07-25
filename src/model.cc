@@ -37,50 +37,42 @@ namespace qbasis {
         }
     }
     
-    
     template <typename T>
     void model<T>::fill_Weisse_table(const lattice &latt)
     {
-        assert(Lin_Ja_target_full.size() > 0 && Lin_Ja_target_full.size() == Lin_Jb_target_full.size());
-        
         // first check translation symmetry
         check_translation(latt);
         
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        
         auto props_sub = props_sub_a;
-        uint32_t Nsites = props[0].num_sites;
-        uint32_t Nsites_sub = props_sub[0].num_sites;
-        
         auto latt_sub = divide_lattice(latt);
-        std::cout << "Generating sublattice full basis... " << std::flush;
+        std::cout << "Generating sublattice full basis... " << std::endl;
         std::vector<mbasis_elem> basis_sub_full;
         enumerate_basis<T>(props_sub, basis_sub_full);
-        sort_basis_normal_order(basis_sub_full);
+        sort_basis_normal_order(basis_sub_full);   // has to be sorted in the normal way
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
-        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        std::cout << "Elapsed time for generating sublattice full basis: " << elapsed_seconds.count() << "s." << std::endl;
         start = end;
         
         std::cout << "Classifying sublattice basis... " << std::flush;
         classify_trans_full2rep(props_sub, basis_sub_full, latt_sub, trans_sym, basis_sub_repr, belong2rep_sub, dist2rep_sub);
         classify_trans_rep2group(props_sub, basis_sub_repr, latt_sub, trans_sym, groups_sub, omega_g_sub, belong2group_sub);
-        uint64_t check_dim_sub_full = 0;
-        for (decltype(basis_sub_repr.size()) j = 0; j < basis_sub_repr.size(); j++) check_dim_sub_full += omega_g_sub[belong2group_sub[j]];
-        //std::cout << "check_dim_sub_full    = " << check_dim_sub_full << std::endl;
-        //std::cout << "basis_sub_full.size() = " << basis_sub_full.size() << std::endl;
-        assert(check_dim_sub_full == static_cast<uint64_t>(basis_sub_full.size()));
         end = std::chrono::system_clock::now();
         elapsed_seconds = end - start;
         std::cout << elapsed_seconds.count() << "s." << std::endl;
         start = end;
         
-        std::cout << "Generating 4-dim tables (ga,gb,ja,jb) -> (i,j)... " << std::flush;
-        uint32_t num_groups = groups_sub.size();
+        // double checking correctness
+        uint64_t check_dim_sub_full = 0;
+        for (decltype(basis_sub_repr.size()) j = 0; j < basis_sub_repr.size(); j++) check_dim_sub_full += omega_g_sub[belong2group_sub[j]];
+        assert(check_dim_sub_full == static_cast<uint64_t>(basis_sub_full.size()));
+        
+        std::cout << "Generating maps (ga,gb,ja,jb) -> (i,j) and (ga,gb,j) -> w ... " << std::flush;
         classify_Weisse_tables(props, props_sub, basis_sub_full, basis_sub_repr, latt, trans_sym,
                                belong2rep_sub, dist2rep_sub, groups_sub, omega_g_sub, belong2group_sub,
-                               table_e_lt, table_e_eq, table_e_gt, table_w_lt, table_w_eq);
+                               Weisse_e_lt, Weisse_e_eq, Weisse_e_gt, Weisse_w_lt, Weisse_w_eq);
         end = std::chrono::system_clock::now();
         elapsed_seconds = end - start;
         std::cout << elapsed_seconds.count() << "s." << std::endl;
@@ -149,7 +141,7 @@ namespace qbasis {
                 while (! dynamic_base_overflow(disp_j, groups_sub[gb])) {
                     auto pos = std::vector<uint64_t>{ga,gb};
                     pos.insert(pos.end(), disp_j.begin(), disp_j.end());
-                    auto val = (ra < rb)?(table_w_lt.index(pos)):(table_w_eq.index(pos));
+                    auto val = (ra < rb)?(Weisse_w_lt.index(pos)):(Weisse_w_eq.index(pos));
                     if (val != default_val) {  // valid representative
                         mbasis_elem rb_new = basis_sub_repr[rb];
                         for (uint32_t j = 0; j < latt_sub.dimension(); j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
@@ -193,6 +185,7 @@ namespace qbasis {
     void model<T>::basis_init_repr_deprecated(const std::vector<int> &momentum, const lattice &latt)
     {
         assert(latt.dimension() == static_cast<uint32_t>(momentum.size()));
+        assert(dim_target_full > 0 && dim_target_full == basis_target_full.size());
         check_translation(latt);
         
         std::chrono::time_point<std::chrono::system_clock> start, end;
@@ -211,14 +204,14 @@ namespace qbasis {
         
         auto num_sub = latt.num_sublattice();
         auto L = latt.Linear_size();
-        basis_belong.resize(dim_target_full);
-        std::fill(basis_belong.begin(), basis_belong.end(), -1);
-        basis_coeff.resize(dim_target_full);
-        std::fill(basis_coeff.begin(), basis_coeff.end(), std::complex<double>(0.0,0.0));
+        basis_belong_deprec.resize(dim_target_full);
+        std::fill(basis_belong_deprec.begin(), basis_belong_deprec.end(), -1);
+        basis_coeff_deprec.resize(dim_target_full);
+        std::fill(basis_coeff_deprec.begin(), basis_coeff_deprec.end(), std::complex<double>(0.0,0.0));
         for (MKL_INT i = 0; i < dim_target_full; i++) {
-            if (basis_belong[i] != -1) continue;
-            basis_belong[i] = i;
-            basis_coeff[i] = std::complex<double>(1.0, 0.0);
+            if (basis_belong_deprec[i] != -1) continue;
+            basis_belong_deprec[i] = i;
+            basis_coeff_deprec[i] = std::complex<double>(1.0, 0.0);
             #pragma omp parallel for schedule(dynamic,1)
             for (uint32_t site = num_sub; site < latt.total_sites(); site += num_sub) {
                 std::vector<int> disp;
@@ -247,8 +240,8 @@ namespace qbasis {
                 if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
                 #pragma omp critical
                 {
-                    basis_belong[j] = i;
-                    basis_coeff[j] += coef;
+                    basis_belong_deprec[j] = i;
+                    basis_coeff_deprec[j] += coef;
                 }
             }
         }
@@ -257,29 +250,29 @@ namespace qbasis {
         temp_repr.push_back(0);
         dim_target_repr = 1;
         for (MKL_INT j = 1; j < dim_target_full; j++) {
-            if (basis_belong[j] > temp_repr.back()) {
+            if (basis_belong_deprec[j] > temp_repr.back()) {
                 dim_target_repr++;
-                temp_repr.push_back(basis_belong[j]);
+                temp_repr.push_back(basis_belong_deprec[j]);
             }
         }
         MKL_INT redundant = 0;
         auto it = temp_repr.begin();
         while (it != temp_repr.end()) {
-            if (std::abs(basis_coeff[*it]) < opr_precision) {
+            if (std::abs(basis_coeff_deprec[*it]) < opr_precision) {
                 it = temp_repr.erase(it);
                 redundant++;
                 dim_target_repr--;
             } else {
                 //std::cout << std::abs(std::imag(basis_coeff[*it])) << std::endl;
-                assert(std::abs(std::imag(basis_coeff[*it])) < opr_precision);
+                assert(std::abs(std::imag(basis_coeff_deprec[*it])) < opr_precision);
                 it++;
             }
         }
         assert(dim_target_repr == static_cast<MKL_INT>(temp_repr.size()));
         if (redundant > 0) std::cout << redundant << " redundant reprs removed." << std::endl;
-        basis_repr_deprecated.resize(dim_target_repr);
-        std::copy(temp_repr.begin(), temp_repr.end(), basis_repr_deprecated.begin());
-        assert(is_sorted_norepeat(basis_repr_deprecated));
+        basis_repr_deprec.resize(dim_target_repr);
+        std::copy(temp_repr.begin(), temp_repr.end(), basis_repr_deprec.begin());
+        assert(is_sorted_norepeat(basis_repr_deprec));
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
@@ -342,7 +335,7 @@ namespace qbasis {
         lil_mat<std::complex<double>> matrix_lil(dim_target_repr, upper_triangle);
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim_target_repr; i++) {
-            auto repr_i = basis_repr_deprecated[i];
+            auto repr_i = basis_repr_deprec[i];
             for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)                                            // diagonal part:
                 matrix_lil.add(i, i, basis_target_full[repr_i].diagonal_operator(props,Ham_diag[cnt]));
             qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_target_full[repr_i], props);  // non-diagonal part:
@@ -352,10 +345,10 @@ namespace qbasis {
                 ele_new.first.label_sub(props, i_a, i_b);
                 MKL_INT state_j = Lin_Ja_target_full[i_a] + Lin_Jb_target_full[i_b];
                 assert(state_j >= 0 && state_j < dim_target_full);
-                auto repr_j = basis_belong[state_j];
-                auto j = binary_search<MKL_INT,MKL_INT>(basis_repr_deprecated, repr_j, 0, dim_target_repr);                 // < j |P'_k H | i > obtained
+                auto repr_j = basis_belong_deprec[state_j];
+                auto j = binary_search<MKL_INT,MKL_INT>(basis_repr_deprec, repr_j, 0, dim_target_repr);                 // < j |P'_k H | i > obtained
                 if (j < 0 || j >= dim_target_repr) continue;
-                auto coeff = basis_coeff[state_j]/std::sqrt(std::real(basis_coeff[repr_i] * basis_coeff[repr_j]));
+                auto coeff = basis_coeff_deprec[state_j]/std::sqrt(std::real(basis_coeff_deprec[repr_i] * basis_coeff_deprec[repr_j]));
                 if (upper_triangle) {
                     if (i <= j) matrix_lil.add(i, j, conjugate(ele_new.second) * coeff);
                 } else {

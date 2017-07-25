@@ -1437,11 +1437,11 @@ namespace qbasis {
                              const std::vector<std::vector<uint32_t>> &groups,
                              const std::vector<uint32_t> &omega_g,
                              const std::vector<uint32_t> &belong2group,
-                             array_4D &table_e_lt,
-                             array_4D &table_e_eq,
-                             array_4D &table_e_gt,
-                             array_3D &table_w_lt,
-                             array_3D &table_w_eq)
+                             array_4D &Weisse_e_lt,
+                             array_4D &Weisse_e_eq,
+                             array_4D &Weisse_e_gt,
+                             array_3D &Weisse_w_lt,
+                             array_3D &Weisse_w_eq)
     {
         auto latt_sub = divide_lattice(latt_parent);
         uint64_t dim_repr         = basis_sub_repr.size();
@@ -1496,8 +1496,8 @@ namespace qbasis {
                 linear_size.push_back(1);
             }
         }
-        table_w_lt = array_3D(linear_size, std::vector<uint32_t>(latt_sub_dim,0));
-        table_w_eq = array_3D(linear_size, std::vector<uint32_t>(latt_sub_dim,0));
+        Weisse_w_lt = array_3D(linear_size, std::vector<uint32_t>(latt_sub_dim,0));
+        Weisse_w_eq = array_3D(linear_size, std::vector<uint32_t>(latt_sub_dim,0));
         for (uint32_t j = 0; j < latt_sub_dim; j++) {
             if (trans_sym[j]) {
                 linear_size.push_back(static_cast<uint64_t>(latt_sub_linear_size[j]));
@@ -1505,9 +1505,9 @@ namespace qbasis {
                 linear_size.push_back(1);
             }
         }
-        table_e_lt = array_4D(linear_size, default_value);
-        table_e_eq = array_4D(linear_size, default_value);
-        table_e_gt = array_4D(linear_size, default_value);
+        Weisse_e_lt = array_4D(linear_size, default_value);
+        Weisse_e_eq = array_4D(linear_size, default_value);
+        Weisse_e_gt = array_4D(linear_size, default_value);
         
         
         for (uint32_t ga = 0; ga < num_groups; ga++) {
@@ -1605,10 +1605,10 @@ namespace qbasis {
                                 pos.insert(pos.end(), dist2rep1.begin(), dist2rep1.end());  // ja
                                 pos.insert(pos.end(), dist2rep2.begin(), dist2rep2.end());  // jb
                                 assert(pos.size() == linear_size.size());
-                                if (disp_j < table_e_lt.index(pos).second ||
-                                    (disp_j == table_e_lt.index(pos).second && disp_i < table_e_lt.index(pos).first)) {
-                                    table_e_lt.index(pos).first  = disp_i;
-                                    table_e_lt.index(pos).second = disp_j;
+                                if (disp_j < Weisse_e_lt.index(pos).second ||
+                                    (disp_j == Weisse_e_lt.index(pos).second && disp_i < Weisse_e_lt.index(pos).first)) {
+                                    Weisse_e_lt.index(pos).first  = disp_i;
+                                    Weisse_e_lt.index(pos).second = disp_j;
                                 }
                             }
                             /*
@@ -1671,10 +1671,10 @@ namespace qbasis {
                                 pos.insert(pos.end(), dist2rep1.begin(), dist2rep1.end());  // ja
                                 pos.insert(pos.end(), dist2rep2.begin(), dist2rep2.end());  // jb
                                 assert(pos.size() == linear_size.size());
-                                if (disp_j < table_e_gt.index(pos).second ||
-                                    (disp_j == table_e_gt.index(pos).second && disp_i < table_e_gt.index(pos).first)) {
-                                    table_e_gt.index(pos).first  = disp_i;
-                                    table_e_gt.index(pos).second = disp_j;
+                                if (disp_j < Weisse_e_gt.index(pos).second ||
+                                    (disp_j == Weisse_e_gt.index(pos).second && disp_i < Weisse_e_gt.index(pos).first)) {
+                                    Weisse_e_gt.index(pos).first  = disp_i;
+                                    Weisse_e_gt.index(pos).second = disp_j;
                                 }
                             }
                             disp_i = dynamic_base_plus1(disp_i, base_parent);
@@ -1717,10 +1717,10 @@ namespace qbasis {
                             pos.insert(pos.end(), dist2rep1.begin(), dist2rep1.end());  // ja
                             pos.insert(pos.end(), dist2rep2.begin(), dist2rep2.end());  // jb
                             assert(pos.size() == linear_size.size());
-                            if (disp_j < table_e_eq.index(pos).second ||
-                                (disp_j == table_e_eq.index(pos).second && disp_i < table_e_eq.index(pos).first)) {
-                                table_e_eq.index(pos).first  = disp_i;
-                                table_e_eq.index(pos).second = disp_j;
+                            if (disp_j < Weisse_e_eq.index(pos).second ||
+                                (disp_j == Weisse_e_eq.index(pos).second && disp_i < Weisse_e_eq.index(pos).first)) {
+                                Weisse_e_eq.index(pos).first  = disp_i;
+                                Weisse_e_eq.index(pos).second = disp_j;
                             }
                             disp_i = dynamic_base_plus1(disp_i, base_parent);
                         }
@@ -1883,8 +1883,8 @@ namespace qbasis {
                     pos_e.insert(pos_e.end(), disp_i.begin(), disp_i.end());
                     pos_e.insert(pos_e.end(), disp_j.begin(), disp_j.end());
                     pos_w.insert(pos_w.end(), disp_j.begin(), disp_j.end());
-                    auto res_lt = table_e_lt.index(pos_e);
-                    auto res_eq = table_e_eq.index(pos_e);
+                    auto res_lt = Weisse_e_lt.index(pos_e);
+                    auto res_eq = Weisse_e_eq.index(pos_e);
                     if (res_lt.first == disp_i && res_lt.second == disp_j) {
                         std::vector<int> disp_j_int(latt_sub_dim);
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
@@ -1907,9 +1907,9 @@ namespace qbasis {
                             }
                             assert(div[d] != 0);
                         }
-                        table_w_lt.index(pos_w) = div;
+                        Weisse_w_lt.index(pos_w) = div;
                     } else {
-                        table_w_lt.index(pos_w) = std::vector<uint32_t>(latt_sub_dim,0);
+                        Weisse_w_lt.index(pos_w) = std::vector<uint32_t>(latt_sub_dim,0);
                     }
                     if (res_eq.first == disp_i && res_eq.second == disp_j) {
                         std::vector<int> disp_j_int(latt_sub_dim);
@@ -1933,9 +1933,9 @@ namespace qbasis {
                             }
                             assert(div[d] != 0);
                         }
-                        table_w_eq.index(pos_w) = div;
+                        Weisse_w_eq.index(pos_w) = div;
                     } else {
-                        table_w_eq.index(pos_w) = std::vector<uint32_t>(latt_sub_dim,0);
+                        Weisse_w_eq.index(pos_w) = std::vector<uint32_t>(latt_sub_dim,0);
                     }
                     
                     /*

@@ -162,7 +162,7 @@ namespace qbasis {
                                   std::vector<std::vector<uint32_t>> &groups,
                                   std::vector<uint32_t> &omega_g,
                                   std::vector<uint32_t> &belong2group);
-    // tabulate the 4-dim tables for (ga,gb,ja,jb) -> (i,j)
+    // tabulate the maps for (ga,gb,ja,jb) -> (i,j), and (ga,gb,j) -> w
     void classify_Weisse_tables(const std::vector<basis_prop> &props_parent,
                              const std::vector<basis_prop> &props_sub,
                              const std::vector<mbasis_elem> &basis_sub_full,
@@ -174,11 +174,11 @@ namespace qbasis {
                              const std::vector<std::vector<uint32_t>> &groups,
                              const std::vector<uint32_t> &omega_g,
                              const std::vector<uint32_t> &belong2group,
-                             array_4D &table_e_lt,
-                             array_4D &table_e_eq,
-                             array_4D &table_e_gt,
-                             array_3D &table_w_lt,
-                             array_3D &table_w_eq);
+                             array_4D &Weisse_e_lt,
+                             array_4D &Weisse_e_eq,
+                             array_4D &Weisse_e_gt,
+                             array_3D &Weisse_w_lt,
+                             array_3D &Weisse_w_eq);
     
     template <typename T> void swap(wavefunction<T>&, wavefunction<T>&);
     template <typename T> wavefunction<T> operator+(const wavefunction<T>&, const wavefunction<T>&);
@@ -1063,38 +1063,40 @@ namespace qbasis {
         std::vector<qbasis::mbasis_elem> basis_sub_full;       // basis for half lattice, used for building Weisse Table
         std::vector<qbasis::mbasis_elem> basis_sub_repr;       // reps for half lattice
         
-        std::vector<MKL_INT> Lin_Ja_target_full;               // Lin tables for the full basis
+        // Lin tables, for both full basis and translation basis
+        std::vector<MKL_INT> Lin_Ja_target_full;
         std::vector<MKL_INT> Lin_Jb_target_full;
         std::vector<MKL_INT> Lin_Ja_excite_full;
         std::vector<MKL_INT> Lin_Jb_excite_full;
-        std::vector<MKL_INT> Lin_Ja_target_repr;               // Lin tables for the repr basis
+        std::vector<MKL_INT> Lin_Ja_target_repr;
         std::vector<MKL_INT> Lin_Jb_target_repr;
         std::vector<MKL_INT> Lin_Ja_excite_repr;
         std::vector<MKL_INT> Lin_Jb_excite_repr;
         
-        std::vector<uint64_t> belong2rep_sub;
-        std::vector<std::vector<int>> dist2rep_sub;
+        // Weisse Tables for translation symmetry
+        std::vector<uint64_t>              belong2rep_sub;
+        std::vector<std::vector<int>>      dist2rep_sub;
         std::vector<std::vector<uint32_t>> groups_sub;
-        std::vector<uint32_t> omega_g_sub;
-        std::vector<uint32_t> belong2group_sub;
-        array_4D table_e_lt, table_e_eq, table_e_gt;           // Weisse Tables for translation symmetry
-        array_3D table_w_lt, table_w_eq;
+        std::vector<uint32_t>              omega_g_sub;
+        std::vector<uint32_t>              belong2group_sub;
+        array_4D Weisse_e_lt, Weisse_e_eq, Weisse_e_gt;
+        array_3D Weisse_w_lt, Weisse_w_eq;
         
         csr_mat<T> HamMat_csr_target_full;
         csr_mat<T> HamMat_csr_excite_full;
         csr_mat<std::complex<double>> HamMat_csr_target_repr;
         csr_mat<std::complex<double>> HamMat_csr_excite_repr;
         
-        std::vector<double> eigenvals_full;
-        std::vector<T> eigenvecs_full;
-        std::vector<double> eigenvals_repr;
+        std::vector<double>               eigenvals_full;
+        std::vector<T>                    eigenvecs_full;
+        std::vector<double>               eigenvals_repr;
         std::vector<std::complex<double>> eigenvecs_repr;
         
         
         // ---------------- deprecated --------------------
-        std::vector<MKL_INT> basis_belong;                // size: dim_target_full, store the position of its repr
-        std::vector<std::complex<double>> basis_coeff;    // size: dim_target_full, store the coeff
-        std::vector<MKL_INT> basis_repr_deprecated;
+        std::vector<MKL_INT>              basis_belong_deprec;   // size: dim_target_full, store the position of its repr
+        std::vector<std::complex<double>> basis_coeff_deprec;    // size: dim_target_full, store the coeff
+        std::vector<MKL_INT>              basis_repr_deprec;
         // ---------------- deprecated --------------------
         
         
