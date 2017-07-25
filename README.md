@@ -22,7 +22,7 @@ To learn how to use this library to design ED code for your own models, please r
 **Note: using a modified version of arpack++ to be compatible with MKL.**
 
 ## Restrictions on lattice:
-When using translational symmetry, at least one of the dimensions (Lx, Ly, Lz, or number of sublattices) has to be an even number (current implementation of Lin Table).
+When using translational symmetry, at least one of the dimensions (Lx, Ly, Lz, or number of sublattices) has to be an even number (current implementation of the generalized Lin Table).
 
 ## Parallel scheme: 
 MKL + OpenMP

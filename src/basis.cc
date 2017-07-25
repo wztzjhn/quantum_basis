@@ -981,40 +981,145 @@ namespace qbasis {
                          std::vector<mopr<T>> conserve_lst,
                          std::vector<double> val_lst)
     {
-        uint32_t n_orbs  = props.size();
-        uint64_t dim_all = 1;
-        std::vector<uint8_t> base;
-        for (uint32_t orb = 0; orb < n_orbs; orb++) {
-            dim_all *= int_pow<uint32_t, uint64_t>(static_cast<uint32_t>(props[orb].dim_local), props[orb].num_sites);
-            for (uint32_t site = 0; site < props[orb].num_sites; site++)
-                base.push_back(props[orb].dim_local);
-        }
-        auto GS = mbasis_elem(props);
-        basis = std::vector<mbasis_elem>(dim_all, GS);
-        
-        // array to help distributing jobs to different threads
-        std::vector<uint64_t> job_array;
-        for (uint64_t j = 0; j < dim_all; j+=1000) job_array.push_back(j);
-        uint64_t total_chunks = job_array.size();
-        job_array.push_back(dim_all);
-        
-        #pragma omp parallel for schedule(dynamic,1)
-        for (uint64_t chunk = 0; chunk < total_chunks; chunk++) {
-            // get a new starting basis element
-            uint64_t state_num = job_array[chunk];
-            auto dist = dynamic_base<uint8_t,uint64_t>(state_num, base);
-            uint32_t pos = 0;
-            for (uint32_t orb = 0; orb < n_orbs; orb++)
-                for (uint32_t site = 0; site < props[orb].num_sites; site++) basis[state_num].siteWrite(props, site, orb, dist[pos++]);
-            state_num++;
-            while (state_num < job_array[chunk + 1]) {
-                basis[state_num] = basis[state_num - 1];
-                basis[state_num].increment(props);
-                state_num++;
+        std::cout << "Enumerating basis with " << val_lst.size() << " conserved quantum numbers..." << std::endl;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) {
+                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
+                std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl;
             }
         }
+        std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
+        
+        uint32_t n_sites = props[0].num_sites;
+        assert(conserve_lst.size() == val_lst.size());
+        
+        std::list<std::vector<mbasis_elem>> basis_temp;
+        auto GS = mbasis_elem(props);
+        GS.reset();
+        uint32_t n_orbs = props.size();
+        uint32_t dim_local = 1;
+        std::vector<uint32_t> dim_local_vec;
+        for (decltype(props.size()) j = 0; j < props.size(); j++) {
+            dim_local *= static_cast<uint32_t>(props[j].dim_local);
+            dim_local_vec.push_back(static_cast<uint32_t>(props[j].dim_local));
+        }
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        
+        // Hilbert space size if without any symmetry
+        MKL_INT dim_total = int_pow<MKL_INT,MKL_INT>(static_cast<MKL_INT>(dim_local), static_cast<MKL_INT>(n_sites));
+        assert(dim_total > 0); // prevent overflow
+        std::cout << "Nsite     = " << n_sites << std::endl;
+        std::cout << "Dim_local = " << dim_local << std::endl;
+        std::cout << "Hilbert space size **if** NO symmetry: " << dim_total << std::endl;
+        
+        // base[]: {  dim_orb0, dim_orb0, ..., dim_orb1, dim_orb1,..., ...  }
+        std::vector<MKL_INT> base(n_sites * n_orbs);
+        uint32_t pos = 0;
+        for (uint32_t orb = 0; orb < n_orbs; orb++)  // low index orbitals considered last in comparison
+            for (uint32_t site = 0; site < n_sites; site++) base[pos++] = dim_local_vec[orb];
+        
+        // array to help distributing jobs to different threads
+        std::vector<MKL_INT> job_array;
+        for (MKL_INT j = 0; j < dim_total; j+=10000) job_array.push_back(j);
+        MKL_INT total_chunks = static_cast<MKL_INT>(job_array.size());
+        job_array.push_back(dim_total);
+        
+        MKL_INT dim_full = 0;
+        MKL_INT report = dim_total > 1000000 ? (total_chunks / 10) : total_chunks;
+        #pragma omp parallel for schedule(dynamic,1)
+        for (MKL_INT chunk = 0; chunk < total_chunks; chunk++) {
+            if (chunk > 0 && chunk % report == 0) {
+                std::cout << "progress: "
+                << (static_cast<double>(chunk) / static_cast<double>(total_chunks) * 100.0) << "%" << std::endl;
+            }
+            std::vector<qbasis::mbasis_elem> basis_temp_job;
+            
+            // get a new starting basis element
+            MKL_INT state_num = job_array[chunk];
+            auto dist = dynamic_base(state_num, base);
+            auto state_new = GS;
+            MKL_INT pos = 0;
+            for (uint32_t orb = 0; orb < n_orbs; orb++) // the order is important
+                for (uint32_t site = 0; site < n_sites; site++) state_new.siteWrite(props, site, orb, dist[pos++]);
+            
+            while (state_num < job_array[chunk+1]) {
+                // check if the symmetries are obeyed
+                bool flag = true;
+                auto it_opr = conserve_lst.begin();
+                auto it_val = val_lst.begin();
+                while (it_opr != conserve_lst.end()) {
+                    auto temp = state_new.diagonal_operator(props, *it_opr);
+                    if (std::abs(temp - *it_val) >= 1e-5) {
+                        flag = false;
+                        break;
+                    }
+                    it_opr++;
+                    it_val++;
+                }
+                if (flag) basis_temp_job.push_back(state_new);
+                state_num++;
+                if (state_num < job_array[chunk+1]) state_new.increment(props);
+            }
+            if (basis_temp_job.size() > 0) {
+                #pragma omp critical
+                {
+                    dim_full += basis_temp_job.size();
+                    basis_temp.push_back(std::move(basis_temp_job));     // think how to make sure it is a move operation here
+                }
+            }
+        }
+        basis_temp.sort();
+        std::cout << "Hilbert space size with symmetry: " << dim_full << std::endl;
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl << std::endl;
+        start = end;
+        
+        // pick the fruits
+        basis.clear();
+        std::cout << "memory performance not optimal in the following line, think about improvements." << std::endl;
+        basis.reserve(dim_full);
+        std::cout << "Moving temporary basis (" << basis_temp.size() << " pieces) to basis_full... ";
+        for (auto it = basis_temp.begin(); it != basis_temp.end(); it++) {
+            basis.insert(basis.end(), std::make_move_iterator(it->begin()), std::make_move_iterator(it->end()));
+            it->erase(it->begin(), it->end()); // should I?
+            it->shrink_to_fit();
+        }
+        assert(dim_full == static_cast<MKL_INT>(basis.size()));
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
     }
     
+    void sort_basis_normal_order(std::vector<qbasis::mbasis_elem> &basis)
+    {
+        
+        bool sorted = true;
+        MKL_INT dim = static_cast<MKL_INT>(basis.size());
+        assert(dim > 0);
+        for (MKL_INT j = 0; j < dim - 1; j++) {
+            if (! (basis[j] < basis[j+1])) {
+                sorted = false;
+                break;
+            }
+        }
+        if (! sorted) {
+            std::chrono::time_point<std::chrono::system_clock> start, end;
+            start = std::chrono::system_clock::now();
+            std::cout << "sorting basis according to '<' comparison... " << std::flush;
+#ifdef use_gnu_parallel_sort
+            __gnu_parallel::sort(basis.begin(), basis.end());
+#else
+            std::sort(basis.begin(), basis.end());
+#endif
+            end = std::chrono::system_clock::now();
+            std::chrono::duration<double> elapsed_seconds = end - start;
+            std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
+        }
+    }
     
     void sort_basis_Lin_order(const std::vector<basis_prop> &props, std::vector<qbasis::mbasis_elem> &basis)
     {
@@ -1391,8 +1496,8 @@ namespace qbasis {
                 linear_size.push_back(1);
             }
         }
-        table_w_lt = array_3D(linear_size, std::vector<uint32_t>(latt_sub_dim,999999999));
-        table_w_eq = array_3D(linear_size, std::vector<uint32_t>(latt_sub_dim,999999999));
+        table_w_lt = array_3D(linear_size, std::vector<uint32_t>(latt_sub_dim,0));
+        table_w_eq = array_3D(linear_size, std::vector<uint32_t>(latt_sub_dim,0));
         for (uint32_t j = 0; j < latt_sub_dim; j++) {
             if (trans_sym[j]) {
                 linear_size.push_back(static_cast<uint64_t>(latt_sub_linear_size[j]));
@@ -1639,7 +1744,7 @@ namespace qbasis {
                         std::vector<uint64_t> pos{ga,gb};
                         pos.insert(pos.end(), disp_ja.begin(), disp_ja.end());
                         pos.insert(pos.end(), disp_jb.begin(), disp_jb.end());
-                        auto res = table_eq.index(pos);
+                        auto res = table_e_eq.index(pos);
                         if (res.first  != std::vector<uint32_t>(res.first.size(),999999999) ||
                             res.second != std::vector<uint32_t>(res.second.size(),999999999)) {
                             std::cout << "ja = ";
@@ -1683,7 +1788,7 @@ namespace qbasis {
                         std::vector<uint64_t> pos{ga,gb};
                         pos.insert(pos.end(), disp_ja.begin(), disp_ja.end());
                         pos.insert(pos.end(), disp_jb.begin(), disp_jb.end());
-                        auto res = table_lt.index(pos);
+                        auto res = table_e_lt.index(pos);
                         if (res.first  != std::vector<uint32_t>(res.first.size(),999999999) ||
                             res.second != std::vector<uint32_t>(res.second.size(),999999999)) {
                             std::cout << "ja = ";
@@ -1727,7 +1832,7 @@ namespace qbasis {
                         std::vector<uint64_t> pos{ga,gb};
                         pos.insert(pos.end(), disp_ja.begin(), disp_ja.end());
                         pos.insert(pos.end(), disp_jb.begin(), disp_jb.end());
-                        auto res = table_gt.index(pos);
+                        auto res = table_e_gt.index(pos);
                         if (res.first  != std::vector<uint32_t>(res.first.size(),999999999) ||
                             res.second != std::vector<uint32_t>(res.second.size(),999999999)) {
                             std::cout << "ja = ";
@@ -1833,18 +1938,18 @@ namespace qbasis {
                         table_w_eq.index(pos_w) = std::vector<uint32_t>(latt_sub_dim,0);
                     }
                     
-                    if (table_w_lt.index(pos_w) != std::vector<uint32_t>(latt_sub_dim,999999999)) {
-                        std::cout << "j  = ";
-                        for (decltype(disp_j.size()) j = 0; j < disp_j.size(); j++) {
-                            std::cout << disp_j[j] << "\t";
-                        }
-                        std::cout << std::endl;
-                        std::cout << "w= = ";
-                        for (decltype(latt_sub_dim) kk = 0; kk < latt_sub_dim; kk++) {
-                            std::cout << table_w_eq.index(pos_w)[kk] << "\t";
-                        }
-                        std::cout << std::endl << std::endl;
+                    /*
+                    std::cout << "j  = ";
+                    for (decltype(disp_j.size()) j = 0; j < disp_j.size(); j++) {
+                        std::cout << disp_j[j] << "\t";
                     }
+                    std::cout << std::endl;
+                    std::cout << "w< = ";
+                    for (decltype(latt_sub_dim) kk = 0; kk < latt_sub_dim; kk++) {
+                        std::cout << table_w_lt.index(pos_w)[kk] << "\t";
+                    }
+                    std::cout << std::endl << std::endl;
+                    */
                     
                     
                     disp_j = dynamic_base_plus1(disp_j, groups[gb]);

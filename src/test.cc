@@ -20,7 +20,7 @@ void test_cfraction();
 void test_dotc();
 void test_bubble();
 
-void test_array();
+
 
 
 int main(){
@@ -51,7 +51,6 @@ int main(){
     //test_cfraction();
     */
     
-    test_array();
     
 }
 
@@ -99,13 +98,5 @@ void test_bubble() {
     std::cout << std::endl;
 }
 
-void test_array() {
-    qbasis::multi_array<double> aa(std::vector<uint64_t>{3,2,2});
-    aa.index(std::vector<uint64_t>{1,1,1}) = 0.5;
-    aa.index(std::vector<uint64_t>{1,0,0}) = 0.3;
-    std::cout << "test = " << aa.index(std::vector<uint64_t>{1,1,1}) << std::endl;
-    std::cout << "test = " << aa.index(std::vector<uint64_t>{1,0,0}) << std::endl;
-    
-    
-}
+
 

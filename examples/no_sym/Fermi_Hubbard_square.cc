@@ -90,7 +90,7 @@ int main() {
 
 
     // constructing the Hilbert space basis
-    Hubbard.enumerate_basis_full(lattice, Hubbard.dim_target_full, Hubbard.basis_target_full,
+    Hubbard.enumerate_basis_full(Hubbard.dim_target_full, Hubbard.basis_target_full,
                                  {Nup,Ndown}, {Nup_total,Ndn_total});
 
 

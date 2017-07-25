@@ -32,6 +32,7 @@ void test_basis() {
     
     std::vector<qbasis::mbasis_elem> basis_list1;
     qbasis::enumerate_basis<double>(props1, basis_list1);
+    qbasis::sort_basis_normal_order(basis_list1);
     //std::cout << "basis_list1: " << std::endl;
     for (uint64_t j = 0; j < basis_list1.size(); j++) {
         //std::cout << "j = " << j << "\t";
@@ -126,7 +127,7 @@ void test_basis() {
     qbasis::model<std::complex<double>> test_model;
     test_model.add_orbital(lattice.total_sites(), "spin-1/2");
     test_model.add_orbital(lattice.total_sites(), "electron");
-    test_model.enumerate_basis_full(lattice, test_model.dim_target_full, test_model.basis_target_full);
+    test_model.enumerate_basis_full(test_model.dim_target_full, test_model.basis_target_full);
     /*
     for (MKL_INT j = 0; j < test_model.dim_full; j++) {
         std::cout << "j= " << j << ", basis_label = " << test_model.basis_full[j].label(test_model.props) << std::endl;
@@ -145,6 +146,7 @@ void test_basis2()
     
     std::vector<qbasis::mbasis_elem> basis_list;
     qbasis::enumerate_basis<double>(props, basis_list);
+    qbasis::sort_basis_normal_order(basis_list);
     
     std::vector<qbasis::mbasis_elem> reps;
     std::vector<uint64_t> belong2rep;
@@ -211,6 +213,7 @@ void test_basis3()
     
     std::vector<qbasis::mbasis_elem> basis_list;
     qbasis::enumerate_basis<double>(props, basis_list);
+    qbasis::sort_basis_normal_order(basis_list);
     
     std::vector<qbasis::mbasis_elem> reps;
     std::vector<uint64_t> belong2rep;
@@ -234,25 +237,33 @@ void test_basis4()
     
     // local matrix representation
     // Spins:
-    std::vector<std::vector<std::complex<double>>> Splus(2,std::vector<std::complex<double>>(2));
-    std::vector<std::vector<std::complex<double>>> Sminus(2,std::vector<std::complex<double>>(2));
-    std::vector<std::complex<double>> Sz(2);
+    std::vector<std::vector<std::complex<double>>> Splus(3,std::vector<std::complex<double>>(3));
+    std::vector<std::vector<std::complex<double>>> Sminus(3,std::vector<std::complex<double>>(3));
+    std::vector<std::complex<double>> Sz(3);
     Splus[0][0]  = 0.0;
-    Splus[0][1]  = 1.0;
+    Splus[0][1]  = sqrt(2.0);
+    Splus[0][2]  = 0.0;
     Splus[1][0]  = 0.0;
     Splus[1][1]  = 0.0;
+    Splus[1][2]  = sqrt(2.0);
     Sminus[0][0] = 0.0;
     Sminus[0][1] = 0.0;
-    Sminus[1][0] = 1.0;
+    Sminus[0][2] = 0.0;
+    Sminus[1][0] = sqrt(2.0);
     Sminus[1][1] = 0.0;
-    Sz[0]        = 0.5;
-    Sz[1]        = -0.5;
+    Sminus[1][2] = 0.0;
+    Sminus[2][1] = 0.0;
+    Sminus[2][1] = sqrt(2.0);
+    Sminus[2][2] = 0.0;
+    Sz[0]        = 1.0;
+    Sz[1]        = 0.0;
+    Sz[2]        = -1.0;
     
     std::vector<std::string> bc{"pbc"};
     qbasis::lattice lattice("chain",std::vector<uint32_t>{L},bc);
     
     qbasis::model<std::complex<double>> model_test4;
-    model_test4.add_orbital(lattice.total_sites(), "spin-1/2");
+    model_test4.add_orbital(lattice.total_sites(), "spin-1");
     
     qbasis::mopr<std::complex<double>> Sz_total;
     
@@ -279,7 +290,7 @@ void test_basis4()
         Sz_total += Sz_i;
     }
     
-    model_test4.enumerate_basis_full(lattice, model_test4.dim_target_full, model_test4.basis_target_full, {Sz_total}, {0.0});
+    model_test4.enumerate_basis_full(model_test4.dim_target_full, model_test4.basis_target_full, {Sz_total}, {0.0});
     
     std::cout << std::numeric_limits<double>::epsilon() << std::endl;
     
@@ -512,8 +523,8 @@ void test_basis4()
     model_test4.basis_init_repr_deprecated(std::vector<int>{7}, lattice);
     std::cout << "dim_repr = " << model_test4.dim_target_repr << std::endl;
     
-    assert(std::abs(model_test4.eigenvals_full[0] + 3.65109) < 0.00001);
-    assert(std::abs(model_test4.eigenvals_full[1] + 3.12842) < 0.00001);
+    assert(std::abs(model_test4.eigenvals_full[0] + 11.337) < 0.0001);
+    assert(std::abs(model_test4.eigenvals_full[1] + 10.7434) < 0.0001);
     std::cout << std::endl;
     
 }
@@ -585,7 +596,7 @@ void test_basis5()
         }
     }
     
-    model_test5.enumerate_basis_full(lattice, model_test5.dim_target_full, model_test5.basis_target_full, {Sz_total}, {0.0});
+    model_test5.enumerate_basis_full(model_test5.dim_target_full, model_test5.basis_target_full, {Sz_total}, {0.0});
     
     std::cout << std::numeric_limits<double>::epsilon() << std::endl;
     

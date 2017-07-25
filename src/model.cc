@@ -57,6 +57,7 @@ namespace qbasis {
         std::cout << "Generating sublattice full basis... " << std::flush;
         std::vector<mbasis_elem> basis_sub_full;
         enumerate_basis<T>(props_sub, basis_sub_full);
+        sort_basis_normal_order(basis_sub_full);
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << elapsed_seconds.count() << "s." << std::endl;
@@ -89,36 +90,11 @@ namespace qbasis {
     
     // need further optimization! (for example, special treatment of dilute limit; special treatment of quantum numbers; quick sort of sign)
     template <typename T>
-    void model<T>::enumerate_basis_full(const lattice &latt,
-                                        MKL_INT &dim_full,
+    void model<T>::enumerate_basis_full(MKL_INT &dim_full,
                                         std::vector<qbasis::mbasis_elem> &basis_full,
-                                        std::initializer_list<mopr<std::complex<double>>> conserve_lst,
-                                        std::initializer_list<double> val_lst)
+                                        std::vector<mopr<T>> conserve_lst,
+                                        std::vector<double> val_lst)
     {
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            if (tid == 0) {
-                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
-                std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl;
-            }
-        }
-        std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
-        
-        uint32_t n_sites = latt.total_sites();
-        assert(conserve_lst.size() == val_lst.size());
-        
-        std::list<std::vector<mbasis_elem>> basis_temp;
-        auto GS = mbasis_elem(props);
-        GS.reset();
-        uint32_t n_orbs = props.size();
-        uint32_t dim_local = 1;
-        std::vector<uint32_t> dim_local_vec;
-        for (decltype(props.size()) j = 0; j < props.size(); j++) {
-            dim_local *= static_cast<uint32_t>(props[j].dim_local);
-            dim_local_vec.push_back(static_cast<uint32_t>(props[j].dim_local));
-        }
-        
         // checking if reaching code capability
         MKL_INT mkl_int_max = LLONG_MAX;
         if (mkl_int_max != LLONG_MAX) {
@@ -130,96 +106,10 @@ namespace qbasis {
             std::cout << "Using 64-bit integers." << std::endl;
         }
         assert(mkl_int_max > 0);
-        uint32_t site_max = log(mkl_int_max) / log(dim_local);
-        std::cout << "Capability of current code for current model: maximal " << site_max << " sites. (in the ideal case of infinite memory available)" << std::endl << std::endl;
-        assert(n_sites < site_max);
         
-        std::cout << "Enumerating full basis with " << val_lst.size() << " conserved quantum numbers..." << std::endl;
-        std::chrono::time_point<std::chrono::system_clock> start, end;
-        start = std::chrono::system_clock::now();
+        enumerate_basis<T>(props, basis_full, conserve_lst, val_lst);
         
-        // Hilbert space size if without any symmetry
-        MKL_INT dim_total = int_pow<MKL_INT,MKL_INT>(static_cast<MKL_INT>(dim_local), static_cast<MKL_INT>(n_sites));
-        assert(dim_total > 0); // prevent overflow
-        std::cout << "Hilbert space size **if** without any symmetry: " << dim_total << std::endl;
-        
-        // base[]: {  dim_orb0, dim_orb0, ..., dim_orb1, dim_orb1,..., ...  }
-        std::vector<MKL_INT> base(n_sites * n_orbs);
-        uint32_t pos = 0;
-        for (uint32_t orb = 0; orb < n_orbs; orb++)  // low index orbitals considered last in comparison
-            for (uint32_t site = 0; site < n_sites; site++) base[pos++] = dim_local_vec[orb];
-        
-        // array to help distributing jobs to different threads
-        std::vector<MKL_INT> job_array;
-        for (MKL_INT j = 0; j < dim_total; j+=10000) job_array.push_back(j);
-        MKL_INT total_chunks = static_cast<MKL_INT>(job_array.size());
-        job_array.push_back(dim_total);
-        
-        dim_full = 0;
-        MKL_INT report = dim_total > 1000000 ? (total_chunks / 10) : total_chunks;
-        #pragma omp parallel for schedule(dynamic,1)
-        for (MKL_INT chunk = 0; chunk < total_chunks; chunk++) {
-            if (chunk > 0 && chunk % report == 0) {
-                std::cout << "progress: "
-                          << (static_cast<double>(chunk) / static_cast<double>(total_chunks) * 100.0) << "%" << std::endl;
-            }
-            std::vector<qbasis::mbasis_elem> basis_temp_job;
-            
-            // get a new starting basis element
-            MKL_INT state_num = job_array[chunk];
-            auto dist = dynamic_base(state_num, base);
-            auto state_new = GS;
-            MKL_INT pos = 0;
-            for (uint32_t orb = 0; orb < n_orbs; orb++) // the order is important
-                for (uint32_t site = 0; site < n_sites; site++) state_new.siteWrite(props, site, orb, dist[pos++]);
-            
-            while (state_num < job_array[chunk+1]) {
-                // check if the symmetries are obeyed
-                bool flag = true;
-                auto it_opr = conserve_lst.begin();
-                auto it_val = val_lst.begin();
-                while (it_opr != conserve_lst.end()) {
-                    auto temp = state_new.diagonal_operator(props, *it_opr);
-                    if (std::abs(temp - *it_val) >= 1e-5) {
-                        flag = false;
-                        break;
-                    }
-                    it_opr++;
-                    it_val++;
-                }
-                if (flag) basis_temp_job.push_back(state_new);
-                state_num++;
-                if (state_num < job_array[chunk+1]) state_new.increment(props);
-            }
-            if (basis_temp_job.size() > 0) {
-                #pragma omp critical
-                {
-                    dim_full += basis_temp_job.size();
-                    basis_temp.push_back(std::move(basis_temp_job));     // think how to make sure it is a move operation here
-                }
-            }
-        }
-        basis_temp.sort();
-        std::cout << "Hilbert space size with symmetry: " << dim_full << std::endl;
-        end = std::chrono::system_clock::now();
-        std::chrono::duration<double> elapsed_seconds = end - start;
-        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl << std::endl;
-        start = end;
-        
-        // pick the fruits
-        basis_full.clear();
-        std::cout << "memory performance not optimal in the following line, think about improvements." << std::endl;
-        basis_full.reserve(dim_full);
-        std::cout << "Moving temporary basis (" << basis_temp.size() << " pieces) to basis_full... ";
-        for (auto it = basis_temp.begin(); it != basis_temp.end(); it++) {
-            basis_full.insert(basis_full.end(), std::make_move_iterator(it->begin()), std::make_move_iterator(it->end()));
-            it->erase(it->begin(), it->end()); // should I?
-            it->shrink_to_fit();
-        }
-        assert(dim_full == static_cast<MKL_INT>(basis_full.size()));
-        end = std::chrono::system_clock::now();
-        elapsed_seconds = end - start;
-        std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
+        dim_full = static_cast<MKL_INT>(basis_full.size());
         
         sort_basis_Lin_order(props, basis_full);
         

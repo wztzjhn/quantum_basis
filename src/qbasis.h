@@ -137,6 +137,8 @@ namespace qbasis {
                          std::vector<mopr<T>> conserve_lst = {},
                          std::vector<double> val_lst = {});
     
+    // sort basis with a simple "<" comparison
+    void sort_basis_normal_order(std::vector<qbasis::mbasis_elem> &basis);
     // sort basis according to Lin Table convention (Ib, then Ia)
     void sort_basis_Lin_order(const std::vector<basis_prop> &props, std::vector<qbasis::mbasis_elem> &basis);
     
@@ -1135,11 +1137,10 @@ namespace qbasis {
         void fill_Weisse_table(const lattice &latt);
         
         // naive way of enumerating all possible basis state
-        void enumerate_basis_full(const lattice &latt,
-                                  MKL_INT &dim_full,
+        void enumerate_basis_full(MKL_INT &dim_full,
                                   std::vector<qbasis::mbasis_elem> &basis_full,
-                                  std::initializer_list<mopr<std::complex<double>>> conserve_lst = {},
-                                  std::initializer_list<double> val_lst = {});
+                                  std::vector<mopr<T>> conserve_lst = {},
+                                  std::vector<double> val_lst = {});
         
         // Need to build Weiss Tables before enumerating representatives
         void enumerate_basis_repr(const lattice &latt,

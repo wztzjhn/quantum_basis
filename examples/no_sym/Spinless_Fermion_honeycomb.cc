@@ -105,7 +105,7 @@ int main() {
 
 
     // constructing the Hilbert space basis
-    spinless.enumerate_basis_full(lattice, spinless.dim_target_full, spinless.basis_target_full,
+    spinless.enumerate_basis_full(spinless.dim_target_full, spinless.basis_target_full,
                                   {Nfermion}, {N_total});
 
     // optional, will use more memory and give higher speed
