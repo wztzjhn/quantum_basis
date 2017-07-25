@@ -90,7 +90,8 @@ int main() {
 
 
     // constructing the Hilbert space basis
-    Hubbard.enumerate_basis_full(lattice, {Nup,Ndown}, {Nup_total,Ndn_total});
+    Hubbard.enumerate_basis_full(lattice, Hubbard.dim_target_full, Hubbard.basis_target_full,
+                                 {Nup,Ndown}, {Nup_total,Ndn_total});
 
 
     // optional, will use more memory and give higher speed
@@ -180,8 +181,8 @@ int main() {
             std::cout << "Running continued fraction with " << step << " steps" << std::endl;
             std::vector<std::complex<double>> v(Hubbard.dim_target_full * 3);
             std::vector<double> hessenberg(step * 2, 0.0);
-            if (Hubbard.HamMat_csr_full.dimension() == Hubbard.dim_target_full) {
-                qbasis::lanczos(0, step, Hubbard.dim_target_full, Hubbard.HamMat_csr_full, rnorm, phi0.data(), v.data(), hessenberg.data(), step, false);
+            if (Hubbard.HamMat_csr_target_full.dimension() == Hubbard.dim_target_full) {
+                qbasis::lanczos(0, step, Hubbard.dim_target_full, Hubbard.HamMat_csr_target_full, rnorm, phi0.data(), v.data(), hessenberg.data(), step, false);
             } else {
                 qbasis::lanczos(0, step, Hubbard.dim_target_full, Hubbard, rnorm, phi0.data(), v.data(), hessenberg.data(), step, false);
             }

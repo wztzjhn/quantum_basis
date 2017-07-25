@@ -8,8 +8,10 @@
 
 namespace qbasis {
     template <typename T>
-    model<T>::model(): matrix_free(true), nconv(0), dim_target_full(0), dim_target_repr(0)
-    { }
+    model<T>::model(): matrix_free(true), nconv(0),
+                       dim_target_full(0), dim_excite_full(0),
+                       dim_target_repr(0), dim_excite_repr(0)
+    {}
     
     template <typename T>
     uint32_t model<T>::local_dimension() const
@@ -35,9 +37,60 @@ namespace qbasis {
         }
     }
     
+    
+    template <typename T>
+    void model<T>::fill_Weisse_table(const lattice &latt)
+    {
+        assert(Lin_Ja_target_full.size() > 0 && Lin_Ja_target_full.size() == Lin_Jb_target_full.size());
+        
+        // first check translation symmetry
+        check_translation(latt);
+        
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        
+        auto props_sub = props_sub_a;
+        uint32_t Nsites = props[0].num_sites;
+        uint32_t Nsites_sub = props_sub[0].num_sites;
+        
+        auto latt_sub = divide_lattice(latt);
+        std::cout << "Generating sublattice full basis... " << std::flush;
+        basis_sub_full = enumerate_basis(props_sub);
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        start = end;
+        
+        std::cout << "Classifying sublattice basis... " << std::flush;
+        classify_trans_full2rep(props_sub, basis_sub_full, latt_sub, trans_sym, basis_sub_repr, belong2rep_sub, dist2rep_sub);
+        classify_trans_rep2group(props_sub, basis_sub_repr, latt_sub, trans_sym, groups_sub, omega_g_sub, belong2group_sub);
+        uint64_t check_dim_sub_full = 0;
+        for (decltype(basis_sub_repr.size()) j = 0; j < basis_sub_repr.size(); j++) check_dim_sub_full += omega_g_sub[belong2group_sub[j]];
+        //std::cout << "check_dim_sub_full    = " << check_dim_sub_full << std::endl;
+        //std::cout << "basis_sub_full.size() = " << basis_sub_full.size() << std::endl;
+        assert(check_dim_sub_full == static_cast<uint64_t>(basis_sub_full.size()));
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        start = end;
+        
+        std::cout << "Generating 4-dim tables (ga,gb,ja,jb) -> (i,j)... " << std::flush;
+        uint32_t num_groups = groups_sub.size();
+        classify_Weisse_tables(props, props_sub, basis_sub_full, basis_sub_repr, latt, trans_sym,
+                               belong2rep_sub, dist2rep_sub, groups_sub, omega_g_sub, belong2group_sub,
+                               table_e_lt, table_e_eq, table_e_gt, table_w_lt, table_w_eq);
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        std::cout << std::endl;
+    }
+    
+    
     // need further optimization! (for example, special treatment of dilute limit; special treatment of quantum numbers; quick sort of sign)
     template <typename T>
     void model<T>::enumerate_basis_full(const lattice &latt,
+                                        MKL_INT &dim_full,
+                                        std::vector<qbasis::mbasis_elem> &basis_full,
                                         std::initializer_list<mopr<std::complex<double>>> conserve_lst,
                                         std::initializer_list<double> val_lst)
     {
@@ -80,7 +133,7 @@ namespace qbasis {
         std::cout << "Capability of current code for current model: maximal " << site_max << " sites. (in the ideal case of infinite memory available)" << std::endl << std::endl;
         assert(n_sites < site_max);
         
-        std::cout << "Enumerating the full basis with " << val_lst.size() << " conserved quantum numbers..." << std::endl;
+        std::cout << "Enumerating full basis with " << val_lst.size() << " conserved quantum numbers..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         
@@ -101,7 +154,7 @@ namespace qbasis {
         MKL_INT total_chunks = static_cast<MKL_INT>(job_array.size());
         job_array.push_back(dim_total);
         
-        dim_target_full = 0;
+        dim_full = 0;
         MKL_INT report = dim_total > 1000000 ? (total_chunks / 10) : total_chunks;
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT chunk = 0; chunk < total_chunks; chunk++) {
@@ -140,212 +193,109 @@ namespace qbasis {
             if (basis_temp_job.size() > 0) {
                 #pragma omp critical
                 {
-                    dim_target_full += basis_temp_job.size();
+                    dim_full += basis_temp_job.size();
                     basis_temp.push_back(std::move(basis_temp_job));     // think how to make sure it is a move operation here
                 }
             }
         }
         basis_temp.sort();
-        std::cout << "Hilbert space size with symmetry: " << dim_target_full << std::endl;
+        std::cout << "Hilbert space size with symmetry: " << dim_full << std::endl;
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl << std::endl;
         start = end;
         
         // pick the fruits
-        basis_target_full.clear();
+        basis_full.clear();
         std::cout << "memory performance not optimal in the following line, think about improvements." << std::endl;
-        basis_target_full.reserve(dim_target_full);
+        basis_full.reserve(dim_full);
         std::cout << "Moving temporary basis (" << basis_temp.size() << " pieces) to basis_full... ";
         for (auto it = basis_temp.begin(); it != basis_temp.end(); it++) {
-            basis_target_full.insert(basis_target_full.end(), std::make_move_iterator(it->begin()), std::make_move_iterator(it->end()));
+            basis_full.insert(basis_full.end(), std::make_move_iterator(it->begin()), std::make_move_iterator(it->end()));
             it->erase(it->begin(), it->end()); // should I?
             it->shrink_to_fit();
         }
-        assert(dim_target_full == static_cast<MKL_INT>(basis_target_full.size()));
+        assert(dim_full == static_cast<MKL_INT>(basis_full.size()));
         end = std::chrono::system_clock::now();
         elapsed_seconds = end - start;
         std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
         
-        sort_basis_full();
+        sort_basis_Lin_order(props, basis_full);
         
-        fill_Lin_table_full();
+        fill_Lin_table(props, basis_full, Lin_Ja_target_full, Lin_Jb_target_full);
     }
     
-    // sort according to Lin Table convention (Ib, then Ia)
-    template <typename T>
-    void model<T>::sort_basis_full()
-    {
-        bool sorted = true;
-        for (MKL_INT j = 0; j < dim_target_full - 1; j++) {
-            assert(basis_target_full[j] != basis_target_full[j+1]);
-            mbasis_elem sub_a1, sub_b1, sub_a2, sub_b2;
-            unzipper_basis(props, props_sub_a, props_sub_b, basis_target_full[j], sub_a1, sub_b1);
-            unzipper_basis(props, props_sub_a, props_sub_b, basis_target_full[j+1], sub_a2, sub_b2);
-            if (sub_b2 < sub_b1 || (sub_b2 == sub_b1 && sub_a2 < sub_a1)) {
-                sorted = false;
-                break;
-            }
-        }
-        if (! sorted) {
-            std::chrono::time_point<std::chrono::system_clock> start, end;
-            start = std::chrono::system_clock::now();
-            std::cout << "sorting basis(full) according to Lin Table convention... " << std::flush;
-            auto cmp = [this](const mbasis_elem &j1, const mbasis_elem &j2){
-                              mbasis_elem sub_a1, sub_b1, sub_a2, sub_b2;
-                              unzipper_basis(this->props, this->props_sub_a, this->props_sub_b, j1, sub_a1, sub_b1);
-                              unzipper_basis(this->props, this->props_sub_a, this->props_sub_b, j2, sub_a2, sub_b2);
-                              if (sub_b1 == sub_b2) {
-                                  return sub_a1 < sub_a2;
-                              } else {
-                                  return sub_b1 < sub_b2;
-                              }};
-#ifdef use_gnu_parallel_sort
-            __gnu_parallel::sort(basis_target_full.begin(), basis_target_full.end(),cmp);
-#else
-            std::sort(basis_target_full.begin(), basis_target_full.end(),cmp);
-#endif
-            end = std::chrono::system_clock::now();
-            std::chrono::duration<double> elapsed_seconds = end - start;
-            std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
-        }
-    }
     
     template <typename T>
-    void model<T>::fill_Lin_table_full()
+    void model<T>::enumerate_basis_repr(const lattice &latt,
+                                        const std::vector<int> &momentum,
+                                        MKL_INT &dim_repr,
+                                        std::vector<qbasis::mbasis_elem> &basis_repr,
+                                        std::initializer_list<mopr<std::complex<double>>> conserve_lst,
+                                        std::initializer_list<double> val_lst)
     {
-        assert(dim_target_full > 0);
-        assert(static_cast<MKL_INT>(basis_target_full.size()) == dim_target_full);
-        
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
+        std::cout << "Enumerating basis_repr... " << std::flush;
         
-        uint32_t Nsites = props[0].num_sites;
-        uint32_t Nsites_a = props_sub_a[0].num_sites;
-        uint32_t Nsites_b = props_sub_b[0].num_sites;
-        assert(Nsites_a >= Nsites_b && Nsites_a + Nsites_b == Nsites);
+        assert(conserve_lst.size() == val_lst.size());
+        assert(basis_sub_repr.size() > 0);
+        auto latt_sub = divide_lattice(latt);
+        auto base_sub = latt_sub.Linear_size();
+        for (decltype(latt_sub.dimension()) j = 0; j < latt_sub.dimension(); j++) {
+            if (! trans_sym[j]) base_sub[j]    = 1;
+        }
+        basis_repr.clear();
         
-        std::cout << "Filling Lin Table for the full basis (" << Nsites_a << "+" << Nsites_b <<" sites)..." << std::endl;
-        
-        uint32_t local_dim = local_dimension();
-        uint64_t dim_sub_a = int_pow<uint32_t, uint64_t>(local_dim, Nsites_a);
-        uint64_t dim_sub_b = int_pow<uint32_t, uint64_t>(local_dim, Nsites_b);
-        
-        std::cout << "Basis size for sublattices (without any symmetry): " << dim_sub_a << " <-> " << dim_sub_b << std::endl;
-        Lin_Ja_full = std::vector<MKL_INT>(dim_sub_a,-1);
-        Lin_Jb_full = std::vector<MKL_INT>(dim_sub_b,-1);
-        
-        // first loop over the basis to generate the list (Ia, Ib, J)
-        // the element J may not be necessary, remove if not used
-        std::cout << "building the (Ia,Ib,J) table...                    " << std::flush;
-        std::vector<std::vector<MKL_INT>> table_pre(dim_target_full,std::vector<MKL_INT>(3));
-        #pragma omp parallel for schedule(dynamic,1)
-        for (MKL_INT j = 0; j < dim_target_full; j++) {
-            uint64_t i_a, i_b;
-            basis_target_full[j].label_sub(props, i_a, i_b);
-            // value of table_pre[j][2] will be fixed later
-            table_pre[j][0] = static_cast<MKL_INT>(i_a);
-            table_pre[j][1] = static_cast<MKL_INT>(i_b);
-            table_pre[j][2] = j;
+        std::vector<uint32_t> default_val(latt_sub.dimension(),0);
+        for (decltype(basis_sub_repr.size()) ra = 0; ra < basis_sub_repr.size(); ra++) {
+            auto ga = belong2group_sub[ra];
+            int sgn;
+            for (decltype(ra) rb = ra; rb < basis_sub_repr.size(); rb++) {
+                auto gb = belong2group_sub[rb];
+                std::vector<uint32_t> disp_j(latt_sub.dimension(),0);
+                std::vector<int> disp_j_int(disp_j.size());
+                while (! dynamic_base_overflow(disp_j, groups_sub[gb])) {
+                    auto pos = std::vector<uint64_t>{ga,gb};
+                    pos.insert(pos.end(), disp_j.begin(), disp_j.end());
+                    auto val = (ra < rb)?(table_w_lt.index(pos)):(table_w_eq.index(pos));
+                    if (val != default_val) {  // valid representative
+                        mbasis_elem rb_new = basis_sub_repr[rb];
+                        for (uint32_t j = 0; j < latt_sub.dimension(); j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
+                        rb_new.translate(props_sub_b, latt_sub, disp_j_int, sgn);
+                        mbasis_elem ra_z_Tj_rb;
+                        zipper_basis(props, props_sub_a, props_sub_b, basis_sub_repr[ra], rb_new, ra_z_Tj_rb);
+                        
+                        // check if the symmetries are obeyed
+                        bool flag = true;
+                        auto it_opr = conserve_lst.begin();
+                        auto it_val = val_lst.begin();
+                        while (it_opr != conserve_lst.end()) {
+                            auto temp = ra_z_Tj_rb.diagonal_operator(props, *it_opr);
+                            if (std::abs(temp - *it_val) >= 1e-5) {
+                                flag = false;
+                                break;
+                            }
+                            it_opr++;
+                            it_val++;
+                        }
+                        if (flag) basis_repr.push_back(ra_z_Tj_rb);
+                    }
+                    disp_j = dynamic_base_plus1(disp_j, groups_sub[gb]);
+                }
+            }
         }
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
-        std::cout << elapsed_seconds.count() << "s." << std::endl;
-        start = end;
+        std::cout <<  elapsed_seconds.count() << "s." << std::endl;
+        dim_repr = static_cast<MKL_INT>(basis_repr.size());
+        std::cout << "dim_repr (without removing dulplicates) = " << dim_repr << std::endl;
         
-        std::cout << "checking if table_pre sorted via I_b               " << std::flush;
-        #pragma omp parallel for schedule(dynamic,1)
-        for (MKL_INT j = 0; j < dim_target_full - 1; j++) {
-            if (table_pre[j][1] == table_pre[j+1][1]) {
-                assert(table_pre[j][0] < table_pre[j+1][0]);
-            } else {
-                assert(table_pre[j][1] < table_pre[j+1][1]);
-            }
-        }
-        end = std::chrono::system_clock::now();
-        elapsed_seconds = end - start;
-        std::cout << elapsed_seconds.count() << "s." << std::endl;
-        start = end;
-        
-        // build a graph for the connectivity property of (Ia, Ib, J)
-        // i.e., for 2 different Js with either same Ia or Ib, they are connected.
-        // Also, 2 different Js connected to the same J are connected.
-        // Thus, J form a graph, with several pieces disconnected
-        ALGraph g(static_cast<uint64_t>(dim_target_full));
-        std::cout << "Initializing graph vertex info...                  " << std::flush;
-        #pragma omp parallel for schedule(dynamic,1)
-        for (MKL_INT j = 0; j < dim_target_full; j++) {
-            g[j].i_a = table_pre[j][0];
-            g[j].i_b = table_pre[j][1];
-        }
-        end = std::chrono::system_clock::now();
-        elapsed_seconds = end - start;
-        std::cout << elapsed_seconds.count() << "s." << std::endl;
-        start = end;
-        
-        // loop over the sorted table_pre, connect all horizontal edges
-        std::cout << "building horizontal edges...                       " << std::flush;
-        for (MKL_INT idx = 1; idx < dim_target_full; idx++) {
-            assert(table_pre[idx][1] >= table_pre[idx-1][1]);
-            if (table_pre[idx][1] == table_pre[idx-1][1]) { // same i_a, connected
-                assert(table_pre[idx][0] > table_pre[idx-1][0]);
-                g.add_edge(static_cast<uint64_t>(table_pre[idx-1][2]), static_cast<uint64_t>(table_pre[idx][2]));
-            }
-        }
-        end = std::chrono::system_clock::now();
-        elapsed_seconds = end - start;
-        std::cout << elapsed_seconds.count() << "s." << std::endl;
-        start = end;
-        
-        // sort table_pre according to ia, first connect all vertical edges
-        std::cout << "sorting table_pre according to I_a...              " << std::flush;
-        auto cmp = [](const std::vector<MKL_INT> &a, const std::vector<MKL_INT> &b){
-                      if (a[0] == b[0]) {
-                          return a[1] < b[1];
-                      } else {
-                          return a[0] < b[0];
-                      }};
-#ifdef use_gnu_parallel_sort
-        __gnu_parallel::sort(table_pre.begin(), table_pre.end(), cmp);
-#else
-        std::sort(table_pre.begin(), table_pre.end(), cmp);
-#endif
-        end = std::chrono::system_clock::now();
-        elapsed_seconds = end - start;
-        std::cout << elapsed_seconds.count() << "s." << std::endl;
-        start = end;
-        // loop over the sorted table_pre
-        std::cout << "building vertical edges...                         " << std::flush;
-        for (MKL_INT idx = 1; idx < dim_target_full; idx++) {
-            if (table_pre[idx][0] == table_pre[idx-1][0]) { // same i_a, connected
-                g.add_edge(static_cast<uint64_t>(table_pre[idx-1][2]), static_cast<uint64_t>(table_pre[idx][2]));
-            }
-        }
-        end = std::chrono::system_clock::now();
-        elapsed_seconds = end - start;
-        std::cout << elapsed_seconds.count() << "s." << std::endl;
-        start = end;
-        
-        //std::cout << "Num_edges = " << g.num_arcs() << std::endl;
-        table_pre.clear();
-        table_pre.shrink_to_fit();
-        
-        g.BSF_set_JaJb(Lin_Ja_full, Lin_Jb_full);
-        
-        // check with the original basis, delete later
-        std::cout << "double checking Lin Table validity...              " << std::flush;
-        #pragma omp parallel for schedule(dynamic,1)
-        for (MKL_INT j = 0; j < dim_target_full; j++) {
-            mbasis_elem sub_a, sub_b;
-            unzipper_basis(props, props_sub_a, props_sub_b, basis_target_full[j], sub_a, sub_b);
-            auto i_a = sub_a.label(props_sub_a);
-            auto i_b = sub_b.label(props_sub_b);
-            assert(Lin_Ja_full[i_a] + Lin_Jb_full[i_b] == j);
-        }
-        end = std::chrono::system_clock::now();
-        elapsed_seconds = end - start;
-        std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
+        sort_basis_Lin_order(props, basis_repr);
     }
+    
+    
+    
     
     
     template <typename T>
@@ -395,7 +345,7 @@ namespace qbasis {
                 basis_temp.translate(props, latt, disp, sgn);
                 uint64_t i_a, i_b;
                 basis_temp.label_sub(props, i_a, i_b);
-                MKL_INT j = Lin_Ja_full[i_a] + Lin_Jb_full[i_b];
+                MKL_INT j = Lin_Ja_target_full[i_a] + Lin_Jb_target_full[i_b];
                 double exp_coef = 0.0;
                 for (uint32_t d = 0; d < latt.dimension(); d++) {
                     if (trans_sym[d]) {
@@ -445,163 +395,18 @@ namespace qbasis {
     }
     
     
-    template <typename T>
-    void model<T>::enumerate_basis_repr(const lattice &latt,
-                                        std::initializer_list<mopr<std::complex<double>>> conserve_lst,
-                                        std::initializer_list<double> val_lst)
-    {
-        std::chrono::time_point<std::chrono::system_clock> start, end;
-        start = std::chrono::system_clock::now();
-        std::cout << "Enumerating basis_repr... " << std::flush;
-        
-        assert(conserve_lst.size() == val_lst.size());
-        assert(basis_sub_repr.size() > 0);
-        auto latt_sub = divide_lattice(latt);
-        auto base_sub = latt_sub.Linear_size();
-        for (decltype(latt_sub.dimension()) j = 0; j < latt_sub.dimension(); j++) {
-            if (! trans_sym[j]) base_sub[j]    = 1;
-        }
-        basis_target_repr.clear();
-    
-        std::vector<uint32_t> default_val(latt_sub.dimension(),0);
-        for (decltype(basis_sub_repr.size()) ra = 0; ra < basis_sub_repr.size(); ra++) {
-            auto ga = belong2group_sub[ra];
-            int sgn;
-            for (decltype(ra) rb = ra; rb < basis_sub_repr.size(); rb++) {
-                auto gb = belong2group_sub[rb];
-                std::vector<uint32_t> disp_j(latt_sub.dimension(),0);
-                std::vector<int> disp_j_int(disp_j.size());
-                while (! dynamic_base_overflow(disp_j, groups_sub[gb])) {
-                    auto pos = std::vector<uint64_t>{ga,gb};
-                    pos.insert(pos.end(), disp_j.begin(), disp_j.end());
-                    auto val = (ra < rb)?(table_w_lt.index(pos)):(table_w_eq.index(pos));
-                    if (val != default_val) {  // valid representative
-                        mbasis_elem rb_new = basis_sub_repr[rb];
-                        for (uint32_t j = 0; j < latt_sub.dimension(); j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
-                        rb_new.translate(props_sub_b, latt_sub, disp_j_int, sgn);
-                        auto ra_z_Tj_rb = zipper_basis(props, props_sub_a, props_sub_b, basis_sub_repr[ra], rb_new);
-                        
-                        // check if the symmetries are obeyed
-                        bool flag = true;
-                        auto it_opr = conserve_lst.begin();
-                        auto it_val = val_lst.begin();
-                        while (it_opr != conserve_lst.end()) {
-                            auto temp = ra_z_Tj_rb.diagonal_operator(props, *it_opr);
-                            if (std::abs(temp - *it_val) >= 1e-5) {
-                                flag = false;
-                                break;
-                            }
-                            it_opr++;
-                            it_val++;
-                        }
-                        if (flag) basis_target_repr.push_back(ra_z_Tj_rb);
-                    }
-                    disp_j = dynamic_base_plus1(disp_j, groups_sub[gb]);
-                }
-            }
-        }
-        end = std::chrono::system_clock::now();
-        std::chrono::duration<double> elapsed_seconds = end - start;
-        std::cout <<  elapsed_seconds.count() << "s." << std::endl;
-        std::cout << "dim_repr (without removing dulplicates) = " << basis_target_repr.size() << std::endl;
-        
-        sort_basis_repr();
-    }
+
     
     
-    // sort according to Lin Table convention (Ib, then Ia)
-    template <typename T>
-    void model<T>::sort_basis_repr()
-    {
-        bool sorted = true;
-        for (decltype(basis_target_repr.size()) j = 0; j < basis_target_repr.size() - 1; j++) {
-            assert(basis_target_repr[j] != basis_target_repr[j+1]);
-            mbasis_elem sub_a1, sub_b1, sub_a2, sub_b2;
-            unzipper_basis(props, props_sub_a, props_sub_b, basis_target_repr[j], sub_a1, sub_b1);
-            unzipper_basis(props, props_sub_a, props_sub_b, basis_target_repr[j+1], sub_a2, sub_b2);
-            if (sub_b2 < sub_b1 || (sub_b2 == sub_b1 && sub_a2 < sub_a1)) {
-                sorted = false;
-                break;
-            }
-        }
-        if (! sorted) {
-            std::chrono::time_point<std::chrono::system_clock> start, end;
-            start = std::chrono::system_clock::now();
-            std::cout << "sorting basis(repr) according to Lin Table convention... " << std::flush;
-            auto cmp = [this](const mbasis_elem &j1, const mbasis_elem &j2){
-                mbasis_elem sub_a1, sub_b1, sub_a2, sub_b2;
-                unzipper_basis(this->props, this->props_sub_a, this->props_sub_b, j1, sub_a1, sub_b1);
-                unzipper_basis(this->props, this->props_sub_a, this->props_sub_b, j2, sub_a2, sub_b2);
-                if (sub_b1 == sub_b2) {
-                    return sub_a1 < sub_a2;
-                } else {
-                    return sub_b1 < sub_b2;
-                }};
-#ifdef use_gnu_parallel_sort
-            __gnu_parallel::sort(basis_target_repr.begin(), basis_target_repr.end(),cmp);
-#else
-            std::sort(basis_target_repr.begin(), basis_target_repr.end(),cmp);
-#endif
-            end = std::chrono::system_clock::now();
-            std::chrono::duration<double> elapsed_seconds = end - start;
-            std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
-        }
-    }
     
-    
-    template <typename T>
-    void model<T>::fill_Weisse_table(const lattice &latt)
-    {
-        assert(Lin_Ja_full.size() > 0 && Lin_Ja_full.size() == Lin_Jb_full.size());
-        
-        // first check translation symmetry
-        check_translation(latt);
-        
-        std::chrono::time_point<std::chrono::system_clock> start, end;
-        start = std::chrono::system_clock::now();
-        
-        auto props_sub = props_sub_a;
-        uint32_t Nsites = props[0].num_sites;
-        uint32_t Nsites_sub = props_sub[0].num_sites;
-        
-        auto latt_sub = divide_lattice(latt);
-        std::cout << "Generating sublattice full basis... " << std::flush;
-        basis_sub_full = enumerate_basis_all(props_sub);
-        end = std::chrono::system_clock::now();
-        std::chrono::duration<double> elapsed_seconds = end - start;
-        std::cout << elapsed_seconds.count() << "s." << std::endl;
-        start = end;
-        
-        std::cout << "Classifying sublattice basis... " << std::flush;
-        classify_trans_full2rep(props_sub, basis_sub_full, latt_sub, trans_sym, basis_sub_repr, belong2rep_sub, dist2rep_sub);
-        classify_trans_rep2group(props_sub, basis_sub_repr, latt_sub, trans_sym, groups_sub, omega_g_sub, belong2group_sub);
-        uint64_t check_dim_sub_full = 0;
-        for (decltype(basis_sub_repr.size()) j = 0; j < basis_sub_repr.size(); j++) check_dim_sub_full += omega_g_sub[belong2group_sub[j]];
-        //std::cout << "check_dim_sub_full    = " << check_dim_sub_full << std::endl;
-        //std::cout << "basis_sub_full.size() = " << basis_sub_full.size() << std::endl;
-        assert(check_dim_sub_full == static_cast<uint64_t>(basis_sub_full.size()));
-        end = std::chrono::system_clock::now();
-        elapsed_seconds = end - start;
-        std::cout << elapsed_seconds.count() << "s." << std::endl;
-        start = end;
-        
-        std::cout << "Generating 4-dim tables (ga,gb,ja,jb) -> (i,j)... " << std::flush;
-        uint32_t num_groups = groups_sub.size();
-        classify_Weisse_tables(props, props_sub, basis_sub_full, basis_sub_repr, latt, trans_sym,
-                               belong2rep_sub, dist2rep_sub, groups_sub, omega_g_sub, belong2group_sub,
-                               table_e_lt, table_e_eq, table_e_gt, table_w_lt, table_w_eq);
-        end = std::chrono::system_clock::now();
-        elapsed_seconds = end - start;
-        std::cout << elapsed_seconds.count() << "s." << std::endl;
-        std::cout << std::endl;
-    }
+
     
     
     template <typename T>
     void model<T>::generate_Ham_sparse_full(const bool &upper_triangle)
     {
         if (matrix_free) matrix_free = false;     //
-        assert(Lin_Ja_full.size() > 0 && Lin_Jb_full.size() > 0);
+        assert(Lin_Ja_target_full.size() > 0 && Lin_Jb_target_full.size() > 0);
         
         std::cout << "Generating LIL Hamiltonian matrix..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
@@ -616,7 +421,7 @@ namespace qbasis {
                 auto &ele_new = intermediate_state[cnt];
                 uint64_t i_a, i_b;
                 ele_new.first.label_sub(props, i_a, i_b);
-                MKL_INT j = Lin_Ja_full[i_a] + Lin_Jb_full[i_b];                  // < j | H | i > obtained
+                MKL_INT j = Lin_Ja_target_full[i_a] + Lin_Jb_target_full[i_b];                  // < j | H | i > obtained
                 assert(j >= 0 && j < dim_target_full);
                 if (upper_triangle) {
                     if (i <= j) matrix_lil.add(i, j, conjugate(ele_new.second));
@@ -625,7 +430,7 @@ namespace qbasis {
                 }
             }
         }
-        HamMat_csr_full = csr_mat<T>(matrix_lil);
+        HamMat_csr_target_full = csr_mat<T>(matrix_lil);
         std::cout << "Hamiltonian CSR matrix generated." << std::endl;
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
@@ -654,7 +459,7 @@ namespace qbasis {
                 auto &ele_new = intermediate_state[cnt];
                 uint64_t i_a, i_b;
                 ele_new.first.label_sub(props, i_a, i_b);
-                MKL_INT state_j = Lin_Ja_full[i_a] + Lin_Jb_full[i_b];
+                MKL_INT state_j = Lin_Ja_target_full[i_a] + Lin_Jb_target_full[i_b];
                 assert(state_j >= 0 && state_j < dim_target_full);
                 auto repr_j = basis_belong[state_j];
                 auto j = binary_search<MKL_INT,MKL_INT>(basis_repr_deprecated, repr_j, 0, dim_target_repr);                 // < j |P'_k H | i > obtained
@@ -667,7 +472,7 @@ namespace qbasis {
                 }
             }
         }
-        HamMat_csr_repr = csr_mat<std::complex<double>>(matrix_lil);
+        HamMat_csr_target_repr = csr_mat<std::complex<double>>(matrix_lil);
         std::cout << "Hamiltonian generated." << std::endl;
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
@@ -679,7 +484,7 @@ namespace qbasis {
     {
         std::cout << "Fall back to use matrix explicitly." << std::endl;
         generate_Ham_sparse_full();
-        return HamMat_csr_full.to_dense();
+        return HamMat_csr_target_full.to_dense();
     }
     
     template <typename T>
@@ -687,7 +492,7 @@ namespace qbasis {
     {
         assert(matrix_free);
         std::cout << "*" << std::flush;
-        assert(Lin_Ja_full.size() > 0 && Lin_Jb_full.size() > 0);
+        assert(Lin_Ja_target_full.size() > 0 && Lin_Jb_target_full.size() > 0);
         
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim_target_full; i++) {
@@ -702,7 +507,7 @@ namespace qbasis {
                 if (std::abs(ele_new.second) > opr_precision) {
                     uint64_t i_a, i_b;
                     ele_new.first.label_sub(props, i_a, i_b);
-                    MKL_INT j = Lin_Ja_full[i_a] + Lin_Jb_full[i_b];                // < j | H | i > obtained
+                    MKL_INT j = Lin_Ja_target_full[i_a] + Lin_Jb_target_full[i_b];                // < j | H | i > obtained
                     assert(j >= 0 && j < dim_target_full);
                     if (std::abs(x[j]) > machine_prec) y[i] += (x[j] * conjugate(ele_new.second));
                 }
@@ -715,7 +520,7 @@ namespace qbasis {
     {
         assert(matrix_free);
         std::cout << "*" << std::flush;
-        assert(Lin_Ja_full.size() > 0 && Lin_Jb_full.size() > 0);
+        assert(Lin_Ja_target_full.size() > 0 && Lin_Jb_target_full.size() > 0);
         
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim_target_full; i++) {
@@ -730,7 +535,7 @@ namespace qbasis {
                 if (std::abs(ele_new.second) > opr_precision) {
                     uint64_t i_a, i_b;
                     ele_new.first.label_sub(props, i_a, i_b);
-                    MKL_INT j = Lin_Ja_full[i_a] + Lin_Jb_full[i_b];                // < j | H | i > obtained
+                    MKL_INT j = Lin_Ja_target_full[i_a] + Lin_Jb_target_full[i_b];                // < j | H | i > obtained
                     assert(j >= 0 && j < dim_target_full);
                     if (std::abs(x[j]) > machine_prec) y[i] += (x[j] * conjugate(ele_new.second));
                 }
@@ -764,7 +569,7 @@ namespace qbasis {
         if (matrix_free) {
             iram(dim_target_full, *this, v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_full.data(), eigenvecs_full.data());
         } else {
-            iram(dim_target_full, HamMat_csr_full, v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_full.data(), eigenvecs_full.data());
+            iram(dim_target_full, HamMat_csr_target_full, v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_full.data(), eigenvecs_full.data());
         }
         assert(nconv > 0);
         E0 = eigenvals_full[0];
@@ -816,7 +621,7 @@ namespace qbasis {
             if (matrix_free) {
                 lanczos(0, step, dim_target_full, *this, rnorm, resid.data(), v.data(), hessenberg.data(), 2000, false);
             } else {
-                lanczos(0, step, dim_target_full, HamMat_csr_full, rnorm, resid.data(), v.data(), hessenberg.data(), 2000, false);
+                lanczos(0, step, dim_target_full, HamMat_csr_target_full, rnorm, resid.data(), v.data(), hessenberg.data(), 2000, false);
             }
             total_steps += step;
             copy(total_steps, hessenberg.data() + ldh, 1, ritz.data(), 1);
@@ -860,13 +665,13 @@ namespace qbasis {
         std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        std::vector<T> v0(HamMat_csr_full.dimension(), 1.0);
+        std::vector<T> v0(HamMat_csr_target_full.dimension(), 1.0);
         eigenvals_full.resize(nev);
-        eigenvecs_full.resize(HamMat_csr_full.dimension() * nev);
+        eigenvecs_full.resize(HamMat_csr_target_full.dimension() * nev);
         if (matrix_free) {
             iram(dim_target_full, *this, v0.data(), nev, ncv, maxit, "lr", nconv, eigenvals_full.data(), eigenvecs_full.data());
         } else {
-            iram(dim_target_full, HamMat_csr_full, v0.data(), nev, ncv, maxit, "lr", nconv, eigenvals_full.data(), eigenvecs_full.data());
+            iram(dim_target_full, HamMat_csr_target_full, v0.data(), nev, ncv, maxit, "lr", nconv, eigenvals_full.data(), eigenvecs_full.data());
         }
         assert(nconv > 0);
         Emax = eigenvals_full[0];
@@ -897,10 +702,10 @@ namespace qbasis {
         }
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        std::vector<std::complex<double>> v0(HamMat_csr_repr.dimension(), 1.0);
+        std::vector<std::complex<double>> v0(HamMat_csr_target_repr.dimension(), 1.0);
         eigenvals_repr.resize(nev);
-        eigenvecs_repr.resize(HamMat_csr_repr.dimension() * nev);
-        iram(dim_target_repr, HamMat_csr_repr, v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_repr.data(), eigenvecs_repr.data());
+        eigenvecs_repr.resize(HamMat_csr_target_repr.dimension() * nev);
+        iram(dim_target_repr, HamMat_csr_target_repr, v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_repr.data(), eigenvecs_repr.data());
         assert(nconv > 1);
         E0 = eigenvals_repr[0];
         gap = eigenvals_repr[1] - eigenvals_repr[0];
@@ -923,10 +728,10 @@ namespace qbasis {
         }
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        std::vector<std::complex<double>> v0(HamMat_csr_repr.dimension(), 1.0);
+        std::vector<std::complex<double>> v0(HamMat_csr_target_repr.dimension(), 1.0);
         eigenvals_repr.resize(nev);
-        eigenvecs_repr.resize(HamMat_csr_repr.dimension() * nev);
-        iram(dim_target_repr, HamMat_csr_repr, v0.data(), nev, ncv, maxit, "lr", nconv, eigenvals_repr.data(), eigenvecs_repr.data());
+        eigenvecs_repr.resize(HamMat_csr_target_repr.dimension() * nev);
+        iram(dim_target_repr, HamMat_csr_target_repr, v0.data(), nev, ncv, maxit, "lr", nconv, eigenvals_repr.data(), eigenvecs_repr.data());
         assert(nconv > 0);
         Emax = eigenvals_repr[0];
         end = std::chrono::system_clock::now();
@@ -1028,7 +833,7 @@ namespace qbasis {
     T model<T>::measure(const mopr<T> &lhs, const MKL_INT &which_col)
     {
         assert(which_col >= 0 && which_col < nconv);
-        if (HamMat_csr_full.dimension() == dim_target_full) {
+        if (HamMat_csr_target_full.dimension() == dim_target_full) {
             MKL_INT base = dim_target_full * which_col;
             std::vector<T> vec_new(dim_target_full);
             moprXeigenvec_full(lhs, vec_new.data(), which_col);
@@ -1043,7 +848,7 @@ namespace qbasis {
     T model<T>::measure(const mopr<T> &lhs1, const mopr<T> &lhs2, const MKL_INT &which_col)
     {
         assert(which_col >= 0 && which_col < nconv);
-        if (HamMat_csr_full.dimension() == dim_target_full) {
+        if (HamMat_csr_target_full.dimension() == dim_target_full) {
             std::vector<T> vec_new1(dim_target_full);
             std::vector<T> vec_new2(dim_target_full);
             moprXeigenvec_full(lhs1, vec_new1.data(), which_col);

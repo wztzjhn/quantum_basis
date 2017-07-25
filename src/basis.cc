@@ -2,6 +2,7 @@
 #include <bitset>
 #include <algorithm>
 #include "qbasis.h"
+#include "graph.h"
 
 namespace qbasis {
     
@@ -750,7 +751,7 @@ namespace qbasis {
     }
     
 
-    // ------------------ friends ------------------
+    // ------------------ operations on basis -------------------
     
     void swap(mbasis_elem &lhs, mbasis_elem &rhs)
     {
@@ -922,14 +923,14 @@ namespace qbasis {
         return false;
     }
     
-    mbasis_elem zipper_basis(const std::vector<basis_prop> &props_parent,
-                             const std::vector<basis_prop> &props_sub_a,
-                             const std::vector<basis_prop> &props_sub_b,
-                             const mbasis_elem &sub_a, const mbasis_elem &sub_b)
+    void zipper_basis(const std::vector<basis_prop> &props_parent,
+                      const std::vector<basis_prop> &props_sub_a,
+                      const std::vector<basis_prop> &props_sub_b,
+                      const mbasis_elem &sub_a, const mbasis_elem &sub_b, mbasis_elem &parent)
     {
         uint32_t num_orb = props_parent.size();
         
-        mbasis_elem res(props_parent);
+        parent = mbasis_elem(props_parent);
         for (uint32_t orb = 0; orb < num_orb; orb++) {
             uint32_t num_sub_sites_a = props_sub_a[orb].num_sites;
             uint32_t num_sub_sites_b = props_sub_b[orb].num_sites;
@@ -937,15 +938,14 @@ namespace qbasis {
             assert(num_sub_sites_a + num_sub_sites_b == num_sites);
             assert(num_sub_sites_a >= num_sub_sites_b);
             for (uint32_t site = 0; site < num_sub_sites_b; site++) {
-                res.siteWrite(props_parent, site + site,     orb, sub_a.siteRead(props_sub_a, site, orb)); // from sub_a
-                res.siteWrite(props_parent, site + site + 1, orb, sub_b.siteRead(props_sub_b, site, orb)); // from sub_b
+                parent.siteWrite(props_parent, site + site,     orb, sub_a.siteRead(props_sub_a, site, orb)); // from sub_a
+                parent.siteWrite(props_parent, site + site + 1, orb, sub_b.siteRead(props_sub_b, site, orb)); // from sub_b
             }
             if (num_sub_sites_a > num_sub_sites_b) {
                 assert(num_sub_sites_a == num_sub_sites_b + 1);
-                res.siteWrite(props_parent, num_sites - 1, orb, sub_a.siteRead(props_sub_a, num_sub_sites_b, orb)); // from sub_a
+                parent.siteWrite(props_parent, num_sites - 1, orb, sub_a.siteRead(props_sub_a, num_sub_sites_b, orb)); // from sub_a
             }
         }
-        return res;
     }
     
     void unzipper_basis(const std::vector<basis_prop> &props_parent,
@@ -975,7 +975,9 @@ namespace qbasis {
         }
     }
     
-    std::vector<mbasis_elem> enumerate_basis_all(const std::vector<basis_prop> &props)
+    std::vector<mbasis_elem> enumerate_basis(const std::vector<basis_prop> &props,
+                                             std::vector<mopr<std::complex<double>>> conserve_lst,
+                                             std::vector<double> val_lst)
     {
         uint32_t n_orbs  = props.size();
         uint64_t dim_all = 1;
@@ -1011,6 +1013,189 @@ namespace qbasis {
         }
         return res;
     }
+    
+    
+    void sort_basis_Lin_order(const std::vector<basis_prop> &props, std::vector<qbasis::mbasis_elem> &basis)
+    {
+        std::vector<basis_prop> props_sub_a, props_sub_b;
+        basis_props_split(props, props_sub_a, props_sub_b);
+        
+        bool sorted = true;
+        MKL_INT dim = static_cast<MKL_INT>(basis.size());
+        assert(dim > 0);
+        for (MKL_INT j = 0; j < dim - 1; j++) {
+            assert(basis[j] != basis[j+1]);
+            mbasis_elem sub_a1, sub_b1, sub_a2, sub_b2;
+            unzipper_basis(props, props_sub_a, props_sub_b, basis[j], sub_a1, sub_b1);
+            unzipper_basis(props, props_sub_a, props_sub_b, basis[j+1], sub_a2, sub_b2);
+            if (sub_b2 < sub_b1 || (sub_b2 == sub_b1 && sub_a2 < sub_a1)) {
+                sorted = false;
+                break;
+            }
+        }
+        if (! sorted) {
+            std::chrono::time_point<std::chrono::system_clock> start, end;
+            start = std::chrono::system_clock::now();
+            std::cout << "sorting basis according to Lin Table convention... " << std::flush;
+            auto cmp = [props, props_sub_a, props_sub_b](const mbasis_elem &j1, const mbasis_elem &j2){
+                mbasis_elem sub_a1, sub_b1, sub_a2, sub_b2;
+                unzipper_basis(props, props_sub_a, props_sub_b, j1, sub_a1, sub_b1);
+                unzipper_basis(props, props_sub_a, props_sub_b, j2, sub_a2, sub_b2);
+                if (sub_b1 == sub_b2) {
+                    return sub_a1 < sub_a2;
+                } else {
+                    return sub_b1 < sub_b2;
+                }};
+#ifdef use_gnu_parallel_sort
+            __gnu_parallel::sort(basis.begin(), basis.end(),cmp);
+#else
+            std::sort(basis.begin(), basis.end(),cmp);
+#endif
+            end = std::chrono::system_clock::now();
+            std::chrono::duration<double> elapsed_seconds = end - start;
+            std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
+        }
+    }
+    
+    
+    void fill_Lin_table(const std::vector<basis_prop> &props, const std::vector<qbasis::mbasis_elem> &basis,
+                        std::vector<MKL_INT> &Lin_Ja, std::vector<MKL_INT> &Lin_Jb)
+    {
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        
+        MKL_INT dim = static_cast<MKL_INT>(basis.size());
+        std::vector<basis_prop> props_sub_a, props_sub_b;
+        basis_props_split(props, props_sub_a, props_sub_b);
+        
+        uint32_t Nsites = props[0].num_sites;
+        uint32_t Nsites_a = props_sub_a[0].num_sites;
+        uint32_t Nsites_b = props_sub_b[0].num_sites;
+        assert(Nsites_a >= Nsites_b && Nsites_a + Nsites_b == Nsites);
+        
+        std::cout << "Filling Lin Table (" << Nsites_a << "+" << Nsites_b <<" sites)..." << std::endl;
+        
+        uint32_t local_dim = 1;
+        for (decltype(props.size()) j = 0; j < props.size(); j++) local_dim *= props[j].dim_local;
+        uint64_t dim_sub_a = int_pow<uint32_t, uint64_t>(local_dim, Nsites_a);
+        uint64_t dim_sub_b = int_pow<uint32_t, uint64_t>(local_dim, Nsites_b);
+        
+        std::cout << "Basis size for sublattices (without any symmetry): " << dim_sub_a << " <-> " << dim_sub_b << std::endl;
+        Lin_Ja = std::vector<MKL_INT>(dim_sub_a,-1);
+        Lin_Jb = std::vector<MKL_INT>(dim_sub_b,-1);
+        
+        // first loop over the basis to generate the list (Ia, Ib, J)
+        // the element J may not be necessary, remove if not used
+        std::cout << "building the (Ia,Ib,J) table...                    " << std::flush;
+        std::vector<std::vector<MKL_INT>> table_pre(dim,std::vector<MKL_INT>(3));
+        #pragma omp parallel for schedule(dynamic,1)
+        for (MKL_INT j = 0; j < dim; j++) {
+            uint64_t i_a, i_b;
+            basis[j].label_sub(props, i_a, i_b);
+            // value of table_pre[j][2] will be fixed later
+            table_pre[j][0] = static_cast<MKL_INT>(i_a);
+            table_pre[j][1] = static_cast<MKL_INT>(i_b);
+            table_pre[j][2] = j;
+        }
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        start = end;
+        
+        std::cout << "checking if table_pre sorted via I_b               " << std::flush;
+        #pragma omp parallel for schedule(dynamic,1)
+        for (MKL_INT j = 0; j < dim - 1; j++) {
+            if (table_pre[j][1] == table_pre[j+1][1]) {
+                assert(table_pre[j][0] < table_pre[j+1][0]);
+            } else {
+                assert(table_pre[j][1] < table_pre[j+1][1]);
+            }
+        }
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        start = end;
+        
+        // build a graph for the connectivity property of (Ia, Ib, J)
+        // i.e., for 2 different Js with either same Ia or Ib, they are connected.
+        // Also, 2 different Js connected to the same J are connected.
+        // Thus, J form a graph, with several pieces disconnected
+        ALGraph g(static_cast<uint64_t>(dim));
+        std::cout << "Initializing graph vertex info...                  " << std::flush;
+        #pragma omp parallel for schedule(dynamic,1)
+        for (MKL_INT j = 0; j < dim; j++) {
+            g[j].i_a = table_pre[j][0];
+            g[j].i_b = table_pre[j][1];
+        }
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        start = end;
+        
+        // loop over the sorted table_pre, connect all horizontal edges
+        std::cout << "building horizontal edges...                       " << std::flush;
+        for (MKL_INT idx = 1; idx < dim; idx++) {
+            assert(table_pre[idx][1] >= table_pre[idx-1][1]);
+            if (table_pre[idx][1] == table_pre[idx-1][1]) { // same i_a, connected
+                assert(table_pre[idx][0] > table_pre[idx-1][0]);
+                g.add_edge(static_cast<uint64_t>(table_pre[idx-1][2]), static_cast<uint64_t>(table_pre[idx][2]));
+            }
+        }
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        start = end;
+        
+        // sort table_pre according to ia, first connect all vertical edges
+        std::cout << "sorting table_pre according to I_a...              " << std::flush;
+        auto cmp = [](const std::vector<MKL_INT> &a, const std::vector<MKL_INT> &b){
+            if (a[0] == b[0]) {
+                return a[1] < b[1];
+            } else {
+                return a[0] < b[0];
+            }};
+#ifdef use_gnu_parallel_sort
+        __gnu_parallel::sort(table_pre.begin(), table_pre.end(), cmp);
+#else
+        std::sort(table_pre.begin(), table_pre.end(), cmp);
+#endif
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        start = end;
+        // loop over the sorted table_pre
+        std::cout << "building vertical edges...                         " << std::flush;
+        for (MKL_INT idx = 1; idx < dim; idx++) {
+            if (table_pre[idx][0] == table_pre[idx-1][0]) { // same i_a, connected
+                g.add_edge(static_cast<uint64_t>(table_pre[idx-1][2]), static_cast<uint64_t>(table_pre[idx][2]));
+            }
+        }
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        start = end;
+        
+        //std::cout << "Num_edges = " << g.num_arcs() << std::endl;
+        table_pre.clear();
+        table_pre.shrink_to_fit();
+        
+        g.BSF_set_JaJb(Lin_Ja, Lin_Jb);
+        
+        // check with the original basis, delete later
+        std::cout << "double checking Lin Table validity...              " << std::flush;
+        #pragma omp parallel for schedule(dynamic,1)
+        for (MKL_INT j = 0; j < dim; j++) {
+            mbasis_elem sub_a, sub_b;
+            unzipper_basis(props, props_sub_a, props_sub_b, basis[j], sub_a, sub_b);
+            auto i_a = sub_a.label(props_sub_a);
+            auto i_b = sub_b.label(props_sub_b);
+            assert(Lin_Ja[i_a] + Lin_Jb[i_b] == j);
+        }
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
+    }
+    
     
     void classify_trans_full2rep(const std::vector<basis_prop> &props,
                                  const std::vector<mbasis_elem> &basis_all,
@@ -1266,7 +1451,8 @@ namespace qbasis {
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         int sgn;
                         rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
-                        auto ra_z_Tj_rb = zipper_basis(props_parent, props_sub, props_sub, ra, rb_new);
+                        mbasis_elem ra_z_Tj_rb;
+                        zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb);
                         /*
                         std::cout << "ra_z_Tj_rb: " << std::endl;
                         ra_z_Tj_rb.prt_bits(props_parent);
@@ -1351,7 +1537,8 @@ namespace qbasis {
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         int sgn;
                         rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
-                        auto ra_z_Tj_rb = zipper_basis(props_parent, props_sub, props_sub, ra, rb_new);
+                        mbasis_elem ra_z_Tj_rb;
+                        zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb);
                         // loop over disp_i
                         std::vector<uint32_t> disp_i(latt_sub_dim,0);
                         while (! dynamic_base_overflow(disp_i, base_parent)) {
@@ -1402,7 +1589,8 @@ namespace qbasis {
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         int sgn;
                         rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
-                        auto ra_z_Tj_rb = zipper_basis(props_parent, props_sub, props_sub, ra, rb_new);
+                        mbasis_elem ra_z_Tj_rb;
+                        zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb);
                         // loop over disp_i
                         std::vector<uint32_t> disp_i(latt_sub_dim,0);
                         while (! dynamic_base_overflow(disp_i, base_parent)) {
@@ -1597,7 +1785,8 @@ namespace qbasis {
                         auto rb_new = examples[gb].back();
                         int sgn;
                         rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
-                        auto ra_z_Tj_rb = zipper_basis(props_parent, props_sub, props_sub, ra, rb_new);
+                        mbasis_elem ra_z_Tj_rb;
+                        zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb);
                         std::vector<uint32_t> div(latt_sub_dim,0);
                         for (uint32_t d = 0; d < latt_sub_dim; d++) {
                             for (auto it = div_parent_v1[d].begin(); it != div_parent_v1[d].end(); it++) {
@@ -1622,7 +1811,8 @@ namespace qbasis {
                         auto rb_new = examples[gb].front();
                         int sgn;
                         rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
-                        auto ra_z_Tj_rb = zipper_basis(props_parent, props_sub, props_sub, ra, rb_new);
+                        mbasis_elem ra_z_Tj_rb;
+                        zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb);
                         std::vector<uint32_t> div(latt_sub_dim,0);
                         for (uint32_t d = 0; d < latt_sub_dim; d++) {
                             for (auto it = div_parent_v1[d].begin(); it != div_parent_v1[d].end(); it++) {

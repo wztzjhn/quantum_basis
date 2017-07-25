@@ -54,7 +54,7 @@
 
 namespace qbasis {
 
-//  -------------part 0: global vals, forward declarations ---------------------
+//  -------------part 0: global variables, forward declarations ----------------
 //  ----------------------------------------------------------------------------
     static const double pi = 3.141592653589793238462643;
     // later let's try to combine these three as a unified name "precision"
@@ -63,10 +63,43 @@ namespace qbasis {
     static const double sparse_precision = 1e-14;
     static const double lanczos_precision = 1e-12;
     
-    // for the Weisse Table
+    // Multi-dimensional array
     template <typename> class multi_array;
+    template <typename T> void swap(multi_array<T>&, multi_array<T>&);
+    template <typename T> class multi_array {
+        friend void swap <> (multi_array<T>&, multi_array<T>&);
+    public:
+        multi_array(): dim_(0), size_(0) {}
+        multi_array(const std::vector<uint64_t> &linear_size_input);
+        multi_array(const std::vector<uint64_t> &linear_size_input, const T &element);
+        multi_array(const multi_array<T> &old):                                 // copy constructor
+            dim_(old.dim_),
+            size_(old.size_),
+            linear_size_(old.linear_size_),
+            data(old.data) {}
+        multi_array(multi_array<T> &&old) noexcept :                            // move constructor
+            dim_(old.dim_),
+            size_(old.size_),
+            linear_size_(std::move(old.linear_size_)),
+            data(std::move(old.data)) {}
+        multi_array& operator=(multi_array<T> old) { swap(*this, old); return *this; }
+        multi_array& operator=(const T &element);
+        ~multi_array() {}
+        
+        uint32_t dim() { return dim_; }
+        uint64_t size() { return size_; }
+        std::vector<uint64_t> linear_size() { return linear_size_; }
+        T& index(const std::vector<uint64_t> &pos);
+        const T& index(const std::vector<uint64_t> &pos) const;
+    private:
+        uint32_t dim_;
+        uint64_t size_;
+        std::vector<uint64_t> linear_size_;
+        std::vector<T> data;
+    };
     typedef multi_array<std::vector<uint32_t>> array_3D;
     typedef multi_array<std::pair<std::vector<uint32_t>,std::vector<uint32_t>>> array_4D;
+    
     
     class basis_prop;
     class mbasis_elem;
@@ -77,32 +110,38 @@ namespace qbasis {
     class lattice;
     template <typename> class csr_mat;
     template <typename> class model;
-    //class threads_pool;
     
-    // ---------- basis_prop --------
+    
+    // Operations on basis
     void basis_props_split(const std::vector<basis_prop> &parent,
-                           std::vector<basis_prop> &sub1,
-                           std::vector<basis_prop> &sub2);
-    
-    // ---------- basis -----------
+                           std::vector<basis_prop> &sub1, std::vector<basis_prop> &sub2);
     void swap(mbasis_elem&, mbasis_elem&);
     bool operator<(const mbasis_elem&, const mbasis_elem&);
     bool operator==(const mbasis_elem&, const mbasis_elem&);
     bool operator!=(const mbasis_elem&, const mbasis_elem&);
     bool trans_equiv(const mbasis_elem&, const mbasis_elem&, const std::vector<basis_prop> &props, const lattice&);   // computational heavy, use with caution
-    // following zipper product definition in Weisse's PRE 87, 043305 (2013)
-    mbasis_elem zipper_basis(const std::vector<basis_prop> &props_parent,
-                             const std::vector<basis_prop> &props_sub_a,
-                             const std::vector<basis_prop> &props_sub_b,
-                             const mbasis_elem &sub_a, const mbasis_elem &sub_b);
-    // split basis into two
+    
+    void zipper_basis(const std::vector<basis_prop> &props_parent,              // defined in Weisse's PRE 87, 043305 (2013)
+                      const std::vector<basis_prop> &props_sub_a,
+                      const std::vector<basis_prop> &props_sub_b,
+                      const mbasis_elem &sub_a, const mbasis_elem &sub_b, mbasis_elem &parent);
     void unzipper_basis(const std::vector<basis_prop> &props_parent,
                         const std::vector<basis_prop> &props_sub_a,
                         const std::vector<basis_prop> &props_sub_b,
-                        const mbasis_elem &parent,
-                        mbasis_elem &sub_a, mbasis_elem &sub_b);
-    // generate every single possible state, without any symmetry
-    std::vector<mbasis_elem> enumerate_basis_all(const std::vector<basis_prop> &props);
+                        const mbasis_elem &parent, mbasis_elem &sub_a, mbasis_elem &sub_b);
+    
+    // generate states compatible with symmetry
+    std::vector<mbasis_elem> enumerate_basis(const std::vector<basis_prop> &props,
+                                             std::vector<mopr<std::complex<double>>> conserve_lst = {},
+                                             std::vector<double> val_lst = {});
+    
+    // sort basis according to Lin Table convention (Ib, then Ia)
+    void sort_basis_Lin_order(const std::vector<basis_prop> &props, std::vector<qbasis::mbasis_elem> &basis);
+    
+    // generate Lin Tables for a given basis
+    void fill_Lin_table(const std::vector<basis_prop> &props, const std::vector<qbasis::mbasis_elem> &basis,
+                        std::vector<MKL_INT> &Lin_Ja, std::vector<MKL_INT> &Lin_Jb);
+    
     // (sublattice) for a given list of full basis, find the reps according to translational symmetry
     void classify_trans_full2rep(const std::vector<basis_prop> &props,
                                  const std::vector<mbasis_elem> &basis_all,
@@ -209,54 +248,10 @@ namespace qbasis {
     // divide into two identical sublattices, if Nsites even. To be used in the divide and conquer method
     lattice divide_lattice(const lattice &parent);
     
-    template <typename T> void swap(multi_array<T>&, multi_array<T>&);
+    
     
 
     
-//  ------------------------ Multi_array data structure ------------------------
-//  ----------------------------------------------------------------------------
-    
-    template <typename T> class multi_array {
-        friend void swap <> (multi_array<T>&, multi_array<T>&);
-    public:
-        uint32_t dim;
-        uint64_t size;
-        std::vector<uint64_t> linear_size;
-        
-        multi_array(): dim(0), size(0) {}
-        
-        multi_array(const std::vector<uint64_t> &linear_size_input);
-        
-        multi_array(const std::vector<uint64_t> &linear_size_input, const T &element);
-        
-        // copy constructor
-        multi_array(const multi_array<T> &old):
-            dim(old.dim),
-            size(old.size),
-            linear_size(old.linear_size),
-            data(old.data) {}
-        
-        // move constructor
-        multi_array(multi_array<T> &&old) noexcept :
-            dim(old.dim),
-            size(old.size),
-            linear_size(std::move(old.linear_size)),
-            data(std::move(old.data)) {}
-        
-        // copy assignment constructor and move assignment constructor, using "swap and copy"
-        multi_array& operator=(multi_array<T> old) { swap(*this, old); return *this; }
-        
-        multi_array& operator=(const T &element);
-        
-        ~multi_array() {}
-        
-        T& index(const std::vector<uint64_t> &pos);
-        
-        const T& index(const std::vector<uint64_t> &pos) const;
-        
-    private:
-        std::vector<T> data;
-    };
     
 
 //  --------------------  part 1: basis of the wave functions ------------------
@@ -264,12 +259,12 @@ namespace qbasis {
     // ------------ basic info of a particular basis -----------------
     struct extra_info {
         uint8_t Nmax;   // maximum number of particles
+        // more items can be filled here...
     };
     
     class basis_prop {
     public:
         basis_prop() = default;
-        
         basis_prop(const uint32_t &n_sites, const uint8_t &dim_local_,
                    const std::vector<uint32_t> &Nf_map = std::vector<uint32_t>(),
                    const bool &dilute_ = false);
@@ -298,7 +293,7 @@ namespace qbasis {
     };
     
     
-    // ------------ fundamental class for basis elements --------------
+    // -------------- fundamental class for basis elements ---------------
     // -------------- class for basis with several orbitals---------------
     // for given number of sites, and several orbitals, store the vectors of bits
     class mbasis_elem {
@@ -1064,26 +1059,32 @@ namespace qbasis {
         std::vector<qbasis::mbasis_elem> basis_sub_full;       // basis for half lattice, used for building Weisse Table
         std::vector<qbasis::mbasis_elem> basis_sub_repr;       // reps for half lattice
         
-        
-        csr_mat<T> HamMat_csr_full;
-        csr_mat<std::complex<double>> HamMat_csr_repr;         // for the representative Hilbert space
-        
-        std::vector<double> eigenvals_full;
-        std::vector<T> eigenvecs_full;
-        std::vector<double> eigenvals_repr;
-        std::vector<std::complex<double>> eigenvecs_repr;
-        
-        
-        std::vector<MKL_INT> Lin_Ja_full;                      // Lin tables for the full basis
-        std::vector<MKL_INT> Lin_Jb_full;
-        array_4D table_e_lt, table_e_eq, table_e_gt;           // Weisse Tables for translation symmetry
-        array_3D table_w_lt, table_w_eq;
+        std::vector<MKL_INT> Lin_Ja_target_full;               // Lin tables for the full basis
+        std::vector<MKL_INT> Lin_Jb_target_full;
+        std::vector<MKL_INT> Lin_Ja_excite_full;
+        std::vector<MKL_INT> Lin_Jb_excite_full;
+        std::vector<MKL_INT> Lin_Ja_target_repr;               // Lin tables for the repr basis
+        std::vector<MKL_INT> Lin_Jb_target_repr;
+        std::vector<MKL_INT> Lin_Ja_excite_repr;
+        std::vector<MKL_INT> Lin_Jb_excite_repr;
         
         std::vector<uint64_t> belong2rep_sub;
         std::vector<std::vector<int>> dist2rep_sub;
         std::vector<std::vector<uint32_t>> groups_sub;
         std::vector<uint32_t> omega_g_sub;
         std::vector<uint32_t> belong2group_sub;
+        array_4D table_e_lt, table_e_eq, table_e_gt;           // Weisse Tables for translation symmetry
+        array_3D table_w_lt, table_w_eq;
+        
+        csr_mat<T> HamMat_csr_target_full;
+        csr_mat<T> HamMat_csr_excite_full;
+        csr_mat<std::complex<double>> HamMat_csr_target_repr;
+        csr_mat<std::complex<double>> HamMat_csr_excite_repr;
+        
+        std::vector<double> eigenvals_full;
+        std::vector<T> eigenvecs_full;
+        std::vector<double> eigenvals_repr;
+        std::vector<std::complex<double>> eigenvecs_repr;
         
         
         // ---------------- deprecated --------------------
@@ -1129,25 +1130,27 @@ namespace qbasis {
         
         void add_offdiagonal_Ham(const mopr<T> &rhs)     { Ham_off_diag += rhs; }
         
+        void fill_Weisse_table(const lattice &latt);
+        
         // naive way of enumerating all possible basis state
         void enumerate_basis_full(const lattice &latt,
+                                  MKL_INT &dim_full,
+                                  std::vector<qbasis::mbasis_elem> &basis_full,
                                   std::initializer_list<mopr<std::complex<double>>> conserve_lst = {},
                                   std::initializer_list<double> val_lst = {});
         
-        void sort_basis_full();
-        
-        void fill_Lin_table_full();
-        
+        // Need to build Weiss Tables before enumerating representatives
         void enumerate_basis_repr(const lattice &latt,
+                                  const std::vector<int> &momentum,
+                                  MKL_INT &dim_repr,
+                                  std::vector<qbasis::mbasis_elem> &basis_repr,
                                   std::initializer_list<mopr<std::complex<double>>> conserve_lst = {},
                                   std::initializer_list<double> val_lst = {});
-        
-        void sort_basis_repr();
         
         // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
         void basis_init_repr_deprecated(const std::vector<int> &momentum, const lattice &latt);
         
-        void fill_Weisse_table(const lattice &latt);
+        
         
         void generate_Ham_sparse_full(const bool &upper_triangle = true); // generate the full Hamiltonian in sparse matrix format
         
@@ -1192,10 +1195,6 @@ namespace qbasis {
         double Emax;
         double E0;
         double gap;
-        
-        
-        
-        
         
         // check if translational symmetry satisfied
         void check_translation(const lattice &latt);

@@ -87,7 +87,8 @@ int main() {
     }
 
     // constructing the Hilbert space basis
-    Heisenberg.enumerate_basis_full(lattice, {Sz_total}, {Sz_total_val});
+    Heisenberg.enumerate_basis_full(lattice, Heisenberg.dim_target_full, Heisenberg.basis_target_full,
+                                    {Sz_total}, {Sz_total_val});
 
     // optional, will use more memory and give higher speed
     // generating matrix of the Hamiltonian in the full Hilbert space

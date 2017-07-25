@@ -109,7 +109,8 @@ int main() {
 
     // constructing the Hilbert space basis
     //Kondo.enumerate_basis_full(lattice, {Nelec_total,Sz_total}, {static_cast<double>(Nelec_total_val),Sz_total_val});
-    Kondo.enumerate_basis_full(lattice, {Nelec_total}, {Nelec_total_val});
+    Kondo.enumerate_basis_full(lattice, Kondo.dim_target_full, Kondo.basis_target_full,
+                               {Nelec_total}, {Nelec_total_val});
 
 
     // optional, will use more memory and give higher speed

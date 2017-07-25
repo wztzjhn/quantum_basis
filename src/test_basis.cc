@@ -30,7 +30,7 @@ void test_basis() {
     assert(basis1.siteRead(props1, 8, 0) == 1);
     std::cout << std::endl;
     
-    auto basis_list1 = qbasis::enumerate_basis_all(props1);
+    auto basis_list1 = qbasis::enumerate_basis(props1);
     //std::cout << "basis_list1: " << std::endl;
     for (uint64_t j = 0; j < basis_list1.size(); j++) {
         //std::cout << "j = " << j << "\t";
@@ -125,7 +125,7 @@ void test_basis() {
     qbasis::model<std::complex<double>> test_model;
     test_model.add_orbital(lattice.total_sites(), "spin-1/2");
     test_model.add_orbital(lattice.total_sites(), "electron");
-    test_model.enumerate_basis_full(lattice);
+    test_model.enumerate_basis_full(lattice, test_model.dim_target_full, test_model.basis_target_full);
     /*
     for (MKL_INT j = 0; j < test_model.dim_full; j++) {
         std::cout << "j= " << j << ", basis_label = " << test_model.basis_full[j].label(test_model.props) << std::endl;
@@ -142,7 +142,7 @@ void test_basis2()
     
     qbasis::lattice latt("chain",std::vector<uint32_t>{4},std::vector<std::string>{"pbc"});
     
-    auto basis_list = qbasis::enumerate_basis_all(props);
+    auto basis_list = qbasis::enumerate_basis(props);
     
     std::vector<qbasis::mbasis_elem> reps;
     std::vector<uint64_t> belong2rep;
@@ -207,7 +207,7 @@ void test_basis3()
     std::vector<qbasis::basis_prop> props;
     props.emplace_back(latt_child.total_sites(),"spin-1/2");
     
-    auto basis_list = qbasis::enumerate_basis_all(props);
+    auto basis_list = qbasis::enumerate_basis(props);
     
     std::vector<qbasis::mbasis_elem> reps;
     std::vector<uint64_t> belong2rep;
@@ -276,7 +276,7 @@ void test_basis4()
         Sz_total += Sz_i;
     }
     
-    model_test4.enumerate_basis_full(lattice, {Sz_total}, {0.0});
+    model_test4.enumerate_basis_full(lattice, model_test4.dim_target_full, model_test4.basis_target_full, {Sz_total}, {0.0});
     
     std::cout << std::numeric_limits<double>::epsilon() << std::endl;
     
@@ -504,7 +504,7 @@ void test_basis4()
     
     model_test4.locate_E0_full();
     
-    model_test4.enumerate_basis_repr(lattice, {Sz_total}, {0.0});
+    model_test4.enumerate_basis_repr(lattice, std::vector<int>{0}, model_test4.dim_target_repr, model_test4.basis_target_repr, {Sz_total}, {0.0});
     
     model_test4.basis_init_repr_deprecated(std::vector<int>{7}, lattice);
     std::cout << "dim_repr = " << model_test4.dim_target_repr << std::endl;
@@ -582,7 +582,7 @@ void test_basis5()
         }
     }
     
-    model_test5.enumerate_basis_full(lattice, {Sz_total}, {0.0});
+    model_test5.enumerate_basis_full(lattice, model_test5.dim_target_full, model_test5.basis_target_full, {Sz_total}, {0.0});
     
     std::cout << std::numeric_limits<double>::epsilon() << std::endl;
     
