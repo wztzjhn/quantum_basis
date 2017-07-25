@@ -975,9 +975,11 @@ namespace qbasis {
         }
     }
     
-    std::vector<mbasis_elem> enumerate_basis(const std::vector<basis_prop> &props,
-                                             std::vector<mopr<std::complex<double>>> conserve_lst,
-                                             std::vector<double> val_lst)
+    template <typename T>
+    void enumerate_basis(const std::vector<basis_prop> &props,
+                         std::vector<qbasis::mbasis_elem> &basis,
+                         std::vector<mopr<T>> conserve_lst,
+                         std::vector<double> val_lst)
     {
         uint32_t n_orbs  = props.size();
         uint64_t dim_all = 1;
@@ -988,7 +990,7 @@ namespace qbasis {
                 base.push_back(props[orb].dim_local);
         }
         auto GS = mbasis_elem(props);
-        std::vector<mbasis_elem> res(dim_all, GS);
+        basis = std::vector<mbasis_elem>(dim_all, GS);
         
         // array to help distributing jobs to different threads
         std::vector<uint64_t> job_array;
@@ -1003,15 +1005,14 @@ namespace qbasis {
             auto dist = dynamic_base<uint8_t,uint64_t>(state_num, base);
             uint32_t pos = 0;
             for (uint32_t orb = 0; orb < n_orbs; orb++)
-                for (uint32_t site = 0; site < props[orb].num_sites; site++) res[state_num].siteWrite(props, site, orb, dist[pos++]);
+                for (uint32_t site = 0; site < props[orb].num_sites; site++) basis[state_num].siteWrite(props, site, orb, dist[pos++]);
             state_num++;
             while (state_num < job_array[chunk + 1]) {
-                res[state_num] = res[state_num - 1];
-                res[state_num].increment(props);
+                basis[state_num] = basis[state_num - 1];
+                basis[state_num].increment(props);
                 state_num++;
             }
         }
-        return res;
     }
     
     
@@ -2217,6 +2218,11 @@ namespace qbasis {
     
     
     // Explicit instantiation
+    template void enumerate_basis(const std::vector<basis_prop> &props, std::vector<qbasis::mbasis_elem> &basis,
+                                  std::vector<mopr<double>> conserve_lst, std::vector<double> val_lst);
+    template void enumerate_basis(const std::vector<basis_prop> &props, std::vector<qbasis::mbasis_elem> &basis,
+                                  std::vector<mopr<std::complex<double>>> conserve_lst, std::vector<double> val_lst);
+    
     template class wavefunction<double>;
     template class wavefunction<std::complex<double>>;
     

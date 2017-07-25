@@ -30,7 +30,8 @@ void test_basis() {
     assert(basis1.siteRead(props1, 8, 0) == 1);
     std::cout << std::endl;
     
-    auto basis_list1 = qbasis::enumerate_basis(props1);
+    std::vector<qbasis::mbasis_elem> basis_list1;
+    qbasis::enumerate_basis<double>(props1, basis_list1);
     //std::cout << "basis_list1: " << std::endl;
     for (uint64_t j = 0; j < basis_list1.size(); j++) {
         //std::cout << "j = " << j << "\t";
@@ -142,7 +143,8 @@ void test_basis2()
     
     qbasis::lattice latt("chain",std::vector<uint32_t>{4},std::vector<std::string>{"pbc"});
     
-    auto basis_list = qbasis::enumerate_basis(props);
+    std::vector<qbasis::mbasis_elem> basis_list;
+    qbasis::enumerate_basis<double>(props, basis_list);
     
     std::vector<qbasis::mbasis_elem> reps;
     std::vector<uint64_t> belong2rep;
@@ -207,7 +209,8 @@ void test_basis3()
     std::vector<qbasis::basis_prop> props;
     props.emplace_back(latt_child.total_sites(),"spin-1/2");
     
-    auto basis_list = qbasis::enumerate_basis(props);
+    std::vector<qbasis::mbasis_elem> basis_list;
+    qbasis::enumerate_basis<double>(props, basis_list);
     
     std::vector<qbasis::mbasis_elem> reps;
     std::vector<uint64_t> belong2rep;

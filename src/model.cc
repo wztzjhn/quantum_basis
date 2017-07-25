@@ -55,7 +55,8 @@ namespace qbasis {
         
         auto latt_sub = divide_lattice(latt);
         std::cout << "Generating sublattice full basis... " << std::flush;
-        basis_sub_full = enumerate_basis(props_sub);
+        std::vector<mbasis_elem> basis_sub_full;
+        enumerate_basis<T>(props_sub, basis_sub_full);
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << elapsed_seconds.count() << "s." << std::endl;

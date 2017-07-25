@@ -130,10 +130,12 @@ namespace qbasis {
                         const std::vector<basis_prop> &props_sub_b,
                         const mbasis_elem &parent, mbasis_elem &sub_a, mbasis_elem &sub_b);
     
-    // generate states compatible with symmetry
-    std::vector<mbasis_elem> enumerate_basis(const std::vector<basis_prop> &props,
-                                             std::vector<mopr<std::complex<double>>> conserve_lst = {},
-                                             std::vector<double> val_lst = {});
+    // generate states compatible with given symmetry
+    template <typename T>
+    void enumerate_basis(const std::vector<basis_prop> &props,
+                         std::vector<qbasis::mbasis_elem> &basis,
+                         std::vector<mopr<T>> conserve_lst = {},
+                         std::vector<double> val_lst = {});
     
     // sort basis according to Lin Table convention (Ib, then Ia)
     void sort_basis_Lin_order(const std::vector<basis_prop> &props, std::vector<qbasis::mbasis_elem> &basis);
