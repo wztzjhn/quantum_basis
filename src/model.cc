@@ -138,6 +138,8 @@ namespace qbasis {
         
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
+        auto L = latt.Linear_size();
+        auto momentum2 = momentum;
         std::cout << "Enumerating basis_repr according to momentum: (" << std::flush;
         for (uint32_t j = 0; j < momentum.size(); j++) {
             if (trans_sym[j]) {
@@ -145,17 +147,42 @@ namespace qbasis {
             } else {
                 std::cout << "NA\t";
             }
+            while (momentum2[j] < 0) momentum2[j] += static_cast<int>(L[j]);
         }
         std::cout << ")..." << std::endl;
         
+        // first calculate the normalization factors
         auto base = Weisse_w_lt.linear_size();
-        Weisse_nu_lt = MltArray_double(base);
-        Weisse_nu_eq = MltArray_double(base);
+        Weisse_nu_lt = MltArray_double(base, 0.0);
+        Weisse_nu_eq = MltArray_double(base, 0.0);
+        std::vector<uint64_t> pos(base.size(),0);
+        while (! dynamic_base_overflow(pos, base)) {
+            auto omega_lt = Weisse_w_lt.index(pos);
+            assert(omega_lt.size() == momentum.size());
+            if (std::any_of(omega_lt.begin(), omega_lt.end(), [](uint32_t i){ return i != 0; })) {
+                Weisse_nu_lt.index(pos) = 1.0;
+                for (decltype(momentum.size()) j = 0; j < momentum.size(); j++) {
+                    assert(L[j] % omega_lt[j] == 0);
+                    Weisse_nu_lt.index(pos) *= (momentum2[j] % static_cast<int>(L[j] / omega_lt[j]) == 0
+                                                ? static_cast<double>(omega_lt[j]) : 0.0);
+                }
+            }
+            auto omega_eq = Weisse_w_eq.index(pos);
+            assert(omega_eq.size() == momentum.size());
+            if (std::any_of(omega_eq.begin(), omega_eq.end(), [](uint32_t i){ return i != 0; })) {
+                Weisse_nu_eq.index(pos) = 1.0;
+                for (decltype(momentum.size()) j = 0; j < momentum.size(); j++) {
+                    assert(L[j] % omega_eq[j] == 0);
+                    Weisse_nu_eq.index(pos) *= (momentum2[j] % static_cast<int>(L[j] / omega_eq[j]) == 0
+                                                ? static_cast<double>(omega_eq[j]) : 0.0);
+                }
+            }
+            pos = dynamic_base_plus1(pos, base);
+        }
         
-        
+        // now really enumerate representatives
         auto latt_sub = divide_lattice(latt);
         basis_repr.clear();
-        std::vector<uint32_t> default_val(latt_sub.dimension(),0);
         for (decltype(basis_sub_repr.size()) ra = 0; ra < basis_sub_repr.size(); ra++) {
             auto ga = belong2group_sub[ra];
             int sgn;
@@ -166,8 +193,10 @@ namespace qbasis {
                 while (! dynamic_base_overflow(disp_j, groups_sub[gb])) {
                     auto pos = std::vector<uint64_t>{ga,gb};
                     pos.insert(pos.end(), disp_j.begin(), disp_j.end());
-                    auto val = (ra < rb)?(Weisse_w_lt.index(pos)):(Weisse_w_eq.index(pos));
-                    if (val != default_val) {  // valid representative
+                    auto omega = (ra < rb)?(Weisse_w_lt.index(pos)):(Weisse_w_eq.index(pos));
+                    double nu  = (ra < rb)?(Weisse_nu_lt.index(pos)):(Weisse_nu_eq.index(pos));
+                    if (std::any_of(omega.begin(), omega.end(), [](uint32_t i){ return i != 0; }) &&
+                        std::abs(nu) > machine_prec) {  // valid representative
                         mbasis_elem rb_new = basis_sub_repr[rb];
                         for (uint32_t j = 0; j < latt_sub.dimension(); j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         rb_new.translate(props_sub_b, latt_sub, disp_j_int, sgn);

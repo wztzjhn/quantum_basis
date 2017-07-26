@@ -1072,7 +1072,7 @@ namespace qbasis {
             }
         }
         basis_temp.sort();
-        std::cout << "Hilbert space size with symmetry: " << dim_full << std::endl;
+        std::cout << "Hilbert space size with symmetry:      " << dim_full << std::endl;
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl << std::endl;

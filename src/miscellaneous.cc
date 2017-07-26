@@ -59,6 +59,7 @@ namespace qbasis {
     template std::vector<MKL_INT> dynamic_base(const MKL_INT &total, const std::vector<MKL_INT> &base);
     template std::vector<uint8_t> dynamic_base(const uint64_t &total, const std::vector<uint8_t> &base);
     template std::vector<uint32_t> dynamic_base(const uint32_t &total, const std::vector<uint32_t> &base);
+    template std::vector<uint64_t> dynamic_base(const uint64_t &total, const std::vector<uint64_t> &base);
     
     template <typename T>
     std::vector<T> dynamic_base_plus1(const std::vector<T> &nums, const std::vector<T> &base)
@@ -79,6 +80,7 @@ namespace qbasis {
     }
     template std::vector<MKL_INT> dynamic_base_plus1(const std::vector<MKL_INT> &nums, const std::vector<MKL_INT> &base);
     template std::vector<uint32_t> dynamic_base_plus1(const std::vector<uint32_t> &nums, const std::vector<uint32_t> &base);
+    template std::vector<uint64_t> dynamic_base_plus1(const std::vector<uint64_t> &nums, const std::vector<uint64_t> &base);
     
     template <typename T>
     bool dynamic_base_maximized(const std::vector<T> &nums, const std::vector<T> &base)
@@ -94,6 +96,7 @@ namespace qbasis {
     }
     template bool dynamic_base_maximized(const std::vector<uint8_t> &nums, const std::vector<uint8_t> &base);
     template bool dynamic_base_maximized(const std::vector<uint32_t> &nums, const std::vector<uint32_t> &base);
+    template bool dynamic_base_maximized(const std::vector<uint64_t> &nums, const std::vector<uint64_t> &base);
     
     template <typename T>
     bool dynamic_base_overflow(const std::vector<T> &nums, const std::vector<T> &base)
@@ -107,6 +110,7 @@ namespace qbasis {
     }
     template bool dynamic_base_overflow(const std::vector<uint8_t> &nums, const std::vector<uint8_t> &base);
     template bool dynamic_base_overflow(const std::vector<uint32_t> &nums, const std::vector<uint32_t> &base);
+    template bool dynamic_base_overflow(const std::vector<uint64_t> &nums, const std::vector<uint64_t> &base);
     
     
     template <typename T>
