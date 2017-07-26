@@ -1435,7 +1435,6 @@ namespace qbasis {
                                 const std::vector<uint64_t> &belong2rep,
                                 const std::vector<std::vector<int>> &dist2rep,
                                 const std::vector<std::vector<uint32_t>> &groups,
-                                const std::vector<uint32_t> &omega_g,
                                 const std::vector<uint32_t> &belong2group,
                                 MltArray_PairVec &Weisse_e_lt, MltArray_PairVec &Weisse_e_eq, MltArray_PairVec &Weisse_e_gt,
                                 MltArray_vec &Weisse_w_lt, MltArray_vec &Weisse_w_eq)

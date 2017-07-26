@@ -173,7 +173,6 @@ namespace qbasis {
                                 const std::vector<uint64_t> &belong2rep,
                                 const std::vector<std::vector<int>> &dist2rep,
                                 const std::vector<std::vector<uint32_t>> &groups,
-                                const std::vector<uint32_t> &omega_g,
                                 const std::vector<uint32_t> &belong2group,
                                 MltArray_PairVec &Weisse_e_lt, MltArray_PairVec &Weisse_e_eq, MltArray_PairVec &Weisse_e_gt,
                                 MltArray_vec &Weisse_w_lt, MltArray_vec &Weisse_w_eq);
@@ -1049,26 +1048,25 @@ namespace qbasis {
         
         std::vector<bool> trans_sym;
         
-        MKL_INT dim_target_full;
-        MKL_INT dim_excite_full;
-        MKL_INT dim_target_repr;
-        MKL_INT dim_excite_repr;
-        std::vector<qbasis::mbasis_elem> basis_target_full;    // full basis for ground state sector, without translation sym
-        std::vector<qbasis::mbasis_elem> basis_excite_full;    // full basis for some intermeidate state sector (e.g. calculating correlation functions)
-        std::vector<qbasis::mbasis_elem> basis_target_repr;
-        std::vector<qbasis::mbasis_elem> basis_excite_repr;
-        std::vector<qbasis::mbasis_elem> basis_sub_full;       // basis for half lattice, used for building Weisse Table
-        std::vector<qbasis::mbasis_elem> basis_sub_repr;       // reps for half lattice
+        // controls which sector of basis to be active
+        // by default sec_full = 0 (e.g. Sz=0 ground state sector of Heisenberg model);
+        // when needed, sec_full will be switched to 1 to activate another sector (e.g. Sz=1 sector),
+        // such setting can avoid messing up the code when calculating correlation functions
+        uint32_t sec_full, sec_repr;
+        
+        std::vector<MKL_INT> dim_full;
+        std::vector<MKL_INT> dim_repr;
+        
+        std::vector<std::vector<qbasis::mbasis_elem>> basis_full; // full basis without translation sym
+        std::vector<std::vector<qbasis::mbasis_elem>> basis_repr; // basis with translation sym
+        std::vector<qbasis::mbasis_elem> basis_sub_full;          // basis for half lattice, used for building Weisse Table
+        std::vector<qbasis::mbasis_elem> basis_sub_repr;          // reps for half lattice
         
         // Lin tables, for both full basis and translation basis
-        std::vector<MKL_INT> Lin_Ja_target_full;
-        std::vector<MKL_INT> Lin_Jb_target_full;
-        std::vector<MKL_INT> Lin_Ja_excite_full;
-        std::vector<MKL_INT> Lin_Jb_excite_full;
-        std::vector<MKL_INT> Lin_Ja_target_repr;
-        std::vector<MKL_INT> Lin_Jb_target_repr;
-        std::vector<MKL_INT> Lin_Ja_excite_repr;
-        std::vector<MKL_INT> Lin_Jb_excite_repr;
+        std::vector<std::vector<MKL_INT>> Lin_Ja_full;
+        std::vector<std::vector<MKL_INT>> Lin_Jb_full;
+        std::vector<std::vector<MKL_INT>> Lin_Ja_repr;
+        std::vector<std::vector<MKL_INT>> Lin_Jb_repr;
         
         // Weisse Tables for translation symmetry
         std::vector<uint64_t>              belong2rep_sub;
@@ -1078,13 +1076,10 @@ namespace qbasis {
         std::vector<uint32_t>              belong2group_sub;
         MltArray_PairVec                   Weisse_e_lt, Weisse_e_eq, Weisse_e_gt;
         MltArray_vec                       Weisse_w_lt, Weisse_w_eq;
-        MltArray_double                    Weisse_nu_lt_target, Weisse_nu_eq_target; // Note: nu_k = 1 / <rep | P_k | rep>
-        MltArray_double                    Weisse_nu_lt_excite, Weisse_nu_eq_excite;
+        std::vector<MltArray_double>       Weisse_nu_lt, Weisse_nu_eq;          // Note: nu_k = 1 / <rep | P_k | rep>
         
-        csr_mat<T>                         HamMat_csr_target_full;
-        csr_mat<T>                         HamMat_csr_excite_full;
-        csr_mat<std::complex<double>>      HamMat_csr_target_repr;
-        csr_mat<std::complex<double>>      HamMat_csr_excite_repr;
+        std::vector<csr_mat<T>>            HamMat_csr_full;
+        std::vector<csr_mat<T>>            HamMat_csr_repr;
         
         std::vector<double>                eigenvals_full;
         std::vector<T>                     eigenvecs_full;
@@ -1141,22 +1136,12 @@ namespace qbasis {
         void fill_Weisse_table(const lattice &latt);
         
         // naive way of enumerating all possible basis state
-        void enumerate_basis_full(MKL_INT &dim_full,
-                                  std::vector<qbasis::mbasis_elem> &basis_full,
-                                  std::vector<MKL_INT> &Lin_Ja,
-                                  std::vector<MKL_INT> &Lin_Jb,
-                                  std::vector<mopr<T>> conserve_lst = {},
+        void enumerate_basis_full(std::vector<mopr<T>> conserve_lst = {},
                                   std::vector<double> val_lst = {});
         
         // Need to build Weiss Tables before enumerating representatives
         void enumerate_basis_repr(const lattice &latt,
                                   const std::vector<int> &momentum,
-                                  MKL_INT &dim_repr,
-                                  std::vector<qbasis::mbasis_elem> &basis_repr,
-                                  std::vector<MKL_INT> &Lin_Ja,
-                                  std::vector<MKL_INT> &Lin_Jb,
-                                  MltArray_double &Weisse_nu_lt,
-                                  MltArray_double &Weisse_nu_eq,
                                   std::vector<mopr<T>> conserve_lst = {},
                                   std::vector<double> val_lst = {});
         
@@ -1185,6 +1170,10 @@ namespace qbasis {
         
         void locate_Emax_repr(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
         
+        MKL_INT dimension_full() { return dim_full[sec_full]; }
+        
+        MKL_INT dimension_repr() { return dim_repr[sec_repr]; }
+        
         double energy_min() { return E0; }
         
         double energy_max() { return Emax; }
@@ -1206,6 +1195,7 @@ namespace qbasis {
         double Emax;
         double E0;
         double gap;
+        
     };
     
 

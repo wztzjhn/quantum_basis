@@ -81,8 +81,7 @@ int main() {
     }
 
     // constructing the Hilbert space basis
-    tJ.enumerate_basis_full(tJ.dim_target_full, tJ.basis_target_full,
-                            {Sz_total, N_total}, {Sz_total_val, N_total_val});
+    tJ.enumerate_basis_full({Sz_total, N_total}, {Sz_total_val, N_total_val});
 
 
     // optional, will use more memory and give higher speed

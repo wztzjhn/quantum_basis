@@ -87,8 +87,7 @@ int main() {
     }
 
     // constructing the Hilbert space basis
-    Heisenberg.enumerate_basis_full(Heisenberg.dim_target_full, Heisenberg.basis_target_full,
-                                    {Sz_total}, {Sz_total_val});
+    Heisenberg.enumerate_basis_full({Sz_total}, {Sz_total_val});
 
 
     std::vector<double> energies;
