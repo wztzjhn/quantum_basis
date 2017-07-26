@@ -1578,20 +1578,9 @@ namespace qbasis {
                             */
                             
                             // now need find ja, jb
-                            mbasis_elem state_sub1, state_sub2;
-                            unzipper_basis(props_parent, props_sub, props_sub, Ti_ra_z_Tj_rb, state_sub1, state_sub2);
-                            auto state_sub1_label = state_sub1.label(props_sub);
-                            auto state_sub2_label = state_sub2.label(props_sub);
-                            /*
-                            std::cout << "state_sub1: " << std::endl;
-                            state_sub1.prt_bits(props_sub);
-                            std::cout << "state_sub2: " << std::endl;
-                            state_sub2.prt_bits(props_sub);
-                            std::cout << std::endl;
-                            */
+                            uint64_t state_sub1_label, state_sub2_label;
+                            Ti_ra_z_Tj_rb.label_sub(props_parent, state_sub1_label, state_sub2_label);
                             
-                            assert(basis_sub_full[state_sub1_label] == state_sub1);
-                            assert(basis_sub_full[state_sub2_label] == state_sub2);
                             auto state_rep1_label = belong2rep[state_sub1_label];
                             auto state_rep2_label = belong2rep[state_sub2_label];
                             auto &state_rep1      = basis_sub_repr[state_rep1_label];
@@ -1652,12 +1641,8 @@ namespace qbasis {
                             auto Ti_ra_z_Tj_rb = ra_z_Tj_rb;
                             Ti_ra_z_Tj_rb.translate(props_parent, latt_parent, disp_i_int, sgn);  // Ti (|ra> z Tj |rb>) obtained!!!
                             // now need find ja, jb
-                            mbasis_elem state_sub1, state_sub2;
-                            unzipper_basis(props_parent, props_sub, props_sub, Ti_ra_z_Tj_rb, state_sub1, state_sub2);
-                            auto state_sub1_label = state_sub1.label(props_sub);
-                            auto state_sub2_label = state_sub2.label(props_sub);
-                            assert(basis_sub_full[state_sub1_label] == state_sub1);
-                            assert(basis_sub_full[state_sub2_label] == state_sub2);
+                            uint64_t state_sub1_label, state_sub2_label;
+                            Ti_ra_z_Tj_rb.label_sub(props_parent, state_sub1_label, state_sub2_label);
                             auto state_rep1_label = belong2rep[state_sub1_label];
                             auto state_rep2_label = belong2rep[state_sub2_label];
                             auto &state_rep1      = basis_sub_repr[state_rep1_label];
@@ -1704,12 +1689,8 @@ namespace qbasis {
                             auto Ti_ra_z_Tj_rb = ra_z_Tj_rb;
                             Ti_ra_z_Tj_rb.translate(props_parent, latt_parent, disp_i_int, sgn);  // Ti (|ra> z Tj |rb>) obtained!!!
                             // now need find ja, jb
-                            mbasis_elem state_sub1, state_sub2;
-                            unzipper_basis(props_parent, props_sub, props_sub, Ti_ra_z_Tj_rb, state_sub1, state_sub2);
-                            auto state_sub1_label = state_sub1.label(props_sub);
-                            auto state_sub2_label = state_sub2.label(props_sub);
-                            assert(basis_sub_full[state_sub1_label] == state_sub1);
-                            assert(basis_sub_full[state_sub2_label] == state_sub2);
+                            uint64_t state_sub1_label, state_sub2_label;
+                            Ti_ra_z_Tj_rb.label_sub(props_parent, state_sub1_label, state_sub2_label);
                             auto &dist2rep1       = dist2rep[state_sub1_label];
                             auto &dist2rep2       = dist2rep[state_sub2_label];
                             std::vector<uint64_t> pos{ga, gb};

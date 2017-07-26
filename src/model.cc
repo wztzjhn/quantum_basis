@@ -204,7 +204,7 @@ namespace qbasis {
         
         // now really enumerate representatives
         auto latt_sub = divide_lattice(latt);
-        basis_repr.clear();
+        basis_repr[sec_repr].clear();
         for (decltype(basis_sub_repr.size()) ra = 0; ra < basis_sub_repr.size(); ra++) {
             auto ga = belong2group_sub[ra];
             int sgn;
@@ -247,7 +247,7 @@ namespace qbasis {
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout <<  elapsed_seconds.count() << "s." << std::endl;
-        dim_repr[sec_repr] = static_cast<MKL_INT>(basis_repr.size());
+        dim_repr[sec_repr] = static_cast<MKL_INT>(basis_repr[sec_repr].size());
         std::cout << "dim_repr (without removing dulplicates) = " << dim_repr[sec_repr] << std::endl;
         
         sort_basis_Lin_order(props, basis_repr[sec_repr]);
@@ -259,103 +259,7 @@ namespace qbasis {
     
     
     
-    template <typename T>
-    void model<T>::basis_init_repr_deprecated(const std::vector<int> &momentum, const lattice &latt)
-    {
-        assert(latt.dimension() == static_cast<uint32_t>(momentum.size()));
-        assert(dim_full[sec_full] > 0 && dim_full[sec_full] == static_cast<MKL_INT>(basis_full[sec_full].size()));
-        assert(Lin_Ja_full[sec_full].size() > 0 && Lin_Jb_full[sec_full].size() > 0);
-        check_translation(latt);
-        
-        std::chrono::time_point<std::chrono::system_clock> start, end;
-        start = std::chrono::system_clock::now();
-        std::cout << "Classifying basis_repr according to momentum: (";
-        for (uint32_t j = 0; j < momentum.size(); j++) {
-            if (trans_sym[j]) {
-                std::cout << momentum[j] << "\t";
-            } else {
-                std::cout << "NA\t";
-            }
-        }
-        std::cout << ")..." << std::endl;
-        
-        std::cout << "-------- if all dims obc, let's stop here (to be implemented) -------" << std::endl;
-        
-        auto num_sub = latt.num_sublattice();
-        auto L = latt.Linear_size();
-        basis_belong_deprec.resize(dim_full[sec_full]);
-        std::fill(basis_belong_deprec.begin(), basis_belong_deprec.end(), -1);
-        basis_coeff_deprec.resize(dim_full[sec_full]);
-        std::fill(basis_coeff_deprec.begin(), basis_coeff_deprec.end(), std::complex<double>(0.0,0.0));
-        for (MKL_INT i = 0; i < dim_full[sec_full]; i++) {
-            if (basis_belong_deprec[i] != -1) continue;
-            basis_belong_deprec[i] = i;
-            basis_coeff_deprec[i] = std::complex<double>(1.0, 0.0);
-            #pragma omp parallel for schedule(dynamic,1)
-            for (uint32_t site = num_sub; site < latt.total_sites(); site += num_sub) {
-                std::vector<int> disp;
-                int sub, sgn;
-                latt.site2coor(disp, sub, site);
-                bool flag = false;
-                for (uint32_t d = 0; d < latt.dimension(); d++) {
-                    if (!trans_sym[d] && disp[d] != 0) {
-                        flag = true;
-                        break;
-                    }
-                }
-                if (flag) continue;            // such translation forbidden
-                auto basis_temp = basis_full[sec_full][i];
-                basis_temp.translate(props, latt, disp, sgn);
-                uint64_t i_a, i_b;
-                basis_temp.label_sub(props, i_a, i_b);
-                MKL_INT j = Lin_Ja_full[sec_full][i_a] + Lin_Jb_full[sec_full][i_b];
-                double exp_coef = 0.0;
-                for (uint32_t d = 0; d < latt.dimension(); d++) {
-                    if (trans_sym[d]) {
-                        exp_coef += momentum[d] * disp[d] / static_cast<double>(L[d]);
-                    }
-                }
-                auto coef = std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
-                if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
-                #pragma omp critical
-                {
-                    basis_belong_deprec[j] = i;
-                    basis_coeff_deprec[j] += coef;
-                }
-            }
-        }
-        
-        std::list<MKL_INT> temp_repr;
-        temp_repr.push_back(0);
-        dim_repr[sec_repr] = 1;
-        for (MKL_INT j = 1; j < dim_full[sec_full]; j++) {
-            if (basis_belong_deprec[j] > temp_repr.back()) {
-                dim_repr[sec_repr]++;
-                temp_repr.push_back(basis_belong_deprec[j]);
-            }
-        }
-        MKL_INT redundant = 0;
-        auto it = temp_repr.begin();
-        while (it != temp_repr.end()) {
-            if (std::abs(basis_coeff_deprec[*it]) < opr_precision) {
-                it = temp_repr.erase(it);
-                redundant++;
-                dim_repr[sec_repr]--;
-            } else {
-                //std::cout << std::abs(std::imag(basis_coeff[*it])) << std::endl;
-                assert(std::abs(std::imag(basis_coeff_deprec[*it])) < opr_precision);
-                it++;
-            }
-        }
-        assert(dim_repr[sec_repr] == static_cast<MKL_INT>(temp_repr.size()));
-        if (redundant > 0) std::cout << redundant << " redundant reprs removed." << std::endl;
-        basis_repr_deprec.resize(dim_repr[sec_repr]);
-        std::copy(temp_repr.begin(), temp_repr.end(), basis_repr_deprec.begin());
-        assert(is_sorted_norepeat(basis_repr_deprec));
-        end = std::chrono::system_clock::now();
-        std::chrono::duration<double> elapsed_seconds = end - start;
-        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
-    }
+
     
     
 
@@ -400,7 +304,6 @@ namespace qbasis {
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
     
-    
     template <typename T>
     void model<T>::generate_Ham_sparse_repr(const bool &upper_triangle)
     {
@@ -409,6 +312,17 @@ namespace qbasis {
             return;
         }
         std::cout << "Generating Hamiltonian Matrix..." << std::endl;
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        lil_mat<std::complex<double>> matrix_lil(dim_repr[sec_repr], upper_triangle);
+    template <typename T>
+    void model<T>::generate_Ham_sparse_repr_deprecated(const bool &upper_triangle)
+    {
+        if (dim_repr[sec_repr] < 1) {
+            std::cout << "dim_repr = " << dim_repr[sec_repr] << "!!!" << std::endl;
+            return;
+        }
+        std::cout << "Generating Hamiltonian Matrix (deprecated method)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         lil_mat<std::complex<double>> matrix_lil(dim_repr[sec_repr], upper_triangle);
@@ -821,6 +735,109 @@ namespace qbasis {
             std::cout << "not implemented yet" << std::endl;
             return static_cast<T>(0.0);
         }
+    }
+    
+    
+    
+//     ---------------------------- deprecated ---------------------------------
+//     ---------------------------- deprecated ---------------------------------
+    
+    template <typename T>
+    void model<T>::basis_init_repr_deprecated(const std::vector<int> &momentum, const lattice &latt)
+    {
+        assert(latt.dimension() == static_cast<uint32_t>(momentum.size()));
+        assert(dim_full[sec_full] > 0 && dim_full[sec_full] == static_cast<MKL_INT>(basis_full[sec_full].size()));
+        assert(Lin_Ja_full[sec_full].size() > 0 && Lin_Jb_full[sec_full].size() > 0);
+        check_translation(latt);
+        
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        std::cout << "Classifying basis_repr according to momentum: (";
+        for (uint32_t j = 0; j < momentum.size(); j++) {
+            if (trans_sym[j]) {
+                std::cout << momentum[j] << "\t";
+            } else {
+                std::cout << "NA\t";
+            }
+        }
+        std::cout << ")..." << std::endl;
+        
+        std::cout << "-------- if all dims obc, let's stop here (to be implemented) -------" << std::endl;
+        
+        auto num_sub = latt.num_sublattice();
+        auto L = latt.Linear_size();
+        basis_belong_deprec.resize(dim_full[sec_full]);
+        std::fill(basis_belong_deprec.begin(), basis_belong_deprec.end(), -1);
+        basis_coeff_deprec.resize(dim_full[sec_full]);
+        std::fill(basis_coeff_deprec.begin(), basis_coeff_deprec.end(), std::complex<double>(0.0,0.0));
+        for (MKL_INT i = 0; i < dim_full[sec_full]; i++) {
+            if (basis_belong_deprec[i] != -1) continue;
+            basis_belong_deprec[i] = i;
+            basis_coeff_deprec[i] = std::complex<double>(1.0, 0.0);
+            #pragma omp parallel for schedule(dynamic,1)
+            for (uint32_t site = num_sub; site < latt.total_sites(); site += num_sub) {
+                std::vector<int> disp;
+                int sub, sgn;
+                latt.site2coor(disp, sub, site);
+                bool flag = false;
+                for (uint32_t d = 0; d < latt.dimension(); d++) {
+                    if (!trans_sym[d] && disp[d] != 0) {
+                        flag = true;
+                        break;
+                    }
+                }
+                if (flag) continue;            // such translation forbidden
+                auto basis_temp = basis_full[sec_full][i];
+                basis_temp.translate(props, latt, disp, sgn);
+                uint64_t i_a, i_b;
+                basis_temp.label_sub(props, i_a, i_b);
+                MKL_INT j = Lin_Ja_full[sec_full][i_a] + Lin_Jb_full[sec_full][i_b];
+                double exp_coef = 0.0;
+                for (uint32_t d = 0; d < latt.dimension(); d++) {
+                    if (trans_sym[d]) {
+                        exp_coef += momentum[d] * disp[d] / static_cast<double>(L[d]);
+                    }
+                }
+                auto coef = std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
+                if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
+                #pragma omp critical
+                {
+                    basis_belong_deprec[j] = i;
+                    basis_coeff_deprec[j] += coef;
+                }
+            }
+        }
+        
+        std::list<MKL_INT> temp_repr;
+        temp_repr.push_back(0);
+        dim_repr[sec_repr] = 1;
+        for (MKL_INT j = 1; j < dim_full[sec_full]; j++) {
+            if (basis_belong_deprec[j] > temp_repr.back()) {
+                dim_repr[sec_repr]++;
+                temp_repr.push_back(basis_belong_deprec[j]);
+            }
+        }
+        MKL_INT redundant = 0;
+        auto it = temp_repr.begin();
+        while (it != temp_repr.end()) {
+            if (std::abs(basis_coeff_deprec[*it]) < opr_precision) {
+                it = temp_repr.erase(it);
+                redundant++;
+                dim_repr[sec_repr]--;
+            } else {
+                //std::cout << std::abs(std::imag(basis_coeff[*it])) << std::endl;
+                assert(std::abs(std::imag(basis_coeff_deprec[*it])) < opr_precision);
+                it++;
+            }
+        }
+        assert(dim_repr[sec_repr] == static_cast<MKL_INT>(temp_repr.size()));
+        if (redundant > 0) std::cout << redundant << " redundant reprs removed." << std::endl;
+        basis_repr_deprec.resize(dim_repr[sec_repr]);
+        std::copy(temp_repr.begin(), temp_repr.end(), basis_repr_deprec.begin());
+        assert(is_sorted_norepeat(basis_repr_deprec));
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
     
     

@@ -1154,6 +1154,8 @@ namespace qbasis {
         
         void generate_Ham_sparse_repr(const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr
         
+        void generate_Ham_sparse_repr_deprecated(const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr
+        
         // generate a dense matrix of the Hamiltonian
         std::vector<std::complex<double>> to_dense();
         
