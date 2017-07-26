@@ -97,8 +97,9 @@ namespace qbasis {
         std::vector<uint64_t> linear_size_;
         std::vector<T> data;
     };
-    typedef multi_array<std::vector<uint32_t>> array_3D;
-    typedef multi_array<std::pair<std::vector<uint32_t>,std::vector<uint32_t>>> array_4D;
+    typedef multi_array<double> MltArray_double;
+    typedef multi_array<std::vector<uint32_t>> MltArray_vec;
+    typedef multi_array<std::pair<std::vector<uint32_t>,std::vector<uint32_t>>> MltArray_PairVec;
     
     
     class basis_prop;
@@ -164,22 +165,20 @@ namespace qbasis {
                                   std::vector<uint32_t> &belong2group);
     // tabulate the maps for (ga,gb,ja,jb) -> (i,j), and (ga,gb,j) -> w
     void classify_Weisse_tables(const std::vector<basis_prop> &props_parent,
-                             const std::vector<basis_prop> &props_sub,
-                             const std::vector<mbasis_elem> &basis_sub_full,
-                             const std::vector<mbasis_elem> &basis_sub_repr,
-                             const lattice &latt_parent,
-                             const std::vector<bool> &trans_sym,
-                             const std::vector<uint64_t> &belong2rep,
-                             const std::vector<std::vector<int>> &dist2rep,
-                             const std::vector<std::vector<uint32_t>> &groups,
-                             const std::vector<uint32_t> &omega_g,
-                             const std::vector<uint32_t> &belong2group,
-                             array_4D &Weisse_e_lt,
-                             array_4D &Weisse_e_eq,
-                             array_4D &Weisse_e_gt,
-                             array_3D &Weisse_w_lt,
-                             array_3D &Weisse_w_eq);
+                                const std::vector<basis_prop> &props_sub,
+                                const std::vector<mbasis_elem> &basis_sub_full,
+                                const std::vector<mbasis_elem> &basis_sub_repr,
+                                const lattice &latt_parent,
+                                const std::vector<bool> &trans_sym,
+                                const std::vector<uint64_t> &belong2rep,
+                                const std::vector<std::vector<int>> &dist2rep,
+                                const std::vector<std::vector<uint32_t>> &groups,
+                                const std::vector<uint32_t> &omega_g,
+                                const std::vector<uint32_t> &belong2group,
+                                MltArray_PairVec &Weisse_e_lt, MltArray_PairVec &Weisse_e_eq, MltArray_PairVec &Weisse_e_gt,
+                                MltArray_vec &Weisse_w_lt, MltArray_vec &Weisse_w_eq);
     
+    // Operations on wavefunctions
     template <typename T> void swap(wavefunction<T>&, wavefunction<T>&);
     template <typename T> wavefunction<T> operator+(const wavefunction<T>&, const wavefunction<T>&);
     template <typename T> wavefunction<T> operator*(const wavefunction<T>&, const T&);
@@ -247,7 +246,10 @@ namespace qbasis {
     // mopr * {a list of mbasis} -->> {a new list of mbasis}
     template <typename T> void gen_mbasis_by_mopr(const mopr<T>&, std::list<mbasis_elem>&, const std::vector<basis_prop>&);
     
+    
+    // csr matrix
     template <typename T> void swap(csr_mat<T>&, csr_mat<T>&);
+    
     
     // divide into two identical sublattices, if Nsites even. To be used in the divide and conquer method
     lattice divide_lattice(const lattice &parent);
@@ -255,8 +257,6 @@ namespace qbasis {
     
     
 
-    
-    
 
 //  --------------------  part 1: basis of the wave functions ------------------
 //  ----------------------------------------------------------------------------
@@ -1040,12 +1040,9 @@ namespace qbasis {
 //  ----------------------------------------------------------------------------
     
     template <typename T> class model {
-//        friend MKL_INT generate_Ham_all_AtRow <> (model<T> &,
-//                                                  threads_pool &);
     public:
         bool matrix_free;
-        std::vector<basis_prop> props;
-        std::vector<basis_prop> props_sub_a, props_sub_b;
+        std::vector<basis_prop> props, props_sub_a, props_sub_b;
         mopr<T> Ham_diag;
         mopr<T> Ham_off_diag;
         MKL_INT nconv;
@@ -1079,18 +1076,20 @@ namespace qbasis {
         std::vector<std::vector<uint32_t>> groups_sub;
         std::vector<uint32_t>              omega_g_sub;
         std::vector<uint32_t>              belong2group_sub;
-        array_4D Weisse_e_lt, Weisse_e_eq, Weisse_e_gt;
-        array_3D Weisse_w_lt, Weisse_w_eq;
+        MltArray_PairVec                   Weisse_e_lt, Weisse_e_eq, Weisse_e_gt;
+        MltArray_vec                       Weisse_w_lt, Weisse_w_eq;
+        MltArray_double                    Weisse_nu_lt_target, Weisse_nu_eq_target; // Note: nu_k = 1 / <rep | P_k | rep>
+        MltArray_double                    Weisse_nu_lt_excite, Weisse_nu_eq_excite;
         
-        csr_mat<T> HamMat_csr_target_full;
-        csr_mat<T> HamMat_csr_excite_full;
-        csr_mat<std::complex<double>> HamMat_csr_target_repr;
-        csr_mat<std::complex<double>> HamMat_csr_excite_repr;
+        csr_mat<T>                         HamMat_csr_target_full;
+        csr_mat<T>                         HamMat_csr_excite_full;
+        csr_mat<std::complex<double>>      HamMat_csr_target_repr;
+        csr_mat<std::complex<double>>      HamMat_csr_excite_repr;
         
-        std::vector<double>               eigenvals_full;
-        std::vector<T>                    eigenvecs_full;
-        std::vector<double>               eigenvals_repr;
-        std::vector<std::complex<double>> eigenvecs_repr;
+        std::vector<double>                eigenvals_full;
+        std::vector<T>                     eigenvecs_full;
+        std::vector<double>                eigenvals_repr;
+        std::vector<std::complex<double>>  eigenvecs_repr;
         
         
         // ---------------- deprecated --------------------
@@ -1136,6 +1135,9 @@ namespace qbasis {
         
         void add_offdiagonal_Ham(const mopr<T> &rhs)     { Ham_off_diag += rhs; }
         
+        // check if translational symmetry satisfied
+        void check_translation(const lattice &latt);
+        
         void fill_Weisse_table(const lattice &latt);
         
         // naive way of enumerating all possible basis state
@@ -1149,13 +1151,13 @@ namespace qbasis {
                                   const std::vector<int> &momentum,
                                   MKL_INT &dim_repr,
                                   std::vector<qbasis::mbasis_elem> &basis_repr,
-                                  std::initializer_list<mopr<std::complex<double>>> conserve_lst = {},
-                                  std::initializer_list<double> val_lst = {});
+                                  MltArray_double &Weisse_nu_lt,
+                                  MltArray_double &Weisse_nu_eq,
+                                  std::vector<mopr<T>> conserve_lst = {},
+                                  std::vector<double> val_lst = {});
         
         // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
         void basis_init_repr_deprecated(const std::vector<int> &momentum, const lattice &latt);
-        
-        
         
         void generate_Ham_sparse_full(const bool &upper_triangle = true); // generate the full Hamiltonian in sparse matrix format
         
@@ -1200,9 +1202,6 @@ namespace qbasis {
         double Emax;
         double E0;
         double gap;
-        
-        // check if translational symmetry satisfied
-        void check_translation(const lattice &latt);
     };
     
 

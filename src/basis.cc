@@ -1427,32 +1427,30 @@ namespace qbasis {
     }
     
     void classify_Weisse_tables(const std::vector<basis_prop> &props_parent,
-                             const std::vector<basis_prop> &props_sub,
-                             const std::vector<mbasis_elem> &basis_sub_full,
-                             const std::vector<mbasis_elem> &basis_sub_repr,
-                             const lattice &latt_parent,
-                             const std::vector<bool> &trans_sym,
-                             const std::vector<uint64_t> &belong2rep,
-                             const std::vector<std::vector<int>> &dist2rep,
-                             const std::vector<std::vector<uint32_t>> &groups,
-                             const std::vector<uint32_t> &omega_g,
-                             const std::vector<uint32_t> &belong2group,
-                             array_4D &Weisse_e_lt,
-                             array_4D &Weisse_e_eq,
-                             array_4D &Weisse_e_gt,
-                             array_3D &Weisse_w_lt,
-                             array_3D &Weisse_w_eq)
+                                const std::vector<basis_prop> &props_sub,
+                                const std::vector<mbasis_elem> &basis_sub_full,
+                                const std::vector<mbasis_elem> &basis_sub_repr,
+                                const lattice &latt_parent,
+                                const std::vector<bool> &trans_sym,
+                                const std::vector<uint64_t> &belong2rep,
+                                const std::vector<std::vector<int>> &dist2rep,
+                                const std::vector<std::vector<uint32_t>> &groups,
+                                const std::vector<uint32_t> &omega_g,
+                                const std::vector<uint32_t> &belong2group,
+                                MltArray_PairVec &Weisse_e_lt, MltArray_PairVec &Weisse_e_eq, MltArray_PairVec &Weisse_e_gt,
+                                MltArray_vec &Weisse_w_lt, MltArray_vec &Weisse_w_eq)
     {
         auto latt_sub = divide_lattice(latt_parent);
         uint64_t dim_repr         = basis_sub_repr.size();
         uint32_t num_groups       = groups.size();
-        uint32_t latt_Nsites      = latt_sub.total_sites();
         uint32_t latt_sub_dim     = latt_sub.dimension();
         auto latt_sub_linear_size = latt_sub.Linear_size();
         auto base_parent          = latt_parent.Linear_size();
         auto base_sub             = latt_sub.Linear_size();
         bool flag_trans           = false;
+        bool even_site_check      = (latt_parent.num_sublattice() % 2 == 0 ? true : false);
         for (uint32_t j = 0; j < latt_sub_dim; j++) {
+            if (base_parent[j] % 2 == 0) even_site_check = true;
             if (! trans_sym[j]) {
                 base_parent[j] = 1;
                 base_sub[j]    = 1;
@@ -1461,6 +1459,8 @@ namespace qbasis {
             }
         }
         assert(flag_trans);
+        assert(even_site_check);  // current implementation requires even number of sites on at least one direction
+        
         
         /*
         for (decltype(belong2group.size()) j = 0; j < belong2group.size(); j++) {
@@ -1496,8 +1496,8 @@ namespace qbasis {
                 linear_size.push_back(1);
             }
         }
-        Weisse_w_lt = array_3D(linear_size, std::vector<uint32_t>(latt_sub_dim,0));
-        Weisse_w_eq = array_3D(linear_size, std::vector<uint32_t>(latt_sub_dim,0));
+        Weisse_w_lt = MltArray_vec(linear_size, std::vector<uint32_t>(latt_sub_dim,0));
+        Weisse_w_eq = MltArray_vec(linear_size, std::vector<uint32_t>(latt_sub_dim,0));
         for (uint32_t j = 0; j < latt_sub_dim; j++) {
             if (trans_sym[j]) {
                 linear_size.push_back(static_cast<uint64_t>(latt_sub_linear_size[j]));
@@ -1505,9 +1505,9 @@ namespace qbasis {
                 linear_size.push_back(1);
             }
         }
-        Weisse_e_lt = array_4D(linear_size, default_value);
-        Weisse_e_eq = array_4D(linear_size, default_value);
-        Weisse_e_gt = array_4D(linear_size, default_value);
+        Weisse_e_lt = MltArray_PairVec(linear_size, default_value);
+        Weisse_e_eq = MltArray_PairVec(linear_size, default_value);
+        Weisse_e_gt = MltArray_PairVec(linear_size, default_value);
         
         
         for (uint32_t ga = 0; ga < num_groups; ga++) {

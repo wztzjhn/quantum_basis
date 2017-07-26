@@ -5,12 +5,9 @@
 // Kondo Lattice model on a chain
 int main() {
     std::cout << std::setprecision(10);
-    std::cout << "The gap is bench marked with Tsunetsugu et al. PRB 46, 3175 (1992)." << std::endl;
-    std::cout << "E0 not checked by any means yet (haven't setup ALPS correctly)." << std::endl;
-    std::cout << "If you know a good reference or tool (or alps scripts), please contact me. Thanks!" << std::endl << std::endl;
     // parameters
     double t = 1;
-    double J_Kondo = 1.1;
+    double J_Kondo = 4.0;
     double J_RKKY = 0.0;         // artificial RKKY
     int L = 4;
     double Sz_total_val = 0.0;   // not used. to turn on, modify a comment line near the bottom of the file
@@ -124,5 +121,6 @@ int main() {
 
 
     // for the parameters considered, we should obtain:
-    assert(std::abs(Kondo.eigenvals_full[0] + 5.477455514) < 1e-8);
+    assert(std::abs(Kondo.eigenvals_full[0] + 12.67762138) < 1e-8);
+    assert(std::abs(Kondo.eigenvals_full[1] + 9.834798964) < 1e-8);
 }

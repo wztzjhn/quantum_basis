@@ -35,6 +35,7 @@ namespace qbasis {
                 trans_sym.push_back(false);
             }
         }
+        std::cout << std::endl;
     }
     
     template <typename T>
@@ -50,7 +51,7 @@ namespace qbasis {
         std::cout << "Generating sublattice full basis... " << std::endl;
         std::vector<mbasis_elem> basis_sub_full;
         enumerate_basis<T>(props_sub, basis_sub_full);
-        sort_basis_normal_order(basis_sub_full);   // has to be sorted in the normal way
+        sort_basis_normal_order(basis_sub_full);                                // has to be sorted in the normal way
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "Elapsed time for generating sublattice full basis: " << elapsed_seconds.count() << "s." << std::endl;
@@ -114,22 +115,46 @@ namespace qbasis {
                                         const std::vector<int> &momentum,
                                         MKL_INT &dim_repr,
                                         std::vector<qbasis::mbasis_elem> &basis_repr,
-                                        std::initializer_list<mopr<std::complex<double>>> conserve_lst,
-                                        std::initializer_list<double> val_lst)
+                                        MltArray_double &Weisse_nu_lt,
+                                        MltArray_double &Weisse_nu_eq,
+                                        std::vector<mopr<T>> conserve_lst,
+                                        std::vector<double> val_lst)
     {
+        assert(latt.dimension() == static_cast<uint32_t>(momentum.size()));
+        assert(conserve_lst.size() == val_lst.size());
+        assert(basis_sub_repr.size() > 0);   // should be already generated when filling Weisse Tables
+        
+        // checking if reaching code capability
+        MKL_INT mkl_int_max = LLONG_MAX;
+        if (mkl_int_max != LLONG_MAX) {
+            mkl_int_max = INT_MAX;
+            //std::cout << "int_max = " << INT_MAX << std::endl;
+            assert(mkl_int_max == INT_MAX);
+            std::cout << "Using 32-bit integers." << std::endl;
+        } else {
+            std::cout << "Using 64-bit integers." << std::endl;
+        }
+        assert(mkl_int_max > 0);
+        
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        std::cout << "Enumerating basis_repr... " << std::flush;
-        
-        assert(conserve_lst.size() == val_lst.size());
-        assert(basis_sub_repr.size() > 0);
-        auto latt_sub = divide_lattice(latt);
-        auto base_sub = latt_sub.Linear_size();
-        for (decltype(latt_sub.dimension()) j = 0; j < latt_sub.dimension(); j++) {
-            if (! trans_sym[j]) base_sub[j]    = 1;
+        std::cout << "Enumerating basis_repr according to momentum: (" << std::flush;
+        for (uint32_t j = 0; j < momentum.size(); j++) {
+            if (trans_sym[j]) {
+                std::cout << momentum[j] << "\t";
+            } else {
+                std::cout << "NA\t";
+            }
         }
-        basis_repr.clear();
+        std::cout << ")..." << std::endl;
         
+        auto base = Weisse_w_lt.linear_size();
+        Weisse_nu_lt = MltArray_double(base);
+        Weisse_nu_eq = MltArray_double(base);
+        
+        
+        auto latt_sub = divide_lattice(latt);
+        basis_repr.clear();
         std::vector<uint32_t> default_val(latt_sub.dimension(),0);
         for (decltype(basis_sub_repr.size()) ra = 0; ra < basis_sub_repr.size(); ra++) {
             auto ga = belong2group_sub[ra];
@@ -186,11 +211,12 @@ namespace qbasis {
     {
         assert(latt.dimension() == static_cast<uint32_t>(momentum.size()));
         assert(dim_target_full > 0 && dim_target_full == basis_target_full.size());
+        assert(Lin_Ja_target_full.size() > 0 && Lin_Jb_target_full.size() > 0);
         check_translation(latt);
         
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        std::cout << "Classifying states according to momentum: (";
+        std::cout << "Classifying basis_repr according to momentum: (";
         for (uint32_t j = 0; j < momentum.size(); j++) {
             if (trans_sym[j]) {
                 std::cout << momentum[j] << "\t";

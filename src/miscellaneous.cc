@@ -202,8 +202,8 @@ namespace qbasis {
     //  -------------- Multi-dimensional array data structure ------------------
     template <typename T>
     multi_array<T>::multi_array(const std::vector<uint64_t> &linear_size_input):
-    dim_(linear_size_input.size()),
-    linear_size_(linear_size_input)
+        dim_(linear_size_input.size()),
+        linear_size_(linear_size_input)
     {
         assert(dim_ > 0);
         size_ = linear_size_[0];
@@ -214,8 +214,8 @@ namespace qbasis {
     
     template <typename T>
     multi_array<T>::multi_array(const std::vector<uint64_t> &linear_size_input, const T &element):
-    dim_(linear_size_input.size()),
-    linear_size_(linear_size_input)
+        dim_(linear_size_input.size()),
+        linear_size_(linear_size_input)
     {
         assert(dim_ > 0);
         size_ = linear_size_[0];
@@ -276,9 +276,11 @@ namespace qbasis {
     }
     
     // explicit instantiation
+    template class multi_array<double>;
     template class multi_array<std::vector<uint32_t>>;
     template class multi_array<std::pair<std::vector<uint32_t>,std::vector<uint32_t>>>;
     
+    template void swap(multi_array<double>&, multi_array<double>&);
     template void swap(multi_array<std::vector<uint32_t>>&, multi_array<std::vector<uint32_t>>&);
     template void swap(multi_array<std::pair<std::vector<uint32_t>,std::vector<uint32_t>>>&,
                        multi_array<std::pair<std::vector<uint32_t>,std::vector<uint32_t>>>&);

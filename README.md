@@ -10,7 +10,7 @@ To learn how to use this library to design ED code for your own models, please r
 - Spinless fermion on honeycomb lattice
 - Fermi-Hubbard Model on square lattice
 - Bose-Hubbard Model on square lattice
-- Kondo Lattice Model on a chain (E1-E0 checked, but E0 itself not checked yet)
+- Kondo Lattice Model on a chain
 - tJ Model on chain lattice (E0 checked, but E1 inconsistent with ALPS)
 - tJ Model on kagome lattice (E0 checked, but E1 inconsistent with ALPS)
 

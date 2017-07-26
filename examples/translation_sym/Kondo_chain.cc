@@ -5,9 +5,6 @@
 // Kondo Lattice model on a chain
 int main() {
     std::cout << std::setprecision(10);
-    std::cout << "The gap is bench marked with Tsunetsugu et al. PRB 46, 3175 (1992)." << std::endl;
-    std::cout << "E0 not checked by any means yet (haven't setup ALPS correctly)." << std::endl;
-    std::cout << "If you know a good reference or tool (or alps scripts), please contact me. Thanks!" << std::endl << std::endl;
     // parameters
     double t = 1;
     double J_Kondo = 1.1;
