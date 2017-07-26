@@ -1143,6 +1143,8 @@ namespace qbasis {
         // naive way of enumerating all possible basis state
         void enumerate_basis_full(MKL_INT &dim_full,
                                   std::vector<qbasis::mbasis_elem> &basis_full,
+                                  std::vector<MKL_INT> &Lin_Ja,
+                                  std::vector<MKL_INT> &Lin_Jb,
                                   std::vector<mopr<T>> conserve_lst = {},
                                   std::vector<double> val_lst = {});
         
@@ -1151,6 +1153,8 @@ namespace qbasis {
                                   const std::vector<int> &momentum,
                                   MKL_INT &dim_repr,
                                   std::vector<qbasis::mbasis_elem> &basis_repr,
+                                  std::vector<MKL_INT> &Lin_Ja,
+                                  std::vector<MKL_INT> &Lin_Jb,
                                   MltArray_double &Weisse_nu_lt,
                                   MltArray_double &Weisse_nu_eq,
                                   std::vector<mopr<T>> conserve_lst = {},

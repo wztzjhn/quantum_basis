@@ -85,6 +85,8 @@ namespace qbasis {
     template <typename T>
     void model<T>::enumerate_basis_full(MKL_INT &dim_full,
                                         std::vector<qbasis::mbasis_elem> &basis_full,
+                                        std::vector<MKL_INT> &Lin_Ja,
+                                        std::vector<MKL_INT> &Lin_Jb,
                                         std::vector<mopr<T>> conserve_lst,
                                         std::vector<double> val_lst)
     {
@@ -106,7 +108,7 @@ namespace qbasis {
         
         sort_basis_Lin_order(props, basis_full);
         
-        fill_Lin_table(props, basis_full, Lin_Ja_target_full, Lin_Jb_target_full);
+        fill_Lin_table(props, basis_full, Lin_Ja, Lin_Jb);
     }
     
     
@@ -115,6 +117,8 @@ namespace qbasis {
                                         const std::vector<int> &momentum,
                                         MKL_INT &dim_repr,
                                         std::vector<qbasis::mbasis_elem> &basis_repr,
+                                        std::vector<MKL_INT> &Lin_Ja,
+                                        std::vector<MKL_INT> &Lin_Jb,
                                         MltArray_double &Weisse_nu_lt,
                                         MltArray_double &Weisse_nu_eq,
                                         std::vector<mopr<T>> conserve_lst,
@@ -229,6 +233,8 @@ namespace qbasis {
         std::cout << "dim_repr (without removing dulplicates) = " << dim_repr << std::endl;
         
         sort_basis_Lin_order(props, basis_repr);
+        
+        fill_Lin_table(props, basis_repr, Lin_Ja, Lin_Jb);
     }
     
     

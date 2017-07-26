@@ -1179,7 +1179,7 @@ namespace qbasis {
         uint32_t Nsites_b = props_sub_b[0].num_sites;
         assert(Nsites_a >= Nsites_b && Nsites_a + Nsites_b == Nsites);
         
-        std::cout << "Filling Lin Table (" << Nsites_a << "+" << Nsites_b <<" sites)..." << std::endl;
+        std::cout << "Filling Lin Table (" << Nsites_a << "+" << Nsites_b <<" sites, dim=" << basis.size() << ")..." << std::endl;
         
         uint32_t local_dim = 1;
         for (decltype(props.size()) j = 0; j < props.size(); j++) local_dim *= props[j].dim_local;

@@ -127,7 +127,8 @@ void test_basis() {
     qbasis::model<std::complex<double>> test_model;
     test_model.add_orbital(lattice.total_sites(), "spin-1/2");
     test_model.add_orbital(lattice.total_sites(), "electron");
-    test_model.enumerate_basis_full(test_model.dim_target_full, test_model.basis_target_full);
+    test_model.enumerate_basis_full(test_model.dim_target_full, test_model.basis_target_full,
+                                    test_model.Lin_Ja_target_full, test_model.Lin_Jb_target_full);
     /*
     for (MKL_INT j = 0; j < test_model.dim_full; j++) {
         std::cout << "j= " << j << ", basis_label = " << test_model.basis_full[j].label(test_model.props) << std::endl;
@@ -290,7 +291,8 @@ void test_basis4()
         Sz_total += Sz_i;
     }
     
-    model_test4.enumerate_basis_full(model_test4.dim_target_full, model_test4.basis_target_full, {Sz_total}, {0.0});
+    model_test4.enumerate_basis_full(model_test4.dim_target_full, model_test4.basis_target_full,
+                                     model_test4.Lin_Ja_target_full, model_test4.Lin_Jb_target_full, {Sz_total}, {0.0});
     
     std::cout << std::numeric_limits<double>::epsilon() << std::endl;
     
@@ -519,7 +521,8 @@ void test_basis4()
     model_test4.locate_E0_full();
     
     qbasis::MltArray_double nu_lt, nu_eq;
-    model_test4.enumerate_basis_repr(lattice, std::vector<int>{2}, model_test4.dim_target_repr, model_test4.basis_target_repr, nu_lt, nu_eq, {Sz_total}, {0.0});
+    model_test4.enumerate_basis_repr(lattice, std::vector<int>{2}, model_test4.dim_target_repr, model_test4.basis_target_repr,
+                                     model_test4.Lin_Ja_target_repr, model_test4.Lin_Jb_target_repr, nu_lt, nu_eq, {Sz_total}, {0.0});
     
     model_test4.basis_init_repr_deprecated(std::vector<int>{2}, lattice);
     std::cout << "dim_repr = " << model_test4.dim_target_repr << std::endl;
@@ -597,7 +600,9 @@ void test_basis5()
         }
     }
     
-    model_test5.enumerate_basis_full(model_test5.dim_target_full, model_test5.basis_target_full, {Sz_total}, {0.0});
+    model_test5.enumerate_basis_full(model_test5.dim_target_full, model_test5.basis_target_full,
+                                     model_test5.Lin_Ja_target_full, model_test5.Lin_Jb_target_full,
+                                     {Sz_total}, {0.0});
     
     std::cout << std::numeric_limits<double>::epsilon() << std::endl;
     
