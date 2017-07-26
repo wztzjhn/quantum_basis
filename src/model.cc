@@ -33,6 +33,23 @@ namespace qbasis {
     }
     
     template <typename T>
+    void model<T>::switch_sec(const uint32_t &sec_full_, const uint32_t &sec_repr_)
+    {
+        assert(dim_full.size() == basis_full.size() &&
+               dim_full.size() == Lin_Ja_full.size() &&
+               dim_full.size() == Lin_Jb_full.size() &&
+               dim_full.size() == HamMat_csr_full.size());
+        assert(dim_repr.size() == Lin_Ja_repr.size() &&
+               dim_repr.size() == Lin_Jb_repr.size() &&
+               dim_repr.size() == HamMat_csr_repr.size() &&
+               dim_repr.size() == Weisse_nu_lt.size() &&
+               dim_repr.size() == Weisse_nu_eq.size());
+        assert(sec_full_ < dim_full.size() && sec_repr_ < dim_repr.size());
+        sec_full = sec_full_;
+        sec_repr = sec_repr_;
+    }
+    
+    template <typename T>
     void model<T>::check_translation(const lattice &latt)
     {
         std::cout << "Checking translational symmetry." << std::endl;

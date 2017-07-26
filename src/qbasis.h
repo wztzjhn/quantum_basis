@@ -1130,6 +1130,8 @@ namespace qbasis {
         
         void add_offdiagonal_Ham(const mopr<T> &rhs)     { Ham_off_diag += rhs; }
         
+        void switch_sec(const uint32_t &sec_full_, const uint32_t &sec_repr_);
+        
         // check if translational symmetry satisfied
         void check_translation(const lattice &latt);
         
@@ -1195,7 +1197,6 @@ namespace qbasis {
         double Emax;
         double E0;
         double gap;
-        
     };
     
 
