@@ -176,6 +176,10 @@ namespace qbasis {
                                 const std::vector<uint32_t> &belong2group,
                                 MltArray_PairVec &Weisse_e_lt, MltArray_PairVec &Weisse_e_eq, MltArray_PairVec &Weisse_e_gt,
                                 MltArray_vec &Weisse_w_lt, MltArray_vec &Weisse_w_eq);
+    // <r|P_k|r>^{-1}
+    double norm_trans_repr(const std::vector<basis_prop> &props, const mbasis_elem &repr,
+                           const lattice &latt, const std::vector<uint32_t> &group,
+                           const std::vector<int> &momentum);
     
     // Operations on wavefunctions
     template <typename T> void swap(wavefunction<T>&, wavefunction<T>&);
@@ -1059,6 +1063,7 @@ namespace qbasis {
         
         std::vector<std::vector<qbasis::mbasis_elem>> basis_full; // full basis without translation sym
         std::vector<std::vector<qbasis::mbasis_elem>> basis_repr; // basis with translation sym
+        std::vector<std::vector<double>> norm_repr;                 // 1 / <rep | P_k | rep>
         std::vector<qbasis::mbasis_elem> basis_sub_full;          // basis for half lattice, used for building Weisse Table
         std::vector<qbasis::mbasis_elem> basis_sub_repr;          // reps for half lattice
         
@@ -1076,7 +1081,7 @@ namespace qbasis {
         std::vector<uint32_t>              belong2group_sub;
         MltArray_PairVec                   Weisse_e_lt, Weisse_e_eq, Weisse_e_gt;
         MltArray_vec                       Weisse_w_lt, Weisse_w_eq;
-        std::vector<MltArray_double>       Weisse_nu_lt, Weisse_nu_eq;          // Note: nu_k = 1 / <rep | P_k | rep>
+        //std::vector<MltArray_double>       Weisse_nu_lt, Weisse_nu_eq;          // Note: nu_k = 1 / <rep | P_k | rep>
         
         std::vector<csr_mat<T>>            HamMat_csr_full;
         std::vector<csr_mat<T>>            HamMat_csr_repr;
@@ -1152,7 +1157,7 @@ namespace qbasis {
         
         void generate_Ham_sparse_full(const bool &upper_triangle = true); // generate the full Hamiltonian in sparse matrix format
         
-        void generate_Ham_sparse_repr(const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr
+        void generate_Ham_sparse_repr(const lattice &latt, const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr
         
         void generate_Ham_sparse_repr_deprecated(const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr
         

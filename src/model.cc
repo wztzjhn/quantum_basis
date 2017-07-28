@@ -14,14 +14,15 @@ namespace qbasis {
     {
         basis_full.resize(2);
         basis_repr.resize(2);
+        norm_repr.resize(2);
         Lin_Ja_full.resize(2);
         Lin_Jb_full.resize(2);
         Lin_Ja_repr.resize(2);
         Lin_Jb_repr.resize(2);
         HamMat_csr_full.resize(2);
         HamMat_csr_repr.resize(2);
-        Weisse_nu_lt.resize(2);
-        Weisse_nu_eq.resize(2);
+        //Weisse_nu_lt.resize(2);
+        //Weisse_nu_eq.resize(2);
     }
     
     template <typename T>
@@ -42,8 +43,7 @@ namespace qbasis {
         assert(dim_repr.size() == Lin_Ja_repr.size() &&
                dim_repr.size() == Lin_Jb_repr.size() &&
                dim_repr.size() == HamMat_csr_repr.size() &&
-               dim_repr.size() == Weisse_nu_lt.size() &&
-               dim_repr.size() == Weisse_nu_eq.size());
+               dim_repr.size() == norm_repr.size());
         assert(sec_full_ < dim_full.size() && sec_repr_ < dim_repr.size());
         sec_full = sec_full_;
         sec_repr = sec_repr_;
@@ -173,38 +173,10 @@ namespace qbasis {
         }
         std::cout << ")..." << std::endl;
         
-        // first calculate the normalization factors
-        auto base = Weisse_w_lt.linear_size();
-        Weisse_nu_lt[sec_repr] = MltArray_double(base, 0.0);
-        Weisse_nu_eq[sec_repr] = MltArray_double(base, 0.0);
-        std::vector<uint64_t> pos(base.size(),0);
-        while (! dynamic_base_overflow(pos, base)) {
-            auto omega_lt = Weisse_w_lt.index(pos);
-            assert(omega_lt.size() == momentum.size());
-            if (std::any_of(omega_lt.begin(), omega_lt.end(), [](uint32_t i){ return i != 0; })) {
-                Weisse_nu_lt[sec_repr].index(pos) = 1.0;
-                for (decltype(momentum.size()) j = 0; j < momentum.size(); j++) {
-                    assert(L[j] % omega_lt[j] == 0);
-                    Weisse_nu_lt[sec_repr].index(pos) *= (momentum2[j] % static_cast<int>(L[j] / omega_lt[j]) == 0
-                                                          ? static_cast<double>(omega_lt[j]) : 0.0);
-                }
-            }
-            auto omega_eq = Weisse_w_eq.index(pos);
-            assert(omega_eq.size() == momentum.size());
-            if (std::any_of(omega_eq.begin(), omega_eq.end(), [](uint32_t i){ return i != 0; })) {
-                Weisse_nu_eq[sec_repr].index(pos) = 1.0;
-                for (decltype(momentum.size()) j = 0; j < momentum.size(); j++) {
-                    assert(L[j] % omega_eq[j] == 0);
-                    Weisse_nu_eq[sec_repr].index(pos) *= (momentum2[j] % static_cast<int>(L[j] / omega_eq[j]) == 0
-                                                          ? static_cast<double>(omega_eq[j]) : 0.0);
-                }
-            }
-            pos = dynamic_base_plus1(pos, base);
-        }
-        
         // now really enumerate representatives
         auto latt_sub = divide_lattice(latt);
         basis_repr[sec_repr].clear();
+        norm_repr[sec_repr].clear();
         for (decltype(basis_sub_repr.size()) ra = 0; ra < basis_sub_repr.size(); ra++) {
             auto ga = belong2group_sub[ra];
             int sgn;
@@ -216,14 +188,22 @@ namespace qbasis {
                     auto pos = std::vector<uint64_t>{ga,gb};
                     pos.insert(pos.end(), disp_j.begin(), disp_j.end());
                     auto omega = (ra < rb)?(Weisse_w_lt.index(pos)):(Weisse_w_eq.index(pos));
-                    double nu  = (ra < rb)?(Weisse_nu_lt[sec_repr].index(pos)):(Weisse_nu_eq[sec_repr].index(pos));
-                    if (std::any_of(omega.begin(), omega.end(), [](uint32_t i){ return i != 0; }) &&
-                        std::abs(nu) > machine_prec) {  // valid representative
+                    
+                    
+                    
+                    
+                    if (std::any_of(omega.begin(), omega.end(), [](uint32_t i){ return i != 0; })) {  // valid representative
                         mbasis_elem rb_new = basis_sub_repr[rb];
                         for (uint32_t j = 0; j < latt_sub.dimension(); j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         rb_new.translate(props_sub_b, latt_sub, disp_j_int, sgn);
                         mbasis_elem ra_z_Tj_rb;
                         zipper_basis(props, props_sub_a, props_sub_b, basis_sub_repr[ra], rb_new, ra_z_Tj_rb);
+                        
+                        double nu  = norm_trans_repr(props, ra_z_Tj_rb, latt, omega, momentum2);
+                        if (std::abs(nu) < lanczos_precision) {
+                            disp_j = dynamic_base_plus1(disp_j, groups_sub[gb]);
+                            continue;
+                        }
                         
                         // check if the symmetries are obeyed
                         bool flag = true;
@@ -238,7 +218,10 @@ namespace qbasis {
                             it_opr++;
                             it_val++;
                         }
-                        if (flag) basis_repr[sec_repr].push_back(ra_z_Tj_rb);
+                        if (flag) {
+                            basis_repr[sec_repr].push_back(ra_z_Tj_rb);
+                            norm_repr[sec_repr].push_back(nu);
+                        }
                     }
                     disp_j = dynamic_base_plus1(disp_j, groups_sub[gb]);
                 }
@@ -248,7 +231,7 @@ namespace qbasis {
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout <<  elapsed_seconds.count() << "s." << std::endl;
         dim_repr[sec_repr] = static_cast<MKL_INT>(basis_repr[sec_repr].size());
-        std::cout << "dim_repr (without removing dulplicates) = " << dim_repr[sec_repr] << std::endl;
+        std::cout << "dim_repr = " << dim_repr[sec_repr] << std::endl;
         
         sort_basis_Lin_order(props, basis_repr[sec_repr]);
         
@@ -305,8 +288,11 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::generate_Ham_sparse_repr(const bool &upper_triangle)
+    void model<T>::generate_Ham_sparse_repr(const lattice &latt, const bool &upper_triangle)
     {
+        if (matrix_free) matrix_free = false;     //
+        assert(Lin_Ja_repr[sec_repr].size() > 0 && Lin_Ja_repr[sec_repr].size() == Lin_Jb_repr[sec_repr].size());
+        
         if (dim_repr[sec_repr] < 1) {
             std::cout << "dim_repr = " << dim_repr[sec_repr] << "!!!" << std::endl;
             return;

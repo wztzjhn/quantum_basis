@@ -1593,7 +1593,7 @@ namespace qbasis {
                                 pos.insert(pos.end(), dist2rep1.begin(), dist2rep1.end());  // ja
                                 pos.insert(pos.end(), dist2rep2.begin(), dist2rep2.end());  // jb
                                 assert(pos.size() == linear_size.size());
-                                if (disp_j < Weisse_e_lt.index(pos).second ||
+                                if ( disp_j < Weisse_e_lt.index(pos).second ||
                                     (disp_j == Weisse_e_lt.index(pos).second && disp_i < Weisse_e_lt.index(pos).first)) {
                                     Weisse_e_lt.index(pos).first  = disp_i;
                                     Weisse_e_lt.index(pos).second = disp_j;
@@ -1655,7 +1655,7 @@ namespace qbasis {
                                 pos.insert(pos.end(), dist2rep1.begin(), dist2rep1.end());  // ja
                                 pos.insert(pos.end(), dist2rep2.begin(), dist2rep2.end());  // jb
                                 assert(pos.size() == linear_size.size());
-                                if (disp_j < Weisse_e_gt.index(pos).second ||
+                                if ( disp_j < Weisse_e_gt.index(pos).second ||
                                     (disp_j == Weisse_e_gt.index(pos).second && disp_i < Weisse_e_gt.index(pos).first)) {
                                     Weisse_e_gt.index(pos).first  = disp_i;
                                     Weisse_e_gt.index(pos).second = disp_j;
@@ -1697,7 +1697,7 @@ namespace qbasis {
                             pos.insert(pos.end(), dist2rep1.begin(), dist2rep1.end());  // ja
                             pos.insert(pos.end(), dist2rep2.begin(), dist2rep2.end());  // jb
                             assert(pos.size() == linear_size.size());
-                            if (disp_j < Weisse_e_eq.index(pos).second ||
+                            if ( disp_j < Weisse_e_eq.index(pos).second ||
                                 (disp_j == Weisse_e_eq.index(pos).second && disp_i < Weisse_e_eq.index(pos).first)) {
                                 Weisse_e_eq.index(pos).first  = disp_i;
                                 Weisse_e_eq.index(pos).second = disp_j;
@@ -1852,8 +1852,8 @@ namespace qbasis {
         for (uint32_t ga = 0; ga < num_groups; ga++) {
             auto ra = examples[ga].front();
             for (uint32_t gb = 0; gb < num_groups; gb++) {
-                std::cout << "***************" << std::endl;
-                std::cout << "ga,    gb    = " << ga << ", " << gb << std::endl;
+                //std::cout << "***************" << std::endl;
+                //std::cout << "ga,    gb    = " << ga << ", " << gb << std::endl;
                 
                 std::vector<uint32_t> disp_i(latt_sub_dim,0);  // fixed to ja=0
                 std::vector<uint32_t> disp_j(latt_sub_dim,0);  // now also serves the job of jb
@@ -1869,6 +1869,7 @@ namespace qbasis {
                         std::vector<int> disp_j_int(latt_sub_dim);
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         auto rb_new = examples[gb].back();
+                        assert(ra < rb_new);
                         int sgn;
                         rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
                         mbasis_elem ra_z_Tj_rb;
@@ -1895,6 +1896,7 @@ namespace qbasis {
                         std::vector<int> disp_j_int(latt_sub_dim);
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         auto rb_new = examples[gb].front();
+                        assert(ra == rb_new);
                         int sgn;
                         rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
                         mbasis_elem ra_z_Tj_rb;
@@ -1936,8 +1938,91 @@ namespace qbasis {
                 }
             }
         }
+    }
+    
+    
+    double norm_trans_repr(const std::vector<basis_prop> &props, const mbasis_elem &repr,
+                           const lattice &latt, const std::vector<uint32_t> &group,
+                           const std::vector<int> &momentum)
+    {
+        assert(std::any_of(group.begin(), group.end(), [](uint32_t i){ return i != 0; }));
+        assert(momentum.size() == latt.dimension());
+        auto L = latt.Linear_size();
         
+        double nu = 1.0;
+        for (uint32_t d = 0; d < latt.dimension(); d++) {
+            if (group[d] == 0) continue;
+            assert(L[d] % group[d] == 0);
+            int L_o_w = static_cast<int>(L[d] / group[d]);
+            std::vector<int> disp(latt.dimension(),0);
+            disp[d] = static_cast<int>(group[d]);
+            int sgn;
+            auto repr_new = repr;
+            repr_new.translate(props, latt, disp, sgn);
+            assert(repr_new == repr && (sgn == 0 || sgn == 1));
+            if (sgn == 0) {
+                nu *= (momentum[d] % L_o_w == 0 ? static_cast<double>(group[d]) : 0.0);
+            } else {
+                if (momentum[d] % L_o_w == 0) {
+                    nu *= static_cast<double>((L_o_w % 2) * L[d]);
+                } else if ((2 * momentum[d] + L_o_w) % (2 * L_o_w) == 0) {
+                    nu *= static_cast<double>(group[d]);
+                } else {
+                    nu *= 0.0;
+                }
+            }
+            if (std::abs(nu) < lanczos_precision) break;
+        }
         
+        // the following lines should be removed in future
+        static int cnt = 0;
+        if (cnt == 0) {
+            std::cout << "Double checking normalization factors (remove these in future)." << std::endl;
+            cnt++;
+        }
+        
+        double denominator = 1.0;
+        for (uint32_t d = 0; d < latt.dimension(); d++) {
+            denominator *= (group[d] == 0 ? 1.0 : static_cast<double>(L[d]));
+        }
+        std::complex<double> nu_inv_check = 1.0;  // <r|P_k|r>
+        auto num_sub = latt.num_sublattice();
+        for (uint32_t site = num_sub; site < latt.total_sites(); site += num_sub) {
+            std::vector<int> disp;
+            int sub, sgn;
+            latt.site2coor(disp, sub, site);
+            bool flag = false;
+            for (uint32_t d = 0; d < latt.dimension(); d++) {
+                if ((group[d] == 0 && disp[d] != 0) || (group[d] != 0 && disp[d] % group[d] != 0)) {
+                    flag = true;
+                    break;
+                }
+            }
+            if (flag) continue;
+            auto basis_temp = repr;
+            basis_temp.translate(props, latt, disp, sgn);
+            assert(basis_temp == repr);
+            double exp_coef = 0.0;
+            for (uint32_t d = 0; d < latt.dimension(); d++) {
+                if (group[d] != 0) {
+                    exp_coef += momentum[d] * disp[d] / static_cast<double>(L[d]);
+                }
+            }
+            auto coef = std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
+            if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
+            nu_inv_check += coef;
+        }
+        nu_inv_check /= denominator;
+        //std::cout << "repr: " << std::endl;
+        //repr.prt_bits(props);
+        assert(std::abs(std::imag(nu_inv_check)) < lanczos_precision);
+        if (std::abs(nu) > lanczos_precision) {
+            assert(std::abs(std::real(nu_inv_check) - 1.0/nu) < lanczos_precision);
+        } else {
+            assert(std::abs(std::real(nu_inv_check)) < lanczos_precision);
+        }
+        
+        return nu;
     }
     
     // ----------------- implementation of wavefunction ------------------
