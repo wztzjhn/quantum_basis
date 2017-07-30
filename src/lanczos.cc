@@ -260,7 +260,7 @@ namespace qbasis {
     {
         ARSymStdEig<double, csr_mat<double>>
             prob(dim, nev, &mat, &csr_mat<double>::MultMv, order, ncv, 0.0, 0, v0);
-        prob.Trace();
+        //prob.Trace();
         std::cout << "ARPACK info:" << std::endl;
         std::cout << "(nev, ncv)    = (" << prob.GetNev() << "," << prob.GetNcv() << ")" << std::endl;
         std::cout << "Max iteration = " << prob.GetMaxit() << " -> ";
@@ -279,7 +279,7 @@ namespace qbasis {
         ARCompStdEig<double, csr_mat<std::complex<double>>> prob(dim, nev, &mat,
                                                                  &csr_mat<std::complex<double>>::MultMv,
                                                                  order, ncv, 0.0, 0, v0);
-        prob.Trace();
+        //prob.Trace();
         std::cout << "ARPACK info:" << std::endl;
         std::cout << "(nev, ncv)    = (" << prob.GetNev() << "," << prob.GetNcv() << ")" << std::endl;
         std::cout << "Max iteration = " << prob.GetMaxit() << " -> ";
@@ -303,7 +303,7 @@ namespace qbasis {
         ARCompStdEig<double, model<std::complex<double>>> prob(dim, nev, &mat,
                                                                &model<std::complex<double>>::MultMv,
                                                                order, ncv, 0.0, 0, v0);
-        prob.Trace();
+        //prob.Trace();
         std::cout << "ARPACK info:" << std::endl;
         std::cout << "(nev, ncv)    = (" << prob.GetNev() << "," << prob.GetNcv() << ")" << std::endl;
         std::cout << "Max iteration = " << prob.GetMaxit() << " -> ";

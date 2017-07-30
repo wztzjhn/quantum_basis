@@ -1153,7 +1153,7 @@ namespace qbasis {
                                   std::vector<double> val_lst = {});
         
         // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
-        void basis_init_repr_deprecated(const std::vector<int> &momentum, const lattice &latt);
+        void basis_init_repr_deprecated(const lattice &latt, const std::vector<int> &momentum);
         
         // generate the Hamiltonian using basis_full
         void generate_Ham_sparse_full(const bool &upper_triangle = true);

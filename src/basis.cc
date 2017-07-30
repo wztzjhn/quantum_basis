@@ -1285,21 +1285,28 @@ namespace qbasis {
         table_pre.clear();
         table_pre.shrink_to_fit();
         
-        g.BSF_set_JaJb(Lin_Ja, Lin_Jb);
-        
-        // check with the original basis, delete later
-        std::cout << "double checking Lin Table validity...              " << std::flush;
-        #pragma omp parallel for schedule(dynamic,1)
-        for (MKL_INT j = 0; j < dim; j++) {
-            mbasis_elem sub_a, sub_b;
-            unzipper_basis(props, props_sub_a, props_sub_b, basis[j], sub_a, sub_b);
-            auto i_a = sub_a.label(props_sub_a);
-            auto i_b = sub_b.label(props_sub_b);
-            assert(Lin_Ja[i_a] + Lin_Jb[i_b] == j);
+        int fail = g.BSF_set_JaJb(Lin_Ja, Lin_Jb);
+        if (fail) {
+            std::cout << "Lin Table failed to build!!!" << std::endl;  // there is always a way to build, but need smarter ordering of the input basis
+            Lin_Ja.clear();
+            Lin_Ja.shrink_to_fit();
+            Lin_Jb.clear();
+            Lin_Jb.shrink_to_fit();
+        } else {
+            // check with the original basis, delete later
+            std::cout << "double checking Lin Table validity...              " << std::flush;
+            #pragma omp parallel for schedule(dynamic,1)
+            for (MKL_INT j = 0; j < dim; j++) {
+                mbasis_elem sub_a, sub_b;
+                unzipper_basis(props, props_sub_a, props_sub_b, basis[j], sub_a, sub_b);
+                auto i_a = sub_a.label(props_sub_a);
+                auto i_b = sub_b.label(props_sub_b);
+                assert(Lin_Ja[i_a] + Lin_Jb[i_b] == j);
+            }
+            end = std::chrono::system_clock::now();
+            elapsed_seconds = end - start;
+            std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
         }
-        end = std::chrono::system_clock::now();
-        elapsed_seconds = end - start;
-        std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
     }
     
     
@@ -1948,11 +1955,13 @@ namespace qbasis {
         assert(std::any_of(group.begin(), group.end(), [](uint32_t i){ return i != 0; }));
         assert(momentum.size() == latt.dimension());
         auto L = latt.Linear_size();
+        auto momentum2 = momentum;
         
         double nu = 1.0;
         for (uint32_t d = 0; d < latt.dimension(); d++) {
             if (group[d] == 0) continue;
             assert(L[d] % group[d] == 0);
+            while (momentum2[d] < 0) momentum2[d] += static_cast<int>(L[d]);
             int L_o_w = static_cast<int>(L[d] / group[d]);
             std::vector<int> disp(latt.dimension(),0);
             disp[d] = static_cast<int>(group[d]);
@@ -1961,11 +1970,11 @@ namespace qbasis {
             repr_new.translate(props, latt, disp, sgn);
             assert(repr_new == repr && (sgn == 0 || sgn == 1));
             if (sgn == 0) {
-                nu *= (momentum[d] % L_o_w == 0 ? static_cast<double>(group[d]) : 0.0);
+                nu *= (momentum2[d] % L_o_w == 0 ? static_cast<double>(group[d]) : 0.0);
             } else {
-                if (momentum[d] % L_o_w == 0) {
+                if (momentum2[d] % L_o_w == 0) {
                     nu *= static_cast<double>((L_o_w % 2) * L[d]);
-                } else if ((2 * momentum[d] + L_o_w) % (2 * L_o_w) == 0) {
+                } else if ((2 * momentum2[d] + L_o_w) % (2 * L_o_w) == 0) {
                     nu *= static_cast<double>(group[d]);
                 } else {
                     nu *= 0.0;
@@ -1977,7 +1986,7 @@ namespace qbasis {
         // the following lines should be removed in future
         static int cnt = 0;
         if (cnt == 0) {
-            std::cout << "Double checking normalization factors (remove these in future)." << std::endl;
+            std::cout << "(**remove**) ";
             cnt++;
         }
         
@@ -2005,7 +2014,7 @@ namespace qbasis {
             double exp_coef = 0.0;
             for (uint32_t d = 0; d < latt.dimension(); d++) {
                 if (group[d] != 0) {
-                    exp_coef += momentum[d] * disp[d] / static_cast<double>(L[d]);
+                    exp_coef += momentum2[d] * disp[d] / static_cast<double>(L[d]);
                 }
             }
             auto coef = std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));

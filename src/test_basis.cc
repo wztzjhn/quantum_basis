@@ -539,7 +539,7 @@ void test_basis4()
     model_test4.locate_E0_repr();
     
     
-    model_test4.basis_init_repr_deprecated(std::vector<int>{momentum}, lattice);
+    model_test4.basis_init_repr_deprecated(lattice, std::vector<int>{momentum});
     std::cout << "dim_repr = " << model_test4.dimension_repr() << std::endl;
     
     model_test4.generate_Ham_sparse_repr_deprecated();

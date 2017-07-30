@@ -312,7 +312,7 @@ namespace qbasis {
         }
     }
     
-    void ALGraph::BSF_set_JaJb(std::vector<MKL_INT> &ja, std::vector<MKL_INT> &jb)
+    int ALGraph::BSF_set_JaJb(std::vector<MKL_INT> &ja, std::vector<MKL_INT> &jb)
     {
         MKL_INT magic = -19900917;
         for (decltype(ja.size()) j = 0; j < ja.size(); j++) ja[j] = magic;
@@ -347,7 +347,9 @@ namespace qbasis {
                                 assert(ja[vertices[w].i_a] != magic);
                                 jb[vertices[w].i_b] = static_cast<MKL_INT>(w) - ja[vertices[w].i_a];
                             } else {
-                                assert(ja[vertices[w].i_a] + jb[vertices[w].i_b] == static_cast<MKL_INT>(w));
+                                if (ja[vertices[w].i_a] + jb[vertices[w].i_b] != static_cast<MKL_INT>(w)) {
+                                    return 1; // fail!!!
+                                }
                             }
                             //std::cout << "ia,ib -> ja,jb : " << vertices[w].i_a << "," << vertices[w].i_b << " -> " <<
                             //ja[vertices[w].i_a] << "," << jb[vertices[w].i_b] << std::endl;
@@ -357,6 +359,7 @@ namespace qbasis {
                 }
             }
         }
+        return 0;
     }
     
 }

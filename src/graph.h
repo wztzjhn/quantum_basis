@@ -34,7 +34,9 @@ namespace qbasis {
         void add_edge(const uint64_t &n1, const uint64_t &n2);
         
         // use BSF search, to set the values of Ja, Jb for Lin Table
-        void BSF_set_JaJb(std::vector<MKL_INT> &ja, std::vector<MKL_INT> &jb);
+        // return = 0 : success
+        // return = 1 : fail
+        int BSF_set_JaJb(std::vector<MKL_INT> &ja, std::vector<MKL_INT> &jb);
         
     private:
         std::vector<VNode> vertices;
