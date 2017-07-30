@@ -895,6 +895,8 @@ namespace qbasis {
         basis_repr_deprec[sec_repr].resize(0);
         
         if (dim_repr[sec_repr] > 0 && dim_repr[sec_repr] == static_cast<MKL_INT>(basis_repr[sec_repr].size())) {
+            std::cout << "Borrowing info from the new algorithm..." << std::endl;
+            std::cout << "New algorithm already establishs dim_repr = " << dim_repr[sec_repr] << std::endl;
             basis_repr_deprec[sec_repr].resize(dim_repr[sec_repr]);
             auto latt_sub = divide_lattice(latt);
             for (MKL_INT i_repr = 0; i_repr < dim_repr[sec_repr]; i_repr++) {
@@ -922,6 +924,7 @@ namespace qbasis {
                     if (flag) continue;            // such translation forbidden
                     auto basis_temp = basis_repr[sec_repr][i_repr];
                     basis_temp.translate(props, latt, disp, sgn);
+                    uint64_t i_a, i_b;
                     basis_temp.label_sub(props, i_a, i_b);
                     MKL_INT i_full_new = Lin_Ja_full[sec_full][i_a] + Lin_Jb_full[sec_full][i_b];
                     double exp_coef = 0.0;
