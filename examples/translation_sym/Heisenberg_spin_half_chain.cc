@@ -8,6 +8,7 @@ int main() {
     // parameters
     double J = 1.0;
     int L = 16;
+    double Sz_total_val = 0.0;
 
     std::cout << "L =       " << L << std::endl;
     std::cout << "J =       " << J << std::endl << std::endl;
@@ -66,7 +67,7 @@ int main() {
     std::vector<double> E0_list;
     for (int momentum = 0; momentum < L; momentum++) {
         // generate the translational symmetric basis
-        Heisenberg.enumerate_basis_repr(lattice, std::vector<int>{momentum}, {}, {});
+        Heisenberg.enumerate_basis_repr(lattice, std::vector<int>{momentum}, {Sz_total}, {Sz_total_val});
 
         // optional in future, will use more memory and give higher speed
         // generating matrix of the Hamiltonian in the full Hilbert space
@@ -99,7 +100,7 @@ int main() {
     // -------------------------------------------------------------------------
     // the following is only for bench marking with older version of the code
     std::vector<double> E0_check_list;
-    Heisenberg.enumerate_basis_full();
+    Heisenberg.enumerate_basis_full({Sz_total}, {Sz_total_val});
     for (int momentum = 0; momentum < L; momentum++) {
         // generate the translational symmetric basis
         Heisenberg.basis_init_repr_deprecated(lattice, std::vector<int>{momentum});
@@ -122,11 +123,4 @@ int main() {
         << "\tvs\t" << E0_check_list[momentum] << std::endl;
     }
 
-
-
-
-
-
-    // for the parameters considered, we should obtain:
-    //assert(std::abs(Heisenberg.eigenvals_full[0] + 7.142296361) < 1e-8);
 }
