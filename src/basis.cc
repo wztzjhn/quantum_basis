@@ -1242,7 +1242,7 @@ namespace qbasis {
         std::cout << "building horizontal edges...                       " << std::flush;
         for (MKL_INT idx = 1; idx < dim; idx++) {
             assert(table_pre[idx][1] >= table_pre[idx-1][1]);
-            if (table_pre[idx][1] == table_pre[idx-1][1]) { // same i_a, connected
+            if (table_pre[idx][1] == table_pre[idx-1][1]) { // same i_b, connected
                 assert(table_pre[idx][0] > table_pre[idx-1][0]);
                 g.add_edge(static_cast<uint64_t>(table_pre[idx-1][2]), static_cast<uint64_t>(table_pre[idx][2]));
             }
@@ -2021,6 +2021,9 @@ namespace qbasis {
         } else {
             assert(std::abs(std::real(nu_inv_check)) < lanczos_precision);
         }
+        
+        
+        
         
         return nu;
     }

@@ -1061,11 +1061,11 @@ namespace qbasis {
         std::vector<MKL_INT> dim_full;
         std::vector<MKL_INT> dim_repr;
         
-        std::vector<std::vector<qbasis::mbasis_elem>> basis_full; // full basis without translation sym
-        std::vector<std::vector<qbasis::mbasis_elem>> basis_repr; // basis with translation sym
+        std::vector<std::vector<qbasis::mbasis_elem>> basis_full;   // full basis without translation sym
+        std::vector<std::vector<qbasis::mbasis_elem>> basis_repr;   // basis with translation sym
         std::vector<std::vector<double>> norm_repr;                 // 1 / <rep | P_k | rep>
-        std::vector<qbasis::mbasis_elem> basis_sub_full;          // basis for half lattice, used for building Weisse Table
-        std::vector<qbasis::mbasis_elem> basis_sub_repr;          // reps for half lattice
+        std::vector<qbasis::mbasis_elem> basis_sub_full;            // basis for half lattice, used for building Weisse Table
+        std::vector<qbasis::mbasis_elem> basis_sub_repr;            // reps for half lattice
         
         // Lin tables, for both full basis and translation basis
         std::vector<std::vector<MKL_INT>> Lin_Ja_full;
@@ -1093,9 +1093,9 @@ namespace qbasis {
         
         
         // ---------------- deprecated --------------------
-        std::vector<MKL_INT>              basis_belong_deprec;   // size: dim_target_full, store the position of its repr
-        std::vector<std::complex<double>> basis_coeff_deprec;    // size: dim_target_full, store the coeff
-        std::vector<MKL_INT>              basis_repr_deprec;
+        std::vector<std::vector<MKL_INT>>              basis_belong_deprec;   // size: dim_target_full, store the position of its repr
+        std::vector<std::vector<std::complex<double>>> basis_coeff_deprec;    // size: dim_target_full, store the coeff
+        std::vector<std::vector<MKL_INT>>              basis_repr_deprec;
         // ---------------- deprecated --------------------
         
         
@@ -1155,9 +1155,12 @@ namespace qbasis {
         // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
         void basis_init_repr_deprecated(const std::vector<int> &momentum, const lattice &latt);
         
-        void generate_Ham_sparse_full(const bool &upper_triangle = true); // generate the full Hamiltonian in sparse matrix format
+        // generate the Hamiltonian using basis_full
+        void generate_Ham_sparse_full(const bool &upper_triangle = true);
         
-        void generate_Ham_sparse_repr(const lattice &latt, const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr
+        // generate the Hamiltonian using basis_repr
+        void generate_Ham_sparse_repr(const lattice &latt, const std::vector<int> &momentum,
+                                      const bool &upper_triangle = true);
         
         void generate_Ham_sparse_repr_deprecated(const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr
         

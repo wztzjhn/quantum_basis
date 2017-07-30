@@ -516,16 +516,50 @@ void test_basis4()
     
     model_test4.generate_Ham_sparse_full();
     
+    std::cout << "E0 from full basis: " << std::endl;
     model_test4.locate_E0_full();
     
-    model_test4.enumerate_basis_repr(lattice, std::vector<int>{2}, {Sz_total}, {0.0});
     
-    model_test4.basis_init_repr_deprecated(std::vector<int>{2}, lattice);
+    int momentum = 2;
+    
+    model_test4.enumerate_basis_repr(lattice, std::vector<int>{momentum}, {Sz_total}, {0.0});
+    
+//    std::cout << "label for basis_repr[0]: " << model_test4.basis_repr[model_test4.sec_repr][0].label(model_test4.props) << std::endl;
+//    auto xxxxxx =  qbasis::norm_trans_repr(model_test4.props, model_test4.basis_repr[model_test4.sec_repr][0],
+//                                           lattice, std::vector<uint32_t>{8}, std::vector<int>{0});
+//    std::cout << "xxxxx = " << xxxxxx << std::endl;
+//    std::cout << "nu[0] = " << model_test4.norm_repr[model_test4.sec_repr][0] << std::endl;
+    
+    model_test4.generate_Ham_sparse_repr(lattice, std::vector<int>{momentum});
+    //auto xx = model_test4.HamMat_csr_repr[model_test4.sec_repr].to_dense();
+    
+    
+    
+    std::cout << "E0 from repr basis: " << std::endl;
+    model_test4.locate_E0_repr();
+    
+    
+    model_test4.basis_init_repr_deprecated(std::vector<int>{momentum}, lattice);
     std::cout << "dim_repr = " << model_test4.dimension_repr() << std::endl;
+    
+    model_test4.generate_Ham_sparse_repr_deprecated();
+    //auto yy = model_test4.HamMat_csr_repr[model_test4.sec_repr].to_dense();
+    
+    std::cout << "E0 from repr basis(deprec): " << std::endl;
+    model_test4.locate_E0_repr();
     
     assert(std::abs(model_test4.eigenvals_full[0] + 11.337) < 0.0001);
     assert(std::abs(model_test4.eigenvals_full[1] + 10.7434) < 0.0001);
     std::cout << std::endl;
+    
+//    for (MKL_INT i = 0; i < model_test4.dimension_repr(); i++) {
+//        for (MKL_INT j = i; j < model_test4.dimension_repr(); j++) {
+//            auto pos = i + j * model_test4.dimension_repr();
+//            std::cout << "(i,j) = (" << i << "," << j << ")" << std::endl;
+//            std::cout << "xx, yy = " << xx[pos] << ", " << yy[pos] << std::endl;
+//            assert(std::abs(xx[pos] - yy[pos]) < 0.000001);
+//        }
+//    }
     
 }
 

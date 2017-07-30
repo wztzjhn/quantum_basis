@@ -21,6 +21,9 @@ namespace qbasis {
         Lin_Jb_repr.resize(2);
         HamMat_csr_full.resize(2);
         HamMat_csr_repr.resize(2);
+        basis_belong_deprec.resize(2);
+        basis_coeff_deprec.resize(2);
+        basis_repr_deprec.resize(2);
         //Weisse_nu_lt.resize(2);
         //Weisse_nu_eq.resize(2);
     }
@@ -173,7 +176,7 @@ namespace qbasis {
         }
         std::cout << ")..." << std::endl;
         
-        // now really enumerate representatives
+        // now start enumerating representatives
         auto latt_sub = divide_lattice(latt);
         basis_repr[sec_repr].clear();
         norm_repr[sec_repr].clear();
@@ -189,22 +192,19 @@ namespace qbasis {
                     pos.insert(pos.end(), disp_j.begin(), disp_j.end());
                     auto omega = (ra < rb)?(Weisse_w_lt.index(pos)):(Weisse_w_eq.index(pos));
                     
-                    
-                    
-                    
                     if (std::any_of(omega.begin(), omega.end(), [](uint32_t i){ return i != 0; })) {  // valid representative
                         mbasis_elem rb_new = basis_sub_repr[rb];
                         for (uint32_t j = 0; j < latt_sub.dimension(); j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         rb_new.translate(props_sub_b, latt_sub, disp_j_int, sgn);
                         mbasis_elem ra_z_Tj_rb;
                         zipper_basis(props, props_sub_a, props_sub_b, basis_sub_repr[ra], rb_new, ra_z_Tj_rb);
-                        
+                        /*
                         double nu  = norm_trans_repr(props, ra_z_Tj_rb, latt, omega, momentum2);
                         if (std::abs(nu) < lanczos_precision) {
                             disp_j = dynamic_base_plus1(disp_j, groups_sub[gb]);
                             continue;
                         }
-                        
+                        */
                         // check if the symmetries are obeyed
                         bool flag = true;
                         auto it_opr = conserve_lst.begin();
@@ -220,7 +220,6 @@ namespace qbasis {
                         }
                         if (flag) {
                             basis_repr[sec_repr].push_back(ra_z_Tj_rb);
-                            norm_repr[sec_repr].push_back(nu);
                         }
                     }
                     disp_j = dynamic_base_plus1(disp_j, groups_sub[gb]);
@@ -235,22 +234,27 @@ namespace qbasis {
         
         sort_basis_Lin_order(props, basis_repr[sec_repr]);
         
+        // calculate normalization factors
+        MKL_INT extra = 0;
+        norm_repr[sec_repr].resize(dim_repr[sec_repr]);
+        for (MKL_INT j = 0; j < dim_repr[sec_repr]; j++) {
+            uint64_t state_sub1_label, state_sub2_label;
+            basis_repr[sec_repr][j].label_sub(props, state_sub1_label, state_sub2_label);
+            auto &ra_label = belong2rep_sub[state_sub1_label];
+            auto &rb_label = belong2rep_sub[state_sub2_label];
+            assert(ra_label <= rb_label);
+            auto &ga = belong2group_sub[ra_label];
+            auto &gb = belong2group_sub[rb_label];
+            std::vector<uint64_t> pos_w{ga, gb};
+            pos_w.insert(pos_w.end(), dist2rep_sub[state_sub2_label].begin(), dist2rep_sub[state_sub2_label].end());
+            auto omega = (ra_label < rb_label)?(Weisse_w_lt.index(pos_w)):(Weisse_w_eq.index(pos_w));
+            norm_repr[sec_repr][j] = norm_trans_repr(props, basis_repr[sec_repr][j], latt, omega, momentum2);
+            if (std::abs(norm_repr[sec_repr][j]) < lanczos_precision) extra++;
+        }
+        std::cout << "redundancy = " << extra << std::endl;
+        
         fill_Lin_table(props, basis_repr[sec_repr], Lin_Ja_repr[sec_repr], Lin_Jb_repr[sec_repr]);
     }
-    
-    
-    
-    
-    
-
-    
-    
-
-    
-    
-    
-
-    
     
     template <typename T>
     void model<T>::generate_Ham_sparse_full(const bool &upper_triangle)
@@ -258,7 +262,7 @@ namespace qbasis {
         if (matrix_free) matrix_free = false;     //
         assert(Lin_Ja_full[sec_full].size() > 0 && Lin_Jb_full[sec_full].size() > 0);
         
-        std::cout << "Generating LIL Hamiltonian matrix..." << std::endl;
+        std::cout << "Generating LIL Hamiltonian matrix (full)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         lil_mat<T> matrix_lil(dim_full[sec_full], upper_triangle);
@@ -281,14 +285,15 @@ namespace qbasis {
             }
         }
         HamMat_csr_full[sec_full] = csr_mat<T>(matrix_lil);
-        std::cout << "Hamiltonian CSR matrix generated." << std::endl;
+        std::cout << "Hamiltonian CSR matrix (full) generated." << std::endl;
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
     
     template <typename T>
-    void model<T>::generate_Ham_sparse_repr(const lattice &latt, const bool &upper_triangle)
+    void model<T>::generate_Ham_sparse_repr(const lattice &latt, const std::vector<int> &momentum,
+                                            const bool &upper_triangle)
     {
         if (matrix_free) matrix_free = false;     //
         assert(Lin_Ja_repr[sec_repr].size() > 0 && Lin_Ja_repr[sec_repr].size() == Lin_Jb_repr[sec_repr].size());
@@ -297,10 +302,118 @@ namespace qbasis {
             std::cout << "dim_repr = " << dim_repr[sec_repr] << "!!!" << std::endl;
             return;
         }
-        std::cout << "Generating Hamiltonian Matrix..." << std::endl;
+        std::cout << "Generating LIL Hamiltonian Matrix (repr)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
+        auto latt_sub = divide_lattice(latt);
         lil_mat<std::complex<double>> matrix_lil(dim_repr[sec_repr], upper_triangle);
+        auto L = latt.Linear_size();
+        
+        #pragma omp parallel for schedule(dynamic,1)
+        for (MKL_INT i = 0; i < dim_repr[sec_repr]; i++) {
+            // get normalization factor for repr i
+            double nu_i = norm_repr[sec_repr][i];
+            if (std::abs(nu_i) < lanczos_precision) {
+                matrix_lil.add(i, i, static_cast<T>(99.99));
+                continue;
+            }
+            
+            for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)                                                 // diagonal part:
+                matrix_lil.add(i, i, basis_repr[sec_repr][i].diagonal_operator(props,Ham_diag[cnt]));
+            
+            
+            qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_repr[sec_repr][i], props);  // non-diagonal part:
+            for (uint32_t cnt = 0; cnt < intermediate_state.size(); cnt++) {
+                auto &ele_new = intermediate_state[cnt];
+                
+                // use Weisse Tables to find the representative |ra,rb,j>
+                uint64_t state_sub1_label, state_sub2_label;
+                ele_new.first.label_sub(props, state_sub1_label, state_sub2_label);
+                auto &state_rep1_label = belong2rep_sub[state_sub1_label];
+                auto &state_rep2_label = belong2rep_sub[state_sub2_label];
+                auto &ga               = belong2group_sub[state_rep1_label];
+                auto &gb               = belong2group_sub[state_rep2_label];
+                std::vector<uint64_t> pos_e{ga, gb};
+                pos_e.insert(pos_e.end(), dist2rep_sub[state_sub1_label].begin(), dist2rep_sub[state_sub1_label].end());
+                pos_e.insert(pos_e.end(), dist2rep_sub[state_sub2_label].begin(), dist2rep_sub[state_sub2_label].end());
+                std::vector<uint32_t> disp_i, disp_j;
+                mbasis_elem state_sub_new1, state_sub_new2, ra_z_Tj_rb;
+                if (state_rep1_label < state_rep2_label) {
+                    disp_i = Weisse_e_lt.index(pos_e).first;
+                    disp_j = Weisse_e_lt.index(pos_e).second;
+                    state_sub_new1 = basis_sub_repr[state_rep1_label];
+                    state_sub_new2 = basis_sub_repr[state_rep2_label];
+                } else if (state_rep2_label < state_rep1_label) {
+                    disp_i = Weisse_e_gt.index(pos_e).first;
+                    disp_j = Weisse_e_gt.index(pos_e).second;
+                    state_sub_new1 = basis_sub_repr[state_rep2_label];
+                    state_sub_new2 = basis_sub_repr[state_rep1_label];
+                } else {
+                    disp_i = Weisse_e_eq.index(pos_e).first;
+                    disp_j = Weisse_e_eq.index(pos_e).second;
+                    state_sub_new1 = basis_sub_repr[state_rep1_label];
+                    state_sub_new2 = basis_sub_repr[state_rep2_label];
+                }
+                
+                std::vector<int> disp_i_int(disp_i.size()), disp_j_int(disp_j.size());
+                int sgn;
+                for (uint32_t j = 0; j < disp_j.size(); j++) {
+                    disp_i_int[j] = static_cast<int>(disp_i[j]);
+                    disp_j_int[j] = static_cast<int>(disp_j[j]);
+                }
+                state_sub_new2.translate(props_sub_b, latt_sub, disp_j_int, sgn);      // T_j |rb> found
+                uint64_t i_a = state_sub_new1.label(props_sub_a);  // use Lin Tables to locate the position of |ra,rb,j>
+                uint64_t i_b = state_sub_new2.label(props_sub_b);
+                MKL_INT j = Lin_Ja_repr[sec_repr][i_a] + Lin_Jb_repr[sec_repr][i_b];
+                double nu_j = norm_repr[sec_repr][j];
+                
+                if (std::abs(nu_j) < lanczos_precision) continue;
+                
+                zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb);
+                assert(ra_z_Tj_rb == basis_repr[sec_repr][j]);
+                ra_z_Tj_rb.translate(props, latt, disp_i_int, sgn);
+                assert(ra_z_Tj_rb == ele_new.first);
+                
+                double exp_coef = 0.0;
+                for (uint32_t d = 0; d < latt.dimension(); d++) {
+                    if (trans_sym[d]) {
+                        exp_coef += momentum[d] * disp_i_int[d] / static_cast<double>(L[d]);
+                    }
+                }
+                auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
+                if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
+                
+                
+//                if (i == 0 && j == 37) {
+//                    std::cout << "repr " << i << ":" << std::endl;
+//                    basis_repr[sec_repr][i].prt_states(props);
+//                    std::cout << "repr " << j << ":" << std::endl;
+//                    basis_repr[sec_repr][j].prt_states(props);
+//                    std::cout << "ele_new.first  = " << j << ":" << std::endl;
+//                    ele_new.first.prt_states(props);
+//                    std::cout << "ele_new.second = " << ele_new.second << std::endl;
+//                    std::cout << "nu_i = " << nu_i << std::endl;
+//                    std::cout << "nu_j = " << nu_j << std::endl;
+//                    std::cout << "disp_i = " << disp_i_int[0] << std::endl;
+//                    std::cout << "exp_coef = " << exp_coef << std::endl;
+//                }
+                
+                
+                if (upper_triangle) {
+                    if (i <= j) matrix_lil.add(i, j, coef);
+                } else {
+                    matrix_lil.add(i, j, coef);
+                }
+            }
+        }
+        
+        HamMat_csr_repr[sec_repr] = csr_mat<std::complex<double>>(matrix_lil);
+        std::cout << "Hamiltonian CSR matrix (repr) generated." << std::endl;
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+    }
+    
     template <typename T>
     void model<T>::generate_Ham_sparse_repr_deprecated(const bool &upper_triangle)
     {
@@ -314,8 +427,12 @@ namespace qbasis {
         lil_mat<std::complex<double>> matrix_lil(dim_repr[sec_repr], upper_triangle);
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim_repr[sec_repr]; i++) {
-            auto repr_i = basis_repr_deprec[i];
-            for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)                                            // diagonal part:
+            auto repr_i = basis_repr_deprec[sec_repr][i];
+            if (std::abs(basis_coeff_deprec[sec_repr][repr_i]) < lanczos_precision) {
+                matrix_lil.add(i, i, static_cast<T>(99.99));
+                continue;
+            }
+            for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)                                                      // diagonal part:
                 matrix_lil.add(i, i, basis_full[sec_full][repr_i].diagonal_operator(props,Ham_diag[cnt]));
             qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[sec_full][repr_i], props);  // non-diagonal part:
             for (uint32_t cnt = 0; cnt < intermediate_state.size(); cnt++) {
@@ -324,10 +441,28 @@ namespace qbasis {
                 ele_new.first.label_sub(props, i_a, i_b);
                 MKL_INT state_j = Lin_Ja_full[sec_full][i_a] + Lin_Jb_full[sec_full][i_b];
                 assert(state_j >= 0 && state_j < dim_full[sec_full]);
-                auto repr_j = basis_belong_deprec[state_j];
-                auto j = binary_search<MKL_INT,MKL_INT>(basis_repr_deprec, repr_j, 0, dim_repr[sec_repr]);                 // < j |P'_k H | i > obtained
-                if (j < 0 || j >= dim_repr[sec_repr]) continue;
-                auto coeff = basis_coeff_deprec[state_j]/std::sqrt(std::real(basis_coeff_deprec[repr_i] * basis_coeff_deprec[repr_j]));
+                auto repr_j = basis_belong_deprec[sec_repr][state_j];
+                if (std::abs(basis_coeff_deprec[sec_repr][repr_j]) < lanczos_precision) continue;
+                
+                //MKL_INT j = Lin_Ja_repr[sec_repr][i_a] + Lin_Jb_repr[sec_repr][i_b];
+                auto j = binary_search<MKL_INT,MKL_INT>(basis_repr_deprec[sec_repr], repr_j, 0, dim_repr[sec_repr]);  // < j |P'_k H | i > obtained
+                //if (j < 0 || j >= dim_repr[sec_repr] ) continue;
+                auto coeff = basis_coeff_deprec[sec_repr][state_j]/std::sqrt(std::real(basis_coeff_deprec[sec_repr][repr_i] * basis_coeff_deprec[sec_repr][repr_j]));
+                
+                
+//                if (i == 0 && j == 37) {
+//                    std::cout << "repr " << i << ":" << std::endl;
+//                    basis_repr[sec_repr][i].prt_states(props);
+//                    std::cout << "repr " << j << ":" << std::endl;
+//                    basis_repr[sec_repr][j].prt_states(props);
+//                    std::cout << "ele_new.first  = " << j << ":" << std::endl;
+//                    ele_new.first.prt_states(props);
+//                    std::cout << "ele_new.second = " << ele_new.second << std::endl;
+//                    std::cout << "basis_coeff[state_j] == " << basis_coeff_deprec[sec_repr][state_j] << std::endl;
+//                    std::cout << "basis_coeff[repr_i]  == " << basis_coeff_deprec[sec_repr][repr_i] << std::endl;
+//                    std::cout << "basis_coeff[repr_j]  == " << basis_coeff_deprec[sec_repr][repr_j] << std::endl;
+//                }
+                
                 if (upper_triangle) {
                     if (i <= j) matrix_lil.add(i, j, conjugate(ele_new.second) * coeff);
                 } else {
@@ -734,11 +869,12 @@ namespace qbasis {
         assert(latt.dimension() == static_cast<uint32_t>(momentum.size()));
         assert(dim_full[sec_full] > 0 && dim_full[sec_full] == static_cast<MKL_INT>(basis_full[sec_full].size()));
         assert(Lin_Ja_full[sec_full].size() > 0 && Lin_Jb_full[sec_full].size() > 0);
+        
         check_translation(latt);
         
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        std::cout << "Classifying basis_repr according to momentum: (";
+        std::cout << "Classifying basis_repr according to momentum (deprecated method v2): (";
         for (uint32_t j = 0; j < momentum.size(); j++) {
             if (trans_sym[j]) {
                 std::cout << momentum[j] << "\t";
@@ -752,14 +888,63 @@ namespace qbasis {
         
         auto num_sub = latt.num_sublattice();
         auto L = latt.Linear_size();
-        basis_belong_deprec.resize(dim_full[sec_full]);
-        std::fill(basis_belong_deprec.begin(), basis_belong_deprec.end(), -1);
-        basis_coeff_deprec.resize(dim_full[sec_full]);
-        std::fill(basis_coeff_deprec.begin(), basis_coeff_deprec.end(), std::complex<double>(0.0,0.0));
+        basis_belong_deprec[sec_repr].resize(dim_full[sec_full]);
+        std::fill(basis_belong_deprec[sec_repr].begin(), basis_belong_deprec[sec_repr].end(), -1);
+        basis_coeff_deprec[sec_repr].resize(dim_full[sec_full]);
+        std::fill(basis_coeff_deprec[sec_repr].begin(), basis_coeff_deprec[sec_repr].end(), std::complex<double>(0.0,0.0));
+        basis_repr_deprec[sec_repr].resize(0);
+        
+        if (dim_repr[sec_repr] > 0 && dim_repr[sec_repr] == static_cast<MKL_INT>(basis_repr[sec_repr].size())) {
+            basis_repr_deprec[sec_repr].resize(dim_repr[sec_repr]);
+            auto latt_sub = divide_lattice(latt);
+            for (MKL_INT i_repr = 0; i_repr < dim_repr[sec_repr]; i_repr++) {
+                uint64_t i_a, i_b;
+                basis_repr[sec_repr][i_repr].label_sub(props, i_a, i_b);
+                assert(Lin_Ja_repr[sec_repr][i_a] + Lin_Jb_repr[sec_repr][i_b] == i_repr);
+                MKL_INT i_full = Lin_Ja_full[sec_full][i_a] + Lin_Jb_full[sec_full][i_b];
+                assert(basis_full[sec_full][i_full] == basis_repr[sec_repr][i_repr]);
+                assert(basis_belong_deprec[sec_repr][i_full] == -1);
+                basis_belong_deprec[sec_repr][i_full] = i_full;
+                basis_coeff_deprec[sec_repr][i_full] = std::complex<double>(1.0, 0.0);
+                basis_repr_deprec[sec_repr][i_repr] = i_full;
+                #pragma omp parallel for schedule(dynamic,1)
+                for (uint32_t site = num_sub; site < latt.total_sites(); site += num_sub) {
+                    std::vector<int> disp;
+                    int sub, sgn;
+                    latt.site2coor(disp, sub, site);
+                    bool flag = false;
+                    for (uint32_t d = 0; d < latt.dimension(); d++) {
+                        if (!trans_sym[d] && disp[d] != 0) {
+                            flag = true;
+                            break;
+                        }
+                    }
+                    if (flag) continue;            // such translation forbidden
+                    auto basis_temp = basis_repr[sec_repr][i_repr];
+                    basis_temp.translate(props, latt, disp, sgn);
+                    basis_temp.label_sub(props, i_a, i_b);
+                    MKL_INT i_full_new = Lin_Ja_full[sec_full][i_a] + Lin_Jb_full[sec_full][i_b];
+                    double exp_coef = 0.0;
+                    for (uint32_t d = 0; d < latt.dimension(); d++) {
+                        if (trans_sym[d]) {
+                            exp_coef += momentum[d] * disp[d] / static_cast<double>(L[d]);
+                        }
+                    }
+                    auto coef = std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
+                    if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
+                    #pragma omp critical
+                    {
+                        basis_belong_deprec[sec_repr][i_full_new] = i_full;
+                        basis_coeff_deprec[sec_repr][i_full_new] += coef;
+                    }
+                }
+            }
+        }
         for (MKL_INT i = 0; i < dim_full[sec_full]; i++) {
-            if (basis_belong_deprec[i] != -1) continue;
-            basis_belong_deprec[i] = i;
-            basis_coeff_deprec[i] = std::complex<double>(1.0, 0.0);
+            if (basis_belong_deprec[sec_repr][i] != -1) continue;
+            basis_belong_deprec[sec_repr][i] = i;
+            basis_repr_deprec[sec_repr].push_back(i);
+            basis_coeff_deprec[sec_repr][i] = std::complex<double>(1.0, 0.0);
             #pragma omp parallel for schedule(dynamic,1)
             for (uint32_t site = num_sub; site < latt.total_sites(); site += num_sub) {
                 std::vector<int> disp;
@@ -788,39 +973,51 @@ namespace qbasis {
                 if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
                 #pragma omp critical
                 {
-                    basis_belong_deprec[j] = i;
-                    basis_coeff_deprec[j] += coef;
+                    basis_belong_deprec[sec_repr][j] = i;
+                    basis_coeff_deprec[sec_repr][j] += coef;
                 }
             }
+            dim_repr[sec_repr] = basis_repr_deprec[sec_repr].size();
         }
         
-        std::list<MKL_INT> temp_repr;
-        temp_repr.push_back(0);
-        dim_repr[sec_repr] = 1;
-        for (MKL_INT j = 1; j < dim_full[sec_full]; j++) {
-            if (basis_belong_deprec[j] > temp_repr.back()) {
-                dim_repr[sec_repr]++;
-                temp_repr.push_back(basis_belong_deprec[j]);
-            }
+        
+        MKL_INT extra = 0;
+        for (MKL_INT j = 0; j < dim_repr[sec_repr]; j++) {
+            if (std::abs(basis_coeff_deprec[sec_repr][basis_repr_deprec[sec_repr][j]]) < lanczos_precision) extra++;
         }
-        MKL_INT redundant = 0;
-        auto it = temp_repr.begin();
-        while (it != temp_repr.end()) {
-            if (std::abs(basis_coeff_deprec[*it]) < opr_precision) {
-                it = temp_repr.erase(it);
-                redundant++;
-                dim_repr[sec_repr]--;
-            } else {
-                //std::cout << std::abs(std::imag(basis_coeff[*it])) << std::endl;
-                assert(std::abs(std::imag(basis_coeff_deprec[*it])) < opr_precision);
-                it++;
-            }
-        }
-        assert(dim_repr[sec_repr] == static_cast<MKL_INT>(temp_repr.size()));
-        if (redundant > 0) std::cout << redundant << " redundant reprs removed." << std::endl;
-        basis_repr_deprec.resize(dim_repr[sec_repr]);
-        std::copy(temp_repr.begin(), temp_repr.end(), basis_repr_deprec.begin());
-        assert(is_sorted_norepeat(basis_repr_deprec));
+        std::cout << "redudancy = " << extra << std::endl;
+        
+//        if (basis_repr_deprec[sec_repr].size() == 0) {
+//            std::list<MKL_INT> temp_repr;
+//            temp_repr.push_back(0);
+//            dim_repr[sec_repr] = 1;
+//            for (MKL_INT j = 1; j < dim_full[sec_full]; j++) {
+//                if (basis_belong_deprec[sec_repr][j] > temp_repr.back()) {
+//                    dim_repr[sec_repr]++;
+//                    temp_repr.push_back(basis_belong_deprec[sec_repr][j]);
+//                }
+//            }
+//            MKL_INT redundant = 0;
+//            auto it = temp_repr.begin();
+//            while (it != temp_repr.end()) {
+//                if (std::abs(basis_coeff_deprec[sec_repr][*it]) < opr_precision) {
+//                    it = temp_repr.erase(it);
+//                    redundant++;
+//                    dim_repr[sec_repr]--;
+//                } else {
+//                    //std::cout << std::abs(std::imag(basis_coeff[*it])) << std::endl;
+//                    assert(std::abs(std::imag(basis_coeff_deprec[sec_repr][*it])) < opr_precision);
+//                    it++;
+//                }
+//            }
+//            assert(dim_repr[sec_repr] == static_cast<MKL_INT>(temp_repr.size()));
+//            if (redundant > 0) std::cout << redundant << " redundant reprs removed." << std::endl;
+//            basis_repr_deprec[sec_repr].resize(dim_repr[sec_repr]);
+//            std::copy(temp_repr.begin(), temp_repr.end(), basis_repr_deprec[sec_repr].begin());
+//            assert(is_sorted_norepeat(basis_repr_deprec[sec_repr]));
+//        }
+        
+        
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
