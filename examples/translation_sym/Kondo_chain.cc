@@ -9,8 +9,8 @@ int main() {
     double t = 1;
     double J_Kondo = 1.1;
     double J_RKKY = 0.0;         // artificial RKKY
-    int L = 4;
-    double Sz_total_val = 0.0;   // not used. to turn on, modify a comment line near the bottom of the file
+    int L = 8;
+    double Sz_total_val = 0.0;
     double Nelec_total_val = L;
 
     std::cout << "L =       " << L << std::endl;
@@ -104,32 +104,56 @@ int main() {
     }
 
 
+    // to use translational symmetry, we first fill the Weisse tables
+    Kondo.fill_Weisse_table(lattice);
+
+    std::vector<double> E0_list;
+    for (int momentum = 0; momentum < L; momentum++) {
+        // constructing the Hilbert space basis
+        Kondo.enumerate_basis_repr(lattice, std::vector<int>{momentum}, {Nelec_total,Sz_total}, {Nelec_total_val,Sz_total_val});
+
+        // optional in future, will use more memory and give higher speed
+        // generating matrix of the Hamiltonian in the full Hilbert space
+        Kondo.generate_Ham_sparse_repr(lattice, std::vector<int>{momentum});
+        std::cout << std::endl;
+
+        // obtaining the eigenvals of the matrix
+        Kondo.locate_E0_repr(3,15);
+        std::cout << std::endl;
+
+        E0_list.push_back(Kondo.eigenvals_repr[0]);
+    }
+    //for the parameters considered, we should obtain:
+    assert(std::abs(E0_list[0] + 11.28542034) < 1e-8);
+    assert(std::abs(E0_list[1] + 11.15505719) < 1e-8);
+    assert(std::abs(E0_list[2] + 11.05573907) < 1e-8);
+    assert(std::abs(E0_list[3] + 11.02630258) < 1e-8);
+
+
+    // following is the old version of the code, discard in future
     // constructing the Hilbert space basis
-    //Kondo.enumerate_basis_full(lattice.total_sites(), {"electron","spin-1/2"}, {Nelec_total,Sz_total}, {static_cast<double>(Nelec_total_val),Sz_total_val});
-    Kondo.enumerate_basis_full({Nelec_total}, {Nelec_total_val});
+    /*
+    Kondo.enumerate_basis_full({Nelec_total,Sz_total}, {Nelec_total_val,Sz_total_val});
 
-
-    std::vector<double> energies;
+    std::vector<double> E0_check_list;
     for (int i = 0; i < L; i++) {
         // constructing the subspace basis
-        Kondo.basis_init_repr_deprecated(std::vector<int>{i}, lattice);
+        Kondo.basis_init_repr_deprecated(lattice, std::vector<int>{i});
 
         // generating matrix of the Hamiltonian in the subspace
-        Kondo.generate_Ham_sparse_repr();
+        Kondo.generate_Ham_sparse_repr_deprecated();
         std::cout << std::endl;
 
         // obtaining the lowest eigenvals of the matrix
-        Kondo.locate_E0_repr();
+        Kondo.locate_E0_repr(3,15);
         std::cout << std::endl;
-        energies.push_back(Kondo.eigenvals_repr[0]);
+        E0_check_list.push_back(Kondo.eigenvals_repr[0]);
     }
 
-
-    // for the parameters considered, we should obtain:
-    assert(std::abs(energies[0] + 5.308767882) < 1e-8);
-    assert(std::abs(energies[1] + 4.829404016) < 1e-8);
-    assert(std::abs(energies[2] + 5.477455514) < 1e-8);
-    assert(std::abs(energies[3] + 4.829404016) < 1e-8);
-
+    for (int momentum = 0; momentum < L; momentum++) {
+        std::cout << "E0(k=" << momentum << ")=\t" << E0_list[momentum]
+        << "\tvs\t" << E0_check_list[momentum] << std::endl;
+    }
+    */
 
 }
