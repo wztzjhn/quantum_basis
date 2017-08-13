@@ -1025,6 +1025,23 @@ namespace qbasis {
         // {{1,1,1}, {1,1,2}, {1,1,5}, {1,2,1}, {1,2,2}, {1,2,5},...}, i.e., combine results from v1 to a single list
         std::vector<std::vector<uint32_t>> divisor_v2(const std::vector<bool> &trans_sym) const;
         
+        // enumerate all possible commensurate magnetic bravis basis, ordered by the unit cell size
+        // note: equally, it gives all the possible translational subgroups (without dulplicates)
+        // in the following format:
+        // 1D: { pair( {{1}}, size=1 ),
+        //       pair( {{2}}, size=2 ),
+        //       ...
+        //     }
+        // 2D: { pair( {{1,0},{0,1}}, size=1 ),
+        //       pair( {{1,0},{0,1}}, size=1 ),
+        //        ...,
+        //     }
+        // 3D: { pair( {{1,0,0},{0,1,0},{0,0,1}}, size=1 ),
+        //       pair( {{2,0,0},{0,1,0},{0,0,1}}, size=2 ),
+        //       ...,
+        //     }
+        std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> trans_subgroups(const std::vector<bool> &trans_sym) const;
+        
     private:
         std::vector<uint32_t> L;             // linear size in each dimension
         std::vector<std::string> bc;         // boundary condition

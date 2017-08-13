@@ -196,6 +196,246 @@ namespace qbasis {
         return res;
     }
     
+    
+    uint32_t volume_from_vec(const std::vector<uint32_t> &vecs)
+    {
+        assert(vecs.size() == 1 || vecs.size() == 4 || vecs.size() == 9);
+        if (vecs.size() == 1) {
+            return vecs[0];
+        } else if (vecs.size() == 4) {
+            int x = static_cast<int>(vecs[0] * vecs[3]);
+            int y = static_cast<int>(vecs[1] * vecs[2]);
+            int res = (x > y ? (x-y) : (y-x));
+            return static_cast<uint32_t>(res);
+        } else {
+            int x = static_cast<int>(vecs[0] * vecs[4] * vecs[8] + vecs[1] * vecs[5] * vecs[6] + vecs[2] * vecs[3] * vecs[7]);
+            int y = static_cast<int>(vecs[0] * vecs[5] * vecs[7] + vecs[1] * vecs[3] * vecs[8] + vecs[2] * vecs[4] * vecs[6]);
+            int res = (x > y ? (x-y) : (y-x));
+            return static_cast<uint32_t>(res);
+        }
+    }
+    
+    std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> lattice::trans_subgroups(const std::vector<bool> &trans_sym) const
+    {
+        assert(trans_sym.size() == dim);
+        std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> res;
+        
+        uint32_t dim_trans = 0;
+        std::vector<uint32_t> L_trans;
+        std::vector<uint32_t> base0;                       // for enumerating the possible translations
+        uint32_t lattice_size = 1;
+        for (uint32_t d = 0; d < dim; d++) {
+            if (trans_sym[d]) {
+                assert(bc[d] == "pbc" || bc[d] == "PBC");
+                dim_trans++;
+                L_trans.push_back(L[d]);
+                base0.push_back(L[d]+1);
+                lattice_size *= L[d];
+            }
+        }
+        std::vector<uint32_t> base;
+        for (decltype(base0.size()) d = 0; d < base0.size(); d++) base.insert(base.end(), base0.begin(), base0.end());
+        
+        // the translational symmetric part of the original lattice
+        lattice latt_trans;
+        if (dim_trans == 1) {
+            latt_trans = lattice("chain",  L_trans, std::vector<std::string>(dim_trans,"pbc"));
+        } else if (dim == 2) {
+            latt_trans = lattice("square", L_trans, std::vector<std::string>(dim_trans,"pbc"));
+        } else {
+            latt_trans = lattice("cubic",  L_trans, std::vector<std::string>(dim_trans,"pbc"));
+        }
+        assert(lattice_size = latt_trans.total_sites());
+        
+        std::vector<uint32_t> disp_total(base.size(),0);
+        uint32_t cnt_omega_1 = 0;
+        uint32_t cnt_omega_N = 0;
+        while (! dynamic_base_overflow(disp_total, base)) {
+            uint32_t unitcell_size = volume_from_vec(disp_total);
+            if (unitcell_size == 0 || lattice_size % unitcell_size != 0) {      // not a qualified set of basis
+                disp_total = dynamic_base_plus1(disp_total, base);
+                continue;
+            }
+            if (unitcell_size == 1) {
+                if (cnt_omega_1++) {
+                    disp_total = dynamic_base_plus1(disp_total, base);
+                    continue;
+                }
+            }
+            if (unitcell_size == lattice_size) {
+                if (cnt_omega_N++) {
+                    disp_total = dynamic_base_plus1(disp_total, base);
+                    continue;
+                }
+            }
+            
+            std::pair<std::vector<std::vector<uint32_t>>,uint32_t> ele;
+            ele.second = unitcell_size;
+            ele.first.resize(dim_trans);
+            for (auto &it : ele.first) it.resize(dim_trans);
+            for (uint32_t d_ou = 0; d_ou < dim_trans; d_ou++) {
+                for (uint32_t d_in = 0; d_in < dim_trans; d_in++) {
+                    ele.first[d_ou][d_in] = disp_total[d_in + d_ou * dim_trans];
+                }
+            }
+            res.push_back(ele);
+            
+            disp_total = dynamic_base_plus1(disp_total, base);
+        }
+        
+        
+        
+        
+        
+        // for each basis combination, create a covering
+        std::vector<std::pair<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>, std::vector<uint32_t>>> covering(res.size());
+        std::vector<uint32_t> temp(lattice_size);
+        for (uint32_t j = 0; j < lattice_size; j++) temp[j] = j;
+        for (decltype(covering.size()) j = 0; j < covering.size(); j++) {
+            covering[j].first  = res[j];
+            covering[j].second = temp;
+        }
+        res.clear();
+        
+        
+        
+        // for each basis vector, draw on the covering
+        // use OPENMP here!!!
+        for (decltype(covering.size()) j = 0; j < covering.size(); j++) {
+            uint32_t omega_g = covering[j].first.second;
+            assert(omega_g > 0 && omega_g <= lattice_size);
+            if (omega_g == 1) {
+                covering[j].second = std::vector<uint32_t>(lattice_size,0);
+                continue;
+            }
+            if (omega_g == lattice_size) continue;
+            std::vector<uint32_t> covering_list;
+            for (uint32_t loop = 0; loop < omega_g; loop++) {
+                // find the position of the 1st number, which is not in the covering_list
+                uint32_t pos0 = 0;
+                while ((! covering_list.empty()) && covering[j].second[pos0] <= covering_list.back()) pos0++;
+                assert(pos0 < lattice_size);
+                covering_list.push_back(covering[j].second[pos0]);
+                // paint all translational equivalents to the same number
+                std::vector<int> coor0;
+                int sub0 = 0;
+                latt_trans.site2coor(coor0, sub0, pos0);
+                
+                std::vector<uint32_t> mn(dim_trans,0);
+                mn = dynamic_base_plus1(mn, L_trans);
+                while (! dynamic_base_overflow(mn, L_trans)) {
+                    std::vector<int> coor1(coor0);
+                    int sub1 = 0;
+                    uint32_t pos1;
+                    for (uint32_t d_ou = 0; d_ou < dim_trans; d_ou++) {      // to pick m,n,l
+                        for (uint32_t d_in = 0; d_in < dim_trans; d_in++) {  // to pick elements inside each a_i
+                            coor1[d_in] += mn[d_ou] * covering[j].first.first[d_ou][d_in];
+                        }
+                    }
+                    latt_trans.coor2site(coor1, sub1, pos1);
+                    covering[j].second[pos1] = covering_list.back();
+                    mn = dynamic_base_plus1(mn, L_trans);
+                }
+            }
+        }
+        
+        
+        // sort the basis with the coverings, then you see lots of dulplicates
+        auto cmp2 = [](const std::pair<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>, std::vector<uint32_t>> &lhs,
+                       const std::pair<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>, std::vector<uint32_t>> &rhs)
+        {
+            if (lhs.second == rhs.second) {
+                auto &llhs = lhs.first;
+                auto &rrhs = rhs.first;
+                if (llhs.second == rrhs.second) {
+                    std::vector<uint32_t> lhs_len(llhs.first.size(),0), rhs_len(rrhs.first.size(),0);
+                    for (uint32_t d_ou = 0; d_ou < lhs_len.size(); d_ou++) {
+                        for (uint32_t d_in = 0; d_in < lhs_len.size(); d_in++) {
+                            lhs_len[d_ou] += llhs.first[d_ou][d_in] * llhs.first[d_ou][d_in];
+                            rhs_len[d_ou] += rrhs.first[d_ou][d_in] * rrhs.first[d_ou][d_in];
+                        }
+                    }
+                    return lhs_len < rhs_len;
+                } else {
+                    return llhs.second < rrhs.second;
+                }
+            } else {
+                return lhs.second < rhs.second;
+            }
+        };
+        std::sort(covering.begin(), covering.end(),cmp2);
+        
+        /*
+        for (uint32_t j = 0; j < covering.size(); j++) {
+            std::cout << "j = " << j << std::endl;
+            std::cout << "{ ";
+            for (uint32_t d_ou=0; d_ou < dim_trans; d_ou++) {
+                std::cout << "(";
+                for (uint32_t d_in = 0; d_in < dim_trans; d_in++) {
+                    std::cout << covering[j].first.first[d_ou][d_in] << ",";
+                }
+                std::cout << "), ";
+            }
+            std::cout << covering[j].first.second << " }" << std::endl;
+            for (uint32_t kk = 0; kk < lattice_size; kk++) {
+                std::cout << covering[j].second[kk] << ",";
+            }
+            std::cout << std::endl << std::endl;
+        }
+        */
+        
+        assert(! covering.empty());
+        std::vector<uint32_t> pattern;
+        for (decltype(covering.size()) j = 0; j < covering.size(); j++) {
+            if (covering[j].second == pattern) { // dulplicate
+                continue;
+            } else {
+                auto &ele_old = covering[j].first;
+                auto ele_new = ele_old;
+                ele_new.first.resize(dim);
+                // resize each basis
+                uint32_t d_ou_pos = 0;
+                for (uint32_t d_ou = 0; d_ou < dim; d_ou++) {
+                    if (trans_sym[d_ou]) {
+                        ele_new.first[d_ou].resize(dim);
+                        uint32_t d_in_pos = 0;
+                        for (uint32_t d_in = 0; d_in < dim; d_in++) {
+                            if (trans_sym[d_in]) {
+                                ele_new.first[d_ou][d_in] = ele_old.first[d_ou_pos][d_in_pos++];
+                            } else {
+                                ele_new.first[d_ou][d_in] = 0;
+                            }
+                        }
+                        d_ou_pos++;
+                    } else {
+                        ele_new.first[d_ou] = std::vector<uint32_t>(dim,0);
+                    }
+                }
+                
+                res.push_back(ele_new);
+                pattern = covering[j].second;
+                
+                std::cout << "j = " << res.size() - 1 << std::endl;
+                std::cout << "{ ";
+                for (uint32_t d_ou=0; d_ou < dim_trans; d_ou++) {
+                    std::cout << "(";
+                    for (uint32_t d_in = 0; d_in < dim_trans; d_in++) {
+                        std::cout << res.back().first[d_ou][d_in] << ",";
+                    }
+                    std::cout << "), ";
+                }
+                std::cout << res.back().second << " }, pattern = \t";
+                for (auto &eee : pattern) std::cout << eee << ",";
+                std::cout << std::endl;
+                
+            }
+        }
+        res.shrink_to_fit();
+        
+        return res;
+    }
+    
+    
     std::vector<uint32_t> lattice::translation_plan(const std::vector<int> &disp) const
     {
         assert(static_cast<uint32_t>(disp.size()) == dim);
