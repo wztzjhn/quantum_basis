@@ -1427,6 +1427,12 @@ namespace qbasis {
         mkl_zcsrcsc(job, &n, Acsr, AJ0, AI0, Acsc, AJ1, AI1, info);
     }
     
+    // lapack expert routine, Computes the solution to the system of linear equations with a square coefficient matrix A and multiple right-hand sides.
+    inline // double
+    lapack_int gesv(const int &matrix_layout, const lapack_int &n, const lapack_int &nrhs, double *a, const lapack_int &lda, lapack_int *ipiv, double *b, const lapack_int &ldb) {
+        return LAPACKE_dgesv(matrix_layout, n, nrhs, a, lda, ipiv, b, ldb);
+    }
+    
     // lapack computational routine, computes all eigenvalues of a real symmetric TRIDIAGONAL matrix using QR algorithm.
     inline // double
     lapack_int sterf(const lapack_int &n, double *d, double *e) {

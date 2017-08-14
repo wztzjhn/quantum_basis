@@ -251,7 +251,11 @@ namespace qbasis {
         uint32_t cnt_omega_1 = 0;
         uint32_t cnt_omega_N = 0;
         while (! dynamic_base_overflow(disp_total, base)) {
-            uint32_t unitcell_size = volume_from_vec(disp_total);
+            uint32_t unitcell_size = volume_from_vec(disp_total);               // NOT always equal to omega_g
+            // Here we make an assumption (need proof in future):
+            // for those whose unitcell_size != omega_g, they are always equivalent to another set of basis,
+            // which satisfies unitcell_size == omega_g.
+            // with such assumption, we no longer care such exceptions.
             if (unitcell_size == 0 || lattice_size % unitcell_size != 0) {      // not a qualified set of basis
                 disp_total = dynamic_base_plus1(disp_total, base);
                 continue;
@@ -313,41 +317,85 @@ namespace qbasis {
             for (uint32_t loop = 0; loop < omega_g; loop++) {
                 // find the position of the 1st number, which is not in the covering_list
                 uint32_t pos0 = 0;
-                while ((! covering_list.empty()) && covering[j].second[pos0] <= covering_list.back()) pos0++;
-                assert(pos0 < lattice_size);
+                while ((! covering_list.empty()) && covering[j].second[pos0] <= covering_list.back() && pos0 < lattice_size) pos0++;
+                if (pos0 >= lattice_size) {
+                    // recalculate omega_g
+                    covering[j].first.second = loop;
+                    break;
+                }
                 covering_list.push_back(covering[j].second[pos0]);
                 // paint all translational equivalents to the same number
                 std::vector<int> coor0;
                 int sub0 = 0;
                 latt_trans.site2coor(coor0, sub0, pos0);
                 
-                std::vector<uint32_t> mn(dim_trans,0);
-                mn = dynamic_base_plus1(mn, L_trans);
-                while (! dynamic_base_overflow(mn, L_trans)) {
-                    std::vector<int> coor1(coor0);
+                
+                
+                for (uint32_t pos1 = pos0 + 1; pos1 < lattice_size; pos1++) {
+                    std::vector<int> coor1(dim_trans);
                     int sub1 = 0;
-                    uint32_t pos1;
-                    for (uint32_t d_ou = 0; d_ou < dim_trans; d_ou++) {      // to pick m,n,l
-                        for (uint32_t d_in = 0; d_in < dim_trans; d_in++) {  // to pick elements inside each a_i
-                            coor1[d_in] += mn[d_ou] * covering[j].first.first[d_ou][d_in];
+                    std::vector<double> mat(dim_trans*dim_trans,0.0);
+                    std::vector<double> y(dim_trans,0.0);
+                    latt_trans.site2coor(coor1, sub1, pos1);
+                    for (uint32_t col = 0; col < dim_trans; col++) {
+                        y[col] = static_cast<double>(coor1[col]) - static_cast<double>(coor0[col]);
+                        for (uint32_t row = 0; row < dim_trans; row++) {
+                            mat[row + col * dim_trans] = static_cast<double>(covering[j].first.first[col][row]);
                         }
                     }
-                    latt_trans.coor2site(coor1, sub1, pos1);
-                    covering[j].second[pos1] = covering_list.back();
-                    mn = dynamic_base_plus1(mn, L_trans);
+                    std::vector<lapack_int> ipiv(dim_trans);
+                    auto info = gesv(LAPACK_COL_MAJOR, static_cast<lapack_int>(dim_trans), 1, mat.data(),
+                                     static_cast<lapack_int>(dim_trans), ipiv.data(), y.data(), static_cast<lapack_int>(dim_trans));
+                    assert(info == 0);
+                    // y already re-written by the solution now
+                    bool flag = true;
+                    for (uint32_t row = 0; row < dim_trans; row++) {
+                        if (y[row] < 0) y[row] = -y[row];
+                        if (std::abs(y[row] - floor(y[row] + 1e-10)) > 1e-9) {
+                            flag = false; // coor1 and corr0 not connect by this set of basis
+                            break;
+                        }
+                    }
+                    
+                    if (flag) {
+                        covering[j].second[pos1] = covering_list.back();
+                    }
+                    
                 }
+                
+                
             }
         }
         
+        /*
+        std::cout << " ------------------ " << std::endl;
+        for (uint32_t j = 0; j < covering.size(); j++) {
+            std::cout << "j = " << j << std::endl;
+            std::cout << "{ ";
+            for (uint32_t d_ou=0; d_ou < dim_trans; d_ou++) {
+                std::cout << "(";
+                for (uint32_t d_in = 0; d_in < dim_trans; d_in++) {
+                    std::cout << covering[j].first.first[d_ou][d_in] << ",";
+                }
+                std::cout << "), ";
+            }
+            std::cout << covering[j].first.second << " }" << std::endl;
+            for (uint32_t kk = 0; kk < lattice_size; kk++) {
+                std::cout << covering[j].second[kk] << ",";
+            }
+            std::cout << std::endl << std::endl;
+        }
+        std::cout << " ------------------ " << std::endl;
+        */
         
         // sort the basis with the coverings, then you see lots of dulplicates
-        auto cmp2 = [](const std::pair<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>, std::vector<uint32_t>> &lhs,
-                       const std::pair<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>, std::vector<uint32_t>> &rhs)
+        auto cmp = [](const std::pair<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>, std::vector<uint32_t>> &lhs,
+                      const std::pair<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>, std::vector<uint32_t>> &rhs)
         {
-            if (lhs.second == rhs.second) {
+            if (lhs.first.second == rhs.first.second) {
                 auto &llhs = lhs.first;
                 auto &rrhs = rhs.first;
-                if (llhs.second == rrhs.second) {
+                if (lhs.second == rhs.second) {
                     std::vector<uint32_t> lhs_len(llhs.first.size(),0), rhs_len(rrhs.first.size(),0);
                     for (uint32_t d_ou = 0; d_ou < lhs_len.size(); d_ou++) {
                         for (uint32_t d_in = 0; d_in < lhs_len.size(); d_in++) {
@@ -357,13 +405,13 @@ namespace qbasis {
                     }
                     return lhs_len < rhs_len;
                 } else {
-                    return llhs.second < rrhs.second;
+                    return lhs.second < rhs.second;
                 }
             } else {
-                return lhs.second < rhs.second;
+                return lhs.first.second < rhs.first.second;
             }
         };
-        std::sort(covering.begin(), covering.end(),cmp2);
+        std::sort(covering.begin(), covering.end(),cmp);
         
         /*
         for (uint32_t j = 0; j < covering.size(); j++) {
@@ -414,6 +462,12 @@ namespace qbasis {
                 
                 res.push_back(ele_new);
                 pattern = covering[j].second;
+                
+                auto check_pattern = pattern;
+                std::sort(check_pattern.begin(),check_pattern.end());
+                auto it = std::unique(check_pattern.begin(),check_pattern.end());
+                assert(std::distance(check_pattern.begin(), it) == covering[j].first.second);
+                
                 
                 std::cout << "j = " << res.size() - 1 << std::endl;
                 std::cout << "{ ";
