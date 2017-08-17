@@ -185,13 +185,14 @@ void test_basis2()
     assert(belong2rep[14] == 4);
     assert(belong2rep[15] == 5);
     
-    std::vector<std::vector<uint32_t>> groups;
+    std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> groups;
     std::vector<uint32_t> omega_g;
     std::vector<uint32_t> belong2group;
     std::vector<qbasis::mbasis_elem> group_examples;
+    groups = latt.trans_subgroups(std::vector<bool>{true});
     qbasis::classify_trans_rep2group(props, reps, latt, std::vector<bool>{true}, groups, omega_g, belong2group);
     for (uint32_t j = 0; j < groups.size(); j++) {
-        std::cout << "group: " << groups[j][0] << ", omega_g = " << omega_g[j] << std::endl;
+        std::cout << "group: " << j << ", omega_g = " << omega_g[j] << std::endl;
     }
     for (uint64_t j = 0; j < reps.size(); j++) {
         std::cout << "j = " << j <<  std::endl;
@@ -493,24 +494,24 @@ void test_basis4()
     
     
     
-    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{0,0,0}) == std::vector<uint32_t>{2});
-    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{0,1,0}) == std::vector<uint32_t>{4});
-    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{0,2,0}) == std::vector<uint32_t>{8});
-    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{1,0,0}) == std::vector<uint32_t>{4});
-    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{1,2,0}) == std::vector<uint32_t>{8});
-    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{1,2,1}) == std::vector<uint32_t>{8});
-    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{2,0,0}) == std::vector<uint32_t>{8});
-    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{2,1,0}) == std::vector<uint32_t>{8});
-    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{2,1,1}) == std::vector<uint32_t>{8});
-    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{2,2,0}) == std::vector<uint32_t>{8});
-    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{2,2,1}) == std::vector<uint32_t>{8});
-    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{2,2,2}) == std::vector<uint32_t>{8});
-    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{2,2,3}) == std::vector<uint32_t>{8});
+    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{0,0,0}) == 1);
+    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{0,1,0}) == 2);
+    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{0,2,0}) == 3);
+    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{1,0,0}) == 2);
+    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{1,2,0}) == 3);
+    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{1,2,1}) == 3);
+    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{2,0,0}) == 3);
+    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{2,1,0}) == 3);
+    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{2,1,1}) == 3);
+    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{2,2,0}) == 3);
+    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{2,2,1}) == 3);
+    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{2,2,2}) == 3);
+    assert(model_test4.Weisse_w_lt.index(std::vector<uint64_t>{2,2,3}) == 3);
     
-    assert(model_test4.Weisse_w_eq.index(std::vector<uint64_t>{0,0,0}) == std::vector<uint32_t>{1});
-    assert(model_test4.Weisse_w_eq.index(std::vector<uint64_t>{1,1,0}) == std::vector<uint32_t>{4});
-    assert(model_test4.Weisse_w_eq.index(std::vector<uint64_t>{2,2,0}) == std::vector<uint32_t>{8});
-    assert(model_test4.Weisse_w_eq.index(std::vector<uint64_t>{2,2,1}) == std::vector<uint32_t>{8});
+    assert(model_test4.Weisse_w_eq.index(std::vector<uint64_t>{0,0,0}) == 0);
+    assert(model_test4.Weisse_w_eq.index(std::vector<uint64_t>{1,1,0}) == 2);
+    assert(model_test4.Weisse_w_eq.index(std::vector<uint64_t>{2,2,0}) == 3);
+    assert(model_test4.Weisse_w_eq.index(std::vector<uint64_t>{2,2,1}) == 3);
     
     
     
@@ -520,7 +521,7 @@ void test_basis4()
     model_test4.locate_E0_full();
     
     
-    int momentum = 2;
+    int momentum = 0;
     
     model_test4.enumerate_basis_repr(lattice, std::vector<int>{momentum}, {Sz_total}, {0.0});
     

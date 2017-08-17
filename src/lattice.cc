@@ -247,9 +247,13 @@ namespace qbasis {
         }
         assert(lattice_size = latt_trans.total_sites());
         
+        std::cout << "Translation subgroups on lattice with size ";
+        for (uint32_t d = 0; d < dim_trans - 1; d++) {
+            std::cout << L_trans[d] << " x ";
+        }
+        std::cout << L_trans[dim_trans-1] << ":" << std::endl;
+        
         std::vector<uint32_t> disp_total(base.size(),0);
-        uint32_t cnt_omega_1 = 0;
-        uint32_t cnt_omega_N = 0;
         while (! dynamic_base_overflow(disp_total, base)) {
             uint32_t unitcell_size = volume_from_vec(disp_total);               // NOT always equal to omega_g
             // Here we make an assumption (need proof in future):
@@ -259,18 +263,6 @@ namespace qbasis {
             if (unitcell_size == 0 || lattice_size % unitcell_size != 0) {      // not a qualified set of basis
                 disp_total = dynamic_base_plus1(disp_total, base);
                 continue;
-            }
-            if (unitcell_size == 1) {
-                if (cnt_omega_1++) {
-                    disp_total = dynamic_base_plus1(disp_total, base);
-                    continue;
-                }
-            }
-            if (unitcell_size == lattice_size) {
-                if (cnt_omega_N++) {
-                    disp_total = dynamic_base_plus1(disp_total, base);
-                    continue;
-                }
             }
             
             std::pair<std::vector<std::vector<uint32_t>>,uint32_t> ele;
@@ -283,13 +275,8 @@ namespace qbasis {
                 }
             }
             res.push_back(ele);
-            
             disp_total = dynamic_base_plus1(disp_total, base);
         }
-        
-        
-        
-        
         
         // for each basis combination, create a covering
         std::vector<std::pair<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>, std::vector<uint32_t>>> covering(res.size());
@@ -301,69 +288,45 @@ namespace qbasis {
         }
         res.clear();
         
-        
-        
-        // for each basis vector, draw on the covering
+        // for each basis vector, draw the covering
         // use OPENMP here!!!
         for (decltype(covering.size()) j = 0; j < covering.size(); j++) {
             uint32_t omega_g = covering[j].first.second;
             assert(omega_g > 0 && omega_g <= lattice_size);
-            if (omega_g == 1) {
-                covering[j].second = std::vector<uint32_t>(lattice_size,0);
-                continue;
-            }
-            if (omega_g == lattice_size) continue;
             std::vector<uint32_t> covering_list;
             for (uint32_t loop = 0; loop < omega_g; loop++) {
                 // find the position of the 1st number, which is not in the covering_list
                 uint32_t pos0 = 0;
-                while ((! covering_list.empty()) && covering[j].second[pos0] <= covering_list.back() && pos0 < lattice_size) pos0++;
-                if (pos0 >= lattice_size) {
-                    // recalculate omega_g
-                    covering[j].first.second = loop;
+                while ((! covering_list.empty()) &&
+                       pos0 < lattice_size &&
+                       covering[j].second[pos0] <= covering_list.back()) pos0++;
+                if (pos0 >= lattice_size) {                                     // omega_g != unitcell_size
+                    covering[j].first.second = loop;                            // recalculate omega_g
                     break;
                 }
                 covering_list.push_back(covering[j].second[pos0]);
-                // paint all translational equivalents to the same number
                 std::vector<int> coor0;
                 int sub0 = 0;
                 latt_trans.site2coor(coor0, sub0, pos0);
                 
-                
-                
-                for (uint32_t pos1 = pos0 + 1; pos1 < lattice_size; pos1++) {
-                    std::vector<int> coor1(dim_trans);
-                    int sub1 = 0;
-                    std::vector<double> mat(dim_trans*dim_trans,0.0);
-                    std::vector<double> y(dim_trans,0.0);
-                    latt_trans.site2coor(coor1, sub1, pos1);
-                    for (uint32_t col = 0; col < dim_trans; col++) {
-                        y[col] = static_cast<double>(coor1[col]) - static_cast<double>(coor0[col]);
-                        for (uint32_t row = 0; row < dim_trans; row++) {
-                            mat[row + col * dim_trans] = static_cast<double>(covering[j].first.first[col][row]);
+                // paint all translational equivalents to the same number
+                // naive way, improve in future
+                std::vector<uint32_t> base_naive(dim_trans,lattice_size);
+                std::vector<uint32_t> coor_naive(dim_trans,0);
+                coor_naive = dynamic_base_plus1(coor_naive, base_naive);
+                int sub1 = 0;
+                uint32_t pos1;
+                while (! dynamic_base_overflow(coor_naive, base_naive)) {
+                    std::vector<int> coor1(coor0);
+                    for (uint32_t d_ou = 0; d_ou < dim_trans; d_ou++) {
+                        for (uint32_t d_in = 0; d_in < dim_trans; d_in++) {
+                            coor1[d_in] += static_cast<int>(coor_naive[d_ou] * covering[j].first.first[d_ou][d_in]);
                         }
                     }
-                    std::vector<lapack_int> ipiv(dim_trans);
-                    auto info = gesv(LAPACK_COL_MAJOR, static_cast<lapack_int>(dim_trans), 1, mat.data(),
-                                     static_cast<lapack_int>(dim_trans), ipiv.data(), y.data(), static_cast<lapack_int>(dim_trans));
-                    assert(info == 0);
-                    // y already re-written by the solution now
-                    bool flag = true;
-                    for (uint32_t row = 0; row < dim_trans; row++) {
-                        if (y[row] < 0) y[row] = -y[row];
-                        if (std::abs(y[row] - floor(y[row] + 1e-10)) > 1e-9) {
-                            flag = false; // coor1 and corr0 not connect by this set of basis
-                            break;
-                        }
-                    }
-                    
-                    if (flag) {
-                        covering[j].second[pos1] = covering_list.back();
-                    }
-                    
+                    latt_trans.coor2site(coor1, sub1, pos1);
+                    covering[j].second[pos1] = covering_list.back();
+                    coor_naive = dynamic_base_plus1(coor_naive, base_naive);
                 }
-                
-                
             }
         }
         
@@ -468,8 +431,7 @@ namespace qbasis {
                 auto it = std::unique(check_pattern.begin(),check_pattern.end());
                 assert(std::distance(check_pattern.begin(), it) == covering[j].first.second);
                 
-                
-                std::cout << "j = " << res.size() - 1 << std::endl;
+                std::cout << "g = " << res.size() - 1 << ",\t";
                 std::cout << "{ ";
                 for (uint32_t d_ou=0; d_ou < dim_trans; d_ou++) {
                     std::cout << "(";
@@ -478,12 +440,13 @@ namespace qbasis {
                     }
                     std::cout << "), ";
                 }
-                std::cout << res.back().second << " }, pattern = \t";
+                std::cout << res.back().second << " }, pattern =\t";
                 for (auto &eee : pattern) std::cout << eee << ",";
                 std::cout << std::endl;
                 
             }
         }
+        std::cout << std::endl;
         res.shrink_to_fit();
         
         return res;

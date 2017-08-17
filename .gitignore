@@ -43,3 +43,4 @@ examples/no_sym/test
 *.nb
 *.lyx
 *.dat
+log*.txt

@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <bitset>
 #include <algorithm>
 #include "qbasis.h"
@@ -100,6 +101,14 @@ namespace qbasis {
         sub2.resize(num_orbs);
         for (decltype(num_orbs) orb = 0; orb < num_orbs; orb++)
             parent[orb].split(sub1[orb], sub2[orb]);
+    }
+    
+    bool q_bosonic(const std::vector<basis_prop> &props)
+    {
+        for (auto &ele : props) {
+            if (ele.q_fermion()) return false;
+        }
+        return true;
     }
     
     
@@ -1115,6 +1124,10 @@ namespace qbasis {
 #else
             std::sort(basis.begin(), basis.end());
 #endif
+            for (MKL_INT j = 0; j < dim - 1; j++) {
+                assert(basis[j] < basis[j+1]);
+            }
+            
             end = std::chrono::system_clock::now();
             std::chrono::duration<double> elapsed_seconds = end - start;
             std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
@@ -1157,6 +1170,10 @@ namespace qbasis {
 #else
             std::sort(basis.begin(), basis.end(),cmp);
 #endif
+            for (MKL_INT j = 0; j < dim - 1; j++) {
+                assert(cmp(basis[j], basis[j+1]));
+            }
+            
             end = std::chrono::system_clock::now();
             std::chrono::duration<double> elapsed_seconds = end - start;
             std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
@@ -1383,7 +1400,7 @@ namespace qbasis {
                                   const std::vector<mbasis_elem> &reps,
                                   const lattice &latt,
                                   const std::vector<bool> &trans_sym,
-                                  std::vector<std::vector<uint32_t>> &groups,
+                                  const std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> &groups,
                                   std::vector<uint32_t> &omega_g,
                                   std::vector<uint32_t> &belong2group)
     {
@@ -1391,46 +1408,241 @@ namespace qbasis {
         auto L = latt.Linear_size();
         uint64_t dim_repr = reps.size();
         
-        auto div_v1 = latt.divisor_v1(trans_sym);
-        groups = latt.divisor_v2(trans_sym);
-        uint32_t num_groups = 1;
-        for (uint32_t d = 0; d < dim; d++) {
-            assert(is_sorted_norepeat(div_v1[d]));
-            num_groups *= div_v1[d].size();
-        }
-        assert(num_groups == groups.size());
+        uint32_t num_groups = groups.size();
         
         belong2group.resize(dim_repr);
+        std::fill(belong2group.begin(), belong2group.end(), num_groups+10);
         omega_g.resize(num_groups);
-        std::fill(omega_g.begin(), omega_g.end(), 0);
+        for (uint32_t g = 0; g < num_groups; g++) omega_g[g] = groups[g].second;
         
-        // divisor = x -> translate x to comeback
-        // for each representative, find its group, by trying translating according to the smallest possible divisor
+        // for each representative, find its group
+        #pragma omp parallel for schedule(dynamic,1)
         for (uint64_t j = 0; j < dim_repr; j++) {
-            std::vector<uint32_t> div(dim,0); // set to 0, only for double checking purpose
-            for (uint32_t d = 0; d < dim; d++) {
-                for (auto it = div_v1[d].begin(); it != div_v1[d].end(); it++) {
-                    std::vector<int> disp(dim,0);
-                    disp[d] = static_cast<int>(*it);
+            // loop over groups, to check which one the repr belongs to
+            for (uint32_t g = 0; g < num_groups; g++) {
+                bool flag = true;
+                for (uint32_t d = 0; d < dim; d++) {
+                    if (! trans_sym[d]) continue;
+                    std::vector<int> disp(dim);
                     int sgn;
+                    for (uint32_t i = 0; i < dim; i++) disp[i] = groups[g].first[d][i];
                     auto basis_temp = reps[j];
                     basis_temp.translate(props, latt, disp, sgn);
-                    if (basis_temp == reps[j]) {
-                        div[d] = *it;
+                    if (basis_temp != reps[j]) {
+                        flag = false;
                         break;
                     }
                 }
-                assert(div[d] != 0);
+                if (flag) {                     // belongs to this group
+                    belong2group[j] = g;
+                    break;
+                }
             }
-            // now div obtained, we can find its group label
-            uint32_t g_label = binary_search<std::vector<uint32_t>,uint32_t>(groups, div, 0, num_groups);
-            assert(g_label < num_groups);
-            belong2group[j] = g_label;
-            if (omega_g[g_label] == 0) {
-                omega_g[g_label] = 1;
-                for (uint32_t d = 0; d < dim; d++) omega_g[g_label] *= div[d];
+            assert(belong2group[j] < num_groups);
+        }
+    }
+    
+    
+    void log_Weisse_tables(const lattice &latt_parent,
+                           const std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> &groups_parent,
+                           const std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> &groups_sub,
+                           const MltArray_PairVec &Weisse_e_lt,
+                           const MltArray_PairVec &Weisse_e_eq,
+                           const MltArray_PairVec &Weisse_e_gt,
+                           const MltArray_uint32 &Weisse_w_lt,
+                           const MltArray_uint32 &Weisse_w_eq)
+    {
+        auto latt_sub             = divide_lattice(latt_parent);
+        uint32_t latt_sub_dim     = latt_sub.dimension();
+        auto base_sub             = latt_sub.Linear_size();
+        uint32_t num_groups       = groups_sub.size();
+        
+        std::ofstream fout("log_Weisse_tableE.txt", std::ios::out);
+        
+        fout << "print out e=" << std::endl;
+        for (uint32_t ga = 0; ga < num_groups; ga++) {
+            for (uint32_t gb = 0; gb < num_groups; gb++) {
+                fout << "---------------" << std::endl;
+                fout << "ga,    gb    = " << ga << ", " << gb << std::endl;
+                std::vector<uint32_t> disp_ja(latt_sub_dim,0);
+                while (! dynamic_base_overflow(disp_ja, base_sub)) {
+                    std::vector<uint32_t> disp_jb(latt_sub_dim,0);
+                    while (! dynamic_base_overflow(disp_jb, base_sub)) {
+                        std::vector<uint64_t> pos{ga,gb};
+                        pos.insert(pos.end(), disp_ja.begin(), disp_ja.end());
+                        pos.insert(pos.end(), disp_jb.begin(), disp_jb.end());
+                        auto res = Weisse_e_eq.index(pos);
+                        if (res.first  != std::vector<uint32_t>(res.first.size(),999999999) ||
+                            res.second != std::vector<uint32_t>(res.second.size(),999999999)) {
+                            fout << "ja = ";
+                            for (decltype(disp_ja.size()) j = 0; j < disp_ja.size(); j++) {
+                                fout << disp_ja[j] << "\t";
+                            }
+                            fout << std::endl;
+                            fout << "jb = ";
+                            for (decltype(disp_jb.size()) j = 0; j < disp_jb.size(); j++) {
+                                fout << disp_jb[j] << "\t";
+                            }
+                            fout << std::endl;
+                            fout << "i  = ";
+                            for (decltype(res.first.size()) j = 0; j < res.first.size(); j++) {
+                                fout << res.first[j] << "\t";
+                            }
+                            fout << std::endl;
+                            fout << "j  = ";
+                            for (decltype(res.second.size()) j = 0; j < res.second.size(); j++) {
+                                fout << res.second[j] << "\t";
+                            }
+                            fout << std::endl;
+                            fout << std::endl;
+                        }
+                        disp_jb = dynamic_base_plus1(disp_jb, base_sub);
+                    }
+                    disp_ja = dynamic_base_plus1(disp_ja, base_sub);
+                }
             }
         }
+        
+        fout << "print out e<" << std::endl;
+        for (uint32_t ga = 0; ga < num_groups; ga++) {
+            for (uint32_t gb = 0; gb < num_groups; gb++) {
+                fout << "---------------" << std::endl;
+                fout << "ga,    gb    = " << ga << ", " << gb << std::endl;
+                std::vector<uint32_t> disp_ja(latt_sub_dim,0);
+                while (! dynamic_base_overflow(disp_ja, base_sub)) {
+                    std::vector<uint32_t> disp_jb(latt_sub_dim,0);
+                    while (! dynamic_base_overflow(disp_jb, base_sub)) {
+                        std::vector<uint64_t> pos{ga,gb};
+                        pos.insert(pos.end(), disp_ja.begin(), disp_ja.end());
+                        pos.insert(pos.end(), disp_jb.begin(), disp_jb.end());
+                        auto res = Weisse_e_lt.index(pos);
+                        if (res.first  != std::vector<uint32_t>(res.first.size(),999999999) ||
+                            res.second != std::vector<uint32_t>(res.second.size(),999999999)) {
+                            fout << "ja = ";
+                            for (decltype(disp_ja.size()) j = 0; j < disp_ja.size(); j++) {
+                                fout << disp_ja[j] << "\t";
+                            }
+                            fout << std::endl;
+                            fout << "jb = ";
+                            for (decltype(disp_jb.size()) j = 0; j < disp_jb.size(); j++) {
+                                fout << disp_jb[j] << "\t";
+                            }
+                            fout << std::endl;
+                            fout << "i  = ";
+                            for (decltype(res.first.size()) j = 0; j < res.first.size(); j++) {
+                                fout << res.first[j] << "\t";
+                            }
+                            fout << std::endl;
+                            fout << "j  = ";
+                            for (decltype(res.second.size()) j = 0; j < res.second.size(); j++) {
+                                fout << res.second[j] << "\t";
+                            }
+                            fout << std::endl;
+                            fout << std::endl;
+                        }
+                        disp_jb = dynamic_base_plus1(disp_jb, base_sub);
+                    }
+                    disp_ja = dynamic_base_plus1(disp_ja, base_sub);
+                }
+            }
+        }
+        
+        fout << "print out e>" << std::endl;
+        for (uint32_t ga = 0; ga < num_groups; ga++) {
+            for (uint32_t gb = 0; gb < num_groups; gb++) {
+                fout << "---------------" << std::endl;
+                fout << "ga,    gb    = " << ga << ", " << gb << std::endl;
+                std::vector<uint32_t> disp_ja(latt_sub_dim,0);
+                while (! dynamic_base_overflow(disp_ja, base_sub)) {
+                    std::vector<uint32_t> disp_jb(latt_sub_dim,0);
+                    while (! dynamic_base_overflow(disp_jb, base_sub)) {
+                        std::vector<uint64_t> pos{ga,gb};
+                        pos.insert(pos.end(), disp_ja.begin(), disp_ja.end());
+                        pos.insert(pos.end(), disp_jb.begin(), disp_jb.end());
+                        auto res = Weisse_e_gt.index(pos);
+                        if (res.first  != std::vector<uint32_t>(res.first.size(),999999999) ||
+                            res.second != std::vector<uint32_t>(res.second.size(),999999999)) {
+                            fout << "ja = ";
+                            for (decltype(disp_ja.size()) j = 0; j < disp_ja.size(); j++) {
+                                fout << disp_ja[j] << "\t";
+                            }
+                            fout << std::endl;
+                            fout << "jb = ";
+                            for (decltype(disp_jb.size()) j = 0; j < disp_jb.size(); j++) {
+                                fout << disp_jb[j] << "\t";
+                            }
+                            fout << std::endl;
+                            fout << "i  = ";
+                            for (decltype(res.first.size()) j = 0; j < res.first.size(); j++) {
+                                fout << res.first[j] << "\t";
+                            }
+                            fout << std::endl;
+                            fout << "j  = ";
+                            for (decltype(res.second.size()) j = 0; j < res.second.size(); j++) {
+                                fout << res.second[j] << "\t";
+                            }
+                            fout << std::endl;
+                            fout << std::endl;
+                        }
+                        disp_jb = dynamic_base_plus1(disp_jb, base_sub);
+                    }
+                    disp_ja = dynamic_base_plus1(disp_ja, base_sub);
+                }
+            }
+        }
+        
+        fout << "print out w<" << std::endl;
+        for (uint32_t ga = 0; ga < num_groups; ga++) {
+            for (uint32_t gb = 0; gb < num_groups; gb++) {
+                fout << "---------------" << std::endl;
+                fout << "ga,    gb    = " << ga << ", " << gb << std::endl;
+                std::vector<uint32_t> disp_j(latt_sub_dim,0);
+                while (! dynamic_base_overflow(disp_j, base_sub)) {
+                    std::vector<uint64_t> pos_w{ga,gb};
+                    pos_w.insert(pos_w.end(), disp_j.begin(), disp_j.end());
+                    auto g = Weisse_w_lt.index(pos_w);
+                    if (g < groups_parent.size()) {
+                        fout << "j = ";
+                        for (decltype(disp_j.size()) j = 0; j < disp_j.size(); j++) {
+                            fout << disp_j[j] << "\t";
+                        }
+                        fout << std::endl;
+                        fout << "g(parent) = " << g << std::endl;
+                        fout << "omega = " << groups_parent[g].second << std::endl;
+                        fout << std::endl;
+                    }
+                    disp_j = dynamic_base_plus1(disp_j, base_sub);
+                }
+            }
+        }
+        
+        fout << "print out w=" << std::endl;
+        for (uint32_t ga = 0; ga < num_groups; ga++) {
+            for (uint32_t gb = 0; gb < num_groups; gb++) {
+                fout << "---------------" << std::endl;
+                fout << "ga,    gb    = " << ga << ", " << gb << std::endl;
+                std::vector<uint32_t> disp_j(latt_sub_dim,0);
+                while (! dynamic_base_overflow(disp_j, base_sub)) {
+                    std::vector<uint64_t> pos_w{ga,gb};
+                    pos_w.insert(pos_w.end(), disp_j.begin(), disp_j.end());
+                    auto g = Weisse_w_eq.index(pos_w);
+                    if (g < groups_parent.size()) {
+                        fout << "j = ";
+                        for (decltype(disp_j.size()) j = 0; j < disp_j.size(); j++) {
+                            fout << disp_j[j] << "\t";
+                        }
+                        fout << std::endl;
+                        fout << "g(parent) = " << g << std::endl;
+                        fout << "omega = " << groups_parent[g].second << std::endl;
+                        fout << std::endl;
+                    }
+                    disp_j = dynamic_base_plus1(disp_j, base_sub);
+                }
+            }
+        }
+        
+        fout.close();
+        
     }
     
     void classify_Weisse_tables(const std::vector<basis_prop> &props_parent,
@@ -1441,14 +1653,15 @@ namespace qbasis {
                                 const std::vector<bool> &trans_sym,
                                 const std::vector<uint64_t> &belong2rep,
                                 const std::vector<std::vector<int>> &dist2rep,
-                                const std::vector<std::vector<uint32_t>> &groups,
                                 const std::vector<uint32_t> &belong2group,
+                                const std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> &groups_parent,
+                                const std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> &groups_sub,
                                 MltArray_PairVec &Weisse_e_lt, MltArray_PairVec &Weisse_e_eq, MltArray_PairVec &Weisse_e_gt,
-                                MltArray_vec &Weisse_w_lt, MltArray_vec &Weisse_w_eq)
+                                MltArray_uint32 &Weisse_w_lt,  MltArray_uint32 &Weisse_w_eq)
     {
-        auto latt_sub = divide_lattice(latt_parent);
+        auto latt_sub             = divide_lattice(latt_parent);
         uint64_t dim_repr         = basis_sub_repr.size();
-        uint32_t num_groups       = groups.size();
+        uint32_t num_groups       = groups_sub.size();
         uint32_t latt_sub_dim     = latt_sub.dimension();
         auto latt_sub_linear_size = latt_sub.Linear_size();
         auto base_parent          = latt_parent.Linear_size();
@@ -1502,8 +1715,8 @@ namespace qbasis {
                 linear_size.push_back(1);
             }
         }
-        Weisse_w_lt = MltArray_vec(linear_size, std::vector<uint32_t>(latt_sub_dim,0));
-        Weisse_w_eq = MltArray_vec(linear_size, std::vector<uint32_t>(latt_sub_dim,0));
+        Weisse_w_lt = MltArray_uint32(linear_size, groups_parent.size() + 10);
+        Weisse_w_eq = MltArray_uint32(linear_size, groups_parent.size() + 10);
         for (uint32_t j = 0; j < latt_sub_dim; j++) {
             if (trans_sym[j]) {
                 linear_size.push_back(static_cast<uint64_t>(latt_sub_linear_size[j]));
@@ -1517,6 +1730,7 @@ namespace qbasis {
         
         
         for (uint32_t ga = 0; ga < num_groups; ga++) {
+            // change the assert to: if (size==0) continue
             assert(examples[ga].size() > 0);
             for (uint32_t gb = 0; gb < num_groups; gb++) {
                 bool flag_lt, flag_eq, flag_gt;
@@ -1556,13 +1770,23 @@ namespace qbasis {
                     assert(ra < rb);
                     // loop over disp_j
                     std::vector<uint32_t> disp_j(latt_sub_dim,0);
-                    while (! dynamic_base_overflow(disp_j, groups[gb])) {
+                    while (! dynamic_base_overflow(disp_j, base_sub)) {
                         // generate |ra> z \tilde{T}^j |rb>
                         auto rb_new = rb;
                         std::vector<int> disp_j_int(latt_sub_dim);
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         int sgn;
                         rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
+                        
+                        // there are over countings: many disp_j gives the same rb_new, but we only need the one in the record
+                        auto rb_new_label = rb_new.label(props_sub);
+                        assert(basis_sub_repr[belong2rep[rb_new_label]] == rb);
+                        auto dist_to_rb = dist2rep[rb_new_label];
+                        if (dist_to_rb != disp_j_int) {
+                            disp_j = dynamic_base_plus1(disp_j, base_sub);
+                            continue;
+                        }
+                        
                         mbasis_elem ra_z_Tj_rb;
                         zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb);
                         /*
@@ -1621,7 +1845,7 @@ namespace qbasis {
                             */
                             disp_i = dynamic_base_plus1(disp_i, base_parent);
                         }
-                        disp_j = dynamic_base_plus1(disp_j, groups[gb]);
+                        disp_j = dynamic_base_plus1(disp_j, base_sub);
                     }
                 }
                 // build table e>
@@ -1631,13 +1855,23 @@ namespace qbasis {
                     assert(ra < rb);
                     // loop over disp_j
                     std::vector<uint32_t> disp_j(latt_sub_dim,0);
-                    while (! dynamic_base_overflow(disp_j, groups[gb])) {
+                    while (! dynamic_base_overflow(disp_j, base_sub)) {
                         // generate |ra> z \tilde{T}^j |rb>
                         auto rb_new = rb;
                         std::vector<int> disp_j_int(latt_sub_dim);
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         int sgn;
                         rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
+                        
+                        // there are over countings: many disp_j gives the same rb_new, but we only need the one in the record
+                        auto rb_new_label = rb_new.label(props_sub);
+                        assert(basis_sub_repr[belong2rep[rb_new_label]] == rb);
+                        auto dist_to_rb = dist2rep[rb_new_label];
+                        if (dist_to_rb != disp_j_int) {
+                            disp_j = dynamic_base_plus1(disp_j, base_sub);
+                            continue;
+                        }
+                        
                         mbasis_elem ra_z_Tj_rb;
                         zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb);
                         // loop over disp_i
@@ -1670,7 +1904,7 @@ namespace qbasis {
                             }
                             disp_i = dynamic_base_plus1(disp_i, base_parent);
                         }
-                        disp_j = dynamic_base_plus1(disp_j, groups[gb]);
+                        disp_j = dynamic_base_plus1(disp_j, base_sub);
                     }
                 }
                 // build table e=
@@ -1679,13 +1913,23 @@ namespace qbasis {
                     auto rb = ra;
                     // loop over disp_j
                     std::vector<uint32_t> disp_j(latt_sub_dim,0);
-                    while (! dynamic_base_overflow(disp_j, groups[gb])) {
+                    while (! dynamic_base_overflow(disp_j, base_sub)) {
                         // generate |ra> z \tilde{T}^j |rb>
                         auto rb_new = rb;
                         std::vector<int> disp_j_int(latt_sub_dim);
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         int sgn;
                         rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
+                        
+                        // there are over countings: many disp_j gives the same rb_new, but we only need the one in the record
+                        auto rb_new_label = rb_new.label(props_sub);
+                        assert(basis_sub_repr[belong2rep[rb_new_label]] == rb);
+                        auto dist_to_rb = dist2rep[rb_new_label];
+                        if (dist_to_rb != disp_j_int) {
+                            disp_j = dynamic_base_plus1(disp_j, base_sub);
+                            continue;
+                        }
+                        
                         mbasis_elem ra_z_Tj_rb;
                         zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb);
                         // loop over disp_i
@@ -1711,149 +1955,11 @@ namespace qbasis {
                             }
                             disp_i = dynamic_base_plus1(disp_i, base_parent);
                         }
-                        disp_j = dynamic_base_plus1(disp_j, groups[gb]);
+                        disp_j = dynamic_base_plus1(disp_j, base_sub);
                     }
                 }
             }
         }
-        
-        
-        /*
-        std::cout << "print out e=" << std::endl;
-        for (uint32_t ga = 0; ga < num_groups; ga++) {
-            for (uint32_t gb = 0; gb < num_groups; gb++) {
-                std::cout << "***************" << std::endl;
-                std::cout << "ga,    gb    = " << ga << ", " << gb << std::endl;
-                std::vector<uint32_t> disp_ja(latt_sub_dim,0);
-                while (! dynamic_base_overflow(disp_ja, base_sub)) {
-                    std::vector<uint32_t> disp_jb(latt_sub_dim,0);
-                    while (! dynamic_base_overflow(disp_jb, base_sub)) {
-                        std::vector<uint64_t> pos{ga,gb};
-                        pos.insert(pos.end(), disp_ja.begin(), disp_ja.end());
-                        pos.insert(pos.end(), disp_jb.begin(), disp_jb.end());
-                        auto res = table_e_eq.index(pos);
-                        if (res.first  != std::vector<uint32_t>(res.first.size(),999999999) ||
-                            res.second != std::vector<uint32_t>(res.second.size(),999999999)) {
-                            std::cout << "ja = ";
-                            for (decltype(disp_ja.size()) j = 0; j < disp_ja.size(); j++) {
-                                std::cout << disp_ja[j] << "\t";
-                            }
-                            std::cout << std::endl;
-                            std::cout << "jb = ";
-                            for (decltype(disp_jb.size()) j = 0; j < disp_jb.size(); j++) {
-                                std::cout << disp_jb[j] << "\t";
-                            }
-                            std::cout << std::endl;
-                            std::cout << "i  = ";
-                            for (decltype(res.first.size()) j = 0; j < res.first.size(); j++) {
-                                std::cout << res.first[j] << "\t";
-                            }
-                            std::cout << std::endl;
-                            std::cout << "j  = ";
-                            for (decltype(res.second.size()) j = 0; j < res.second.size(); j++) {
-                                std::cout << res.second[j] << "\t";
-                            }
-                            std::cout << std::endl;
-                            std::cout << std::endl;
-                        }
-                        disp_jb = dynamic_base_plus1(disp_jb, base_sub);
-                    }
-                    disp_ja = dynamic_base_plus1(disp_ja, base_sub);
-                }
-            }
-        }
-        
-        std::cout << "print out e<" << std::endl;
-        for (uint32_t ga = 0; ga < num_groups; ga++) {
-            for (uint32_t gb = 0; gb < num_groups; gb++) {
-                std::cout << "***************" << std::endl;
-                std::cout << "ga,    gb    = " << ga << ", " << gb << std::endl;
-                std::vector<uint32_t> disp_ja(latt_sub_dim,0);
-                while (! dynamic_base_overflow(disp_ja, base_sub)) {
-                    std::vector<uint32_t> disp_jb(latt_sub_dim,0);
-                    while (! dynamic_base_overflow(disp_jb, base_sub)) {
-                        std::vector<uint64_t> pos{ga,gb};
-                        pos.insert(pos.end(), disp_ja.begin(), disp_ja.end());
-                        pos.insert(pos.end(), disp_jb.begin(), disp_jb.end());
-                        auto res = table_e_lt.index(pos);
-                        if (res.first  != std::vector<uint32_t>(res.first.size(),999999999) ||
-                            res.second != std::vector<uint32_t>(res.second.size(),999999999)) {
-                            std::cout << "ja = ";
-                            for (decltype(disp_ja.size()) j = 0; j < disp_ja.size(); j++) {
-                                std::cout << disp_ja[j] << "\t";
-                            }
-                            std::cout << std::endl;
-                            std::cout << "jb = ";
-                            for (decltype(disp_jb.size()) j = 0; j < disp_jb.size(); j++) {
-                                std::cout << disp_jb[j] << "\t";
-                            }
-                            std::cout << std::endl;
-                            std::cout << "i  = ";
-                            for (decltype(res.first.size()) j = 0; j < res.first.size(); j++) {
-                                std::cout << res.first[j] << "\t";
-                            }
-                            std::cout << std::endl;
-                            std::cout << "j  = ";
-                            for (decltype(res.second.size()) j = 0; j < res.second.size(); j++) {
-                                std::cout << res.second[j] << "\t";
-                            }
-                            std::cout << std::endl;
-                            std::cout << std::endl;
-                        }
-                        disp_jb = dynamic_base_plus1(disp_jb, base_sub);
-                    }
-                    disp_ja = dynamic_base_plus1(disp_ja, base_sub);
-                }
-            }
-        }
-        
-        std::cout << "print out e>" << std::endl;
-        for (uint32_t ga = 0; ga < num_groups; ga++) {
-            for (uint32_t gb = 0; gb < num_groups; gb++) {
-                std::cout << "***************" << std::endl;
-                std::cout << "ga,    gb    = " << ga << ", " << gb << std::endl;
-                std::vector<uint32_t> disp_ja(latt_sub_dim,0);
-                while (! dynamic_base_overflow(disp_ja, base_sub)) {
-                    std::vector<uint32_t> disp_jb(latt_sub_dim,0);
-                    while (! dynamic_base_overflow(disp_jb, base_sub)) {
-                        std::vector<uint64_t> pos{ga,gb};
-                        pos.insert(pos.end(), disp_ja.begin(), disp_ja.end());
-                        pos.insert(pos.end(), disp_jb.begin(), disp_jb.end());
-                        auto res = table_e_gt.index(pos);
-                        if (res.first  != std::vector<uint32_t>(res.first.size(),999999999) ||
-                            res.second != std::vector<uint32_t>(res.second.size(),999999999)) {
-                            std::cout << "ja = ";
-                            for (decltype(disp_ja.size()) j = 0; j < disp_ja.size(); j++) {
-                                std::cout << disp_ja[j] << "\t";
-                            }
-                            std::cout << std::endl;
-                            std::cout << "jb = ";
-                            for (decltype(disp_jb.size()) j = 0; j < disp_jb.size(); j++) {
-                                std::cout << disp_jb[j] << "\t";
-                            }
-                            std::cout << std::endl;
-                            std::cout << "i  = ";
-                            for (decltype(res.first.size()) j = 0; j < res.first.size(); j++) {
-                                std::cout << res.first[j] << "\t";
-                            }
-                            std::cout << std::endl;
-                            std::cout << "j  = ";
-                            for (decltype(res.second.size()) j = 0; j < res.second.size(); j++) {
-                                std::cout << res.second[j] << "\t";
-                            }
-                            std::cout << std::endl;
-                            std::cout << std::endl;
-                        }
-                        disp_jb = dynamic_base_plus1(disp_jb, base_sub);
-                    }
-                    disp_ja = dynamic_base_plus1(disp_ja, base_sub);
-                }
-            }
-        }
-        */
-        
-        
-        auto div_parent_v1 = latt_parent.divisor_v1(trans_sym);
         
         // build table w< and w=
         for (uint32_t ga = 0; ga < num_groups; ga++) {
@@ -1864,7 +1970,7 @@ namespace qbasis {
                 
                 std::vector<uint32_t> disp_i(latt_sub_dim,0);  // fixed to ja=0
                 std::vector<uint32_t> disp_j(latt_sub_dim,0);  // now also serves the job of jb
-                while (! dynamic_base_overflow(disp_j, groups[gb])) {
+                while (! dynamic_base_overflow(disp_j, base_sub)) {
                     std::vector<uint64_t> pos_e{ga,gb};
                     std::vector<uint64_t> pos_w{ga,gb};
                     pos_e.insert(pos_e.end(), disp_i.begin(), disp_i.end());
@@ -1876,29 +1982,37 @@ namespace qbasis {
                         std::vector<int> disp_j_int(latt_sub_dim);
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         auto rb_new = examples[gb].back();
+                        //auto rb_label = rb_new.label(props_sub);
                         assert(ra < rb_new);
                         int sgn;
                         rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
+                        
                         mbasis_elem ra_z_Tj_rb;
                         zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb);
-                        std::vector<uint32_t> div(latt_sub_dim,0);
-                        for (uint32_t d = 0; d < latt_sub_dim; d++) {
-                            for (auto it = div_parent_v1[d].begin(); it != div_parent_v1[d].end(); it++) {
-                                std::vector<int> disp(latt_sub_dim,0);
-                                disp[d] = static_cast<int>(*it);
+                        // loop over groups, to check which one the repr belongs to
+                        for (uint32_t g = 0; g < groups_parent.size(); g++) {
+                            bool flag = true;
+                            for (uint32_t d = 0; d < latt_sub_dim; d++) {
+                                if (! trans_sym[d]) continue;
+                                std::vector<int> disp(latt_sub_dim);
+                                for (uint32_t i = 0; i < latt_sub_dim; i++) disp[i] = groups_parent[g].first[d][i];
                                 auto temp = ra_z_Tj_rb;
                                 temp.translate(props_parent, latt_parent, disp, sgn);
-                                if (temp == ra_z_Tj_rb) {
-                                    div[d] = *it;
+                                if (temp != ra_z_Tj_rb) {
+                                    flag = false;
                                     break;
                                 }
                             }
-                            assert(div[d] != 0);
+                            if (flag) {                     // belongs to this group
+                                Weisse_w_lt.index(pos_w) = g;
+                                break;
+                            }
                         }
-                        Weisse_w_lt.index(pos_w) = div;
-                    } else {
-                        Weisse_w_lt.index(pos_w) = std::vector<uint32_t>(latt_sub_dim,0);
+                        assert(Weisse_w_lt.index(pos_w) < groups_parent.size());
                     }
+                    //else {
+                    //    Weisse_w_lt.index(pos_w) = 0;
+                    //}
                     if (res_eq.first == disp_i && res_eq.second == disp_j) {
                         std::vector<int> disp_j_int(latt_sub_dim);
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
@@ -1908,24 +2022,30 @@ namespace qbasis {
                         rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
                         mbasis_elem ra_z_Tj_rb;
                         zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb);
-                        std::vector<uint32_t> div(latt_sub_dim,0);
-                        for (uint32_t d = 0; d < latt_sub_dim; d++) {
-                            for (auto it = div_parent_v1[d].begin(); it != div_parent_v1[d].end(); it++) {
-                                std::vector<int> disp(latt_sub_dim,0);
-                                disp[d] = static_cast<int>(*it);
+                        // loop over groups, to check which one the repr belongs to
+                        for (uint32_t g = 0; g < groups_parent.size(); g++) {
+                            bool flag = true;
+                            for (uint32_t d = 0; d < latt_sub_dim; d++) {
+                                if (! trans_sym[d]) continue;
+                                std::vector<int> disp(latt_sub_dim);
+                                for (uint32_t i = 0; i < latt_sub_dim; i++) disp[i] = groups_parent[g].first[d][i];
                                 auto temp = ra_z_Tj_rb;
                                 temp.translate(props_parent, latt_parent, disp, sgn);
-                                if (temp == ra_z_Tj_rb) {
-                                    div[d] = *it;
+                                if (temp != ra_z_Tj_rb) {
+                                    flag = false;
                                     break;
                                 }
                             }
-                            assert(div[d] != 0);
+                            if (flag) {                     // belongs to this group
+                                Weisse_w_eq.index(pos_w) = g;
+                                break;
+                            }
                         }
-                        Weisse_w_eq.index(pos_w) = div;
-                    } else {
-                        Weisse_w_eq.index(pos_w) = std::vector<uint32_t>(latt_sub_dim,0);
+                        assert(Weisse_w_eq.index(pos_w) < groups_parent.size());
                     }
+                    //else {
+                    //    Weisse_w_eq.index(pos_w) = 0;
+                    //}
                     
                     /*
                     std::cout << "j  = ";
@@ -1941,79 +2061,94 @@ namespace qbasis {
                     */
                     
                     
-                    disp_j = dynamic_base_plus1(disp_j, groups[gb]);
+                    disp_j = dynamic_base_plus1(disp_j, base_sub);
                 }
             }
         }
+        
+        log_Weisse_tables(latt_parent, groups_parent, groups_sub,
+                          Weisse_e_lt, Weisse_e_eq, Weisse_e_gt,
+                          Weisse_w_lt, Weisse_w_eq);
+        
+        
     }
     
     
     double norm_trans_repr(const std::vector<basis_prop> &props, const mbasis_elem &repr,
-                           const lattice &latt, const std::vector<uint32_t> &group,
+                           const lattice &latt_parent, const std::pair<std::vector<std::vector<uint32_t>>,uint32_t> &group_parent,
                            const std::vector<int> &momentum)
     {
-        assert(std::any_of(group.begin(), group.end(), [](uint32_t i){ return i != 0; }));
-        assert(momentum.size() == latt.dimension());
-        auto L = latt.Linear_size();
-        auto momentum2 = momentum;
+        uint32_t dim = latt_parent.dimension();
+        uint32_t N   = latt_parent.total_sites();
+        auto L       = latt_parent.Linear_size();
         
-        double nu = 1.0;
-        for (uint32_t d = 0; d < latt.dimension(); d++) {
-            if (group[d] == 0) continue;
-            assert(L[d] % group[d] == 0);
+        std::vector<uint32_t> zerovec(dim,0);
+        assert(std::any_of(group_parent.first.begin(), group_parent.first.end(), [zerovec](std::vector<uint32_t> i){ return i != zerovec; }));
+        assert(momentum.size() == dim);
+        auto momentum2 = momentum;
+        for (uint32_t d = 0; d < dim; d++) {
             while (momentum2[d] < 0) momentum2[d] += static_cast<int>(L[d]);
-            int L_o_w = static_cast<int>(L[d] / group[d]);
-            std::vector<int> disp(latt.dimension(),0);
-            disp[d] = static_cast<int>(group[d]);
-            int sgn;
-            auto repr_new = repr;
-            repr_new.translate(props, latt, disp, sgn);
-            assert(repr_new == repr && (sgn == 0 || sgn == 1));
-            if (sgn == 0) {
-                nu *= (momentum2[d] % L_o_w == 0 ? static_cast<double>(group[d]) : 0.0);
-            } else {
-                if (momentum2[d] % L_o_w == 0) {
-                    nu *= static_cast<double>((L_o_w % 2) * L[d]);
-                } else if ((2 * momentum2[d] + L_o_w) % (2 * L_o_w) == 0) {
-                    nu *= static_cast<double>(group[d]);
-                } else {
-                    nu *= 0.0;
-                }
-            }
-            if (std::abs(nu) < lanczos_precision) break;
         }
         
-        // the following lines should be removed in future
+        bool bosonic = q_bosonic(props);
+        bool flag_nonzero = true;
+        for (uint32_t d_ou = 0; d_ou < dim; d_ou++) {
+            auto &xyz = group_parent.first[d_ou];
+            if (xyz == zerovec) continue;
+            
+            uint32_t numerator = 0;
+            for (uint32_t d_in = 0; d_in < dim; d_in++) {
+                numerator += static_cast<uint32_t>(momentum2[d_in]) * xyz[d_in] * N / L[d_in];
+            }
+            
+            if (! bosonic) {
+                std::vector<int> disp(dim);
+                for (uint32_t d_in = 0; d_in < dim; d_in++) disp[d_in] = static_cast<int>(xyz[d_in]);
+                int sgn;
+                auto basis_temp = repr;
+                basis_temp.translate(props, latt_parent, disp, sgn);
+                numerator += static_cast<uint32_t>(sgn % 2) * N / 2;
+            }
+            
+            if (numerator % N != 0) {
+                flag_nonzero = false;
+                break;
+            }
+        }
+        double nu = 1.0;
+        if (flag_nonzero) {
+            nu = static_cast<double>(group_parent.second);
+        } else {
+            nu = 0.0;
+        }
+        
+        // the following lines are only for double checking purpose, should be removed in future
         static int cnt = 0;
-        if (cnt == 0) {
-            std::cout << "(**remove**) ";
-            cnt++;
+        if (cnt++ == 0) std::cout << "(**remove**) ";
+        
+        
+        uint32_t dim_trans = 0;
+        for (uint32_t j = 0; j < dim; j++) {
+            if (group_parent.first[j] != zerovec) dim_trans++;
         }
         
         double denominator = 1.0;
-        for (uint32_t d = 0; d < latt.dimension(); d++) {
-            denominator *= (group[d] == 0 ? 1.0 : static_cast<double>(L[d]));
+        for (uint32_t d = 0; d < dim; d++) {
+            denominator *= (group_parent.first[d] == zerovec ? 1.0 : static_cast<double>(L[d]));
         }
         std::complex<double> nu_inv_check = 1.0;  // <r|P_k|r>
-        auto num_sub = latt.num_sublattice();
-        for (uint32_t site = num_sub; site < latt.total_sites(); site += num_sub) {
+        auto num_sub = latt_parent.num_sublattice();
+        for (uint32_t site = num_sub; site < latt_parent.total_sites(); site += num_sub) {
             std::vector<int> disp;
             int sub, sgn;
-            latt.site2coor(disp, sub, site);
-            bool flag = false;
-            for (uint32_t d = 0; d < latt.dimension(); d++) {
-                if ((group[d] == 0 && disp[d] != 0) || (group[d] != 0 && disp[d] % group[d] != 0)) {
-                    flag = true;
-                    break;
-                }
-            }
-            if (flag) continue;
+            latt_parent.site2coor(disp, sub, site);
+            
             auto basis_temp = repr;
-            basis_temp.translate(props, latt, disp, sgn);
-            assert(basis_temp == repr);
+            basis_temp.translate(props, latt_parent, disp, sgn);
+            if (basis_temp != repr) continue;
             double exp_coef = 0.0;
-            for (uint32_t d = 0; d < latt.dimension(); d++) {
-                if (group[d] != 0) {
+            for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                if (group_parent.first[d] != zerovec) {
                     exp_coef += momentum2[d] * disp[d] / static_cast<double>(L[d]);
                 }
             }
@@ -2030,9 +2165,6 @@ namespace qbasis {
         } else {
             assert(std::abs(std::real(nu_inv_check)) < lanczos_precision);
         }
-        
-        
-        
         
         return nu;
     }

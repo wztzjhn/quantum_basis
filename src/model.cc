@@ -79,31 +79,54 @@ namespace qbasis {
         start = std::chrono::system_clock::now();
         auto props_sub = props_sub_a;
         auto latt_sub = divide_lattice(latt);
+        
+        
+        groups_sub    = latt_sub.trans_subgroups(trans_sym);
+        groups_parent = latt.trans_subgroups(trans_sym);
+        
+        
+        std::cout << "------------------------------------" << std::endl;
         std::cout << "Generating sublattice full basis... " << std::endl;
         std::vector<mbasis_elem> basis_sub_full;
         enumerate_basis<T>(props_sub, basis_sub_full);
         sort_basis_normal_order(basis_sub_full);                                // has to be sorted in the normal way
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
-        std::cout << "Elapsed time for generating sublattice full basis: " << elapsed_seconds.count() << "s." << std::endl;
+        std::cout << "Elapsed time for generating sublattice full basis: " << elapsed_seconds.count() << "s." << std::endl << std::endl;
         start = end;
         
+        std::cout << "------------------------------------" << std::endl;
         std::cout << "Classifying sublattice basis... " << std::flush;
         classify_trans_full2rep(props_sub, basis_sub_full, latt_sub, trans_sym, basis_sub_repr, belong2rep_sub, dist2rep_sub);
         classify_trans_rep2group(props_sub, basis_sub_repr, latt_sub, trans_sym, groups_sub, omega_g_sub, belong2group_sub);
         end = std::chrono::system_clock::now();
         elapsed_seconds = end - start;
-        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
         start = end;
+        
+        
+        /*
+        for (decltype(basis_sub_repr.size()) r = 0; r < basis_sub_repr.size(); r++) {
+            std::cout << "r = " << r << std::endl;
+            basis_sub_repr[r].prt_bits(props_sub);
+            std::cout << "g=" << belong2group_sub[r];
+            std::cout << ", omega = " << omega_g_sub[belong2group_sub[r]] << std::endl;
+        }
+        */
+        
+        
+        //auto xx = latt_sub.trans_subgroups(trans_sym);
+        
         
         // double checking correctness
         uint64_t check_dim_sub_full = 0;
         for (decltype(basis_sub_repr.size()) j = 0; j < basis_sub_repr.size(); j++) check_dim_sub_full += omega_g_sub[belong2group_sub[j]];
         assert(check_dim_sub_full == static_cast<uint64_t>(basis_sub_full.size()));
         
+        std::cout << "------------------------------------" << std::endl;
         std::cout << "Generating maps (ga,gb,ja,jb) -> (i,j) and (ga,gb,j) -> w ... " << std::flush;
         classify_Weisse_tables(props, props_sub, basis_sub_full, basis_sub_repr, latt, trans_sym,
-                               belong2rep_sub, dist2rep_sub, groups_sub, belong2group_sub,
+                               belong2rep_sub, dist2rep_sub, belong2group_sub, groups_parent, groups_sub,
                                Weisse_e_lt, Weisse_e_eq, Weisse_e_gt, Weisse_w_lt, Weisse_w_eq);
         end = std::chrono::system_clock::now();
         elapsed_seconds = end - start;
@@ -169,7 +192,8 @@ namespace qbasis {
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         auto latt_sub = divide_lattice(latt);
-        auto L = latt.Linear_size();
+        auto L        = latt.Linear_size();
+        auto base_sub = latt_sub.Linear_size();
         std::cout << "Enumerating basis_repr according to momentum: (" << std::flush;
         for (uint32_t j = 0; j < momentum.size(); j++) {
             if (trans_sym[j]) {
@@ -179,6 +203,25 @@ namespace qbasis {
             }
         }
         std::cout << ")..." << std::endl;
+        
+        
+//        // now start enumerating representatives, if not generated before (or generated but already destroyed)
+//        if (dim_repr[sec_repr] <= 0 || static_cast<MKL_INT>(basis_repr[sec_repr].size()) != dim_repr[sec_repr]) {
+//            basis_repr[sec_repr].clear();
+//            for (decltype(basis_sub_repr.size()) rb = 0; rb < basis_sub_repr.size(); rb++) {
+//                auto gb = belong2group_sub[rb];
+//                std::vector<uint32_t> disp_j(latt_sub.dimension(),0);
+//                std::vector<int> disp_j_int(disp_j.size());
+//                while (! dynamic_base_overflow(disp_j, base_sub)) {
+//                    mbasis_elem rb_new = basis_sub_repr[rb];
+//                }
+//                
+//                
+//            }
+//            
+//            
+//        }
+        
         
         // now start enumerating representatives, if not generated before (or generated but already destroyed)
         if (dim_repr[sec_repr] <= 0 || static_cast<MKL_INT>(basis_repr[sec_repr].size()) != dim_repr[sec_repr]) {
@@ -190,12 +233,12 @@ namespace qbasis {
                     auto gb = belong2group_sub[rb];
                     std::vector<uint32_t> disp_j(latt_sub.dimension(),0);
                     std::vector<int> disp_j_int(disp_j.size());
-                    while (! dynamic_base_overflow(disp_j, groups_sub[gb])) {
+                    while (! dynamic_base_overflow(disp_j, base_sub)) {
                         auto pos = std::vector<uint64_t>{ga,gb};
                         pos.insert(pos.end(), disp_j.begin(), disp_j.end());
                         auto omega = (ra < rb)?(Weisse_w_lt.index(pos)):(Weisse_w_eq.index(pos));
                         
-                        if (std::any_of(omega.begin(), omega.end(), [](uint32_t i){ return i != 0; })) {  // valid representative
+                        if (omega < groups_parent.size()) {  // valid representative
                             mbasis_elem rb_new = basis_sub_repr[rb];
                             for (uint32_t j = 0; j < latt_sub.dimension(); j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                             rb_new.translate(props_sub_b, latt_sub, disp_j_int, sgn);
@@ -218,7 +261,7 @@ namespace qbasis {
                                 basis_repr[sec_repr].push_back(ra_z_Tj_rb);                 // need openmp optimization this line
                             }
                         }
-                        disp_j = dynamic_base_plus1(disp_j, groups_sub[gb]);
+                        disp_j = dynamic_base_plus1(disp_j, base_sub);
                     }
                 }
             }
@@ -255,8 +298,12 @@ namespace qbasis {
             auto &gb = belong2group_sub[rb_label];
             std::vector<uint64_t> pos_w{ga, gb};
             pos_w.insert(pos_w.end(), dist2rep_sub[state_sub2_label].begin(), dist2rep_sub[state_sub2_label].end());
-            auto omega = (ra_label < rb_label)?(Weisse_w_lt.index(pos_w)):(Weisse_w_eq.index(pos_w));
-            norm_repr[sec_repr][j] = norm_trans_repr(props, basis_repr[sec_repr][j], latt, omega, momentum);
+            auto g_label = (ra_label < rb_label)?(Weisse_w_lt.index(pos_w)):(Weisse_w_eq.index(pos_w));
+            
+            //std::cout << "j = " << j << std::endl;
+            //basis_repr[sec_repr][j].prt_states(props);
+            
+            norm_repr[sec_repr][j] = norm_trans_repr(props, basis_repr[sec_repr][j], latt, groups_parent[g_label], momentum);
             if (std::abs(norm_repr[sec_repr][j]) < lanczos_precision) {
                 #pragma omp atomic
                 extra++;

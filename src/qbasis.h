@@ -97,8 +97,9 @@ namespace qbasis {
         std::vector<uint64_t> linear_size_;
         std::vector<T> data;
     };
+    typedef multi_array<uint32_t> MltArray_uint32;
     typedef multi_array<double> MltArray_double;
-    typedef multi_array<std::vector<uint32_t>> MltArray_vec;
+    //typedef multi_array<std::vector<uint32_t>> MltArray_vec;
     typedef multi_array<std::pair<std::vector<uint32_t>,std::vector<uint32_t>>> MltArray_PairVec;
     
     
@@ -116,6 +117,7 @@ namespace qbasis {
     // Operations on basis
     void basis_props_split(const std::vector<basis_prop> &parent,
                            std::vector<basis_prop> &sub1, std::vector<basis_prop> &sub2);
+    bool q_bosonic(const std::vector<basis_prop> &props);
     void swap(mbasis_elem&, mbasis_elem&);
     bool operator<(const mbasis_elem&, const mbasis_elem&);
     bool operator==(const mbasis_elem&, const mbasis_elem&);
@@ -160,7 +162,7 @@ namespace qbasis {
                                   const std::vector<mbasis_elem> &reps,
                                   const lattice &latt,
                                   const std::vector<bool> &trans_sym,
-                                  std::vector<std::vector<uint32_t>> &groups,
+                                  const std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> &groups,
                                   std::vector<uint32_t> &omega_g,
                                   std::vector<uint32_t> &belong2group);
     // tabulate the maps for (ga,gb,ja,jb) -> (i,j), and (ga,gb,j) -> w
@@ -172,13 +174,14 @@ namespace qbasis {
                                 const std::vector<bool> &trans_sym,
                                 const std::vector<uint64_t> &belong2rep,
                                 const std::vector<std::vector<int>> &dist2rep,
-                                const std::vector<std::vector<uint32_t>> &groups,
                                 const std::vector<uint32_t> &belong2group,
+                                const std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> &groups_parent,
+                                const std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> &groups_sub,
                                 MltArray_PairVec &Weisse_e_lt, MltArray_PairVec &Weisse_e_eq, MltArray_PairVec &Weisse_e_gt,
-                                MltArray_vec &Weisse_w_lt, MltArray_vec &Weisse_w_eq);
+                                MltArray_uint32 &Weisse_w_lt, MltArray_uint32 &Weisse_w_eq);
     // <r|P_k|r>^{-1}
     double norm_trans_repr(const std::vector<basis_prop> &props, const mbasis_elem &repr,
-                           const lattice &latt, const std::vector<uint32_t> &group,
+                           const lattice &latt_parent, const std::pair<std::vector<std::vector<uint32_t>>,uint32_t> &group_parent,
                            const std::vector<int> &momentum);
     
     // Operations on wavefunctions
@@ -1093,11 +1096,13 @@ namespace qbasis {
         // Weisse Tables for translation symmetry
         std::vector<uint64_t>              belong2rep_sub;
         std::vector<std::vector<int>>      dist2rep_sub;
-        std::vector<std::vector<uint32_t>> groups_sub;
+        std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> groups_parent;
+        std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> groups_sub;
         std::vector<uint32_t>              omega_g_sub;
         std::vector<uint32_t>              belong2group_sub;
         MltArray_PairVec                   Weisse_e_lt, Weisse_e_eq, Weisse_e_gt;
-        MltArray_vec                       Weisse_w_lt, Weisse_w_eq;
+        // Note: different from Weisse's paper, here we use Weisse_w to store the (parent) group label, instead of omega_g
+        MltArray_uint32                    Weisse_w_lt, Weisse_w_eq;
         //std::vector<MltArray_double>       Weisse_nu_lt, Weisse_nu_eq;          // Note: nu_k = 1 / <rep | P_k | rep>
         
         std::vector<csr_mat<T>>            HamMat_csr_full;
