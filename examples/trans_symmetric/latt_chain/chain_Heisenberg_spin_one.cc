@@ -16,7 +16,7 @@ int main() {
 
     // lattice object
     std::vector<std::string> bc{"pbc"};
-    qbasis::lattice lattice("chain",std::vector<uint32_t>{static_cast<uint32_t>(L)},bc);
+    qbasis::lattice lattice("chain",{static_cast<uint32_t>(L)},bc);
 
     // local matrix representation
     // Spins:
@@ -54,7 +54,7 @@ int main() {
     qbasis::mopr<std::complex<double>> Sz_total;
     for (int x = 0; x < L; x++) {
         uint32_t site_i, site_j;
-        lattice.coor2site(std::vector<int>{x}, 0, site_i); // obtain site label of (x)
+        lattice.coor2site({x}, 0, site_i); // obtain site label of (x)
         // construct operators on each site
         // spin
         auto Sx_i  = qbasis::opr<std::complex<double>>(site_i,0,false,Sx);
@@ -63,7 +63,7 @@ int main() {
 
         // with neighbor (x+1)
         if (bc[0] == "pbc" || (bc[0] == "obc" && x < L - 1)) {
-            lattice.coor2site(std::vector<int>{x+1}, 0, site_j);
+            lattice.coor2site({x+1}, 0, site_j);
             // spin exchanges
             auto Sx_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sx);
             auto Sy_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sy);
@@ -80,11 +80,11 @@ int main() {
     std::vector<double> E0_list;
     for (int momentum = 0; momentum < L; momentum++) {
         // constructing the Hilbert space basis
-        Heisenberg.enumerate_basis_repr(lattice, std::vector<int>{momentum}, {Sz_total}, {Sz_total_val});
+        Heisenberg.enumerate_basis_repr(lattice, {momentum}, {Sz_total}, {Sz_total_val});
 
         // optional in future, will use more memory and give higher speed
         // generating matrix of the Hamiltonian in the full Hilbert space
-        Heisenberg.generate_Ham_sparse_repr(lattice, std::vector<int>{momentum});
+        Heisenberg.generate_Ham_sparse_repr(lattice, {momentum});
         std::cout << std::endl;
 
         // obtaining the eigenvals of the matrix
@@ -94,7 +94,7 @@ int main() {
         E0_list.push_back(Heisenberg.eigenvals_repr[0]);
     }
     assert(std::abs(E0_list[0]  + 16.86955614) < 1e-8);
-    assert(std::abs(E0_list[1]  + 15.2458356) < 1e-8);
+    assert(std::abs(E0_list[1]  + 15.2458356)  < 1e-8);
     assert(std::abs(E0_list[2]  + 14.40827083) < 1e-8);
     assert(std::abs(E0_list[3]  + 14.13433756) < 1e-8);
     assert(std::abs(E0_list[4]  + 14.54973865) < 1e-8);

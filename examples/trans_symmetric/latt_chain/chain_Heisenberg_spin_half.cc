@@ -15,7 +15,7 @@ int main() {
 
     // lattice object
     std::vector<std::string> bc{"pbc"};
-    qbasis::lattice lattice("chain",std::vector<uint32_t>{static_cast<uint32_t>(L)},bc);
+    qbasis::lattice lattice("chain",{static_cast<uint32_t>(L)},bc);
 
     // local matrix representation
     // Spins:
@@ -39,7 +39,7 @@ int main() {
     Heisenberg.add_orbital(lattice.total_sites(), "spin-1/2");
     for (int x = 0; x < L; x++) {
         uint32_t site_i, site_j;
-        lattice.coor2site(std::vector<int>{x}, 0, site_i); // obtain site label of (x)
+        lattice.coor2site({x}, 0, site_i); // obtain site label of (x)
         // construct operators on each site
         // spin
         auto Splus_i   = qbasis::opr<std::complex<double>>(site_i,0,false,Splus);
@@ -48,7 +48,7 @@ int main() {
 
         // with neighbor (x+1)
         if (bc[0] == "pbc" || (bc[0] == "obc" && x < L - 1)) {
-            lattice.coor2site(std::vector<int>{x+1}, 0, site_j);
+            lattice.coor2site({x+1}, 0, site_j);
             // spin exchanges
             auto Splus_j   = qbasis::opr<std::complex<double>>(site_j,0,false,Splus);
             auto Sminus_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sminus);
@@ -67,11 +67,11 @@ int main() {
     std::vector<double> E0_list;
     for (int momentum = 0; momentum < L; momentum++) {
         // generate the translational symmetric basis
-        Heisenberg.enumerate_basis_repr(lattice, std::vector<int>{momentum}, {Sz_total}, {Sz_total_val});
+        Heisenberg.enumerate_basis_repr(lattice, {momentum}, {Sz_total}, {Sz_total_val});
 
         // optional in future, will use more memory and give higher speed
         // generating matrix of the Hamiltonian in the full Hilbert space
-        Heisenberg.generate_Ham_sparse_repr(lattice, std::vector<int>{momentum});
+        Heisenberg.generate_Ham_sparse_repr(lattice, {momentum});
         std::cout << std::endl;
 
         // obtaining the eigenvals of the matrix
@@ -103,7 +103,7 @@ int main() {
     Heisenberg.enumerate_basis_full({Sz_total}, {Sz_total_val});
     for (int momentum = 0; momentum < L; momentum++) {
         // generate the translational symmetric basis
-        Heisenberg.basis_init_repr_deprecated(lattice, std::vector<int>{momentum});
+        Heisenberg.basis_init_repr_deprecated(lattice, {momentum});
 
         // optional in future, will use more memory and give higher speed
         // generating matrix of the Hamiltonian in the full Hilbert space

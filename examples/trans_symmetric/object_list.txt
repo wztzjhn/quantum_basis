@@ -1,10 +1,11 @@
 vpath %.cc ../latt_chain \
+           ../latt_honeycomb \
            ../latt_square \
            ../latt_triangular
 
 EXEC = chain_Heisenberg_spin_half.x \
        chain_Heisenberg_spin_one.x \
        chain_Kondo.x \
+       honeycomb_Spinless_Fermion.x \
+       square_Fermi_Hubbard.x \
        triangular_Heisenberg_spin_half.x
-#       square_Fermi_Hubbard.x \
-#       triangular_Heisenberg_spin_half.x

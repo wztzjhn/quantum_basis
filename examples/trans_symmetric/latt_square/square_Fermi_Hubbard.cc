@@ -8,9 +8,9 @@ int main() {
     // parameters
     double t = 1;
     double U = 1.1;
-    int Lx = 3;
-    int Ly = 3;
-    double Nup_total = 5;
+    int Lx = 4;
+    int Ly = 2;
+    double Nup_total = 4;
     double Ndn_total = 4;
 
     std::cout << "Lx =      " << Lx << std::endl;
@@ -22,7 +22,7 @@ int main() {
 
     // lattice object
     std::vector<std::string> bc{"pbc", "pbc"};
-    qbasis::lattice lattice("square",std::vector<uint32_t>{static_cast<uint32_t>(Lx), static_cast<uint32_t>(Ly)},bc);
+    qbasis::lattice lattice("square",{static_cast<uint32_t>(Lx), static_cast<uint32_t>(Ly)},bc);
 
 
     // local matrix representation
@@ -42,7 +42,7 @@ int main() {
     for (int x = 0; x < Lx; x++) {
         for (int y = 0; y < Ly; y++) {
             uint32_t site_i, site_j;
-            lattice.coor2site(std::vector<int>{x,y}, 0, site_i); // obtain site label of (x,y)
+            lattice.coor2site({x,y}, 0, site_i); // obtain site label of (x,y)
             // construct operators on each site
             auto c_up_i    = qbasis::opr<std::complex<double>>(site_i,0,true,c_up);
             auto c_dn_i    = qbasis::opr<std::complex<double>>(site_i,0,true,c_dn);
@@ -53,7 +53,7 @@ int main() {
 
             // hopping to neighbor (x+1, y)
             if (bc[0] == "pbc" || (bc[0] == "obc" && x < Lx - 1)) {
-                lattice.coor2site(std::vector<int>{x+1,y}, 0, site_j);
+                lattice.coor2site({x+1,y}, 0, site_j);
                 auto c_up_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c_up);
                 auto c_dn_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c_dn);
                 auto c_up_dg_j = c_up_j; c_up_dg_j.dagger();
@@ -66,7 +66,7 @@ int main() {
 
             // hopping to neighbor (x, y+1)
             if (bc[1] == "pbc" || (bc[1] == "obc" && y < Ly - 1)) {
-                lattice.coor2site(std::vector<int>{x,y+1}, 0, site_j);
+                lattice.coor2site({x,y+1}, 0, site_j);
                 auto c_up_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c_up);
                 auto c_dn_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c_dn);
                 auto c_up_dg_j = c_up_j; c_up_dg_j.dagger();
@@ -87,36 +87,66 @@ int main() {
     }
 
 
-    // constructing the Hilbert space basis
-    Hubbard.enumerate_basis_full({Nup,Ndown}, {Nup_total,Ndn_total});
+    // to use translational symmetry, we first fill the Weisse tables
+    Hubbard.fill_Weisse_table(lattice);
 
-
-    std::vector<double> energies;
-    for (int i = 0; i < Lx; i++) {
-        for (int j = 0; j < Ly; j++) {
-            // constructing the subspace basis
-            Hubbard.basis_init_repr_deprecated(std::vector<int>{i,j}, lattice);
+    std::vector<double> E0_list;
+    for (int m = 0; m < Lx; m++) {
+        for (int n = 0; n < Ly; n++) {
+            // constructing the Hilbert space basis
+            Hubbard.enumerate_basis_repr(lattice, {m,n}, {Nup,Ndown}, {Nup_total,Ndn_total});
 
             // generating matrix of the Hamiltonian in the subspace
-            Hubbard.generate_Ham_sparse_repr();
+            Hubbard.generate_Ham_sparse_repr(lattice, {m,n});
             std::cout << std::endl;
 
             // obtaining the lowest eigenvals of the matrix
-            Hubbard.locate_E0_repr(2,10);
+            Hubbard.locate_E0_repr(4,10);
             std::cout << std::endl;
-            energies.push_back(Hubbard.eigenvals_repr[0]);
+
+            E0_list.push_back(Hubbard.eigenvals_repr[0]);
         }
     }
 
 
     // for the parameters considered, we should obtain:
-    assert(std::abs(energies[0] + 10.146749232) < 1e-8);
-    assert(std::abs(energies[1] + 12.683981731) < 1e-8);
-    assert(std::abs(energies[2] + 12.683981731) < 1e-8);
-    assert(std::abs(energies[3] + 12.683981731) < 1e-8);
-    assert(std::abs(energies[4] + 10.101817578) < 1e-8);
-    assert(std::abs(energies[5] + 10.101817578) < 1e-8);
-    assert(std::abs(energies[6] + 12.683981731) < 1e-8);
-    assert(std::abs(energies[7] + 10.101817578) < 1e-8);
-    assert(std::abs(energies[8] + 10.101817578) < 1e-8);
+    assert(std::abs(E0_list[0] + 14.07605866) < 1e-8);
+    assert(std::abs(E0_list[1] + 10.50470669) < 1e-8);
+    assert(std::abs(E0_list[2] + 12.16861094) < 1e-8);
+    assert(std::abs(E0_list[3] + 12.19847764) < 1e-8);
+    assert(std::abs(E0_list[4] + 10.54300366) < 1e-8);
+    assert(std::abs(E0_list[5] + 14.03137587) < 1e-8);
+    assert(std::abs(E0_list[6] + 12.16861094) < 1e-8);
+    assert(std::abs(E0_list[7] + 12.19847764) < 1e-8);
+
+
+
+    // -------------------------------------------------------------------------
+    // the following is only for bench marking with older version of the code
+    std::vector<double> E0_check_list;
+    Hubbard.enumerate_basis_full({Nup,Ndown}, {Nup_total,Ndn_total});
+
+    for (int i = 0; i < Lx; i++) {
+        for (int j = 0; j < Ly; j++) {
+            // constructing the subspace basis
+            Hubbard.basis_init_repr_deprecated(lattice, {i,j});
+
+            // generating matrix of the Hamiltonian in the subspace
+            Hubbard.generate_Ham_sparse_repr_deprecated();
+            std::cout << std::endl;
+
+            // obtaining the lowest eigenvals of the matrix
+            Hubbard.locate_E0_repr(2,10);
+            std::cout << std::endl;
+            E0_check_list.push_back(Hubbard.eigenvals_repr[0]);
+        }
+    }
+
+    assert(E0_list.size() == E0_check_list.size());
+    for (decltype(E0_list.size()) j = 0; j < E0_list.size(); j++) {
+        assert(std::abs(E0_list[j]-E0_check_list[j]) < 1e-8);
+        std::cout << "Energy comparison: " << E0_list[j] << "\tvs\t" << E0_check_list[j] << std::endl;
+    }
+
+
 }
