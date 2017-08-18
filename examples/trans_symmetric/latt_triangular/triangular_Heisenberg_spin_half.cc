@@ -8,7 +8,7 @@ int main() {
     // parameters
     double J1 = 1.0;
     int Lx = 4;
-    int Ly = 2;
+    int Ly = 4;
     double Sz_total_val = 0.0;
 
     std::cout << "Lx =      " << Lx << std::endl;
@@ -86,33 +86,33 @@ int main() {
         }
     }
 
-    // constructing the Hilbert space basis
-    Heisenberg.enumerate_basis_full({Sz_total}, {Sz_total_val});
 
+    // to use translational symmetry, we first fill the Weisse tables
+    Heisenberg.fill_Weisse_table(lattice);
 
-    std::vector<double> energies;
+    std::vector<double> E0_list;
     for (int m = 0; m < Lx; m++) {
         for (int n = 0; n < Ly; n++) {
-            // constructing the subspace basis
-            Heisenberg.basis_init_repr_deprecated(std::vector<int>{m,n}, lattice);
+            // constructing the Hilbert space basis
+            Heisenberg.enumerate_basis_repr(lattice, std::vector<int>{m,n}, {Sz_total}, {Sz_total_val});
 
             // generating matrix of the Hamiltonian in the subspace
-            Heisenberg.generate_Ham_sparse_repr();
+            Heisenberg.generate_Ham_sparse_repr(lattice, std::vector<int>{m,n});
             std::cout << std::endl;
 
             // obtaining the lowest eigenvals of the matrix
-            Heisenberg.locate_E0_repr();
+            Heisenberg.locate_E0_repr(4,10);
             std::cout << std::endl;
-            energies.push_back(Heisenberg.eigenvals_repr[0]);
+
+            E0_list.push_back(Heisenberg.eigenvals_repr[0]);
         }
     }
 
 
     // for the parameters considered, we should obtain:
-    assert(std::abs(energies[0] + 6.0) < 1e-8);
-    assert(std::abs(energies[1] + 4.0) < 1e-8);
-    assert(std::abs(energies[2] + 4.0) < 1e-8);
-    assert(std::abs(energies[3] + 4.0) < 1e-8);
-    assert(std::abs(energies[4] + 4.0) < 1e-8);
-    assert(std::abs(energies[5] + 4.0) < 1e-8);
+    assert(std::abs(E0_list[0] + 8.555514918) < 1e-8);
+    assert(std::abs(E0_list[1] + 8.002263841) < 1e-8);
+    assert(std::abs(E0_list[2] + 7.944709784) < 1e-8);
+    assert(std::abs(E0_list[3] + 8.002263841) < 1e-8);
+    assert(std::abs(E0_list[6] + 7.588987242) < 1e-8);
 }

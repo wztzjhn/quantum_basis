@@ -36,8 +36,8 @@ results
 bin
 alps_benchmark
 performance_test
-examples/translation_sym/test
-examples/no_sym/test
+examples/trans_absent/test
+examples/trans_symmetric/test
 
 # Other files
 *.nb
