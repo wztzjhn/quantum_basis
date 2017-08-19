@@ -1304,7 +1304,8 @@ namespace qbasis {
         
         int fail = g.BSF_set_JaJb(Lin_Ja, Lin_Jb);
         if (fail) {
-            std::cout << "Lin Table failed to build!!!" << std::endl;  // there is always a way to build, but need smarter ordering of the input basis
+            // there is always a way to build, but need smarter ordering of the input basis
+            std::cout << "Lin Table failed to build!!!" << std::endl;
             Lin_Ja.clear();
             Lin_Ja.shrink_to_fit();
             Lin_Jb.clear();
@@ -1449,15 +1450,16 @@ namespace qbasis {
                            const MltArray_PairVec &Weisse_e_lt,
                            const MltArray_PairVec &Weisse_e_eq,
                            const MltArray_PairVec &Weisse_e_gt,
-                           const MltArray_uint32 &Weisse_w_lt,
-                           const MltArray_uint32 &Weisse_w_eq)
+                           const MltArray_uint32  &Weisse_w_lt,
+                           const MltArray_uint32  &Weisse_w_eq,
+                           const MltArray_uint32  &Weisse_w_gt)
     {
         auto latt_sub             = divide_lattice(latt_parent);
         uint32_t latt_sub_dim     = latt_sub.dimension();
         auto base_sub             = latt_sub.Linear_size();
         uint32_t num_groups       = groups_sub.size();
         
-        std::ofstream fout("log_Weisse_tableE.txt", std::ios::out);
+        std::ofstream fout("log_Weisse_table.txt", std::ios::out);
         
         fout << "print out e=" << std::endl;
         for (uint32_t ga = 0; ga < num_groups; ga++) {
@@ -1641,6 +1643,33 @@ namespace qbasis {
             }
         }
         
+        if (Weisse_w_gt.size() == Weisse_w_lt.size()) {
+            fout << "print out w>" << std::endl;
+            for (uint32_t ga = 0; ga < num_groups; ga++) {
+                for (uint32_t gb = 0; gb < num_groups; gb++) {
+                    fout << "---------------" << std::endl;
+                    fout << "ga,    gb    = " << ga << ", " << gb << std::endl;
+                    std::vector<uint32_t> disp_j(latt_sub_dim,0);
+                    while (! dynamic_base_overflow(disp_j, base_sub)) {
+                        std::vector<uint64_t> pos_w{ga,gb};
+                        pos_w.insert(pos_w.end(), disp_j.begin(), disp_j.end());
+                        auto g = Weisse_w_gt.index(pos_w);
+                        if (g < groups_parent.size()) {
+                            fout << "j = ";
+                            for (decltype(disp_j.size()) j = 0; j < disp_j.size(); j++) {
+                                fout << disp_j[j] << "\t";
+                            }
+                            fout << std::endl;
+                            fout << "g(parent) = " << g << std::endl;
+                            fout << "omega = " << groups_parent[g].second << std::endl;
+                            fout << std::endl;
+                        }
+                        disp_j = dynamic_base_plus1(disp_j, base_sub);
+                    }
+                }
+            }
+        }
+        
         fout.close();
         
     }
@@ -1656,9 +1685,14 @@ namespace qbasis {
                                 const std::vector<uint32_t> &belong2group,
                                 const std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> &groups_parent,
                                 const std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> &groups_sub,
-                                MltArray_PairVec &Weisse_e_lt, MltArray_PairVec &Weisse_e_eq, MltArray_PairVec &Weisse_e_gt,
-                                MltArray_uint32 &Weisse_w_lt,  MltArray_uint32 &Weisse_w_eq)
+                                MltArray_PairVec &Weisse_e_lt,
+                                MltArray_PairVec &Weisse_e_eq,
+                                MltArray_PairVec &Weisse_e_gt,
+                                MltArray_uint32  &Weisse_w_lt,
+                                MltArray_uint32  &Weisse_w_eq,
+                                MltArray_uint32  &Weisse_w_gt)
     {
+        assert(latt_parent.total_sites() % 2 == 0);
         auto latt_sub             = divide_lattice(latt_parent);
         uint64_t dim_repr         = basis_sub_repr.size();
         uint32_t num_groups       = groups_sub.size();
@@ -1666,10 +1700,8 @@ namespace qbasis {
         auto latt_sub_linear_size = latt_sub.Linear_size();
         auto base_parent          = latt_parent.Linear_size();
         auto base_sub             = latt_sub.Linear_size();
-        bool flag_trans           = false;
-        bool even_site_check      = (latt_parent.num_sublattice() % 2 == 0 ? true : false);
+        bool flag_trans           = false;                                      // if translation symmetry exists
         for (uint32_t j = 0; j < latt_sub_dim; j++) {
-            if (base_parent[j] % 2 == 0) even_site_check = true;
             if (! trans_sym[j]) {
                 base_parent[j] = 1;
                 base_sub[j]    = 1;
@@ -1678,19 +1710,15 @@ namespace qbasis {
             }
         }
         assert(flag_trans);
-        assert(even_site_check);  // current implementation requires even number of sites on at least one direction
-        
-        
-        /*
-        for (decltype(belong2group.size()) j = 0; j < belong2group.size(); j++) {
-            std::cout << "r: " << j << std::endl;
-            basis_sub_repr[j].prt_bits(props_sub);
-            std::cout << "omega[" << j << "] = " << omega_g[belong2group[j]] << std::endl;
-            std::cout << "belong2group[" << j << "] = " << belong2group[j] << std::endl;
-            std::cout << std::endl;
+        // check if the partitioned dimension involved in translation (if not, then the counting of repr has to be doubled)
+        uint32_t dim_spec = latt_parent.dimension_spec();
+        bool dim_spec_involved;
+        if (dim_spec == latt_sub_dim) {
+            assert(latt_parent.num_sublattice() % 2 == 0);
+            dim_spec_involved = false;
+        } else {
+            dim_spec_involved = trans_sym[dim_spec];
         }
-        std::cout << std::endl;
-        */
         
         // gather a list of examples for different groups
         std::vector<std::vector<mbasis_elem>> examples(num_groups);
@@ -1717,6 +1745,8 @@ namespace qbasis {
         }
         Weisse_w_lt = MltArray_uint32(linear_size, groups_parent.size() + 10);
         Weisse_w_eq = MltArray_uint32(linear_size, groups_parent.size() + 10);
+        Weisse_w_gt = MltArray_uint32(linear_size, groups_parent.size() + 10);
+        if (dim_spec_involved) Weisse_w_gt = MltArray_uint32();                  // not used in this case
         for (uint32_t j = 0; j < latt_sub_dim; j++) {
             if (trans_sym[j]) {
                 linear_size.push_back(static_cast<uint64_t>(latt_sub_linear_size[j]));
@@ -1758,71 +1788,51 @@ namespace qbasis {
                 }
                 // build table e<
                 if (flag_lt) {
-                    auto ra = examples[ga].front();
-                    auto rb = examples[gb].back();
-                    /*
-                    std::cout << "ra: " << std::endl;
-                    ra.prt_bits(props_sub);
-                    std::cout << "rb: " << std::endl;
-                    rb.prt_bits(props_sub);
-                    std::cout << std::endl;
-                    */
+                    auto &ra = examples[ga].front();
+                    auto &rb = examples[gb].back();
                     assert(ra < rb);
-                    // loop over disp_j
+                    
                     std::vector<uint32_t> disp_j(latt_sub_dim,0);
                     while (! dynamic_base_overflow(disp_j, base_sub)) {
-                        // generate |ra> z \tilde{T}^j |rb>
                         auto rb_new = rb;
                         std::vector<int> disp_j_int(latt_sub_dim);
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         int sgn;
-                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
-                        
-                        // there are over countings: many disp_j gives the same rb_new, but we only need the one in the record
+                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);                   // Tj |rb>
                         auto rb_new_label = rb_new.label(props_sub);
                         assert(basis_sub_repr[belong2rep[rb_new_label]] == rb);
                         auto dist_to_rb = dist2rep[rb_new_label];
-                        if (dist_to_rb != disp_j_int) {
+                        if (dist_to_rb != disp_j_int) {                                           // remove over-countings
                             disp_j = dynamic_base_plus1(disp_j, base_sub);
                             continue;
                         }
-                        
                         mbasis_elem ra_z_Tj_rb;
-                        zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb);
-                        /*
-                        std::cout << "ra_z_Tj_rb: " << std::endl;
-                        ra_z_Tj_rb.prt_bits(props_parent);
-                        std::cout << std::endl;
-                        */
+                        zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb); // |ra> z Tj |rb>
                         
-                        // loop over disp_i
                         std::vector<uint32_t> disp_i(latt_sub_dim,0);
                         while (! dynamic_base_overflow(disp_i, base_parent)) {
                             std::vector<int> disp_i_int(latt_sub_dim);
                             for (uint32_t j = 0; j < latt_sub_dim; j++) disp_i_int[j] = static_cast<int>(disp_i[j]);
                             auto Ti_ra_z_Tj_rb = ra_z_Tj_rb;
-                            Ti_ra_z_Tj_rb.translate(props_parent, latt_parent, disp_i_int, sgn);  // Ti (|ra> z Tj |rb>) obtained!!!
-                            /*
-                            std::cout << "Ti_ra_z_Tj_rb: " << std::endl;
-                            Ti_ra_z_Tj_rb.prt_bits(props_parent);
-                            std::cout << std::endl;
-                            */
+                            Ti_ra_z_Tj_rb.translate(props_parent, latt_parent, disp_i_int, sgn);  // Ti (|ra> z Tj |rb>)
                             
                             // now need find ja, jb
                             uint64_t state_sub1_label, state_sub2_label;
-                            Ti_ra_z_Tj_rb.label_sub(props_parent, state_sub1_label, state_sub2_label);
+                            Ti_ra_z_Tj_rb.label_sub(props_parent, state_sub1_label, state_sub2_label); // |a>, |b>
                             
                             auto state_rep1_label = belong2rep[state_sub1_label];
                             auto state_rep2_label = belong2rep[state_sub2_label];
-                            auto &state_rep1      = basis_sub_repr[state_rep1_label];
-                            auto &state_rep2      = basis_sub_repr[state_rep2_label];
-                            auto &dist2rep1       = dist2rep[state_sub1_label];
-                            auto &dist2rep2       = dist2rep[state_sub2_label];
+                            auto &state_rep1      = basis_sub_repr[state_rep1_label];             // |ra'>
+                            auto &state_rep2      = basis_sub_repr[state_rep2_label];             // |rb'>
+                            auto &dist2rep1       = dist2rep[state_sub1_label];                   // ja'
+                            auto &dist2rep2       = dist2rep[state_sub2_label];                   // jb'
                             std::vector<uint64_t> pos{ga, gb};
-                            if (state_rep1 < state_rep2) {
+                            if (state_rep1 < state_rep2) {                                        // ra' < rb' satisfied
+                                assert(belong2group[state_rep1_label] == ga);
+                                assert(belong2group[state_rep2_label] == gb);
                                 assert(state_rep1 == ra && state_rep2 == rb);
-                                pos.insert(pos.end(), dist2rep1.begin(), dist2rep1.end());  // ja
-                                pos.insert(pos.end(), dist2rep2.begin(), dist2rep2.end());  // jb
+                                pos.insert(pos.end(), dist2rep1.begin(), dist2rep1.end());        // ja'
+                                pos.insert(pos.end(), dist2rep2.begin(), dist2rep2.end());        // jb'
                                 assert(pos.size() == linear_size.size());
                                 if ( disp_j < Weisse_e_lt.index(pos).second ||
                                     (disp_j == Weisse_e_lt.index(pos).second && disp_i < Weisse_e_lt.index(pos).first)) {
@@ -1830,19 +1840,6 @@ namespace qbasis {
                                     Weisse_e_lt.index(pos).second = disp_j;
                                 }
                             }
-                            /*
-                            else {
-                                assert(state_rep1 == rb && state_rep2 == ra);
-                                pos.insert(pos.end(), dist2rep2.begin(), dist2rep2.end());  // ja
-                                pos.insert(pos.end(), dist2rep1.begin(), dist2rep1.end());  // jb
-                                assert(pos.size() == linear_size.size());
-                                if (disp_j < table_lt.index(pos).second ||
-                                    (disp_j == table_lt.index(pos).second && disp_i < table_lt.index(pos).first)) {
-                                    table_lt.index(pos).first  = disp_i;
-                                    table_lt.index(pos).second = disp_j;
-                                }
-                            }
-                            */
                             disp_i = dynamic_base_plus1(disp_i, base_parent);
                         }
                         disp_j = dynamic_base_plus1(disp_j, base_sub);
@@ -1850,51 +1847,52 @@ namespace qbasis {
                 }
                 // build table e>
                 if (flag_gt) {
-                    auto ra = examples[gb].front();
-                    auto rb = examples[ga].back();
-                    assert(ra < rb);
-                    // loop over disp_j
+                    auto &ra = dim_spec_involved ? examples[gb].front() : examples[ga].back();
+                    auto &rb = dim_spec_involved ? examples[ga].back() : examples[gb].front();
+                    assert((dim_spec_involved && ra < rb) || ((! dim_spec_involved) && rb < ra));
+                    
                     std::vector<uint32_t> disp_j(latt_sub_dim,0);
                     while (! dynamic_base_overflow(disp_j, base_sub)) {
-                        // generate |ra> z \tilde{T}^j |rb>
                         auto rb_new = rb;
                         std::vector<int> disp_j_int(latt_sub_dim);
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         int sgn;
-                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
+                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);                   // Tj |rb>
                         
-                        // there are over countings: many disp_j gives the same rb_new, but we only need the one in the record
                         auto rb_new_label = rb_new.label(props_sub);
                         assert(basis_sub_repr[belong2rep[rb_new_label]] == rb);
                         auto dist_to_rb = dist2rep[rb_new_label];
-                        if (dist_to_rb != disp_j_int) {
+                        if (dist_to_rb != disp_j_int) {                                           // remove over-countings
                             disp_j = dynamic_base_plus1(disp_j, base_sub);
                             continue;
                         }
-                        
                         mbasis_elem ra_z_Tj_rb;
-                        zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb);
-                        // loop over disp_i
+                        zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb); // |ra> z Tj |rb>
+                        
                         std::vector<uint32_t> disp_i(latt_sub_dim,0);
                         while (! dynamic_base_overflow(disp_i, base_parent)) {
                             std::vector<int> disp_i_int(latt_sub_dim);
                             for (uint32_t j = 0; j < latt_sub_dim; j++) disp_i_int[j] = static_cast<int>(disp_i[j]);
                             auto Ti_ra_z_Tj_rb = ra_z_Tj_rb;
-                            Ti_ra_z_Tj_rb.translate(props_parent, latt_parent, disp_i_int, sgn);  // Ti (|ra> z Tj |rb>) obtained!!!
+                            Ti_ra_z_Tj_rb.translate(props_parent, latt_parent, disp_i_int, sgn);  // Ti (|ra> z Tj |rb>)
+                            
                             // now need find ja, jb
                             uint64_t state_sub1_label, state_sub2_label;
                             Ti_ra_z_Tj_rb.label_sub(props_parent, state_sub1_label, state_sub2_label);
                             auto state_rep1_label = belong2rep[state_sub1_label];
                             auto state_rep2_label = belong2rep[state_sub2_label];
-                            auto &state_rep1      = basis_sub_repr[state_rep1_label];
-                            auto &state_rep2      = basis_sub_repr[state_rep2_label];
-                            auto &dist2rep1       = dist2rep[state_sub1_label];
-                            auto &dist2rep2       = dist2rep[state_sub2_label];
+                            auto &state_rep1      = basis_sub_repr[state_rep1_label];             // |ra'>
+                            auto &state_rep2      = basis_sub_repr[state_rep2_label];             // |rb'>
+                            auto &dist2rep1       = dist2rep[state_sub1_label];                   // ja'
+                            auto &dist2rep2       = dist2rep[state_sub2_label];                   // jb'
                             std::vector<uint64_t> pos{ga, gb};
-                            if (state_rep2 < state_rep1) {
-                                assert(state_rep1 == rb && state_rep2 == ra);
-                                pos.insert(pos.end(), dist2rep1.begin(), dist2rep1.end());  // ja
-                                pos.insert(pos.end(), dist2rep2.begin(), dist2rep2.end());  // jb
+                            if (state_rep2 < state_rep1) {                                        // ra' > rb' satisfied
+                                assert(belong2group[state_rep1_label] == ga);
+                                assert(belong2group[state_rep2_label] == gb);
+                                assert(state_rep1 == (dim_spec_involved?rb:ra));
+                                assert(state_rep2 == (dim_spec_involved?ra:rb));
+                                pos.insert(pos.end(), dist2rep1.begin(), dist2rep1.end());        // ja
+                                pos.insert(pos.end(), dist2rep2.begin(), dist2rep2.end());        // jb
                                 assert(pos.size() == linear_size.size());
                                 if ( disp_j < Weisse_e_gt.index(pos).second ||
                                     (disp_j == Weisse_e_gt.index(pos).second && disp_i < Weisse_e_gt.index(pos).first)) {
@@ -1909,44 +1907,43 @@ namespace qbasis {
                 }
                 // build table e=
                 if (flag_eq) {
-                    auto ra = examples[ga].front();
-                    auto rb = ra;
-                    // loop over disp_j
+                    auto &ra = examples[ga].front();
+                    auto &rb = ra;
+                    
                     std::vector<uint32_t> disp_j(latt_sub_dim,0);
                     while (! dynamic_base_overflow(disp_j, base_sub)) {
-                        // generate |ra> z \tilde{T}^j |rb>
                         auto rb_new = rb;
                         std::vector<int> disp_j_int(latt_sub_dim);
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         int sgn;
-                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
+                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);                   // Tj |rb>
                         
-                        // there are over countings: many disp_j gives the same rb_new, but we only need the one in the record
                         auto rb_new_label = rb_new.label(props_sub);
                         assert(basis_sub_repr[belong2rep[rb_new_label]] == rb);
                         auto dist_to_rb = dist2rep[rb_new_label];
-                        if (dist_to_rb != disp_j_int) {
+                        if (dist_to_rb != disp_j_int) {                                           // remove over-countings
                             disp_j = dynamic_base_plus1(disp_j, base_sub);
                             continue;
                         }
-                        
                         mbasis_elem ra_z_Tj_rb;
-                        zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb);
-                        // loop over disp_i
+                        zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb); // |ra> z Tj |rb>
+                        
                         std::vector<uint32_t> disp_i(latt_sub_dim,0);
                         while (! dynamic_base_overflow(disp_i, base_parent)) {
                             std::vector<int> disp_i_int(latt_sub_dim);
                             for (uint32_t j = 0; j < latt_sub_dim; j++) disp_i_int[j] = static_cast<int>(disp_i[j]);
                             auto Ti_ra_z_Tj_rb = ra_z_Tj_rb;
-                            Ti_ra_z_Tj_rb.translate(props_parent, latt_parent, disp_i_int, sgn);  // Ti (|ra> z Tj |rb>) obtained!!!
+                            Ti_ra_z_Tj_rb.translate(props_parent, latt_parent, disp_i_int, sgn);  // Ti (|ra> z Tj |rb>)
+                            
                             // now need find ja, jb
                             uint64_t state_sub1_label, state_sub2_label;
                             Ti_ra_z_Tj_rb.label_sub(props_parent, state_sub1_label, state_sub2_label);
-                            auto &dist2rep1       = dist2rep[state_sub1_label];
-                            auto &dist2rep2       = dist2rep[state_sub2_label];
+                            assert(belong2rep[state_sub1_label] == belong2rep[state_sub2_label]);
+                            auto &dist2rep1       = dist2rep[state_sub1_label];                   // ja
+                            auto &dist2rep2       = dist2rep[state_sub2_label];                   // jb
                             std::vector<uint64_t> pos{ga, gb};
-                            pos.insert(pos.end(), dist2rep1.begin(), dist2rep1.end());  // ja
-                            pos.insert(pos.end(), dist2rep2.begin(), dist2rep2.end());  // jb
+                            pos.insert(pos.end(), dist2rep1.begin(), dist2rep1.end());            // ja
+                            pos.insert(pos.end(), dist2rep2.begin(), dist2rep2.end());            // jb
                             assert(pos.size() == linear_size.size());
                             if ( disp_j < Weisse_e_eq.index(pos).second ||
                                 (disp_j == Weisse_e_eq.index(pos).second && disp_i < Weisse_e_eq.index(pos).first)) {
@@ -1961,13 +1958,10 @@ namespace qbasis {
             }
         }
         
-        // build table w< and w=
+        
         for (uint32_t ga = 0; ga < num_groups; ga++) {
             auto ra = examples[ga].front();
             for (uint32_t gb = 0; gb < num_groups; gb++) {
-                //std::cout << "***************" << std::endl;
-                //std::cout << "ga,    gb    = " << ga << ", " << gb << std::endl;
-                
                 std::vector<uint32_t> disp_i(latt_sub_dim,0);  // fixed to ja=0
                 std::vector<uint32_t> disp_j(latt_sub_dim,0);  // now also serves the job of jb
                 while (! dynamic_base_overflow(disp_j, base_sub)) {
@@ -1978,17 +1972,16 @@ namespace qbasis {
                     pos_w.insert(pos_w.end(), disp_j.begin(), disp_j.end());
                     auto res_lt = Weisse_e_lt.index(pos_e);
                     auto res_eq = Weisse_e_eq.index(pos_e);
+                    // build table w<
                     if (res_lt.first == disp_i && res_lt.second == disp_j) {
                         std::vector<int> disp_j_int(latt_sub_dim);
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         auto rb_new = examples[gb].back();
-                        //auto rb_label = rb_new.label(props_sub);
                         assert(ra < rb_new);
                         int sgn;
-                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
-                        
+                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);                   // Tj |rb>
                         mbasis_elem ra_z_Tj_rb;
-                        zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb);
+                        zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb); // |ra> z Tj |rb>
                         // loop over groups, to check which one the repr belongs to
                         for (uint32_t g = 0; g < groups_parent.size(); g++) {
                             bool flag = true;
@@ -2003,25 +1996,23 @@ namespace qbasis {
                                     break;
                                 }
                             }
-                            if (flag) {                     // belongs to this group
+                            if (flag) {                                                           // group found
                                 Weisse_w_lt.index(pos_w) = g;
                                 break;
                             }
                         }
                         assert(Weisse_w_lt.index(pos_w) < groups_parent.size());
                     }
-                    //else {
-                    //    Weisse_w_lt.index(pos_w) = 0;
-                    //}
+                    // build table w=
                     if (res_eq.first == disp_i && res_eq.second == disp_j) {
                         std::vector<int> disp_j_int(latt_sub_dim);
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         auto rb_new = examples[gb].front();
                         assert(ra == rb_new);
                         int sgn;
-                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);
+                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);                   // Tj |rb>
                         mbasis_elem ra_z_Tj_rb;
-                        zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb);
+                        zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb); // |ra> z Tj |rb>
                         // loop over groups, to check which one the repr belongs to
                         for (uint32_t g = 0; g < groups_parent.size(); g++) {
                             bool flag = true;
@@ -2036,41 +2027,72 @@ namespace qbasis {
                                     break;
                                 }
                             }
-                            if (flag) {                     // belongs to this group
+                            if (flag) {                                                           // group found
                                 Weisse_w_eq.index(pos_w) = g;
                                 break;
                             }
                         }
                         assert(Weisse_w_eq.index(pos_w) < groups_parent.size());
                     }
-                    //else {
-                    //    Weisse_w_eq.index(pos_w) = 0;
-                    //}
+                    disp_j = dynamic_base_plus1(disp_j, base_sub);
+                }
+            }
+            
+            // build table w>
+            if (Weisse_w_gt.size() == 0) continue;
+            ra = examples[ga].back();
+            for (uint32_t gb = 0; gb < num_groups; gb++) {
+                std::vector<uint32_t> disp_i(latt_sub_dim,0);  // fixed to ja=0
+                std::vector<uint32_t> disp_j(latt_sub_dim,0);  // now also serves the job of jb
+                while (! dynamic_base_overflow(disp_j, base_sub)) {
+                    std::vector<uint64_t> pos_e{ga,gb};
+                    std::vector<uint64_t> pos_w{ga,gb};
+                    pos_e.insert(pos_e.end(), disp_i.begin(), disp_i.end());
+                    pos_e.insert(pos_e.end(), disp_j.begin(), disp_j.end());
+                    pos_w.insert(pos_w.end(), disp_j.begin(), disp_j.end());
+                    auto res_gt = Weisse_e_gt.index(pos_e);
                     
-                    /*
-                    std::cout << "j  = ";
-                    for (decltype(disp_j.size()) j = 0; j < disp_j.size(); j++) {
-                        std::cout << disp_j[j] << "\t";
+                    if (res_gt.first == disp_i && res_gt.second == disp_j) {
+                        std::vector<int> disp_j_int(latt_sub_dim);
+                        for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
+                        auto rb_new = examples[gb].front();
+                        assert(rb_new < ra);
+                        int sgn;
+                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);                   // Tj |rb>
+                        mbasis_elem ra_z_Tj_rb;
+                        zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb); // |ra> z Tj |rb>
+                        // loop over groups, to check which one the repr belongs to
+                        for (uint32_t g = 0; g < groups_parent.size(); g++) {
+                            bool flag = true;
+                            for (uint32_t d = 0; d < latt_sub_dim; d++) {
+                                if (! trans_sym[d]) continue;
+                                std::vector<int> disp(latt_sub_dim);
+                                for (uint32_t i = 0; i < latt_sub_dim; i++) disp[i] = groups_parent[g].first[d][i];
+                                auto temp = ra_z_Tj_rb;
+                                temp.translate(props_parent, latt_parent, disp, sgn);
+                                if (temp != ra_z_Tj_rb) {
+                                    flag = false;
+                                    break;
+                                }
+                            }
+                            if (flag) {                                                           // group found
+                                Weisse_w_gt.index(pos_w) = g;
+                                break;
+                            }
+                        }
+                        assert(Weisse_w_gt.index(pos_w) < groups_parent.size());
                     }
-                    std::cout << std::endl;
-                    std::cout << "w< = ";
-                    for (decltype(latt_sub_dim) kk = 0; kk < latt_sub_dim; kk++) {
-                        std::cout << table_w_lt.index(pos_w)[kk] << "\t";
-                    }
-                    std::cout << std::endl << std::endl;
-                    */
-                    
                     
                     disp_j = dynamic_base_plus1(disp_j, base_sub);
                 }
             }
+            
+            
         }
         
         log_Weisse_tables(latt_parent, groups_parent, groups_sub,
                           Weisse_e_lt, Weisse_e_eq, Weisse_e_gt,
-                          Weisse_w_lt, Weisse_w_eq);
-        
-        
+                          Weisse_w_lt, Weisse_w_eq, Weisse_w_gt);
     }
     
     

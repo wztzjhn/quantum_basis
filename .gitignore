@@ -44,3 +44,4 @@ examples/trans_symmetric/test
 *.lyx
 *.dat
 log*.txt
+output.txt

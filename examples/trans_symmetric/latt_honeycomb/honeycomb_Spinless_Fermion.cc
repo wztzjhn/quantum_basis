@@ -9,7 +9,7 @@ int main() {
     // parameters
     double t = 1;
     double V1 = 4.0;
-    int Lx = 4;
+    int Lx = 3;
     int Ly = 2;
     double N_total = Lx * Ly - 2; // total number of fermions on lattice
 
@@ -125,25 +125,40 @@ int main() {
         }
     }
 
-/*
-    // constructing the Hilbert space basis
-    spinless.enumerate_basis_full({Nfermion}, {N_total});
-
-    // optional, will use more memory and give higher speed
-    // generating matrix of the Hamiltonian in the full Hilbert space
-    spinless.generate_Ham_sparse_full(false);
-    std::cout << std::endl;
-
-
-    // obtaining the eigenvals of the matrix
-    std::cout << "Energy correction per site   = " << (constant / lattice.total_sites()) << std::endl;
-    spinless.locate_E0_full(5,10);
-    std::cout << "Energy correction = " << constant << std::endl;
-    std::cout << "Energy per site   = " << ( spinless.energy_min() + constant ) / lattice.total_sites() << std::endl;
-    std::cout << std::endl;
-
-
     // for the parameters considered, we should obtain:
-    assert(std::abs(spinless.eigenvals_full[0] + 57.26820195) < 1e-8);
-*/
+    assert(std::abs(E0_list[0] + 28.60363167) < 1e-8);
+    assert(std::abs(E0_list[1] + 28.27163215) < 1e-8);
+    assert(std::abs(E0_list[2] + 28.60363167) < 1e-8);
+    assert(std::abs(E0_list[3] + 28.27163215) < 1e-8);
+    assert(std::abs(E0_list[4] + 28.60363167) < 1e-8);
+    assert(std::abs(E0_list[5] + 28.27163215) < 1e-8);
+    
+    
+    
+    
+    // -------------------------------------------------------------------------
+    // the following is only for bench marking with older version of the code
+    std::vector<double> E0_check_list;
+    spinless.enumerate_basis_full({Nfermion}, {N_total});
+    
+    for (int i = 0; i < Lx; i++) {
+        for (int j = 0; j < Ly; j++) {
+            // constructing the subspace basis
+            spinless.basis_init_repr_deprecated(lattice, {i,j});
+            
+            // generating matrix of the Hamiltonian in the subspace
+            spinless.generate_Ham_sparse_repr_deprecated();
+            std::cout << std::endl;
+            
+            // obtaining the lowest eigenvals of the matrix
+            spinless.locate_E0_repr(3,10);
+            std::cout << std::endl;
+            E0_check_list.push_back(spinless.eigenvals_repr[0]);
+        }
+    }
+    
+    for (decltype(E0_list.size()) j = 0; j < E0_list.size(); j++) {
+        std::cout << "E0(j=" << j << ")=\t" << E0_list[j]
+        << "\tvs\t" << E0_check_list[j] << std::endl;
+    }
 }

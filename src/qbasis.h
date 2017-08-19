@@ -86,9 +86,9 @@ namespace qbasis {
         multi_array& operator=(const T &element);
         ~multi_array() {}
         
-        uint32_t dim() { return dim_; }
-        uint64_t size() { return size_; }
-        std::vector<uint64_t> linear_size() { return linear_size_; }
+        uint32_t dim() const { return dim_; }
+        uint64_t size() const { return size_; }
+        std::vector<uint64_t> linear_size() const { return linear_size_; }
         T& index(const std::vector<uint64_t> &pos);
         const T& index(const std::vector<uint64_t> &pos) const;
     private:
@@ -178,7 +178,7 @@ namespace qbasis {
                                 const std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> &groups_parent,
                                 const std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> &groups_sub,
                                 MltArray_PairVec &Weisse_e_lt, MltArray_PairVec &Weisse_e_eq, MltArray_PairVec &Weisse_e_gt,
-                                MltArray_uint32 &Weisse_w_lt, MltArray_uint32 &Weisse_w_eq);
+                                MltArray_uint32 &Weisse_w_lt, MltArray_uint32 &Weisse_w_eq, MltArray_uint32 &Weisse_w_gt);
     // <r|P_k|r>^{-1}
     double norm_trans_repr(const std::vector<basis_prop> &props, const mbasis_elem &repr,
                            const lattice &latt_parent, const std::pair<std::vector<std::vector<uint32_t>>,uint32_t> &group_parent,
@@ -1008,6 +1008,10 @@ namespace qbasis {
             return dim;
         }
         
+        uint32_t dimension_spec() const {
+            return dim_spec;
+        }
+        
         uint32_t num_sublattice() const {
             return num_sub;
         }
@@ -1102,8 +1106,7 @@ namespace qbasis {
         std::vector<uint32_t>              belong2group_sub;
         MltArray_PairVec                   Weisse_e_lt, Weisse_e_eq, Weisse_e_gt;
         // Note: different from Weisse's paper, here we use Weisse_w to store the (parent) group label, instead of omega_g
-        MltArray_uint32                    Weisse_w_lt, Weisse_w_eq;
-        //std::vector<MltArray_double>       Weisse_nu_lt, Weisse_nu_eq;          // Note: nu_k = 1 / <rep | P_k | rep>
+        MltArray_uint32                    Weisse_w_lt, Weisse_w_eq, Weisse_w_gt;
         
         std::vector<csr_mat<T>>            HamMat_csr_full;
         std::vector<csr_mat<T>>            HamMat_csr_repr;

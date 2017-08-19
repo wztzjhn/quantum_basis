@@ -10,8 +10,8 @@ int main() {
     double t = 1;
     double V1 = 4.0;
     int Lx = 3;
-    int Ly = 3;
-    double N_total = Lx * Ly; // total number of fermions on lattice
+    int Ly = 2;
+    double N_total = Lx * Ly - 2; // total number of fermions on lattice
 
     std::cout << "Lx =      " << Lx << std::endl;
     std::cout << "Ly =      " << Ly << std::endl;
@@ -122,5 +122,5 @@ int main() {
 
 
     // for the parameters considered, we should obtain:
-    assert(std::abs(spinless.eigenvals_full[0] + 57.26820195) < 1e-8);
+    assert(std::abs(spinless.eigenvals_full[0] + 28.60363167) < 1e-8);
 }
