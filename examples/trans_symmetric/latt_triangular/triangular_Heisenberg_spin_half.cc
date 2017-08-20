@@ -94,10 +94,10 @@ int main() {
     for (int m = 0; m < Lx; m++) {
         for (int n = 0; n < Ly; n++) {
             // constructing the Hilbert space basis
-            Heisenberg.enumerate_basis_repr(lattice, {m,n}, {Sz_total}, {Sz_total_val});
+            Heisenberg.enumerate_basis_repr({m,n}, {Sz_total}, {Sz_total_val});
 
             // generating matrix of the Hamiltonian in the subspace
-            Heisenberg.generate_Ham_sparse_repr(lattice, {m,n});
+            Heisenberg.generate_Ham_sparse_repr();
             std::cout << std::endl;
 
             // obtaining the lowest eigenvals of the matrix

@@ -94,10 +94,10 @@ int main() {
     for (int m = 0; m < Lx; m++) {
         for (int n = 0; n < Ly; n++) {
             // constructing the Hilbert space basis
-            Hubbard.enumerate_basis_repr(lattice, {m,n}, {Nup,Ndown}, {Nup_total,Ndn_total});
+            Hubbard.enumerate_basis_repr({m,n}, {Nup,Ndown}, {Nup_total,Ndn_total});
 
             // generating matrix of the Hamiltonian in the subspace
-            Hubbard.generate_Ham_sparse_repr(lattice, {m,n});
+            Hubbard.generate_Ham_sparse_repr();
             std::cout << std::endl;
 
             // obtaining the lowest eigenvals of the matrix

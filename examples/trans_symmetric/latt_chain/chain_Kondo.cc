@@ -110,11 +110,11 @@ int main() {
     std::vector<double> E0_list;
     for (int momentum = 0; momentum < L; momentum++) {
         // constructing the Hilbert space basis
-        Kondo.enumerate_basis_repr(lattice, {momentum}, {Nelec_total,Sz_total}, {Nelec_total_val,Sz_total_val});
+        Kondo.enumerate_basis_repr({momentum}, {Nelec_total,Sz_total}, {Nelec_total_val,Sz_total_val});
 
         // optional in future, will use more memory and give higher speed
         // generating matrix of the Hamiltonian in the full Hilbert space
-        Kondo.generate_Ham_sparse_repr(lattice, {momentum});
+        Kondo.generate_Ham_sparse_repr();
         std::cout << std::endl;
 
         // obtaining the eigenvals of the matrix

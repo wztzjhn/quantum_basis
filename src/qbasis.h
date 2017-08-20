@@ -1022,6 +1022,8 @@ namespace qbasis {
         
         std::vector<uint32_t> Linear_size() const { return L; }
         
+        bool q_dividable() const;
+        
         uint32_t Lx() const { return L[0]; }
         uint32_t Ly() const { assert(L.size() > 1); return L[1]; }
         uint32_t Lz() const { assert(L.size() > 2); return L[2]; }
@@ -1030,7 +1032,7 @@ namespace qbasis {
         // the returned value is a list of lists: {{divisors for Lx}, {divisors for Ly}, ...}
         std::vector<std::vector<uint32_t>> divisor_v1(const std::vector<bool> &trans_sym) const;
         // {{1,1,1}, {1,1,2}, {1,1,5}, {1,2,1}, {1,2,2}, {1,2,5},...}, i.e., combine results from v1 to a single list
-        std::vector<std::vector<uint32_t>> divisor_v2(const std::vector<bool> &trans_sym) const;
+        //std::vector<std::vector<uint32_t>> divisor_v2(const std::vector<bool> &trans_sym) const;
         
         // enumerate all possible commensurate magnetic bravis basis, ordered by the unit cell size
         // note: equally, it gives all the possible translational subgroups (without dulplicates)
@@ -1074,39 +1076,23 @@ namespace qbasis {
         mopr<T> Ham_off_diag;
         MKL_INT nconv;
         
-        std::vector<bool> trans_sym;
-        
         // controls which sector of basis to be active
         // by default sec_full = 0 (e.g. Sz=0 ground state sector of Heisenberg model);
         // when needed, sec_full will be switched to 1 to activate another sector (e.g. Sz=1 sector),
         // such setting can avoid messing up the code when calculating correlation functions
+        uint32_t sec_sym;  // 0: work in dim_full; 1: work in dim_repr
         uint32_t sec_full, sec_repr;
         
         std::vector<MKL_INT> dim_full;
         std::vector<MKL_INT> dim_repr;
+        
+        std::vector<std::vector<int>> momenta;
         
         std::vector<std::vector<qbasis::mbasis_elem>> basis_full;   // full basis without translation sym
         std::vector<std::vector<qbasis::mbasis_elem>> basis_repr;   // basis with translation sym
         std::vector<std::vector<double>> norm_repr;                 // 1 / <rep | P_k | rep>
         std::vector<qbasis::mbasis_elem> basis_sub_full;            // basis for half lattice, used for building Weisse Table
         std::vector<qbasis::mbasis_elem> basis_sub_repr;            // reps for half lattice
-        
-        // Lin tables, for both full basis and translation basis
-        std::vector<std::vector<MKL_INT>> Lin_Ja_full;
-        std::vector<std::vector<MKL_INT>> Lin_Jb_full;
-        std::vector<std::vector<MKL_INT>> Lin_Ja_repr;
-        std::vector<std::vector<MKL_INT>> Lin_Jb_repr;
-        
-        // Weisse Tables for translation symmetry
-        std::vector<uint64_t>              belong2rep_sub;
-        std::vector<std::vector<int>>      dist2rep_sub;
-        std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> groups_parent;
-        std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> groups_sub;
-        std::vector<uint32_t>              omega_g_sub;
-        std::vector<uint32_t>              belong2group_sub;
-        MltArray_PairVec                   Weisse_e_lt, Weisse_e_eq, Weisse_e_gt;
-        // Note: different from Weisse's paper, here we use Weisse_w to store the (parent) group label, instead of omega_g
-        MltArray_uint32                    Weisse_w_lt, Weisse_w_eq, Weisse_w_gt;
         
         std::vector<csr_mat<T>>            HamMat_csr_full;
         std::vector<csr_mat<T>>            HamMat_csr_repr;
@@ -1162,18 +1148,17 @@ namespace qbasis {
         
         void switch_sec(const uint32_t &sec_full_, const uint32_t &sec_repr_);
         
-        // check if translational symmetry satisfied
-        void check_translation(const lattice &latt);
-        
         void fill_Weisse_table(const lattice &latt);
+        
+        // check if translational symmetry satisfied
+        void check_translation();
         
         // naive way of enumerating all possible basis state
         void enumerate_basis_full(std::vector<mopr<T>> conserve_lst = {},
                                   std::vector<double> val_lst = {});
         
         // Need to build Weiss Tables before enumerating representatives
-        void enumerate_basis_repr(const lattice &latt,
-                                  const std::vector<int> &momentum,
+        void enumerate_basis_repr(const std::vector<int> &momentum,
                                   std::vector<mopr<T>> conserve_lst = {},
                                   std::vector<double> val_lst = {});
         
@@ -1184,8 +1169,7 @@ namespace qbasis {
         void generate_Ham_sparse_full(const bool &upper_triangle = true);
         
         // generate the Hamiltonian using basis_repr
-        void generate_Ham_sparse_repr(const lattice &latt, const std::vector<int> &momentum,
-                                      const bool &upper_triangle = true);
+        void generate_Ham_sparse_repr(const bool &upper_triangle = true);
         
         void generate_Ham_sparse_repr_deprecated(const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr
         
@@ -1232,6 +1216,28 @@ namespace qbasis {
         double Emax;
         double E0;
         double gap;
+        
+        lattice latt_parent;
+        lattice latt_sub;
+        std::vector<bool> trans_sym;                               // if translation allowed in each dimension
+        bool dim_spec_involved;                                    // if translation allowed in partitioned direction
+        
+        // Lin tables, for both full basis and translation basis
+        std::vector<std::vector<MKL_INT>> Lin_Ja_full;
+        std::vector<std::vector<MKL_INT>> Lin_Jb_full;
+        std::vector<std::vector<MKL_INT>> Lin_Ja_repr;
+        std::vector<std::vector<MKL_INT>> Lin_Jb_repr;
+        
+        // Weisse Tables for translation symmetry
+        // Note: different from Weisse's paper, here we use Weisse_w to store the (parent) group label, instead of omega_g
+        std::vector<uint64_t>              belong2rep_sub;
+        std::vector<std::vector<int>>      dist2rep_sub;
+        std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> groups_parent;
+        std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> groups_sub;
+        std::vector<uint32_t>              omega_g_sub;
+        std::vector<uint32_t>              belong2group_sub;
+        MltArray_PairVec                   Weisse_e_lt, Weisse_e_eq, Weisse_e_gt;
+        MltArray_uint32                    Weisse_w_lt, Weisse_w_eq, Weisse_w_gt;
     };
     
 

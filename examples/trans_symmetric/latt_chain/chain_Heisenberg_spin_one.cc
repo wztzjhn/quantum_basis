@@ -80,11 +80,11 @@ int main() {
     std::vector<double> E0_list;
     for (int momentum = 0; momentum < L; momentum++) {
         // constructing the Hilbert space basis
-        Heisenberg.enumerate_basis_repr(lattice, {momentum}, {Sz_total}, {Sz_total_val});
+        Heisenberg.enumerate_basis_repr({momentum}, {Sz_total}, {Sz_total_val});
 
         // optional in future, will use more memory and give higher speed
         // generating matrix of the Hamiltonian in the full Hilbert space
-        Heisenberg.generate_Ham_sparse_repr(lattice, {momentum});
+        Heisenberg.generate_Ham_sparse_repr();
         std::cout << std::endl;
 
         // obtaining the eigenvals of the matrix

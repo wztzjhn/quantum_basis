@@ -111,10 +111,10 @@ int main() {
     for (int m = 0; m < Lx; m++) {
         for (int n = 0; n < Ly; n++) {
             // constructing the Hilbert space basis
-            spinless.enumerate_basis_repr(lattice, {m,n}, {Nfermion}, {N_total});
+            spinless.enumerate_basis_repr({m,n}, {Nfermion}, {N_total});
 
             // generating matrix of the Hamiltonian in the subspace
-            spinless.generate_Ham_sparse_repr(lattice, {m,n});
+            spinless.generate_Ham_sparse_repr();
             std::cout << std::endl;
 
             // obtaining the lowest eigenvals of the matrix
@@ -122,6 +122,9 @@ int main() {
             std::cout << std::endl;
 
             E0_list.push_back(spinless.eigenvals_repr[0]);
+
+            spinless.locate_Emax_repr(4,10);
+            std::cout << std::endl;
         }
     }
 
@@ -132,31 +135,31 @@ int main() {
     assert(std::abs(E0_list[3] + 28.27163215) < 1e-8);
     assert(std::abs(E0_list[4] + 28.60363167) < 1e-8);
     assert(std::abs(E0_list[5] + 28.27163215) < 1e-8);
-    
-    
-    
-    
+
+
+
+
     // -------------------------------------------------------------------------
     // the following is only for bench marking with older version of the code
     std::vector<double> E0_check_list;
     spinless.enumerate_basis_full({Nfermion}, {N_total});
-    
+
     for (int i = 0; i < Lx; i++) {
         for (int j = 0; j < Ly; j++) {
             // constructing the subspace basis
             spinless.basis_init_repr_deprecated(lattice, {i,j});
-            
+
             // generating matrix of the Hamiltonian in the subspace
             spinless.generate_Ham_sparse_repr_deprecated();
             std::cout << std::endl;
-            
+
             // obtaining the lowest eigenvals of the matrix
             spinless.locate_E0_repr(3,10);
             std::cout << std::endl;
             E0_check_list.push_back(spinless.eigenvals_repr[0]);
         }
     }
-    
+
     for (decltype(E0_list.size()) j = 0; j < E0_list.size(); j++) {
         std::cout << "E0(j=" << j << ")=\t" << E0_list[j]
         << "\tvs\t" << E0_check_list[j] << std::endl;

@@ -78,6 +78,12 @@ namespace qbasis {
         
     }
     
+    bool lattice::q_dividable() const {
+        if (total_sites() % 2 != 0) return false;
+        if (dim_spec == dim && num_sub % 2 != 0) return false;
+        return true;
+    }
+            
     void lattice::coor2site(const std::vector<int> &coor, const int &sub, uint32_t &site) const
     {
         assert(static_cast<uint32_t>(coor.size()) == dim);
@@ -158,6 +164,7 @@ namespace qbasis {
         return res;
     }
     
+    /*
     std::vector<std::vector<uint32_t>> lattice::divisor_v2(const std::vector<bool> &trans_sym) const
     {
         assert(trans_sym.size() == dim);
@@ -195,7 +202,7 @@ namespace qbasis {
         }
         return res;
     }
-    
+    */
     
     uint32_t volume_from_vec(const std::vector<uint32_t> &vecs)
     {
@@ -526,7 +533,7 @@ namespace qbasis {
         }
         return res;
     }
-    
+            
     lattice divide_lattice(const lattice &parent)
     {
         lattice child(parent);

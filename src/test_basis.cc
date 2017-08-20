@@ -296,6 +296,7 @@ void test_basis4()
     std::cout << std::numeric_limits<double>::epsilon() << std::endl;
     
     model_test4.fill_Weisse_table(lattice);
+    /*
     std::pair<std::vector<uint32_t>,std::vector<uint32_t>> check;
     check.first  = std::vector<uint32_t>{0};
     check.second = std::vector<uint32_t>{0};
@@ -512,7 +513,7 @@ void test_basis4()
     assert(model_test4.Weisse_w_eq.index(std::vector<uint64_t>{1,1,0}) == 2);
     assert(model_test4.Weisse_w_eq.index(std::vector<uint64_t>{2,2,0}) == 3);
     assert(model_test4.Weisse_w_eq.index(std::vector<uint64_t>{2,2,1}) == 3);
-    
+    */
     
     
     model_test4.generate_Ham_sparse_full();
@@ -523,7 +524,7 @@ void test_basis4()
     
     int momentum = 0;
     
-    model_test4.enumerate_basis_repr(lattice, std::vector<int>{momentum}, {Sz_total}, {0.0});
+    model_test4.enumerate_basis_repr(std::vector<int>{momentum}, {Sz_total}, {0.0});
     
 //    std::cout << "label for basis_repr[0]: " << model_test4.basis_repr[model_test4.sec_repr][0].label(model_test4.props) << std::endl;
 //    auto xxxxxx =  qbasis::norm_trans_repr(model_test4.props, model_test4.basis_repr[model_test4.sec_repr][0],
@@ -531,7 +532,7 @@ void test_basis4()
 //    std::cout << "xxxxx = " << xxxxxx << std::endl;
 //    std::cout << "nu[0] = " << model_test4.norm_repr[model_test4.sec_repr][0] << std::endl;
     
-    model_test4.generate_Ham_sparse_repr(lattice, std::vector<int>{momentum});
+    model_test4.generate_Ham_sparse_repr();
     //auto xx = model_test4.HamMat_csr_repr[model_test4.sec_repr].to_dense();
     
     

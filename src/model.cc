@@ -11,6 +11,7 @@ namespace qbasis {
                        sec_full(0), sec_repr(0),
                        dim_full({0,0}), dim_repr({0,0})
     {
+        momenta.resize(2);
         basis_full.resize(2);
         basis_repr.resize(2);
         norm_repr.resize(2);
@@ -52,37 +53,44 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::check_translation(const lattice &latt)
+    void model<T>::check_translation()
     {
-        std::cout << "Checking translational symmetry." << std::endl;
-        std::cout << "In the future replace this check with serious stuff!" << std::endl;
+        std::cout << "Checking translational symmetry (NOT a serious check at this moment)." << std::endl;
         trans_sym.clear();
-        auto bc = latt.boundary();
-        for (uint32_t j = 0; j < latt.dimension(); j++) {
+        auto bc = latt_parent.boundary();
+        for (uint32_t j = 0; j < latt_parent.dimension(); j++) {
             if (bc[j] == "pbc" || bc[j] == "PBC") {
                 trans_sym.push_back(true);
             } else {
                 trans_sym.push_back(false);
             }
         }
+        
+        uint32_t dim_spec = latt_parent.dimension_spec();
+        if (dim_spec == latt_parent.dimension()) {
+            assert(latt_parent.num_sublattice() % 2 == 0);
+            dim_spec_involved = false;
+        } else {
+            dim_spec_involved = trans_sym[dim_spec];
+        }
+        
         std::cout << std::endl;
     }
     
     template <typename T>
     void model<T>::fill_Weisse_table(const lattice &latt)
     {
-        // first check translation symmetry
-        check_translation(latt);
+        latt_parent = latt;
+        latt_sub = divide_lattice(latt_parent);
+        
+        check_translation();
         
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         auto props_sub = props_sub_a;
-        auto latt_sub = divide_lattice(latt);
-        
         
         groups_sub    = latt_sub.trans_subgroups(trans_sym);
         groups_parent = latt.trans_subgroups(trans_sym);
-        
         
         std::cout << "------------------------------------" << std::endl;
         std::cout << "Generating sublattice full basis... " << std::endl;
@@ -103,27 +111,13 @@ namespace qbasis {
         std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
         start = end;
         
-        
-        /*
-        for (decltype(basis_sub_repr.size()) r = 0; r < basis_sub_repr.size(); r++) {
-            std::cout << "r = " << r << std::endl;
-            basis_sub_repr[r].prt_bits(props_sub);
-            std::cout << "g=" << belong2group_sub[r];
-            std::cout << ", omega = " << omega_g_sub[belong2group_sub[r]] << std::endl;
-        }
-        */
-        
-        
-        //auto xx = latt_sub.trans_subgroups(trans_sym);
-        
-        
         // double checking correctness
         uint64_t check_dim_sub_full = 0;
         for (decltype(basis_sub_repr.size()) j = 0; j < basis_sub_repr.size(); j++) check_dim_sub_full += omega_g_sub[belong2group_sub[j]];
         assert(check_dim_sub_full == static_cast<uint64_t>(basis_sub_full.size()));
         
         std::cout << "------------------------------------" << std::endl;
-        std::cout << "Generating maps (ga,gb,ja,jb) -> (i,j) and (ga,gb,j) -> w ... " << std::flush;
+        std::cout << "Generating maps (ga,gb,ja,jb) -> (i,j) and (ga,gb,j) -> (w) ... " << std::flush;
         classify_Weisse_tables(props, props_sub, basis_sub_full, basis_sub_repr, latt, trans_sym,
                                belong2rep_sub, dist2rep_sub, belong2group_sub, groups_parent, groups_sub,
                                Weisse_e_lt, Weisse_e_eq, Weisse_e_gt, Weisse_w_lt, Weisse_w_eq, Weisse_w_gt);
@@ -155,23 +149,17 @@ namespace qbasis {
     
     
     template <typename T>
-    void model<T>::enumerate_basis_repr(const lattice &latt,
-                                        const std::vector<int> &momentum,
+    void model<T>::enumerate_basis_repr(const std::vector<int> &momentum,
                                         std::vector<mopr<T>> conserve_lst,
                                         std::vector<double> val_lst)
     {
-        assert(latt.dimension() == static_cast<uint32_t>(momentum.size()));
+        assert(latt_parent.dimension() == static_cast<uint32_t>(momentum.size()));
         assert(conserve_lst.size() == val_lst.size());
         assert(Weisse_e_lt.size() > 0);
         assert(basis_sub_repr.size() > 0);   // should be already generated when filling Weisse Tables
-        bool dim_spec_involved;
-        uint32_t dim_spec = latt.dimension_spec();
-        if (dim_spec == latt.dimension()) {
-            assert(latt.num_sublattice() % 2 == 0);
-            dim_spec_involved = false;
-        } else {
-            dim_spec_involved = trans_sym[dim_spec];
-        }
+        
+        momenta[sec_repr] = momentum;
+        
         if (dim_spec_involved) {
             assert(Weisse_w_gt.size() == 0);
         } else {
@@ -180,8 +168,7 @@ namespace qbasis {
         
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        auto latt_sub = divide_lattice(latt);
-        auto L        = latt.Linear_size();
+        auto L        = latt_parent.Linear_size();
         auto base_sub = latt_sub.Linear_size();
         std::cout << "Momentum: (" << std::flush;
         for (uint32_t j = 0; j < momentum.size(); j++) {
@@ -193,9 +180,7 @@ namespace qbasis {
         }
         std::cout << "):" << std::endl;
         
-        
         // now start enumerating representatives, if not generated before (or generated but already destroyed)
-        
         if (dim_repr[sec_repr] <= 0 || static_cast<MKL_INT>(basis_repr[sec_repr].size()) != dim_repr[sec_repr]) {
             std::cout << "Enumerating basis_repr..." << std::endl;
             basis_repr[sec_repr].clear();
@@ -317,7 +302,7 @@ namespace qbasis {
                 g_label = Weisse_w_gt.index(pos_w);
             }
             
-            norm_repr[sec_repr][j] = norm_trans_repr(props, basis_repr[sec_repr][j], latt, groups_parent[g_label], momentum);
+            norm_repr[sec_repr][j] = norm_trans_repr(props, basis_repr[sec_repr][j], latt_parent, groups_parent[g_label], momentum);
             if (std::abs(norm_repr[sec_repr][j]) < lanczos_precision) {
                 #pragma omp atomic
                 extra++;
@@ -332,8 +317,8 @@ namespace qbasis {
     template <typename T>
     void model<T>::generate_Ham_sparse_full(const bool &upper_triangle)
     {
-        if (matrix_free) matrix_free = false;     //
-        assert(Lin_Ja_full[sec_full].size() > 0 && Lin_Jb_full[sec_full].size() > 0);
+        if (matrix_free) matrix_free = false;
+        assert(dim_full[sec_full] > 0);
         
         std::cout << "Generating LIL Hamiltonian matrix (full)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
@@ -346,6 +331,7 @@ namespace qbasis {
             qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[sec_full][i], props);  // non-diagonal part:
             for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele_new = intermediate_state[cnt];
+                if (std::abs(ele_new.second) < machine_prec) continue;
                 MKL_INT j;
                 if (Lin_Ja_full[sec_full].size() > 0 && Lin_Jb_full[sec_full].size() > 0) {
                     uint64_t i_a, i_b;
@@ -370,20 +356,11 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::generate_Ham_sparse_repr(const lattice &latt, const std::vector<int> &momentum,
-                                            const bool &upper_triangle)
+    void model<T>::generate_Ham_sparse_repr(const bool &upper_triangle)
     {
         if (matrix_free) matrix_free = false;
         assert(dim_repr[sec_repr] > 0);
         
-        bool dim_spec_involved;
-        uint32_t dim_spec = latt.dimension_spec();
-        if (dim_spec == latt.dimension()) {
-            assert(latt.num_sublattice() % 2 == 0);
-            dim_spec_involved = false;
-        } else {
-            dim_spec_involved = trans_sym[dim_spec];
-        }
         if (dim_spec_involved) {
             assert(Weisse_w_gt.size() == 0);
         } else {
@@ -393,26 +370,30 @@ namespace qbasis {
         std::cout << "Generating LIL Hamiltonian Matrix (repr)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        auto L = latt.Linear_size();
-        auto latt_sub = divide_lattice(latt);
+        auto dim_latt = latt_parent.dimension();
+        auto L = latt_parent.Linear_size();
         lil_mat<std::complex<double>> matrix_lil(dim_repr[sec_repr], upper_triangle);
         
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim_repr[sec_repr]; i++) {
-            // get normalization factor for repr i
-            double nu_i = norm_repr[sec_repr][i];
+            double nu_i = norm_repr[sec_repr][i];                                // normalization factor for repr i
             if (std::abs(nu_i) < lanczos_precision) {
                 matrix_lil.add(i, i, static_cast<T>(99.99));
                 continue;
             }
-            for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)                                                 // diagonal part:
+            for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)                 // diagonal part:
                 matrix_lil.add(i, i, basis_repr[sec_repr][i].diagonal_operator(props,Ham_diag[cnt]));
             
-            qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_repr[sec_repr][i], props);  // non-diagonal part:
+            qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_repr[sec_repr][i], props);
+            uint64_t state_sub1_label, state_sub2_label;
+            std::vector<uint32_t> disp_i(dim_latt), disp_j(dim_latt);
+            std::vector<int> disp_i_int(dim_latt), disp_j_int(dim_latt);
+            int sgn;
+            mbasis_elem state_sub_new1, state_sub_new2, ra_z_Tj_rb;
+            
             for (uint32_t cnt = 0; cnt < intermediate_state.size(); cnt++) {
                 auto &ele_new = intermediate_state[cnt];
                 // use Weisse Tables to find the representative |ra,rb,j>
-                uint64_t state_sub1_label, state_sub2_label;
                 ele_new.first.label_sub(props, state_sub1_label, state_sub2_label);
                 auto &state_rep1_label = belong2rep_sub[state_sub1_label];       // ra
                 auto &state_rep2_label = belong2rep_sub[state_sub2_label];       // rb
@@ -421,15 +402,6 @@ namespace qbasis {
                 std::vector<uint64_t> pos_e{ga, gb};
                 pos_e.insert(pos_e.end(), dist2rep_sub[state_sub1_label].begin(), dist2rep_sub[state_sub1_label].end());
                 pos_e.insert(pos_e.end(), dist2rep_sub[state_sub2_label].begin(), dist2rep_sub[state_sub2_label].end());
-                std::vector<uint32_t> disp_i, disp_j;
-                mbasis_elem state_sub_new1, state_sub_new2, ra_z_Tj_rb;
-                if (state_rep2_label < state_rep1_label && dim_spec_involved) {
-                    state_sub_new1 = basis_sub_repr[state_rep2_label];
-                    state_sub_new2 = basis_sub_repr[state_rep1_label];
-                } else {
-                    state_sub_new1 = basis_sub_repr[state_rep1_label];
-                    state_sub_new2 = basis_sub_repr[state_rep2_label];
-                }
                 if (state_rep1_label < state_rep2_label) {                          // ra < rb
                     disp_i = Weisse_e_lt.index(pos_e).first;
                     disp_j = Weisse_e_lt.index(pos_e).second;
@@ -440,13 +412,19 @@ namespace qbasis {
                     disp_i = Weisse_e_eq.index(pos_e).first;
                     disp_j = Weisse_e_eq.index(pos_e).second;
                 }
-                
-                std::vector<int> disp_i_int(disp_i.size()), disp_j_int(disp_j.size());
-                int sgn;
                 for (uint32_t j = 0; j < disp_j.size(); j++) {
                     disp_i_int[j] = static_cast<int>(disp_i[j]);
                     disp_j_int[j] = static_cast<int>(disp_j[j]);
                 }
+                
+                if (state_rep2_label < state_rep1_label && dim_spec_involved) {
+                    state_sub_new1 = basis_sub_repr[state_rep2_label];
+                    state_sub_new2 = basis_sub_repr[state_rep1_label];
+                } else {
+                    state_sub_new1 = basis_sub_repr[state_rep1_label];
+                    state_sub_new2 = basis_sub_repr[state_rep2_label];
+                }
+                
                 state_sub_new2.translate(props_sub_b, latt_sub, disp_j_int, sgn);   // T_j |rb>
                 zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
                 MKL_INT j;
@@ -457,17 +435,18 @@ namespace qbasis {
                 } else {
                     j = binary_search<mbasis_elem,MKL_INT>(basis_repr[sec_repr], ra_z_Tj_rb, 0, dim_repr[sec_repr]);
                 }
+                assert(j >= 0 && j < dim_repr[sec_repr]);
                 assert(ra_z_Tj_rb == basis_repr[sec_repr][j]);
+                
                 double nu_j = norm_repr[sec_repr][j];
                 if (std::abs(nu_j) < lanczos_precision) continue;
-                
-                ra_z_Tj_rb.translate(props, latt, disp_i_int, sgn);
+                ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);         // remove this line in future
                 assert(ra_z_Tj_rb == ele_new.first);
                 
                 double exp_coef = 0.0;
-                for (uint32_t d = 0; d < latt.dimension(); d++) {
+                for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                     if (trans_sym[d]) {
-                        exp_coef += momentum[d] * disp_i_int[d] / static_cast<double>(L[d]);
+                        exp_coef += momenta[sec_repr][d] * disp_i_int[d] / static_cast<double>(L[d]);
                     }
                 }
                 auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
@@ -491,8 +470,10 @@ namespace qbasis {
     template <typename T>
     void model<T>::generate_Ham_sparse_repr_deprecated(const bool &upper_triangle)
     {
+        if (matrix_free) matrix_free = false;
         assert(dim_repr[sec_repr] > 0);
-        std::cout << "Generating Hamiltonian Matrix (deprecated method)..." << std::endl;
+        
+        std::cout << "Generating LIL Hamiltonian Matrix (repr) (deprecated)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         lil_mat<std::complex<double>> matrix_lil(dim_repr[sec_repr], upper_triangle);
@@ -552,24 +533,117 @@ namespace qbasis {
     {
         assert(matrix_free);
         std::cout << "*" << std::flush;
-        assert(Lin_Ja_full[sec_full].size() > 0 && Lin_Jb_full[sec_full].size() > 0);
-        
-        #pragma omp parallel for schedule(dynamic,1)
-        for (MKL_INT i = 0; i < dim_full[sec_full]; i++) {
-            y[i] = static_cast<T>(0.0);
-            if (std::abs(x[i]) > machine_prec) {
-                for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
-                    y[i] += x[i] * basis_full[sec_full][i].diagonal_operator(props, Ham_diag[cnt]);
-            }
-            qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[sec_full][i], props);
-            for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
-                auto &ele_new = intermediate_state[cnt];
-                if (std::abs(ele_new.second) > opr_precision) {
-                    uint64_t i_a, i_b;
-                    ele_new.first.label_sub(props, i_a, i_b);
-                    MKL_INT j = Lin_Ja_full[sec_full][i_a] + Lin_Jb_full[sec_full][i_b];                // < j | H | i > obtained
+        if (sec_sym == 0) {
+            #pragma omp parallel for schedule(dynamic,1)
+            for (MKL_INT i = 0; i < dim_full[sec_full]; i++) {
+                y[i] = static_cast<T>(0.0);
+                if (std::abs(x[i]) > machine_prec) {
+                    for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
+                        y[i] += x[i] * basis_full[sec_full][i].diagonal_operator(props, Ham_diag[cnt]);
+                }
+                qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[sec_full][i], props);
+                for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
+                    auto &ele_new = intermediate_state[cnt];
+                    if (std::abs(ele_new.second) < machine_prec) continue;
+                    MKL_INT j;
+                    if (Lin_Ja_full[sec_full].size() > 0 && Lin_Jb_full[sec_full].size() > 0) {
+                        uint64_t i_a, i_b;
+                        ele_new.first.label_sub(props, i_a, i_b);
+                        j = Lin_Ja_full[sec_full][i_a] + Lin_Jb_full[sec_full][i_b];
+                    } else {
+                        j = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_full], ele_new.first, 0, dim_full[sec_full]);
+                    }
                     assert(j >= 0 && j < dim_full[sec_full]);
                     if (std::abs(x[j]) > machine_prec) y[i] += (x[j] * conjugate(ele_new.second));
+                }
+            }
+        } else {
+            auto dim_latt = latt_parent.dimension();
+            auto L        = latt_parent.Linear_size();
+            #pragma omp parallel for schedule(dynamic,1)
+            for (MKL_INT i = 0; i < dim_repr[sec_repr]; i++) {
+                y[i] = static_cast<T>(0.0);
+                
+                double nu_i = norm_repr[sec_repr][i];                             // normalization factor for repr i
+                if (std::abs(nu_i) < lanczos_precision) {
+                    y[i] += x[i] * static_cast<T>(99.99);
+                    continue;
+                }
+                
+                if (std::abs(x[i]) > machine_prec) {
+                    for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)          // diagonal part:
+                        y[i] += x[i] * basis_repr[sec_repr][i].diagonal_operator(props,Ham_diag[cnt]);
+                }
+                
+                qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_repr[sec_repr][i], props);
+                uint64_t state_sub1_label, state_sub2_label;
+                std::vector<uint32_t> disp_i(dim_latt), disp_j(dim_latt);
+                std::vector<int> disp_i_int(dim_latt), disp_j_int(dim_latt);
+                int sgn;
+                mbasis_elem state_sub_new1, state_sub_new2, ra_z_Tj_rb;
+                
+                for (uint32_t cnt = 0; cnt < intermediate_state.size(); cnt++) {
+                    auto &ele_new = intermediate_state[cnt];
+                    // use Weisse Tables to find the representative |ra,rb,j>
+                    ele_new.first.label_sub(props, state_sub1_label, state_sub2_label);
+                    auto &state_rep1_label = belong2rep_sub[state_sub1_label];       // ra
+                    auto &state_rep2_label = belong2rep_sub[state_sub2_label];       // rb
+                    auto &ga               = belong2group_sub[state_rep1_label];     // ga
+                    auto &gb               = belong2group_sub[state_rep2_label];     // gb
+                    std::vector<uint64_t> pos_e{ga, gb};
+                    pos_e.insert(pos_e.end(), dist2rep_sub[state_sub1_label].begin(), dist2rep_sub[state_sub1_label].end());
+                    pos_e.insert(pos_e.end(), dist2rep_sub[state_sub2_label].begin(), dist2rep_sub[state_sub2_label].end());
+                    if (state_rep1_label < state_rep2_label) {                          // ra < rb
+                        disp_i = Weisse_e_lt.index(pos_e).first;
+                        disp_j = Weisse_e_lt.index(pos_e).second;
+                    } else if (state_rep2_label < state_rep1_label) {                   // ra > rb
+                        disp_i = Weisse_e_gt.index(pos_e).first;
+                        disp_j = Weisse_e_gt.index(pos_e).second;
+                    } else {                                                            // ra == rb
+                        disp_i = Weisse_e_eq.index(pos_e).first;
+                        disp_j = Weisse_e_eq.index(pos_e).second;
+                    }
+                    for (uint32_t j = 0; j < disp_j.size(); j++) {
+                        disp_i_int[j] = static_cast<int>(disp_i[j]);
+                        disp_j_int[j] = static_cast<int>(disp_j[j]);
+                    }
+                    
+                    if (state_rep2_label < state_rep1_label && dim_spec_involved) {
+                        state_sub_new1 = basis_sub_repr[state_rep2_label];
+                        state_sub_new2 = basis_sub_repr[state_rep1_label];
+                    } else {
+                        state_sub_new1 = basis_sub_repr[state_rep1_label];
+                        state_sub_new2 = basis_sub_repr[state_rep2_label];
+                    }
+                    
+                    state_sub_new2.translate(props_sub_b, latt_sub, disp_j_int, sgn);   // T_j |rb>
+                    zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
+                    MKL_INT j;
+                    if (Lin_Ja_repr[sec_repr].size() > 0 && Lin_Jb_repr[sec_repr].size() > 0) {
+                        uint64_t i_a = state_sub_new1.label(props_sub_a);               // use Lin Tables
+                        uint64_t i_b = state_sub_new2.label(props_sub_b);
+                        j = Lin_Ja_repr[sec_repr][i_a] + Lin_Jb_repr[sec_repr][i_b];
+                    } else {
+                        j = binary_search<mbasis_elem,MKL_INT>(basis_repr[sec_repr], ra_z_Tj_rb, 0, dim_repr[sec_repr]);
+                    }
+                    assert(j >= 0 && j < dim_repr[sec_repr]);
+                    assert(ra_z_Tj_rb == basis_repr[sec_repr][j]);
+                    if (std::abs(x[j]) < machine_prec) continue;
+                    
+                    double nu_j = norm_repr[sec_repr][j];
+                    if (std::abs(nu_j) < lanczos_precision) continue;
+                    ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);         // remove this line in future
+                    assert(ra_z_Tj_rb == ele_new.first);
+                    
+                    double exp_coef = 0.0;
+                    for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                        if (trans_sym[d]) {
+                            exp_coef += momenta[sec_repr][d] * disp_i_int[d] / static_cast<double>(L[d]);
+                        }
+                    }
+                    auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
+                    if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
+                    y[i] += (x[j] * coef);
                 }
             }
         }
@@ -580,24 +654,117 @@ namespace qbasis {
     {
         assert(matrix_free);
         std::cout << "*" << std::flush;
-        assert(Lin_Ja_full[sec_full].size() > 0 && Lin_Jb_full[sec_full].size() > 0);
-        
-        #pragma omp parallel for schedule(dynamic,1)
-        for (MKL_INT i = 0; i < dim_full[sec_full]; i++) {
-            y[i] = static_cast<T>(0.0);
-            if (std::abs(x[i]) > machine_prec) {
-                for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
-                    y[i] += x[i] * basis_full[sec_full][i].diagonal_operator(props, Ham_diag[cnt]);
-            }
-            qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[sec_full][i], props);
-            for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
-                auto &ele_new = intermediate_state[cnt];
-                if (std::abs(ele_new.second) > opr_precision) {
-                    uint64_t i_a, i_b;
-                    ele_new.first.label_sub(props, i_a, i_b);
-                    MKL_INT j = Lin_Ja_full[sec_full][i_a] + Lin_Jb_full[sec_full][i_b];                // < j | H | i > obtained
+        if (sec_sym == 0) {
+            #pragma omp parallel for schedule(dynamic,1)
+            for (MKL_INT i = 0; i < dim_full[sec_full]; i++) {
+                y[i] = static_cast<T>(0.0);
+                if (std::abs(x[i]) > machine_prec) {
+                    for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
+                        y[i] += x[i] * basis_full[sec_full][i].diagonal_operator(props, Ham_diag[cnt]);
+                }
+                qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[sec_full][i], props);
+                for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
+                    auto &ele_new = intermediate_state[cnt];
+                    if (std::abs(ele_new.second) < machine_prec) continue;
+                    MKL_INT j;
+                    if (Lin_Ja_full[sec_full].size() > 0 && Lin_Jb_full[sec_full].size() > 0) {
+                        uint64_t i_a, i_b;
+                        ele_new.first.label_sub(props, i_a, i_b);
+                        j = Lin_Ja_full[sec_full][i_a] + Lin_Jb_full[sec_full][i_b];
+                    } else {
+                        j = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_full], ele_new.first, 0, dim_full[sec_full]);
+                    }
                     assert(j >= 0 && j < dim_full[sec_full]);
                     if (std::abs(x[j]) > machine_prec) y[i] += (x[j] * conjugate(ele_new.second));
+                }
+            }
+        } else {
+            auto dim_latt = latt_parent.dimension();
+            auto L        = latt_parent.Linear_size();
+            #pragma omp parallel for schedule(dynamic,1)
+            for (MKL_INT i = 0; i < dim_repr[sec_repr]; i++) {
+                y[i] = static_cast<T>(0.0);
+                
+                double nu_i = norm_repr[sec_repr][i];                             // normalization factor for repr i
+                if (std::abs(nu_i) < lanczos_precision) {
+                    y[i] += x[i] * static_cast<T>(99.99);
+                    continue;
+                }
+                
+                if (std::abs(x[i]) > machine_prec) {
+                    for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)          // diagonal part:
+                        y[i] += x[i] * basis_repr[sec_repr][i].diagonal_operator(props,Ham_diag[cnt]);
+                }
+                
+                qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_repr[sec_repr][i], props);
+                uint64_t state_sub1_label, state_sub2_label;
+                std::vector<uint32_t> disp_i(dim_latt), disp_j(dim_latt);
+                std::vector<int> disp_i_int(dim_latt), disp_j_int(dim_latt);
+                int sgn;
+                mbasis_elem state_sub_new1, state_sub_new2, ra_z_Tj_rb;
+                
+                for (uint32_t cnt = 0; cnt < intermediate_state.size(); cnt++) {
+                    auto &ele_new = intermediate_state[cnt];
+                    // use Weisse Tables to find the representative |ra,rb,j>
+                    ele_new.first.label_sub(props, state_sub1_label, state_sub2_label);
+                    auto &state_rep1_label = belong2rep_sub[state_sub1_label];       // ra
+                    auto &state_rep2_label = belong2rep_sub[state_sub2_label];       // rb
+                    auto &ga               = belong2group_sub[state_rep1_label];     // ga
+                    auto &gb               = belong2group_sub[state_rep2_label];     // gb
+                    std::vector<uint64_t> pos_e{ga, gb};
+                    pos_e.insert(pos_e.end(), dist2rep_sub[state_sub1_label].begin(), dist2rep_sub[state_sub1_label].end());
+                    pos_e.insert(pos_e.end(), dist2rep_sub[state_sub2_label].begin(), dist2rep_sub[state_sub2_label].end());
+                    if (state_rep1_label < state_rep2_label) {                          // ra < rb
+                        disp_i = Weisse_e_lt.index(pos_e).first;
+                        disp_j = Weisse_e_lt.index(pos_e).second;
+                    } else if (state_rep2_label < state_rep1_label) {                   // ra > rb
+                        disp_i = Weisse_e_gt.index(pos_e).first;
+                        disp_j = Weisse_e_gt.index(pos_e).second;
+                    } else {                                                            // ra == rb
+                        disp_i = Weisse_e_eq.index(pos_e).first;
+                        disp_j = Weisse_e_eq.index(pos_e).second;
+                    }
+                    for (uint32_t j = 0; j < disp_j.size(); j++) {
+                        disp_i_int[j] = static_cast<int>(disp_i[j]);
+                        disp_j_int[j] = static_cast<int>(disp_j[j]);
+                    }
+                    
+                    if (state_rep2_label < state_rep1_label && dim_spec_involved) {
+                        state_sub_new1 = basis_sub_repr[state_rep2_label];
+                        state_sub_new2 = basis_sub_repr[state_rep1_label];
+                    } else {
+                        state_sub_new1 = basis_sub_repr[state_rep1_label];
+                        state_sub_new2 = basis_sub_repr[state_rep2_label];
+                    }
+                    
+                    state_sub_new2.translate(props_sub_b, latt_sub, disp_j_int, sgn);   // T_j |rb>
+                    zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
+                    MKL_INT j;
+                    if (Lin_Ja_repr[sec_repr].size() > 0 && Lin_Jb_repr[sec_repr].size() > 0) {
+                        uint64_t i_a = state_sub_new1.label(props_sub_a);               // use Lin Tables
+                        uint64_t i_b = state_sub_new2.label(props_sub_b);
+                        j = Lin_Ja_repr[sec_repr][i_a] + Lin_Jb_repr[sec_repr][i_b];
+                    } else {
+                        j = binary_search<mbasis_elem,MKL_INT>(basis_repr[sec_repr], ra_z_Tj_rb, 0, dim_repr[sec_repr]);
+                    }
+                    assert(j >= 0 && j < dim_repr[sec_repr]);
+                    assert(ra_z_Tj_rb == basis_repr[sec_repr][j]);
+                    if (std::abs(x[j]) < machine_prec) continue;
+                    
+                    double nu_j = norm_repr[sec_repr][j];
+                    if (std::abs(nu_j) < lanczos_precision) continue;
+                    ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);         // remove this line in future
+                    assert(ra_z_Tj_rb == ele_new.first);
+                    
+                    double exp_coef = 0.0;
+                    for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                        if (trans_sym[d]) {
+                            exp_coef += momenta[sec_repr][d] * disp_i_int[d] / static_cast<double>(L[d]);
+                        }
+                    }
+                    auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
+                    if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
+                    y[i] += (x[j] * coef);
                 }
             }
         }
@@ -610,17 +777,9 @@ namespace qbasis {
         assert(nev > 0);
         assert(ncv > nev + 1);
         if (maxit <= 0) maxit = nev * 100; // arpack default
+        sec_sym = 0;                       // work with dim_full
         
-        std::cout << "Calculating ground state..." << std::endl;
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            if (tid == 0) {
-                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
-                std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl;
-            }
-        }
-        std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
+        std::cout << "Calculating ground state (full)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         std::vector<T> v0(dim_full[sec_full], 1.0);
@@ -647,16 +806,8 @@ namespace qbasis {
     void model<T>::locate_E0_full_lanczos()
     {
         assert(false);
-        std::cout << "Calculating ground state (with simple Lanczos)..." << std::endl;
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            if (tid == 0) {
-                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
-                std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl;
-            }
-        }
-        std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
+        sec_sym = 0;                       // work with dim_full
+        std::cout << "Calculating ground state (full, with simple Lanczos)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         
@@ -713,18 +864,9 @@ namespace qbasis {
     {
         assert(ncv > nev + 1);
         if (maxit <= 0) maxit = nev * 100; // arpack default
-        std::cout << "Calculating highest energy state..." << std::endl;
-        /*
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            if (tid == 0) {
-                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
-                std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl;
-            }
-        }
-        std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
-        */
+        sec_sym = 0;                       // work with dim_full
+        std::cout << "Calculating highest energy state (full)..." << std::endl;
+        
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         std::vector<T> v0(HamMat_csr_full[sec_full].dimension(), 1.0);
@@ -748,28 +890,26 @@ namespace qbasis {
     {
         assert(ncv > nev + 1);
         if (maxit <= 0) maxit = nev * 100; // arpack default
-        std::cout << "Calculating ground state in the subspace..." << std::endl;
-        /*
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            if (tid == 0) {
-                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
-                std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl;
-            }
-        }
-        std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
-        */
+        sec_sym = 1;                       // work with dim_repr
+        std::cout << "Calculating ground state (repr)..." << std::endl;
+        
         if (dim_repr[sec_repr] < 1) {
             std::cout << "dim_repr = " << dim_repr[sec_repr] << "!!!" << std::endl;
             return;
         }
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        std::vector<std::complex<double>> v0(HamMat_csr_repr[sec_repr].dimension(), 1.0);
+        
+        std::vector<std::complex<double>> v0(dim_repr[sec_repr], 1.0);
         eigenvals_repr.resize(nev);
-        eigenvecs_repr.resize(HamMat_csr_repr[sec_repr].dimension() * nev);
-        iram(dim_repr[sec_repr], HamMat_csr_repr[sec_repr], v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_repr.data(), eigenvecs_repr.data());
+        eigenvecs_repr.resize(dim_repr[sec_repr] * nev);
+        
+        if (matrix_free) {
+            iram(dim_repr[sec_repr], *this, v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_repr.data(), eigenvecs_repr.data());
+        } else {
+            iram(dim_repr[sec_repr], HamMat_csr_repr[sec_repr], v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_repr.data(), eigenvecs_repr.data());
+        }
+        
         assert(nconv > 1);
         E0 = eigenvals_repr[0];
         gap = eigenvals_repr[1] - eigenvals_repr[0];
@@ -785,23 +925,30 @@ namespace qbasis {
     {
         assert(ncv > nev + 1);
         if (maxit <= 0) maxit = nev * 100; // arpack default
-        std::cout << "Calculating highest energy state in the subspace..." << std::endl;
+        sec_sym = 1;                       // work with dim_repr
+        std::cout << "Calculating highest energy state (repr)..." << std::endl;
         if (dim_repr[sec_repr] < 1) {
             std::cout << "dim_repr = " << dim_repr[sec_repr] << "!!!" << std::endl;
             return;
         }
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        std::vector<std::complex<double>> v0(HamMat_csr_repr[sec_repr].dimension(), 1.0);
+        std::vector<std::complex<double>> v0(dim_repr[sec_repr], 1.0);
         eigenvals_repr.resize(nev);
-        eigenvecs_repr.resize(HamMat_csr_repr[sec_repr].dimension() * nev);
-        iram(dim_repr[sec_repr], HamMat_csr_repr[sec_repr], v0.data(), nev, ncv, maxit, "lr", nconv, eigenvals_repr.data(), eigenvecs_repr.data());
-        assert(nconv > 0);
-        Emax = eigenvals_repr[0];
+        eigenvecs_repr.resize(dim_repr[sec_repr] * nev);
+        
+        if (matrix_free) {
+            iram(dim_repr[sec_repr], *this, v0.data(), nev, ncv, maxit, "lr", nconv, eigenvals_repr.data(), eigenvecs_repr.data());
+        } else {
+            iram(dim_repr[sec_repr], HamMat_csr_repr[sec_repr], v0.data(), nev, ncv, maxit, "lr", nconv, eigenvals_repr.data(), eigenvecs_repr.data());
+        }
+        
+        assert(nconv > 1);
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
-        std::cout << "Emax = " << Emax << std::endl;
+        std::cout << "Emax(maybe fake) = " << eigenvals_repr[0] << std::endl;
+        Emax = eigenvals_repr[0];  // if we use a parameter extra in normalization calculation, we can know how many faked
     }
     
     template <typename T>
@@ -932,10 +1079,13 @@ namespace qbasis {
     template <typename T>
     void model<T>::basis_init_repr_deprecated(const lattice &latt, const std::vector<int> &momentum)
     {
-        assert(latt.dimension() == static_cast<uint32_t>(momentum.size()));
+        latt_parent = latt;
+        assert(latt_parent.dimension() == static_cast<uint32_t>(momentum.size()));
         assert(dim_full[sec_full] > 0 && dim_full[sec_full] == static_cast<MKL_INT>(basis_full[sec_full].size()));
         
-        check_translation(latt);
+        momenta[sec_repr] = momentum;
+        
+        check_translation();
         
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
@@ -949,8 +1099,8 @@ namespace qbasis {
         }
         std::cout << ")..." << std::endl;
         
-        auto num_sub = latt.num_sublattice();
-        auto L = latt.Linear_size();
+        auto num_sub = latt_parent.num_sublattice();
+        auto L = latt_parent.Linear_size();
         basis_belong_deprec[sec_repr].resize(dim_full[sec_full]);
         std::fill(basis_belong_deprec[sec_repr].begin(), basis_belong_deprec[sec_repr].end(), -1);
         basis_coeff_deprec[sec_repr].resize(dim_full[sec_full]);
@@ -963,12 +1113,12 @@ namespace qbasis {
             basis_repr_deprec[sec_repr].push_back(i);
             basis_coeff_deprec[sec_repr][i] = std::complex<double>(1.0, 0.0);
             #pragma omp parallel for schedule(dynamic,1)
-            for (uint32_t site = num_sub; site < latt.total_sites(); site += num_sub) {
+            for (uint32_t site = num_sub; site < latt_parent.total_sites(); site += num_sub) {
                 std::vector<int> disp;
                 int sub, sgn;
-                latt.site2coor(disp, sub, site);
+                latt_parent.site2coor(disp, sub, site);
                 bool flag = false;
-                for (uint32_t d = 0; d < latt.dimension(); d++) {
+                for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                     if (!trans_sym[d] && disp[d] != 0) {
                         flag = true;
                         break;
@@ -976,7 +1126,7 @@ namespace qbasis {
                 }
                 if (flag) continue;            // such translation forbidden
                 auto basis_temp = basis_full[sec_full][i];
-                basis_temp.translate(props, latt, disp, sgn);
+                basis_temp.translate(props, latt_parent, disp, sgn);
                 MKL_INT j;
                 if (Lin_Ja_full[sec_full].size() > 0 && Lin_Jb_full[sec_full].size() > 0) {
                     uint64_t i_a, i_b;
@@ -988,7 +1138,7 @@ namespace qbasis {
                 assert(basis_full[sec_full][j] == basis_temp);
                 
                 double exp_coef = 0.0;
-                for (uint32_t d = 0; d < latt.dimension(); d++) {
+                for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                     if (trans_sym[d]) {
                         exp_coef += momentum[d] * disp[d] / static_cast<double>(L[d]);
                     }
