@@ -1,7 +1,6 @@
 #include <iostream>
 //#include <fstream>
 #include <iomanip>
-#include <climits>
 #include <random>
 #include "qbasis.h"
 #include "graph.h"
@@ -140,18 +139,6 @@ namespace qbasis {
     void model<T>::enumerate_basis_full(std::vector<mopr<T>> conserve_lst,
                                         std::vector<double> val_lst)
     {
-        // checking if reaching code capability
-        MKL_INT mkl_int_max = LLONG_MAX;
-        if (mkl_int_max != LLONG_MAX) {
-            mkl_int_max = INT_MAX;
-            //std::cout << "int_max = " << INT_MAX << std::endl;
-            assert(mkl_int_max == INT_MAX);
-            std::cout << "Using 32-bit integers." << std::endl;
-        } else {
-            std::cout << "Using 64-bit integers." << std::endl;
-        }
-        assert(mkl_int_max > 0);
-        
         enumerate_basis<T>(props, basis_full[sec_full], conserve_lst, val_lst);
         
         dim_full[sec_full] = static_cast<MKL_INT>(basis_full[sec_full].size());
@@ -191,24 +178,12 @@ namespace qbasis {
             assert(Weisse_w_lt.size() == Weisse_w_gt.size());
         }
         
-        // checking if reaching code capability
-        MKL_INT mkl_int_max = LLONG_MAX;
-        if (mkl_int_max != LLONG_MAX) {
-            mkl_int_max = INT_MAX;
-            //std::cout << "int_max = " << INT_MAX << std::endl;
-            assert(mkl_int_max == INT_MAX);
-            std::cout << "Using 32-bit integers." << std::endl;
-        } else {
-            std::cout << "Using 64-bit integers." << std::endl;
-        }
-        assert(mkl_int_max > 0);
-        
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         auto latt_sub = divide_lattice(latt);
         auto L        = latt.Linear_size();
         auto base_sub = latt_sub.Linear_size();
-        std::cout << "Enumerating basis_repr according to momentum: (" << std::flush;
+        std::cout << "Momentum: (" << std::flush;
         for (uint32_t j = 0; j < momentum.size(); j++) {
             if (trans_sym[j]) {
                 std::cout << momentum[j] << "\t";
@@ -216,12 +191,24 @@ namespace qbasis {
                 std::cout << "NA\t";
             }
         }
-        std::cout << ")..." << std::endl;
+        std::cout << "):" << std::endl;
+        
         
         // now start enumerating representatives, if not generated before (or generated but already destroyed)
+        
         if (dim_repr[sec_repr] <= 0 || static_cast<MKL_INT>(basis_repr[sec_repr].size()) != dim_repr[sec_repr]) {
+            std::cout << "Enumerating basis_repr..." << std::endl;
             basis_repr[sec_repr].clear();
+            std::list<std::vector<mbasis_elem>> basis_temp;
+            dim_repr[sec_repr] = 0;
+            auto report = basis_sub_repr.size() > 100 ? (basis_sub_repr.size() / 10) : basis_sub_repr.size();
+            #pragma omp parallel for schedule(dynamic,1)
             for (decltype(basis_sub_repr.size()) ra = 0; ra < basis_sub_repr.size(); ra++) {
+                if (ra > 0 && ra % report == 0) {
+                    std::cout << "progress: "
+                    << (static_cast<double>(ra) / static_cast<double>(basis_sub_repr.size()) * 100.0) << "%" << std::endl;
+                }
+                std::vector<qbasis::mbasis_elem> basis_temp_job;
                 auto ga = belong2group_sub[ra];
                 int sgn;
                 for (decltype(ra) rb = (dim_spec_involved?ra:0); rb < basis_sub_repr.size(); rb++) {
@@ -259,19 +246,39 @@ namespace qbasis {
                                 it_opr++;
                                 it_val++;
                             }
-                            if (flag) {
-                                basis_repr[sec_repr].push_back(ra_z_Tj_rb);                 // need openmp optimization this line
-                            }
+                            if (flag) basis_temp_job.push_back(ra_z_Tj_rb);
                         }
                         disp_j = dynamic_base_plus1(disp_j, base_sub);
                     }
                 }
+                
+                if (basis_temp_job.size() > 0) {
+                    #pragma omp critical
+                    {
+                        dim_repr[sec_repr] += static_cast<MKL_INT>(basis_temp_job.size());
+                        basis_temp.push_back(std::move(basis_temp_job));
+                    }
+                }
+                
             }
-            dim_repr[sec_repr] = static_cast<MKL_INT>(basis_repr[sec_repr].size());
-            
             end = std::chrono::system_clock::now();
             std::chrono::duration<double> elapsed_seconds = end - start;
-            std::cout <<  elapsed_seconds.count() << "s." << std::endl;
+            std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+            start = end;
+            std::cout << "Hilbert space size with symmetry:      " << dim_repr[sec_repr] << std::endl;
+            
+            basis_repr[sec_repr].reserve(dim_repr[sec_repr]);
+            std::cout << "Moving temporary basis (" << basis_temp.size() << " pieces) to basis_repr... ";
+            for (auto it = basis_temp.begin(); it != basis_temp.end(); it++) {
+                basis_repr[sec_repr].insert(basis_repr[sec_repr].end(), std::make_move_iterator(it->begin()), std::make_move_iterator(it->end()));
+                it->erase(it->begin(), it->end());
+                it->shrink_to_fit();
+            }
+            assert(dim_repr[sec_repr] == static_cast<MKL_INT>(basis_repr[sec_repr].size()));
+            end = std::chrono::system_clock::now();
+            elapsed_seconds = end - start;
+            std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
+            start = end;
             
             sort_basis_Lin_order(props, basis_repr[sec_repr]);
             
@@ -285,6 +292,8 @@ namespace qbasis {
         }
         
         // calculate normalization factors
+        std::cout << "Calculating normalization factors (a much faster version already written, should be turned on in future)..." << std::endl;
+        start = std::chrono::system_clock::now();
         std::cout << "dim_repr = " << dim_repr[sec_repr] << " - " << std::flush;
         MKL_INT extra = 0;
         norm_repr[sec_repr].clear();
@@ -315,8 +324,9 @@ namespace qbasis {
             }
         }
         std::cout << extra << " = " << (dim_repr[sec_repr] - extra) << std::endl;
-        
-        
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl << std::endl;
     }
     
     template <typename T>
@@ -704,6 +714,7 @@ namespace qbasis {
         assert(ncv > nev + 1);
         if (maxit <= 0) maxit = nev * 100; // arpack default
         std::cout << "Calculating highest energy state..." << std::endl;
+        /*
         #pragma omp parallel
         {
             int tid = omp_get_thread_num();
@@ -713,6 +724,7 @@ namespace qbasis {
             }
         }
         std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
+        */
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         std::vector<T> v0(HamMat_csr_full[sec_full].dimension(), 1.0);
@@ -737,6 +749,7 @@ namespace qbasis {
         assert(ncv > nev + 1);
         if (maxit <= 0) maxit = nev * 100; // arpack default
         std::cout << "Calculating ground state in the subspace..." << std::endl;
+        /*
         #pragma omp parallel
         {
             int tid = omp_get_thread_num();
@@ -746,6 +759,7 @@ namespace qbasis {
             }
         }
         std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
+        */
         if (dim_repr[sec_repr] < 1) {
             std::cout << "dim_repr = " << dim_repr[sec_repr] << "!!!" << std::endl;
             return;

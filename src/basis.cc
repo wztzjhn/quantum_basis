@@ -1,7 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <bitset>
-#include <algorithm>
+#include <climits>
 #include "qbasis.h"
 #include "graph.h"
 
@@ -999,7 +999,20 @@ namespace qbasis {
                 std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl;
             }
         }
-        std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl << std::endl;
+        std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl;
+        
+        // checking if reaching code capability
+        MKL_INT mkl_int_max = LLONG_MAX;
+        if (mkl_int_max != LLONG_MAX) {
+            mkl_int_max = INT_MAX;
+            //std::cout << "int_max = " << INT_MAX << std::endl;
+            assert(mkl_int_max == INT_MAX);
+            std::cout << "Using 32-bit integers." << std::endl;
+        } else {
+            std::cout << "Using 64-bit integers." << std::endl;
+        }
+        std::cout << std::endl;
+        assert(mkl_int_max > 0);
         
         uint32_t n_sites = props[0].num_sites;
         assert(conserve_lst.size() == val_lst.size());
@@ -1081,10 +1094,10 @@ namespace qbasis {
             }
         }
         basis_temp.sort();
-        std::cout << "Hilbert space size with symmetry:      " << dim_full << std::endl;
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl << std::endl;
+        std::cout << "Hilbert space size with symmetry:      " << dim_full << std::endl;
         start = end;
         
         // pick the fruits
@@ -1118,10 +1131,12 @@ namespace qbasis {
         if (! sorted) {
             std::chrono::time_point<std::chrono::system_clock> start, end;
             start = std::chrono::system_clock::now();
-            std::cout << "sorting basis according to '<' comparison... " << std::flush;
+            std::cout << "sorting basis according to '<' comparison";
 #ifdef use_gnu_parallel_sort
+            std::cout << "(gnu_parallel)... " << std::flush;
             __gnu_parallel::sort(basis.begin(), basis.end());
 #else
+            std::cout << "(serial)... " << std::flush;
             std::sort(basis.begin(), basis.end());
 #endif
             for (MKL_INT j = 0; j < dim - 1; j++) {
@@ -1155,7 +1170,7 @@ namespace qbasis {
         if (! sorted) {
             std::chrono::time_point<std::chrono::system_clock> start, end;
             start = std::chrono::system_clock::now();
-            std::cout << "sorting basis according to Lin Table convention... " << std::flush;
+            std::cout << "sorting basis according to Lin Table convention";
             auto cmp = [props, props_sub_a, props_sub_b](const mbasis_elem &j1, const mbasis_elem &j2){
                 mbasis_elem sub_a1, sub_b1, sub_a2, sub_b2;
                 unzipper_basis(props, props_sub_a, props_sub_b, j1, sub_a1, sub_b1);
@@ -1166,8 +1181,10 @@ namespace qbasis {
                     return sub_b1 < sub_b2;
                 }};
 #ifdef use_gnu_parallel_sort
+            std::cout << "(gnu_parallel)... " << std::flush;
             __gnu_parallel::sort(basis.begin(), basis.end(),cmp);
 #else
+            std::cout << "(serial)... " << std::flush;
             std::sort(basis.begin(), basis.end(),cmp);
 #endif
             for (MKL_INT j = 0; j < dim - 1; j++) {
@@ -2145,8 +2162,8 @@ namespace qbasis {
         }
         
         // the following lines are only for double checking purpose, should be removed in future
-        static int cnt = 0;
-        if (cnt++ == 0) std::cout << "(**remove**) ";
+        //static int cnt = 0;
+        //if (cnt++ == 0) std::cout << "(**remove**) ";
         
         
         uint32_t dim_trans = 0;

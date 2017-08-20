@@ -19,18 +19,18 @@
 #define lapack_complex_double   MKL_Complex16
 #endif
 
-#include <cstdint>
-#include <cmath>
-#include <complex>
 #include <algorithm>
-#include <string>
-#include <vector>
-#include <list>
-#include <forward_list>
-#include <utility>
-#include <initializer_list>
-#include <chrono>
 #include <cassert>
+#include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <complex>
+#include <forward_list>
+#include <initializer_list>
+#include <list>
+#include <string>
+#include <utility>
+#include <vector>
 #include "mkl.h"
 
 #ifdef _OPENMP
