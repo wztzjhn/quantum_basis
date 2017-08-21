@@ -907,28 +907,27 @@ namespace qbasis {
         Emax = eigenvals_repr[0];  // if we use a parameter extra in normalization calculation, we can know how many faked
     }
     
+    
     template <typename T>
-    void model<T>::moprXeigenvec_full(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col,
-                                      const uint32_t &sec_source, const uint32_t &sec_target)
+    void model<T>::moprXvec_full(const mopr<T> &lhs, const T* vec_old, T* vec_new,
+                                 const uint32_t &sec_source, const uint32_t &sec_target)
     {
         // note: vec_new has size dim_full[sec_target]
-        assert(which_col >= 0 && which_col < nconv);
         assert(dim_full[sec_source] > 0 && dim_full[sec_target] > 0);
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         
-        std::cout << "mopr * eigenvec (s = " << sec_source << ", t = " << sec_target << ")... " << std::endl;
-        MKL_INT base = dim_full[sec_source] * which_col;
+        std::cout << "mopr * vec (s = " << sec_source << ", t = " << sec_target << ")... " << std::endl;
         for (MKL_INT j = 0; j < dim_full[sec_target]; j++) vec_new[j] = 0.0;
         
         #pragma omp parallel for schedule(dynamic,16)
         for (MKL_INT j = 0; j < dim_full[sec_source]; j++) {
-            if (std::abs(eigenvecs_full[base + j]) < lanczos_precision) continue;
+            if (std::abs(vec_old[j]) < lanczos_precision) continue;
             
             std::vector<std::pair<MKL_INT, T>> values;
             for (uint32_t cnt_opr = 0; cnt_opr < lhs.size(); cnt_opr++) {
                 auto &A = lhs[cnt_opr];
-                auto sj = eigenvecs_full[base + j];
+                auto sj = vec_old[j];
                 if (A.q_diagonal() && (sec_source == sec_target)) {
                     values.push_back(std::pair<MKL_INT, T>(j,sj * basis_full[sec_source][j].diagonal_operator(props,A)));
                 } else {
@@ -962,39 +961,48 @@ namespace qbasis {
     }
     
     
-    // need full rewrite below
-    /*
     template <typename T>
-    T model<T>::measure(const mopr<T> &lhs, const MKL_INT &which_col)
+    void model<T>::moprXeigenvec_full(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col,
+                                      const uint32_t &sec_source, const uint32_t &sec_target)
     {
         assert(which_col >= 0 && which_col < nconv);
-        if (HamMat_csr_full[sec_full].dimension() == dim_full[sec_full]) {
-            MKL_INT base = dim_full[sec_full] * which_col;
-            std::vector<T> vec_new(dim_full[sec_full]);
-            moprXeigenvec_full(lhs, vec_new.data(), which_col);
-            return dotc(dim_full[sec_full], eigenvecs_full.data() + base, 1, vec_new.data(), 1);
-        } else {
-            std::cout << "not implemented yet" << std::endl;
-            return static_cast<T>(0.0);
-        }
+        T* vec_old = eigenvecs_full.data() + dim_full[sec_source] * which_col;
+        moprXvec_full(lhs, vec_old, vec_new, sec_source, sec_target);
     }
     
+    
     template <typename T>
-    T model<T>::measure(const mopr<T> &lhs1, const mopr<T> &lhs2, const MKL_INT &which_col)
+    T model<T>::measure_full(const mopr<T> &lhs, const MKL_INT &which_col, const uint32_t &sec_full)
     {
         assert(which_col >= 0 && which_col < nconv);
-        if (HamMat_csr_full[sec_full].dimension() == dim_full[sec_full]) {
-            std::vector<T> vec_new1(dim_full[sec_full]);
-            std::vector<T> vec_new2(dim_full[sec_full]);
-            moprXeigenvec_full(lhs1, vec_new1.data(), which_col);
-            moprXeigenvec_full(lhs2, vec_new2.data(), which_col);
-            return dotc(dim_full[sec_full], vec_new1.data(), 1, vec_new2.data(), 1);
-        } else {
-            std::cout << "not implemented yet" << std::endl;
-            return static_cast<T>(0.0);
-        }
+        MKL_INT base = dim_full[sec_full] * which_col;
+        std::vector<T> vec_new(dim_full[sec_full]);
+        moprXeigenvec_full(lhs, vec_new.data(), which_col, sec_full, sec_full);
+        return dotc(dim_full[sec_full], eigenvecs_full.data() + base, 1, vec_new.data(), 1);
     }
-    */
+    
+    
+    template <typename T>
+    T model<T>::measure_full(const std::vector<mopr<T>> &lhs, const std::vector<uint32_t> &sec_source_list, const MKL_INT &which_col)
+    {
+        assert(which_col >= 0 && which_col < nconv);
+        assert(sec_source_list.size() > 0 && sec_source_list.size() == lhs.size());
+        MKL_INT base = dim_full[sec_source_list[0]] * which_col;
+        
+        std::vector<uint32_t> sec_target_list(sec_source_list.size());
+        for (decltype(sec_source_list.size()) j = 1; j < sec_source_list.size(); j++)sec_target_list[j-1] = sec_source_list[j];
+        sec_target_list.back() = sec_source_list.front();
+        
+        std::vector<T> vec_new(dim_full[sec_target_list[0]]);
+        moprXeigenvec_full(lhs[0], vec_new.data(), sec_source_list[0], sec_target_list[0]);
+        std::vector<T> vec_temp;
+        for (decltype(lhs.size()) j = 1; j < lhs.size(); j++) {
+            vec_temp.resize(dim_full[sec_target_list[j]]);
+            moprXvec_full(lhs[j], vec_new.data(), vec_temp.data(), sec_source_list[j], sec_target_list[j]);
+            vec_new = vec_temp;
+        }
+        return dotc(dim_full[sec_source_list[0]], eigenvecs_full.data() + base, 1, vec_new.data(), 1);
+    }
     
     
 //     ---------------------------- deprecated ---------------------------------

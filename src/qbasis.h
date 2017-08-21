@@ -1209,21 +1209,25 @@ namespace qbasis {
         
         double energy_gap() { return gap; }
         
-        // lhs | phi >
+        // lhs | phi >, where | phi > is an input state
+        void moprXvec_full(const mopr<T> &lhs, const T* vec_old, T* vec_new,
+                           const uint32_t &sec_source = 0, const uint32_t &sec_target = 0);
+        
+        // lhs | phi >, where | phi > is an eigenstate
         void moprXeigenvec_full(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col = 0,
                                 const uint32_t &sec_source = 0, const uint32_t &sec_target = 0);
         
+        // < phi | lhs | phi >
+        T measure_full(const mopr<T> &lhs, const MKL_INT &which_col = 0, const uint32_t &sec_full = 0);
+        
+        // < phi |  ... * lhs2 * lhs1 * lhs0 | phi >
+        // correspondingly, the sec_source has to be given for each lhs_i
+        T measure_full(const std::vector<mopr<T>> &lhs, const std::vector<uint32_t> &sec_source_list, const MKL_INT &which_col = 0);
+        
         // lhs | phi >
         void moprXeigenvec_repr(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col = 0);
-        // < phi | lhs | phi >
-        T measure(const mopr<T> &lhs, const MKL_INT &which_col = 0);
-        // < phi | lhs1^\dagger lhs2 | phi >
-        T measure(const mopr<T> &lhs1, const mopr<T> &lhs2, const MKL_INT &which_col = 0);
         
-
-        // later add conserved quantum operators and corresponding quantum numbers
-        // later add measurement operators
-    
+        // later add conserved quantum operators and corresponding quantum numbers?
     private:
         double Emax;
         double E0;
