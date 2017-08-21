@@ -542,7 +542,7 @@ void test_basis4()
     
     
     model_test4.basis_init_repr_deprecated(lattice, std::vector<int>{momentum});
-    std::cout << "dim_repr = " << model_test4.dimension_repr() << std::endl;
+    std::cout << "dim_repr = " << model_test4.dimension_repr()[0] << std::endl;
     
     model_test4.generate_Ham_sparse_repr_deprecated();
     //auto yy = model_test4.HamMat_csr_repr[model_test4.sec_repr].to_dense();

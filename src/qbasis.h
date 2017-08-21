@@ -99,7 +99,6 @@ namespace qbasis {
     };
     typedef multi_array<uint32_t> MltArray_uint32;
     typedef multi_array<double> MltArray_double;
-    //typedef multi_array<std::vector<uint32_t>> MltArray_vec;
     typedef multi_array<std::pair<std::vector<uint32_t>,std::vector<uint32_t>>> MltArray_PairVec;
     
     
@@ -1081,7 +1080,8 @@ namespace qbasis {
         // when needed, sec_full will be switched to 1 to activate another sector (e.g. Sz=1 sector),
         // such setting can avoid messing up the code when calculating correlation functions
         uint32_t sec_sym;  // 0: work in dim_full; 1: work in dim_repr
-        uint32_t sec_full, sec_repr;
+        uint32_t sec_mat;  // which sector the matrix is relevant.
+        //uint32_t sec_full, sec_repr;
         
         std::vector<MKL_INT> dim_full;
         std::vector<MKL_INT> dim_repr;
@@ -1110,7 +1110,7 @@ namespace qbasis {
         // ---------------- deprecated --------------------
         
         
-        model();
+        model(const double &fake_pos_ = 100.1, const double &fake_incr_ = 0.1);
         
         ~model() {}
         
@@ -1146,7 +1146,7 @@ namespace qbasis {
         
         void add_offdiagonal_Ham(const mopr<T> &rhs)     { Ham_off_diag += rhs; }
         
-        void switch_sec(const uint32_t &sec_full_, const uint32_t &sec_repr_);
+        void switch_sec(const uint32_t &sec_mat_);
         
         void fill_Weisse_table(const lattice &latt);
         
@@ -1155,22 +1155,29 @@ namespace qbasis {
         
         // naive way of enumerating all possible basis state
         void enumerate_basis_full(std::vector<mopr<T>> conserve_lst = {},
-                                  std::vector<double> val_lst = {});
+                                  std::vector<double> val_lst = {},
+                                  const uint32_t &sec_full = 0);
         
         // Need to build Weiss Tables before enumerating representatives
         void enumerate_basis_repr(const std::vector<int> &momentum,
                                   std::vector<mopr<T>> conserve_lst = {},
-                                  std::vector<double> val_lst = {});
+                                  std::vector<double> val_lst = {},
+                                  const uint32_t &sec_repr = 0);
         
         // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
-        void basis_init_repr_deprecated(const lattice &latt, const std::vector<int> &momentum);
+        void basis_init_repr_deprecated(const lattice &latt,
+                                        const std::vector<int> &momentum,
+                                        const uint32_t &sec_full = 0,
+                                        const uint32_t &sec_repr = 0);
         
         // generate the Hamiltonian using basis_full
         void generate_Ham_sparse_full(const bool &upper_triangle = true);
         
         // generate the Hamiltonian using basis_repr
+        // a few artificial diagonal elements at 99.99, corresponding to zero norm states
         void generate_Ham_sparse_repr(const bool &upper_triangle = true);
         
+        // a few artificial diagonal elements at 99.99, corresponding to zero norm states
         void generate_Ham_sparse_repr_deprecated(const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr
         
         // generate a dense matrix of the Hamiltonian
@@ -1189,11 +1196,12 @@ namespace qbasis {
         
         void locate_E0_repr(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
         
+        // there may be a few artificial eigenvalues above fake_pos (default to 100), corresponding to zero norm states
         void locate_Emax_repr(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
         
-        MKL_INT dimension_full() { return dim_full[sec_full]; }
+        std::vector<MKL_INT> dimension_full() { return dim_full; }
         
-        MKL_INT dimension_repr() { return dim_repr[sec_repr]; }
+        std::vector<MKL_INT> dimension_repr() { return dim_repr; }
         
         double energy_min() { return E0; }
         
@@ -1202,11 +1210,15 @@ namespace qbasis {
         double energy_gap() { return gap; }
         
         // lhs | phi >
-        void moprXeigenvec_full(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col = 0);
+        void moprXeigenvec_full(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col = 0,
+                                const uint32_t &sec_source = 0, const uint32_t &sec_target = 0);
+        
+        // lhs | phi >
+        void moprXeigenvec_repr(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col = 0);
         // < phi | lhs | phi >
-        T measure(const mopr<T> &lhs, const MKL_INT &which_col=0);
+        T measure(const mopr<T> &lhs, const MKL_INT &which_col = 0);
         // < phi | lhs1^\dagger lhs2 | phi >
-        T measure(const mopr<T> &lhs1, const mopr<T> &lhs2, const MKL_INT &which_col=0);
+        T measure(const mopr<T> &lhs1, const mopr<T> &lhs2, const MKL_INT &which_col = 0);
         
 
         // later add conserved quantum operators and corresponding quantum numbers
@@ -1216,6 +1228,9 @@ namespace qbasis {
         double Emax;
         double E0;
         double gap;
+        
+        double fake_pos;
+        double fake_incr;
         
         lattice latt_parent;
         lattice latt_sub;

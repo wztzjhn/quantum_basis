@@ -71,8 +71,8 @@ int main() {
 
         // optional in future, will use more memory and give higher speed
         // generating matrix of the Hamiltonian in the full Hilbert space
-        //Heisenberg.generate_Ham_sparse_repr();
-        //std::cout << std::endl;
+        Heisenberg.generate_Ham_sparse_repr();
+        std::cout << std::endl;
 
         // obtaining the eigenvals of the matrix
         Heisenberg.locate_E0_repr(10,20);
