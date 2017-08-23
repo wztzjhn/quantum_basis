@@ -1081,7 +1081,6 @@ namespace qbasis {
         // such setting can avoid messing up the code when calculating correlation functions
         uint32_t sec_sym;  // 0: work in dim_full; 1: work in dim_repr
         uint32_t sec_mat;  // which sector the matrix is relevant.
-        //uint32_t sec_full, sec_repr;
         
         std::vector<MKL_INT> dim_full;
         std::vector<MKL_INT> dim_repr;
@@ -1210,22 +1209,32 @@ namespace qbasis {
         double energy_gap() { return gap; }
         
         // lhs | phi >, where | phi > is an input state
-        void moprXvec_full(const mopr<T> &lhs, const T* vec_old, T* vec_new,
-                           const uint32_t &sec_source = 0, const uint32_t &sec_target = 0);
+        void moprXvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+                           const T* vec_old, T* vec_new);
         
         // lhs | phi >, where | phi > is an eigenstate
-        void moprXeigenvec_full(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col = 0,
-                                const uint32_t &sec_source = 0, const uint32_t &sec_target = 0);
+        void moprXeigenvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+                                const MKL_INT &which_col, T* vec_new);
         
         // < phi | lhs | phi >
-        T measure_full(const mopr<T> &lhs, const MKL_INT &which_col = 0, const uint32_t &sec_full = 0);
+        T measure_full(const mopr<T> &lhs, const uint32_t &sec_full, const MKL_INT &which_col);
         
         // < phi |  ... * lhs2 * lhs1 * lhs0 | phi >
         // correspondingly, the sec_source has to be given for each lhs_i
-        T measure_full(const std::vector<mopr<T>> &lhs, const std::vector<uint32_t> &sec_source_list, const MKL_INT &which_col = 0);
+        T measure_full(const std::vector<mopr<T>> &lhs, const std::vector<uint32_t> &sec_old_list, const MKL_INT &which_col);
         
         // lhs | phi >
-        void moprXeigenvec_repr(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col = 0);
+        // Requirements: after operation of lhs, the new state is still an eigenstate of translation
+        // e.g. A_q = \frac{1}{\sqrt{N}} \sum_r e^{i q \cdot r} A_r,
+        // the old state has momentum k, the new state has momentum k+q
+        void moprXvec_repr(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+                           const T* vec_old, T* vec_new);
+        
+        void moprXeigenvec_repr(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+                                const MKL_INT &which_col, T* vec_new);
+        
+        // < phi | lhs | phi >
+        T measure_repr(const mopr<T> &lhs, const uint32_t &sec_repr, const MKL_INT &which_col);
         
         // later add conserved quantum operators and corresponding quantum numbers?
     private:

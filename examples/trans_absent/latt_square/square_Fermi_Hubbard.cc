@@ -161,7 +161,7 @@ int main() {
         }
         // prepare restart state
         std::vector<std::complex<double>> phi0(Hubbard.dimension_full()[0], 0.0);
-        Hubbard.moprXeigenvec_full(Szmq, phi0.data());
+        Hubbard.moprXeigenvec_full(Szmq, 0, 0, 0, phi0.data());
         // normalization of restart state
         double phi0_nrm2 = qbasis::nrm2(Hubbard.dimension_full()[0], phi0.data(), 1);
         double rnorm;

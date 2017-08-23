@@ -358,6 +358,8 @@ namespace qbasis {
             assert(Weisse_w_lt.size() == Weisse_w_gt.size());
         }
         
+        bool bosonic = q_bosonic(props);
+        
         std::cout << "Generating LIL Hamiltonian Matrix (repr)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
@@ -431,11 +433,8 @@ namespace qbasis {
                 }
                 assert(j >= 0 && j < dim_repr[sec_mat]);
                 assert(ra_z_Tj_rb == basis_repr[sec_mat][j]);
-                
                 double nu_j = norm_repr[sec_mat][j];
                 if (std::abs(nu_j) < lanczos_precision) continue;
-                ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);         // remove this line in future
-                assert(ra_z_Tj_rb == ele_new.first);
                 
                 double exp_coef = 0.0;
                 for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
@@ -444,7 +443,12 @@ namespace qbasis {
                     }
                 }
                 auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
-                if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
+                if (! bosonic) {
+                    ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);          // to get sgn
+                    assert(ra_z_Tj_rb == ele_new.first);
+                    if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
+                }
+                
 
                 if (upper_triangle) {
                     if (i <= j) matrix_lil.add(i, j, coef);
@@ -508,6 +512,7 @@ namespace qbasis {
         } else {
             auto dim_latt = latt_parent.dimension();
             auto L        = latt_parent.Linear_size();
+            bool bosonic  = q_bosonic(props);
             
             double faked = fake_pos;
             #pragma omp parallel for schedule(dynamic,1)
@@ -581,11 +586,8 @@ namespace qbasis {
                     assert(j >= 0 && j < dim_repr[sec_mat]);
                     assert(ra_z_Tj_rb == basis_repr[sec_mat][j]);
                     if (std::abs(x[j]) < machine_prec) continue;
-                    
                     double nu_j = norm_repr[sec_mat][j];
                     if (std::abs(nu_j) < lanczos_precision) continue;
-                    ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);         // remove this line in future
-                    assert(ra_z_Tj_rb == ele_new.first);
                     
                     double exp_coef = 0.0;
                     for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
@@ -594,7 +596,12 @@ namespace qbasis {
                         }
                     }
                     auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
-                    if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
+                    if (! bosonic) {
+                        ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);          // to get sgn
+                        assert(ra_z_Tj_rb == ele_new.first);
+                        if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
+                    }
+
                     y[i] += (x[j] * coef);
                 }
             }
@@ -633,6 +640,7 @@ namespace qbasis {
         } else {
             auto dim_latt = latt_parent.dimension();
             auto L        = latt_parent.Linear_size();
+            bool bosonic  = q_bosonic(props);
             
             double faked = fake_pos;
             #pragma omp parallel for schedule(dynamic,1)
@@ -706,11 +714,8 @@ namespace qbasis {
                     assert(j >= 0 && j < dim_repr[sec_mat]);
                     assert(ra_z_Tj_rb == basis_repr[sec_mat][j]);
                     if (std::abs(x[j]) < machine_prec) continue;
-                    
                     double nu_j = norm_repr[sec_mat][j];
                     if (std::abs(nu_j) < lanczos_precision) continue;
-                    ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);         // remove this line in future
-                    assert(ra_z_Tj_rb == ele_new.first);
                     
                     double exp_coef = 0.0;
                     for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
@@ -719,7 +724,11 @@ namespace qbasis {
                         }
                     }
                     auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
-                    if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
+                    if (! bosonic) {
+                        ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);          // to get sgn
+                        assert(ra_z_Tj_rb == ele_new.first);
+                        if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
+                    }
                     y[i] += (x[j] * coef);
                 }
             }
@@ -909,42 +918,41 @@ namespace qbasis {
     
     
     template <typename T>
-    void model<T>::moprXvec_full(const mopr<T> &lhs, const T* vec_old, T* vec_new,
-                                 const uint32_t &sec_source, const uint32_t &sec_target)
+    void model<T>::moprXvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+                                 const T* vec_old, T* vec_new)
     {
         // note: vec_new has size dim_full[sec_target]
-        assert(dim_full[sec_source] > 0 && dim_full[sec_target] > 0);
+        assert(dim_full[sec_old] > 0 && dim_full[sec_new] > 0);
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         
-        std::cout << "mopr * vec (s = " << sec_source << ", t = " << sec_target << ")... " << std::endl;
-        for (MKL_INT j = 0; j < dim_full[sec_target]; j++) vec_new[j] = 0.0;
+        std::cout << "mopr * vec (s = " << sec_old << ", t = " << sec_new << ")... " << std::endl;
+        for (MKL_INT j = 0; j < dim_full[sec_new]; j++) vec_new[j] = 0.0;
         
         #pragma omp parallel for schedule(dynamic,16)
-        for (MKL_INT j = 0; j < dim_full[sec_source]; j++) {
-            if (std::abs(vec_old[j]) < lanczos_precision) continue;
+        for (MKL_INT j = 0; j < dim_full[sec_old]; j++) {
+            auto sj = vec_old[j];
+            if (std::abs(sj) < lanczos_precision) continue;
             
             std::vector<std::pair<MKL_INT, T>> values;
             for (uint32_t cnt_opr = 0; cnt_opr < lhs.size(); cnt_opr++) {
                 auto &A = lhs[cnt_opr];
-                auto sj = vec_old[j];
-                if (A.q_diagonal() && (sec_source == sec_target)) {
-                    values.push_back(std::pair<MKL_INT, T>(j,sj * basis_full[sec_source][j].diagonal_operator(props,A)));
+                if (A.q_diagonal() && (sec_old == sec_new)) {
+                    values.push_back(std::pair<MKL_INT, T>(j,sj * basis_full[sec_old][j].diagonal_operator(props,A)));
                 } else {
-                    auto intermediate_state = oprXphi(A, basis_full[sec_source][j], props);
+                    auto intermediate_state = oprXphi(A, basis_full[sec_old][j], props);
                     for (uint32_t cnt = 0; cnt < intermediate_state.size(); cnt++) {
                         auto &ele = intermediate_state[cnt];
-                        
                         MKL_INT i;
-                        if (Lin_Ja_full[sec_target].size() > 0 && Lin_Jb_full[sec_target].size() > 0) {
+                        if (Lin_Ja_full[sec_new].size() > 0 && Lin_Jb_full[sec_new].size() > 0) {
                             uint64_t i_a, i_b;
                             ele.first.label_sub(props, i_a, i_b);
-                            i = Lin_Ja_full[sec_target][i_a] + Lin_Jb_full[sec_target][i_b];
+                            i = Lin_Ja_full[sec_new][i_a] + Lin_Jb_full[sec_new][i_b];
                         } else {
-                            i = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_target], ele.first, 0, dim_full[sec_target]);
+                            i = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_new], ele.first, 0, dim_full[sec_new]);
                         }
-                        assert(i >= 0 && i < dim_full[sec_target]);
-                        assert(basis_full[sec_target][i] == ele.first);
+                        assert(i >= 0 && i < dim_full[sec_new]);
+                        assert(basis_full[sec_new][i] == ele.first);
                         values.push_back(std::pair<MKL_INT, T>(i, sj * ele.second));
                     }
                 }
@@ -962,47 +970,170 @@ namespace qbasis {
     
     
     template <typename T>
-    void model<T>::moprXeigenvec_full(const mopr<T> &lhs, T* vec_new, const MKL_INT &which_col,
-                                      const uint32_t &sec_source, const uint32_t &sec_target)
+    void model<T>::moprXeigenvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+                                      const MKL_INT &which_col, T* vec_new)
     {
         assert(which_col >= 0 && which_col < nconv);
-        T* vec_old = eigenvecs_full.data() + dim_full[sec_source] * which_col;
-        moprXvec_full(lhs, vec_old, vec_new, sec_source, sec_target);
+        T* vec_old = eigenvecs_full.data() + dim_full[sec_old] * which_col;
+        moprXvec_full(lhs, sec_old, sec_new, vec_old, vec_new);
     }
     
     
     template <typename T>
-    T model<T>::measure_full(const mopr<T> &lhs, const MKL_INT &which_col, const uint32_t &sec_full)
+    T model<T>::measure_full(const mopr<T> &lhs, const uint32_t &sec_full, const MKL_INT &which_col)
     {
         assert(which_col >= 0 && which_col < nconv);
         MKL_INT base = dim_full[sec_full] * which_col;
         std::vector<T> vec_new(dim_full[sec_full]);
-        moprXeigenvec_full(lhs, vec_new.data(), which_col, sec_full, sec_full);
+        moprXeigenvec_full(lhs, sec_full, sec_full, which_col, vec_new.data());
         return dotc(dim_full[sec_full], eigenvecs_full.data() + base, 1, vec_new.data(), 1);
     }
     
     
     template <typename T>
-    T model<T>::measure_full(const std::vector<mopr<T>> &lhs, const std::vector<uint32_t> &sec_source_list, const MKL_INT &which_col)
+    T model<T>::measure_full(const std::vector<mopr<T>> &lhs, const std::vector<uint32_t> &sec_old_list, const MKL_INT &which_col)
     {
         assert(which_col >= 0 && which_col < nconv);
-        assert(sec_source_list.size() > 0 && sec_source_list.size() == lhs.size());
-        MKL_INT base = dim_full[sec_source_list[0]] * which_col;
+        assert(sec_old_list.size() > 0 && sec_old_list.size() == lhs.size());
+        MKL_INT base = dim_full[sec_old_list[0]] * which_col;
         
-        std::vector<uint32_t> sec_target_list(sec_source_list.size());
-        for (decltype(sec_source_list.size()) j = 1; j < sec_source_list.size(); j++)sec_target_list[j-1] = sec_source_list[j];
-        sec_target_list.back() = sec_source_list.front();
+        std::vector<uint32_t> sec_new_list(sec_old_list.size());
+        for (decltype(sec_old_list.size()) j = 1; j < sec_old_list.size(); j++)sec_new_list[j-1] = sec_old_list[j];
+        sec_new_list.back() = sec_old_list.front();
         
-        std::vector<T> vec_new(dim_full[sec_target_list[0]]);
-        moprXeigenvec_full(lhs[0], vec_new.data(), sec_source_list[0], sec_target_list[0]);
+        std::vector<T> vec_new(dim_full[sec_new_list[0]]);
+        moprXeigenvec_full(lhs[0], sec_old_list[0], sec_new_list[0], which_col, vec_new.data());
         std::vector<T> vec_temp;
         for (decltype(lhs.size()) j = 1; j < lhs.size(); j++) {
-            vec_temp.resize(dim_full[sec_target_list[j]]);
-            moprXvec_full(lhs[j], vec_new.data(), vec_temp.data(), sec_source_list[j], sec_target_list[j]);
+            vec_temp.resize(dim_full[sec_new_list[j]]);
+            moprXvec_full(lhs[j], sec_old_list[j], sec_new_list[j], vec_new.data(), vec_temp.data());
             vec_new = vec_temp;
         }
-        return dotc(dim_full[sec_source_list[0]], eigenvecs_full.data() + base, 1, vec_new.data(), 1);
+        return dotc(dim_full[sec_old_list[0]], eigenvecs_full.data() + base, 1, vec_new.data(), 1);
     }
+    
+    
+    template <typename T>
+    void model<T>::moprXvec_repr(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+                                 const T* vec_old, T* vec_new)
+    {
+        // note: vec_new has size dim_repr[sec_target]
+        auto dim_latt = latt_parent.dimension();
+        auto L        = latt_parent.Linear_size();
+        bool bosonic  = q_bosonic(props);
+        assert(dim_repr[sec_old] > 0 && dim_repr[sec_new] > 0);
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        
+        std::cout << "mopr * vec (s = " << sec_old << ", t = " << sec_new << ")... " << std::endl;
+        for (MKL_INT j = 0; j < dim_repr[sec_new]; j++) vec_new[j] = 0.0;
+        
+        #pragma omp parallel for schedule(dynamic,16)
+        for (MKL_INT j = 0; j < dim_repr[sec_old]; j++) {
+            auto sj     = vec_old[j];
+            double nu_j = norm_repr[sec_old][j];
+            if (std::abs(sj) < lanczos_precision || std::abs(nu_j) < lanczos_precision) continue;
+            
+            std::vector<std::pair<MKL_INT, T>> values;
+            for (uint32_t cnt_opr = 0; cnt_opr < lhs.size(); cnt_opr++) {
+                auto &A = lhs[cnt_opr];
+                if (A.q_diagonal()) {                                                    // only momentum changes
+                    double nu_i = norm_repr[sec_new][j];
+                    if (std::abs(nu_i) > lanczos_precision)
+                        values.push_back(std::pair<MKL_INT, T>(j, std::sqrt(nu_j/nu_i) * sj * basis_repr[sec_old][j].diagonal_operator(props,A)));
+                } else {
+                    auto intermediate_state = oprXphi(A, basis_repr[sec_old][j], props);
+                    uint64_t state_sub1_label, state_sub2_label;
+                    std::vector<uint32_t> disp_i(dim_latt), disp_j(dim_latt);
+                    std::vector<int> disp_i_int(dim_latt), disp_j_int(dim_latt);
+                    int sgn;
+                    mbasis_elem state_sub_new1, state_sub_new2, ra_z_Tj_rb;
+                    
+                    for (uint32_t cnt = 0; cnt < intermediate_state.size(); cnt++) {
+                        auto &ele_new = intermediate_state[cnt];
+                        ele_new.first.label_sub(props, state_sub1_label, state_sub2_label);
+                        auto &state_rep1_label = belong2rep_sub[state_sub1_label];       // ra
+                        auto &state_rep2_label = belong2rep_sub[state_sub2_label];       // rb
+                        auto &ga               = belong2group_sub[state_rep1_label];     // ga
+                        auto &gb               = belong2group_sub[state_rep2_label];     // gb
+                        std::vector<uint64_t> pos_e{ga, gb};
+                        pos_e.insert(pos_e.end(), dist2rep_sub[state_sub1_label].begin(), dist2rep_sub[state_sub1_label].end());
+                        pos_e.insert(pos_e.end(), dist2rep_sub[state_sub2_label].begin(), dist2rep_sub[state_sub2_label].end());
+                        if (state_rep1_label < state_rep2_label) {                          // ra < rb
+                            disp_i = Weisse_e_lt.index(pos_e).first;
+                            disp_j = Weisse_e_lt.index(pos_e).second;
+                        } else if (state_rep2_label < state_rep1_label) {                   // ra > rb
+                            disp_i = Weisse_e_gt.index(pos_e).first;
+                            disp_j = Weisse_e_gt.index(pos_e).second;
+                        } else {                                                            // ra == rb
+                            disp_i = Weisse_e_eq.index(pos_e).first;
+                            disp_j = Weisse_e_eq.index(pos_e).second;
+                        }
+                        for (uint32_t j = 0; j < disp_j.size(); j++) {
+                            disp_i_int[j] = static_cast<int>(disp_i[j]);
+                            disp_j_int[j] = static_cast<int>(disp_j[j]);
+                        }
+                        
+                        if (state_rep2_label < state_rep1_label && dim_spec_involved) {
+                            state_sub_new1 = basis_sub_repr[state_rep2_label];
+                            state_sub_new2 = basis_sub_repr[state_rep1_label];
+                        } else {
+                            state_sub_new1 = basis_sub_repr[state_rep1_label];
+                            state_sub_new2 = basis_sub_repr[state_rep2_label];
+                        }
+                        
+                        state_sub_new2.translate(props_sub_b, latt_sub, disp_j_int, sgn);   // T_j |rb>
+                        zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
+                        MKL_INT i;
+                        if (Lin_Ja_repr[sec_new].size() > 0 && Lin_Jb_repr[sec_new].size() > 0) {
+                            uint64_t i_a = state_sub_new1.label(props_sub_a);               // use Lin Tables
+                            uint64_t i_b = state_sub_new2.label(props_sub_b);
+                            i = Lin_Ja_repr[sec_new][i_a] + Lin_Jb_repr[sec_new][i_b];
+                        } else {
+                            i = binary_search<mbasis_elem,MKL_INT>(basis_repr[sec_new], ra_z_Tj_rb, 0, dim_repr[sec_new]);
+                        }
+                        assert(i >= 0 && i < dim_repr[sec_new]);
+                        assert(ra_z_Tj_rb == basis_repr[sec_new][i]);
+                        double nu_i = norm_repr[sec_new][i];
+                        if (std::abs(nu_i) < lanczos_precision) continue;
+                        
+                        double exp_coef = 0.0;
+                        for (uint32_t d = 0; d < dim_latt; d++) {
+                            if (trans_sym[d]) {
+                                exp_coef += momenta[sec_new][d] * disp_i_int[d] / static_cast<double>(L[d]);
+                            }
+                        }
+                        auto coef = std::sqrt(nu_j / nu_i) * sj * ele_new.second * std::exp(std::complex<double>(0.0, -2.0 * pi * exp_coef));
+                        if (! bosonic) {
+                            ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);          // to get sgn
+                            assert(ra_z_Tj_rb == ele_new.first);
+                            if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
+                        }
+                        values.push_back(std::pair<MKL_INT, T>(i, coef));
+                    }
+                }
+            }
+            #pragma omp critical
+            {
+                for (decltype(values.size()) cnt = 0; cnt < values.size(); cnt++)
+                    vec_new[values[cnt].first] += values[cnt].second;
+            }
+        }
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+    }
+    
+    
+    template <typename T>
+    void model<T>::moprXeigenvec_repr(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+                                      const MKL_INT &which_col, T* vec_new)
+    {
+        assert(which_col >= 0 && which_col < nconv);
+        T* vec_old = eigenvecs_repr.data() + dim_repr[sec_old] * which_col;
+        moprXvec_repr(lhs, sec_old, sec_new, vec_old, vec_new);
+    }
+    
     
     
 //     ---------------------------- deprecated ---------------------------------
