@@ -1,0 +1,14 @@
+CXX       = icpc
+CPPFLAGS  = -Ofast -std=c++11 -I ${HOME}/installs/include -DMKL_ILP64 -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
+LIBS      = -L ${HOME}/installs/lib -lqbasis -L${HOME}/opt/ARPACK_ILP64 -larpack -lgfortran -L${MKLROOT}/lib/intel64 -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -qopenmp
+
+include ../object_list.txt
+
+all: $(EXEC)
+	@echo '************  COMPILED!  ************'
+
+%.x: %.cc
+	$(CXX) $(CPPFLAGS) $< $(LIBS) -o $@
+
+clean:
+	$(RM) *.o *.x
