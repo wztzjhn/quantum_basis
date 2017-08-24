@@ -9,9 +9,9 @@ int main() {
     // parameters
     double t = 1;
     double U = 1.1;
-    int Lx = 3;
-    int Ly = 3;
-    double Nup_total = 5;
+    int Lx = 4;
+    int Ly = 2;
+    double Nup_total = 4;
     double Ndn_total = 4;
     int step = 150;
 
@@ -105,9 +105,20 @@ int main() {
 
 
     // for the parameters considered, we should obtain:
-    assert(std::abs(Hubbard.eigenvals_full[0] + 12.68398173) < 1e-8);
+    assert(std::abs(Hubbard.eigenvals_full[0] + 14.07605866) < 1e-8);
 
 
+    // measure operators
+    auto cupdg1cup5 = qbasis::opr<std::complex<double>>(1,0,true,c_up).dagger() *
+                      qbasis::opr<std::complex<double>>(5,0,true,c_up);
+
+    auto m1 = Hubbard.measure_full(cupdg1cup5, 0, 0);
+    std::cout << "cupdg1cup5 = " << m1 << std::endl << std::endl;
+    assert(std::abs(m1 - 0.3957690742) < 1e-8);
+
+
+    // to be reformated
+    /*
     // calculate dynamical structure factor Sz(q)*Sz(-q)
     std::string output_name = "L"+std::to_string(Lx)+"x"+std::to_string(Ly)+ "_chi.dat";
     std::ofstream fout(output_name, std::ios::out);
@@ -201,6 +212,6 @@ int main() {
         }
         std::cout << std::endl << std::endl;
     }
-
+    */
 
 }

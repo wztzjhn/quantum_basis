@@ -13,8 +13,8 @@ set(QBASIS_INCLUDE qbasis.h)
 add_library(qbasis SHARED ${QBASIS_SRC})
 target_link_libraries(qbasis ${LIBS})
 
-#add_executable(honeycomb_Spinless_Fermion.x ../examples/trans_symmetric/latt_honeycomb/honeycomb_Spinless_Fermion.cc ${QBASIS_SRC})
-#target_link_libraries(honeycomb_Spinless_Fermion.x ${LIBS})
+add_executable(triangular_Heisenberg_spin_half.x ../examples/trans_symmetric/latt_triangular/triangular_Heisenberg_spin_half.cc ${QBASIS_SRC})
+target_link_libraries(triangular_Heisenberg_spin_half.x ${LIBS})
 
 add_executable(test.x test.cc test_basis.cc test_operator.cc test_lanczos.cc test_lattice.cc ${QBASIS_SRC})
 target_link_libraries(test.x ${LIBS})

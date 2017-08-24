@@ -1135,6 +1135,39 @@ namespace qbasis {
     }
     
     
+    template <typename T>
+    T model<T>::measure_repr(const mopr<T> &lhs, const uint32_t &sec_repr, const MKL_INT &which_col)
+    {
+        double denominator = 1.0;
+        auto L = latt_parent.Linear_size();
+        std::vector<uint32_t> base;
+        for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+            if (trans_sym[d]) {
+                denominator *= L[d];
+                base.push_back(L[d]);
+            } else {
+                base.push_back(1);
+            }
+        }
+        
+        qbasis::mopr<T> opr_trans;                                               // O_t = (1/N) \sum_R T(R) O T(-R)
+        std::vector<uint32_t> disp(base.size(),0);
+        while (! dynamic_base_overflow(disp, base)) {
+            std::vector<int> disp_int(base.size());
+            for (uint32_t d = 0; d < disp.size(); d++) disp_int[d] = static_cast<int>(disp[d]);
+            auto plan = latt_parent.translation_plan(disp_int);
+            auto opr_temp = lhs;
+            opr_temp.transform(plan);
+            opr_trans += static_cast<T>(1.0/denominator) * opr_temp;
+            disp = dynamic_base_plus1(disp, base);
+        }
+        opr_trans.simplify();
+        
+        std::vector<T> vec_new(dim_repr[sec_repr]);
+        moprXeigenvec_repr(opr_trans, sec_repr, sec_repr, which_col, vec_new.data());
+        return dotc(dim_repr[sec_repr], eigenvecs_repr.data() + dim_repr[sec_repr] * which_col, 1, vec_new.data(), 1);
+    }
+    
     
 //     ---------------------------- deprecated ---------------------------------
 //     ---------------------------- deprecated ---------------------------------
