@@ -535,19 +535,40 @@ namespace qbasis {
     }
     
     template <typename T>
+    opr_prod<T> &opr_prod<T>::bubble_sort()
+    {
+        if (q_zero() || q_prop_identity() || len() <= 1) return *this;
+        uint32_t length = len();
+        
+        auto it_end = mat_prod.end();
+        using std::swap;
+        for (uint32_t j = 1; j < length; j++) {
+            it_end--;
+            int cnt0 = 0;
+            for (auto it = mat_prod.begin(); it != it_end; it++) {
+                auto it_next = it;
+                it_next++;
+                std::vector<uint32_t> a = {it->site, it->orbital};
+                std::vector<uint32_t> b = {it_next->site, it_next->orbital};
+                if (b < a) {
+                    cnt0++;
+                    if (it->fermion && it_next->fermion) coeff = -coeff;
+                    swap(*it,*it_next);
+                }
+                
+            }
+            if (cnt0 == 0) break;                                                 // already sorted
+        }
+        return *this;
+    }
+    
+    template <typename T>
     opr_prod<T> &opr_prod<T>::transform(const std::vector<uint32_t> &plan)
     {
-        if (q_zero()) return *this;
+        if (q_zero() || q_prop_identity()) return *this;
         
-        // for fermions, there can be an overall sign, change in future
-        for (auto it = mat_prod.begin(); it != mat_prod.end(); it++) {
-            assert(! it->fermion);
-            it->site = plan[it->site];
-        }
-        
-        mat_prod.sort([](const opr<T> &lhs, const opr<T> &rhs)
-                      { std::vector<uint32_t> a = {lhs.site, lhs.orbital}, b = {rhs.site, rhs.orbital}; return a < b; });
-        
+        for (auto it = mat_prod.begin(); it != mat_prod.end(); it++) it->site = plan[it->site];
+        bubble_sort();
         return *this;
     }
     

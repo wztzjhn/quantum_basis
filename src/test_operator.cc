@@ -28,6 +28,10 @@ void test_operator(){
     std::cout << ham1[0].q_prop_identity() << std::endl;
 
 
+    std::cout << "ham1: " << std::endl;
+    ham1 *= sigmaz_list[0];
+    ham1 *= sigmax_list[1];
+    ham1.prt();
 
     //ham *= ham;
     //ham.prt(); std::cout << std::endl;

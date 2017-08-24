@@ -48,10 +48,6 @@
 #endif
 
 
-// FUNCTIONS which need further change for Fermions:
-// opr& transform(const std::vector<MKL_INT> &plan);
-// opr_prod& transform(const std::vector<MKL_INT> &plan);
-
 namespace qbasis {
 
 //  -------------part 0: global variables, forward declarations ----------------
@@ -678,6 +674,10 @@ namespace qbasis {
         //    ------------ arithmetics -------------
         // invert the sign
         opr_prod& negative();
+        
+        // sort according to {site, orbital}. If exchanging fermions with odd times, invert sign.
+        // replace in future, if used heavily
+        opr_prod& bubble_sort();
         
         opr_prod& transform(const std::vector<uint32_t> &plan);
         
@@ -1384,8 +1384,7 @@ namespace qbasis {
     double dotc(const MKL_INT n, const double *x, const MKL_INT incx, const double *y, const MKL_INT incy) {
         return ddot(&n, x, &incx, y, &incy);
     }
-    // comment 1: zdotc is a problematic function in lapack, when returning std::complex
-    // comment 2: with my own version of dotc, it will slow things down without parallelization, need fix later
+    // comment: zdotc is a problematic function in lapack, when returning std::complex. So using cblas here.
     inline // complex double
     std::complex<double> dotc(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx,
                               const std::complex<double> *y, const MKL_INT incy) {
