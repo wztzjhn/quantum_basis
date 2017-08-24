@@ -90,6 +90,12 @@ int main() {
     // to use translational symmetry, we first fill the Weisse tables
     Hubbard.fill_Weisse_table(lattice);
 
+
+    // measure operators
+    auto cupdg1cup5 = qbasis::opr<std::complex<double>>(1,0,true,c_up).dagger() *
+                      qbasis::opr<std::complex<double>>(5,0,true,c_up);
+    std::complex<double> m1;
+
     std::vector<double> E0_list;
     for (int m = 0; m < Lx; m++) {
         for (int n = 0; n < Ly; n++) {
@@ -105,6 +111,10 @@ int main() {
             std::cout << std::endl;
 
             E0_list.push_back(Hubbard.eigenvals_repr[0]);
+
+            if (m == 0 && n == 0) {
+                m1 = Hubbard.measure_repr(cupdg1cup5, 0, 0);
+            }
         }
     }
 
@@ -148,5 +158,7 @@ int main() {
         std::cout << "Energy comparison: " << E0_list[j] << "\tvs\t" << E0_check_list[j] << std::endl;
     }
 
+    std::cout << "cupdg1cup5 = " << m1 << std::endl << std::endl;
+    assert(std::abs(m1 - 0.3957690742) < 1e-8);
 
 }

@@ -64,6 +64,17 @@ int main() {
     // to use translational symmetry, we first fill the Weisse tables
     Heisenberg.fill_Weisse_table(lattice);
 
+
+    // measurement opeartors
+    auto Sz0Sz1 = qbasis::opr<std::complex<double>>(0,0,false,Sz) *
+                  qbasis::opr<std::complex<double>>(1,0,false,Sz);
+    auto Sz0Sz2 = qbasis::opr<std::complex<double>>(0,0,false,Sz) *
+                  qbasis::opr<std::complex<double>>(2,0,false,Sz);
+    auto Sp0Sm1 = qbasis::opr<std::complex<double>>(0,0,false,Splus) *
+                  qbasis::opr<std::complex<double>>(1,0,false,Sminus);
+    std::complex<double> m1, m2, m3;
+
+
     std::vector<double> E0_list;
     for (int momentum = 0; momentum < L; momentum++) {
         // generate the translational symmetric basis
@@ -71,14 +82,20 @@ int main() {
 
         // optional in future, will use more memory and give higher speed
         // generating matrix of the Hamiltonian in the full Hilbert space
-        //Heisenberg.generate_Ham_sparse_repr();
-        //std::cout << std::endl;
+        Heisenberg.generate_Ham_sparse_repr();
+        std::cout << std::endl;
 
         // obtaining the eigenvals of the matrix
         Heisenberg.locate_E0_repr(10,20);
         std::cout << std::endl;
 
         E0_list.push_back(Heisenberg.eigenvals_repr[0]);
+
+        if (momentum == 0) {
+            m1 = Heisenberg.measure_repr(Sz0Sz1, 0, 0);
+            m2 = Heisenberg.measure_repr(Sz0Sz2, 0, 0);
+            m3 = Heisenberg.measure_repr(Sp0Sm1, 0, 0);
+        }
     }
     assert(std::abs(E0_list[0]  + 7.142296361) < 1e-8);
     assert(std::abs(E0_list[1]  + 6.523407057) < 1e-8);
@@ -122,5 +139,12 @@ int main() {
         std::cout << "E0(k=" << momentum << ")=\t" << E0_list[momentum]
         << "\tvs\t" << E0_check_list[momentum] << std::endl;
     }
+
+    std::cout << "Sz0Sz1 = " << m1 << std::endl;
+    std::cout << "Sz0Sz2 = " << m2 << std::endl;
+    std::cout << "Sp0Sm1 = " << m3 << std::endl;
+    assert(std::abs(m1 + 0.1487978408) < 1e-8);
+    assert(std::abs(m2 - 0.0617414604) < 1e-8);
+    assert(std::abs(m3 + 0.2975956817) < 1e-8);
 
 }

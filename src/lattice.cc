@@ -76,6 +76,17 @@ namespace qbasis {
             assert(bc[j] == "pbc" || bc[j] == "PBC" || bc[j] == "obc" || bc[j] == "OBC");
         }
         
+        site2coor_map.resize(Nsites);
+        coor2site_map.resize(num_sub);
+        for (uint32_t j = 0; j < Nsites; j++) {
+            std::vector<int> coor;
+            int sub;
+            site2coor_old(coor, sub, j);
+            site2coor_map[j].first  = coor;
+            site2coor_map[j].second = sub;
+            coor2site_map[sub][coor] = j;
+        }
+        
     }
     
     bool lattice::q_dividable() const {
@@ -83,8 +94,21 @@ namespace qbasis {
         if (dim_spec == dim && num_sub % 2 != 0) return false;
         return true;
     }
-            
+    
     void lattice::coor2site(const std::vector<int> &coor, const int &sub, uint32_t &site) const
+    {
+        assert(coor.size() == dim);
+        std::vector<int> coor_temp(dim);
+        int sub_temp = sub % static_cast<int>(num_sub);
+        if (sub_temp < 0) sub_temp += static_cast<int>(num_sub);
+        for (uint32_t d = 0; d < dim; d++) {
+            coor_temp[d] = coor[d] % static_cast<int>(L[d]);
+            if (coor_temp[d] < 0) coor_temp[d] += static_cast<int>(L[d]);
+        }
+        site = coor2site_map[sub_temp].at(coor_temp);
+    }
+    
+    void lattice::coor2site_old(const std::vector<int> &coor, const int &sub, uint32_t &site) const
     {
         assert(static_cast<uint32_t>(coor.size()) == dim);
         std::vector<uint32_t> coor2, base;
@@ -123,6 +147,14 @@ namespace qbasis {
     }
     
     void lattice::site2coor(std::vector<int> &coor, int &sub, const uint32_t &site) const
+    {
+        assert(site < Nsites);
+        coor = site2coor_map[site].first;
+        sub  = site2coor_map[site].second;
+        return;
+    }
+    
+    void lattice::site2coor_old(std::vector<int> &coor, int &sub, const uint32_t &site) const
     {
         assert(site < Nsites);
         coor.resize(dim);
@@ -551,6 +583,21 @@ namespace qbasis {
             }
         }
         child.Nsites /= 2;
+        
+        
+        child.site2coor_map.clear();
+        child.coor2site_map.clear();
+        child.site2coor_map.resize(child.Nsites);
+        child.coor2site_map.resize(child.num_sub);
+        for (uint32_t j = 0; j < child.Nsites; j++) {
+            std::vector<int> coor;
+            int sub;
+            child.site2coor_old(coor, sub, j);
+            child.site2coor_map[j].first  = coor;
+            child.site2coor_map[j].second = sub;
+            child.coor2site_map[sub][coor] = j;
+        }
+        
         return child;
     }
     

@@ -89,10 +89,23 @@ int main() {
 
     // to use translational symmetry, we first fill the Weisse tables
     Heisenberg.fill_Weisse_table(lattice);
+    
+    
+    // measurement opeartors
+    auto Sz0Sz1 = qbasis::opr<std::complex<double>>(0,0,false,Sz) *
+    qbasis::opr<std::complex<double>>(1,0,false,Sz);
+    auto Sz0Sz2 = qbasis::opr<std::complex<double>>(0,0,false,Sz) *
+    qbasis::opr<std::complex<double>>(2,0,false,Sz);
+    auto Sp0Sm1 = qbasis::opr<std::complex<double>>(0,0,false,Splus) *
+    qbasis::opr<std::complex<double>>(1,0,false,Sminus);
+    std::complex<double> m1, m2, m3;
+    
 
     std::vector<double> E0_list;
     for (int m = 0; m < Lx; m++) {
-        for (int n = 0; n < Ly; n++) {
+        for (int n = 0; n < Ly; n++)
+        {
+            //int m = 0, n = 0;
             // constructing the Hilbert space basis
             Heisenberg.enumerate_basis_repr({m,n}, {Sz_total}, {Sz_total_val});
 
@@ -105,6 +118,12 @@ int main() {
             std::cout << std::endl;
 
             E0_list.push_back(Heisenberg.eigenvals_repr[0]);
+        
+            if (m == 0 && n == 0) {
+                m1 = Heisenberg.measure_repr(Sz0Sz1, 0, 0);
+                m2 = Heisenberg.measure_repr(Sz0Sz2, 0, 0);
+                m3 = Heisenberg.measure_repr(Sp0Sm1, 0, 0);
+            }
         }
     }
 
@@ -115,4 +134,11 @@ int main() {
     assert(std::abs(E0_list[2] + 7.944709784) < 1e-8);
     assert(std::abs(E0_list[3] + 8.002263841) < 1e-8);
     assert(std::abs(E0_list[6] + 7.588987242) < 1e-8);
+    
+    std::cout << "Sz0Sz1 = " << m1 << std::endl;
+    std::cout << "Sz0Sz2 = " << m2 << std::endl;
+    std::cout << "Sp0Sm1 = " << m3 << std::endl;
+    assert(std::abs(m1 + 0.0594132980) < 1e-8);
+    assert(std::abs(m2 - 0.0265006291) < 1e-8);
+    assert(std::abs(m3 + 0.1188265961) < 1e-8);
 }

@@ -35,9 +35,9 @@ int main(){
     
     //test_basis5();
     
-    /*
-    test_operator();
     
+    test_operator();
+    /*
     test_lanczos_memoAll();
     
     test_lattice();
