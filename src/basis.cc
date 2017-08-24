@@ -402,13 +402,14 @@ namespace qbasis {
         uint32_t num_sites_sub1 = (num_sites + 1) / 2;
         uint32_t num_sites_sub2 = num_sites - num_sites_sub1;
         
-        std::vector<uint8_t> nums_sub1, nums_sub2;
+        std::vector<uint8_t> nums_sub1(num_sites_sub1), nums_sub2(num_sites_sub2);
         std::vector<uint8_t> base_sub1(num_sites_sub1,dim_local), base_sub2(num_sites_sub2,dim_local);
+        
         for (uint32_t site = 0; site < num_sites_sub2; site++) {
-            nums_sub1.push_back(siteRead(props, site + site,     orbital));
-            nums_sub2.push_back(siteRead(props, site + site + 1, orbital));
+            nums_sub1[site] = siteRead(props, site + site,     orbital);
+            nums_sub2[site] = siteRead(props, site + site + 1, orbital);
         }
-        if (num_sites_sub1 > num_sites_sub2) nums_sub1.push_back(siteRead(props, num_sites - 1, orbital));
+        if (num_sites_sub1 > num_sites_sub2) nums_sub1.back() = siteRead(props, num_sites - 1, orbital);
         label1 = dynamic_base<uint8_t, uint64_t>(nums_sub1, base_sub1);
         label2 = dynamic_base<uint8_t, uint64_t>(nums_sub2, base_sub2);
     }
@@ -784,6 +785,7 @@ namespace qbasis {
     
     bool operator==(const mbasis_elem &lhs, const mbasis_elem &rhs)
     {
+        if (lhs.mbits == rhs.mbits) return true;
         uint16_t total_bytes = static_cast<uint16_t>(lhs.mbits[0] * 256) + static_cast<uint16_t>(lhs.mbits[1]);
         assert(lhs.mbits[0] == rhs.mbits[0] && lhs.mbits[1] == rhs.mbits[1]);
         for (uint16_t byte_pos = 2; byte_pos < total_bytes; byte_pos++) {

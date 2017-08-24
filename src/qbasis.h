@@ -28,6 +28,7 @@
 #include <forward_list>
 #include <initializer_list>
 #include <list>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -981,8 +982,10 @@ namespace qbasis {
         // 3D: site = (i + j * L[0] + k * L[0] * L[1]) * num_sub + sub
         // otherwise, the dim_spec should be counted first
         void coor2site(const std::vector<int> &coor, const int &sub, uint32_t &site) const;
+        void coor2site_old(const std::vector<int> &coor, const int &sub, uint32_t &site) const;
         
         void site2coor(std::vector<int> &coor, int &sub, const uint32_t &site) const;
+        void site2coor_old(std::vector<int> &coor, int &sub, const uint32_t &site) const;
         
         // return a vector containing the positions of each site after translation
         std::vector<uint32_t> translation_plan(const std::vector<int> &disp) const;
@@ -1061,6 +1064,10 @@ namespace qbasis {
         uint32_t num_sub;
         uint32_t Nsites;
         uint32_t dim_spec;                   // the code starts labeling sites from a dimension which has even # of sites
+        
+        std::vector<std::pair<std::vector<int>,int>> site2coor_map;
+        std::vector<std::map<std::vector<int>,uint32_t>> coor2site_map;
+        //std::map<std::pair<std::vector<int>,int>,uint32_t> coor2site_map;
     };
     
     
