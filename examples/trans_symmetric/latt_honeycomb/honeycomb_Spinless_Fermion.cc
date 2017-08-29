@@ -49,7 +49,8 @@ int main() {
     for (int x = 0; x < Lx; x++) {
         for (int y = 0; y < Ly; y++) {
             uint32_t site_i, site_j;
-            lattice.coor2site({x,y}, 0, site_i); // obtain site label of (x,y)
+            std::vector<int> work(lattice.dimension());
+            lattice.coor2site({x,y}, 0, site_i, work); // obtain site label of (x,y)
             // construct operators on each site
             auto c_i    = qbasis::opr<std::complex<double>>(site_i,0,true,c);
             auto c_dg_i = c_i; c_dg_i.dagger();
@@ -57,7 +58,7 @@ int main() {
 
             // with right neighbor (x, y), sublattice 1
             {
-                lattice.coor2site({x,y}, 1, site_j);
+                lattice.coor2site({x,y}, 1, site_j, work);
                 auto c_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c);
                 auto c_dg_j = c_j; c_dg_j.dagger();
                 auto n_j    = c_dg_j * c_j;
@@ -70,7 +71,7 @@ int main() {
 
             // with left neighbor (x-1, y), sublattice 1
             if ( bc[0] == "pbc" || (bc[0] == "obc" && x > 0) ) {
-                lattice.coor2site({x-1,y}, 1, site_j);
+                lattice.coor2site({x-1,y}, 1, site_j, work);
                 auto c_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c);
                 auto c_dg_j = c_j; c_dg_j.dagger();
                 auto n_j    = c_dg_j * c_j;
@@ -83,7 +84,7 @@ int main() {
 
              // with bottom neighbor (x, y-1), sublattice 1
             if (bc[1] == "pbc" || (bc[1] == "obc" && y > 0)) {
-                lattice.coor2site({x,y-1}, 1, site_j);
+                lattice.coor2site({x,y-1}, 1, site_j, work);
                 auto c_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c);
                 auto c_dg_j = c_j; c_dg_j.dagger();
                 auto n_j    = c_dg_j * c_j;
@@ -95,7 +96,7 @@ int main() {
             }
 
             // total fermion operator
-            lattice.coor2site({x,y}, 1, site_j);
+            lattice.coor2site({x,y}, 1, site_j, work);
             auto c_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c);
             auto c_dg_j = c_j; c_dg_j.dagger();
             auto n_j    = c_dg_j * c_j;

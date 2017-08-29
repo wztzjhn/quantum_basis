@@ -1029,7 +1029,7 @@ namespace qbasis {
         // 2D: site = (i + j * L[0]) * num_sub + sub
         // 3D: site = (i + j * L[0] + k * L[0] * L[1]) * num_sub + sub
         // otherwise, the dim_spec should be counted first
-        void coor2site(const std::vector<int> &coor, const int &sub, uint32_t &site) const;
+        void coor2site(const std::vector<int> &coor, const int &sub, uint32_t &site, std::vector<int> &work) const;
         void coor2site_old(const std::vector<int> &coor, const int &sub, uint32_t &site) const;
         
         void site2coor(std::vector<int> &coor, int &sub, const uint32_t &site) const;

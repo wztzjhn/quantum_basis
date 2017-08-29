@@ -44,7 +44,8 @@ int main() {
     for (int x = 0; x < Lx; x++) {
         for (int y = 0; y < Ly; y++) {
             uint32_t site_i, site_j;
-            lattice.coor2site(std::vector<int>{x,y}, 0, site_i); // obtain site label of (x,y)
+            std::vector<int> work(lattice.dimension());
+            lattice.coor2site(std::vector<int>{x,y}, 0, site_i, work); // obtain site label of (x,y)
             // construct operators on each site
             auto c_up_i    = qbasis::opr<std::complex<double>>(site_i,0,true,c_up);
             auto c_dn_i    = qbasis::opr<std::complex<double>>(site_i,0,true,c_dn);
@@ -55,7 +56,7 @@ int main() {
 
             // hopping to neighbor (x+1, y)
             if (bc[0] == "pbc" || (bc[0] == "obc" && x < Lx - 1)) {
-                lattice.coor2site(std::vector<int>{x+1,y}, 0, site_j);
+                lattice.coor2site(std::vector<int>{x+1,y}, 0, site_j, work);
                 auto c_up_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c_up);
                 auto c_dn_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c_dn);
                 auto c_up_dg_j = c_up_j; c_up_dg_j.dagger();
@@ -68,7 +69,7 @@ int main() {
 
             // hopping to neighbor (x, y+1)
             if (bc[1] == "pbc" || (bc[1] == "obc" && y < Ly - 1)) {
-                lattice.coor2site(std::vector<int>{x,y+1}, 0, site_j);
+                lattice.coor2site(std::vector<int>{x,y+1}, 0, site_j, work);
                 auto c_up_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c_up);
                 auto c_dn_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c_dn);
                 auto c_up_dg_j = c_up_j; c_up_dg_j.dagger();

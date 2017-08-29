@@ -95,17 +95,19 @@ namespace qbasis {
         return true;
     }
     
-    void lattice::coor2site(const std::vector<int> &coor, const int &sub, uint32_t &site) const
+    void lattice::coor2site(const std::vector<int> &coor, const int &sub, uint32_t &site, std::vector<int> &work) const
     {
         assert(coor.size() == dim);
-        std::vector<int> coor_temp(dim);
-        int sub_temp = sub % static_cast<int>(num_sub);
+        if (work.size() != dim) work.resize(dim);
+        int sub_temp = sub;
+        if (sub_temp < 0 || sub_temp >= static_cast<int>(num_sub)) sub_temp = sub % static_cast<int>(num_sub);
         if (sub_temp < 0) sub_temp += static_cast<int>(num_sub);
         for (uint32_t d = 0; d < dim; d++) {
-            coor_temp[d] = coor[d] % static_cast<int>(L[d]);
-            if (coor_temp[d] < 0) coor_temp[d] += static_cast<int>(L[d]);
+            work[d] = coor[d];
+            if (work[d] < 0 || work[d] >= static_cast<int>(L[d])) work[d] = coor[d] % static_cast<int>(L[d]);
+            if (work[d] < 0) work[d] += static_cast<int>(L[d]);
         }
-        site = coor2site_map[sub_temp].at(coor_temp);
+        site = coor2site_map[sub_temp].at(work);
     }
     
     void lattice::coor2site_old(const std::vector<int> &coor, const int &sub, uint32_t &site) const
@@ -355,6 +357,7 @@ namespace qbasis {
                 coor_naive = dynamic_base_plus1(coor_naive, base_naive);
                 int sub1 = 0;
                 uint32_t pos1;
+                std::vector<int> work(coor0);
                 while (! dynamic_base_overflow(coor_naive, base_naive)) {
                     std::vector<int> coor1(coor0);
                     for (uint32_t d_ou = 0; d_ou < dim_trans; d_ou++) {
@@ -362,7 +365,7 @@ namespace qbasis {
                             coor1[d_in] += static_cast<int>(coor_naive[d_ou] * covering[j].first.first[d_ou][d_in]);
                         }
                     }
-                    latt_trans.coor2site(coor1, sub1, pos1);
+                    latt_trans.coor2site(coor1, sub1, pos1, work);
                     covering[j].second[pos1] = covering_list.back();
                     coor_naive = dynamic_base_plus1(coor_naive, base_naive);
                 }
@@ -496,12 +499,12 @@ namespace qbasis {
     {
         assert(static_cast<uint32_t>(disp.size()) == dim);
         std::vector<uint32_t> result(total_sites());
-        std::vector<int> coor(dim), temp(dim);
+        std::vector<int> coor(dim), work(dim);
         int sub;
         for (uint32_t site = 0; site < total_sites(); site++) {
             site2coor(coor, sub, site);
-            for (uint32_t j = 0; j < dim; j++) temp[j] = coor[j] + disp[j];
-            coor2site(temp,sub,result[site]);
+            for (uint32_t j = 0; j < dim; j++) coor[j] += disp[j];
+            coor2site(coor,sub,result[site], work);
         }
         return result;
     }
@@ -512,7 +515,7 @@ namespace qbasis {
         assert(L[0] == L[1]);
         assert(std::abs(a[0][0] * a[1][0] + a[0][1] * a[1][1]) < opr_precision); // basis orthogonal
         std::vector<uint32_t> result(total_sites());
-        std::vector<int> coor(dim), temp(dim);
+        std::vector<int> coor(dim), temp(dim), work(dim);
         int sub;
         
         // currently only the simplest case implemented: one sublattice. More complicated cases come later
@@ -522,7 +525,7 @@ namespace qbasis {
                 site2coor(coor, sub, site);
                 temp[0] = static_cast<int>(L[1]) - 1 - coor[1];
                 temp[1] = coor[0];
-                coor2site(temp, sub, result[site]);
+                coor2site(temp, sub, result[site], work);
             }
         }
         return result;

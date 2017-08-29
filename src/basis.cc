@@ -685,52 +685,36 @@ namespace qbasis {
     
     double mbasis_elem::diagonal_operator(const std::vector<basis_prop> &props, const opr<double>& lhs) const
     {
-        assert(lhs.q_diagonal() && (! lhs.fermion) && lhs.dim == props[lhs.orbital].dim_local);
-        if (lhs.q_zero()) {
-            return 0.0;
-        } else {
-            return lhs.mat[siteRead(props, lhs.site, lhs.orbital)];
-        }
+        assert((! lhs.fermion) && lhs.dim == props[lhs.orbital].dim_local);
+        return lhs.mat[siteRead(props, lhs.site, lhs.orbital)];
     }
     
     std::complex<double> mbasis_elem::diagonal_operator(const std::vector<basis_prop> &props, const opr<std::complex<double>>& lhs) const
     {
-        assert(lhs.q_diagonal() && (! lhs.fermion) && lhs.dim == props[lhs.orbital].dim_local);
-        if (lhs.q_zero()) {
-            return std::complex<double>(0.0, 0.0);
-        } else {
-            return lhs.mat[siteRead(props, lhs.site, lhs.orbital)];
-        }
+        assert((! lhs.fermion) && lhs.dim == props[lhs.orbital].dim_local);
+        return lhs.mat[siteRead(props, lhs.site, lhs.orbital)];
     }
     
     double mbasis_elem::diagonal_operator(const std::vector<basis_prop> &props, const opr_prod<double>& lhs) const
     {
-        if (lhs.q_zero()) {
-            return 0.0;
-        } else {
-            double res = lhs.coeff;
-            for (const auto &op : lhs.mat_prod) {
-                assert(op.q_diagonal() && (! op.fermion) && op.dim == props[op.orbital].dim_local);
-                res *= diagonal_operator(props, op);
-                if (std::abs(res) < machine_prec) break;
-            }
-            return res;
+        double res = lhs.coeff;
+        for (const auto &op : lhs.mat_prod) {
+            assert((! op.fermion) && op.dim == props[op.orbital].dim_local);
+            res *= diagonal_operator(props, op);
+            if (std::abs(res) < machine_prec) break;
         }
+        return res;
     }
     
     std::complex<double> mbasis_elem::diagonal_operator(const std::vector<basis_prop> &props, const opr_prod<std::complex<double>>& lhs) const
     {
-        if (lhs.q_zero()) {
-            return std::complex<double>(0.0, 0.0);
-        } else {
-            std::complex<double> res = lhs.coeff;
-            for (const auto &op : lhs.mat_prod) {
-                assert(op.q_diagonal() && (! op.fermion) && op.dim == props[op.orbital].dim_local);
-                res *= diagonal_operator(props, op);
-                if (std::abs(res) < machine_prec) break;
-            }
-            return res;
+        std::complex<double> res = lhs.coeff;
+        for (const auto &op : lhs.mat_prod) {
+            assert((! op.fermion) && op.dim == props[op.orbital].dim_local);
+            res *= diagonal_operator(props, op);
+            if (std::abs(res) < machine_prec) break;
         }
+        return res;
     }
     
     double mbasis_elem::diagonal_operator(const std::vector<basis_prop> &props, const mopr<double> &lhs) const
