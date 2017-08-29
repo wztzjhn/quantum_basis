@@ -37,7 +37,7 @@
 #ifdef _OPENMP
   #include <omp.h>
 #else
-  #define omp_get_thread_num() -1
+  #define omp_get_thread_num() 0
   #define omp_get_num_threads() 1
   #define omp_get_num_procs() 1
 #endif
@@ -238,20 +238,30 @@ namespace qbasis {
     template <typename T> mopr<T> operator*(const T&, const mopr<T>&);
 
     // opr * | orb0, orb1, ..., ORB, ... > = | orb0, orb1, ..., opr*ORB, ... >, fermionic sign has to be computed when traversing orbitals
-    template <typename T> wavefunction<T> oprXphi(const opr<T>&, const mbasis_elem&, const std::vector<basis_prop>&);
-    template <typename T> wavefunction<T> oprXphi(const opr<T>&, const wavefunction<T>&, const std::vector<basis_prop>&);
-    template <typename T> wavefunction<T> oprXphi(const opr_prod<T>&, const mbasis_elem&, const std::vector<basis_prop>&);
-    template <typename T> wavefunction<T> oprXphi(const opr_prod<T>&, const wavefunction<T>&, const std::vector<basis_prop>&);
-    template <typename T> wavefunction<T> oprXphi(const mopr<T>&, const mbasis_elem&, const std::vector<basis_prop>&);
-    template <typename T> wavefunction<T> oprXphi(const mopr<T>&, const wavefunction<T>&, const std::vector<basis_prop>&);
+    // wavefunction = opr * wavefunction (overwritten)
+    template <typename T> void oprXphi(const opr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, const bool &append = false);
+    // wavefunction = opr * mbasis_elem
+    template <typename T> void oprXphi(const opr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem, const bool &append = false);
+    // wavefunction = opr * wavefunction0
+    template <typename T> void oprXphi(const opr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, wavefunction<T> phi0, const bool &append = false);
+    
+    // wavefunction = opr_prod * wavefunction (overwritten)
+    template <typename T> void oprXphi(const opr_prod<T>&, const std::vector<basis_prop>&, wavefunction<T>&);
+    // wavefunction = opr_prod * mbasis_elem
+    template <typename T> void oprXphi(const opr_prod<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem, const bool &append = false);
+    // wavefunction = opr_prod * wavefunction0
+    template <typename T> void oprXphi(const opr_prod<T>&, const std::vector<basis_prop>&, wavefunction<T>&, wavefunction<T> phi0, const bool &append = false);
+    
+    // wavefunction = mopr * mbasis_elem
+    template <typename T> void oprXphi(const mopr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem, const bool &append = false);
+    // wavefunction = mopr * wavefunction0
+    template <typename T> void oprXphi(const mopr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, wavefunction<T> phi0, const bool &append = false);
     
     // mopr * {a list of mbasis} -->> {a new list of mbasis}
     template <typename T> void gen_mbasis_by_mopr(const mopr<T>&, std::list<mbasis_elem>&, const std::vector<basis_prop>&);
     
-    
     // csr matrix
     template <typename T> void swap(csr_mat<T>&, csr_mat<T>&);
-    
     
     // divide into two identical sublattices, if Nsites even. To be used in the divide and conquer method
     lattice divide_lattice(const lattice &parent);
@@ -307,7 +317,10 @@ namespace qbasis {
         friend bool operator<(const mbasis_elem&, const mbasis_elem&);
         friend bool operator==(const mbasis_elem&, const mbasis_elem&);
         friend bool trans_equiv(const mbasis_elem&, const mbasis_elem&, const std::vector<basis_prop> &props, const lattice&);
-        template <typename T> friend wavefunction<T> oprXphi(const opr<T>&, const mbasis_elem&, const std::vector<basis_prop>&);
+        template <typename T> friend class wavefunction;
+        template <typename T> friend void oprXphi(const opr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, const bool&);
+        template <typename T> friend void oprXphi(const opr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem, const bool&);
+        template <typename T> friend void oprXphi(const opr_prod<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem, const bool&);
     public:
         // default constructor
         mbasis_elem() : mbits(nullptr) {}
@@ -448,23 +461,30 @@ namespace qbasis {
     // -------------- class for wave functions ---------------
     // Use with caution, may hurt speed when not used properly
     template <typename T> class wavefunction {
+        friend class model<T>;
         friend void swap <> (wavefunction<T> &, wavefunction<T> &);
-        friend wavefunction<T> oprXphi <> (const opr<T>&, const wavefunction<T>&, const std::vector<basis_prop>&);
-        friend wavefunction<T> oprXphi <> (const opr_prod<T>&, const wavefunction<T>&, const std::vector<basis_prop>&);
-        friend wavefunction<T> oprXphi <> (const mopr<T>&, const wavefunction<T>&, const std::vector<basis_prop>&);
+        friend wavefunction<T> operator+ <> (const wavefunction<T>&, const wavefunction<T>&);
+        friend void oprXphi <> (const opr<T>&,      const std::vector<basis_prop>&, wavefunction<T>&, const bool&);
+        friend void oprXphi <> (const opr<T>&,      const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem,     const bool&);
+        friend void oprXphi <> (const opr<T>&,      const std::vector<basis_prop>&, wavefunction<T>&, wavefunction<T>, const bool&);
+        friend void oprXphi <> (const opr_prod<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem,     const bool&);
+        friend void oprXphi <> (const opr_prod<T>&, const std::vector<basis_prop>&, wavefunction<T>&, wavefunction<T>, const bool&);
+        friend void oprXphi <> (const mopr<T>&,     const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem,     const bool&);
+        friend void oprXphi <> (const mopr<T>&,     const std::vector<basis_prop>&, wavefunction<T>&, wavefunction<T>, const bool&);
+        friend void gen_mbasis_by_mopr <> (const mopr<T> &, std::list<mbasis_elem>&, const std::vector<basis_prop>&);
     public:
-        // default constructor
-        wavefunction() = default;
+        // constructor from props
+        wavefunction(const std::vector<basis_prop> &props, const int &capacity = 64);
         
         // constructor from an element
-        wavefunction(const mbasis_elem &old) : elements(1, std::pair<mbasis_elem, T>(old, static_cast<T>(1.0))) {}
-        wavefunction(mbasis_elem &&old)      : elements(1, std::pair<mbasis_elem, T>(old, static_cast<T>(1.0))) {}
+        wavefunction(const mbasis_elem &old, const int &capacity = 64);
+        wavefunction(mbasis_elem &&old,      const int &capacity = 64);
         
         // copy constructor
-        wavefunction(const wavefunction<T> &old) : elements(old.elements) {}
+        wavefunction(const wavefunction<T> &old) : bgn(old.bgn), end(old.end), total_bytes(old.total_bytes), ele(old.ele) {}
         
         // move constructor
-        wavefunction(wavefunction<T> &&old) noexcept : elements(std::move(old.elements)) {}
+        wavefunction(wavefunction<T> &&old) noexcept : bgn(old.bgn), end(old.end), total_bytes(old.total_bytes), ele(std::move(old.ele)) {}
         
         // copy assignment constructor and move assignment constructor, using "swap and copy"
         wavefunction& operator=(wavefunction<T> old)
@@ -476,18 +496,14 @@ namespace qbasis {
         // destructor
         ~wavefunction() {}
         
-        std::pair<mbasis_elem, T>& operator[](uint32_t n);
-        
-        const std::pair<mbasis_elem, T>& operator[](uint32_t n) const;
-        
-        //    ---------------- print ---------------
-        void prt_bits(const std::vector<basis_prop> &props) const;
-        
-        void prt_states(const std::vector<basis_prop> &props) const;
-        
         //    ----------- basic inquiries ----------
+        int size() const { int capacity = static_cast<int>(ele.size()); return ( (end + capacity - bgn) % capacity ); }
+        
         // check if zero
-        bool q_zero() const { return elements.empty(); }
+        bool q_empty() const { return (size() == 0); }
+        
+        // check if full
+        bool q_full() const { return (size() + 1 == static_cast<int>(ele.size())); }
         
         // check if sorted
         bool q_sorted() const;
@@ -495,21 +511,29 @@ namespace qbasis {
         // check if sorted and there are no dulplicated terms
         bool q_sorted_fully() const;
         
-        uint32_t size() const { return static_cast<uint32_t>(elements.size()); }
-        
         // for \sum_i \alpha_i * element[i], return \sum_i |\alpha_i|^2
         double amplitude();
         
+        //    ---------------- print ---------------
+        void prt_bits(const std::vector<basis_prop> &props) const;
+        
+        void prt_states(const std::vector<basis_prop> &props) const;
+        
+        //    ----------- element access -----------
+        std::pair<mbasis_elem, T>& operator[](int n);
+        
+        const std::pair<mbasis_elem, T>& operator[](int n) const;
+        
         //    ------------ arithmetics -------------
-        // add one element
-        wavefunction& operator+=(std::pair<mbasis_elem, T> ele);
+        // enlarge capacity
+        wavefunction& reserve(const int& capacity_new);
         
-        wavefunction& operator+=(const mbasis_elem &ele);
+        wavefunction& operator+=(mbasis_elem ele_new);
         
-        // add a wave function
+        wavefunction& operator+=(std::pair<mbasis_elem, T> ele_new);
+        
         wavefunction& operator+=(wavefunction<T> rhs);
         
-        // multiply by a constant
         wavefunction& operator*=(const T &rhs);
         
         // simplify
@@ -518,7 +542,26 @@ namespace qbasis {
     private:
         // store an array of basis elements, and their corresponding coefficients
         // note: there should not be any dulplicated elements
-        std::list<std::pair<mbasis_elem, T>> elements;
+        // using cycled queue data structure (wasting 1 element to avoid end==bgn confusion: empty or full)
+        int bgn;
+        int end;
+        int total_bytes;
+        std::vector<std::pair<mbasis_elem, T>> ele;
+        
+        // add one basis element (promised not to overlap)
+        wavefunction& add(const mbasis_elem &rhs);
+        // copy from one basis element (promised not to overlap)
+        wavefunction& copy(const mbasis_elem &rhs);
+        
+        // add one basis element (promised not to overlap)
+        wavefunction& add(const std::pair<mbasis_elem, T> &rhs);
+        // copy from one basis element (promised not to overlap)
+        wavefunction& copy(const std::pair<mbasis_elem, T> &rhs);
+        
+        // add another wavefunction (promised not to overlap)
+        wavefunction& add(const wavefunction<T> &rhs);
+        // copy from another wavefuction (promised not to overlap)
+        wavefunction& copy(const wavefunction<T> &rhs);
     };
     
     
@@ -540,7 +583,9 @@ namespace qbasis {
         friend class opr_prod<T>;
         friend class mopr<T>;
         friend class mbasis_elem;
-        friend wavefunction<T> oprXphi <> (const opr<T>&, const mbasis_elem&, const std::vector<basis_prop>&);
+        friend void oprXphi <> (const opr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, const bool&);
+        friend void oprXphi <> (const opr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem, const bool&);
+        friend void oprXphi <> (const opr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, wavefunction<T>, const bool&);
     public:
         // default constructor
         opr() : mat(nullptr) {}
@@ -633,8 +678,9 @@ namespace qbasis {
         friend opr_prod<T> operator* <> (const opr<T>&, const opr<T>&);
         friend class mopr<T>;
         friend class mbasis_elem;
-        friend wavefunction<T> oprXphi <> (const opr_prod<T>&, const mbasis_elem&, const std::vector<basis_prop>&);
-        friend wavefunction<T> oprXphi <> (const opr_prod<T>&, const wavefunction<T>&, const std::vector<basis_prop>&);
+        friend void oprXphi <> (const opr_prod<T>&, const std::vector<basis_prop>&, wavefunction<T>&);
+        friend void oprXphi <> (const opr_prod<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem, const bool&);
+        friend void oprXphi <> (const opr_prod<T>&, const std::vector<basis_prop>&, wavefunction<T>&, wavefunction<T>, const bool&);
     public:
         // default constructor
         opr_prod() = default;
@@ -697,6 +743,7 @@ namespace qbasis {
     // -------------- class for a combination of operators ----------------
     // a linear combination of products of operators
     template <typename T> class mopr {
+        friend class model<T>;
         friend void swap <> (mopr<T>&, mopr<T>&);
         friend bool operator== <> (const mopr<T>&, const mopr<T>&);
         friend bool operator!= <> (const mopr<T>&, const mopr<T>&);
@@ -725,8 +772,9 @@ namespace qbasis {
         friend mopr<T> operator* <> (const opr<T>&, const mopr<T>&);
         friend mopr<T> operator* <> (const mopr<T>&, const T&);
         friend mopr<T> operator* <> (const T&, const mopr<T>&);
-        friend wavefunction<T> oprXphi <> (const mopr<T>&, const mbasis_elem&, const std::vector<basis_prop>&);
-        friend wavefunction<T> oprXphi <> (const mopr<T>&, const wavefunction<T>&, const std::vector<basis_prop>&);
+        friend void oprXphi <> (const mopr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem, const bool&);
+        friend void oprXphi <> (const mopr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, wavefunction<T>, const bool&);
+        friend void gen_mbasis_by_mopr <> (const mopr<T> &, std::list<mbasis_elem>&, const std::vector<basis_prop>&);
     public:
         // default constructor
         mopr() = default;
