@@ -1,7 +1,8 @@
-#include <iostream>
-#include <fstream>
 #include <bitset>
 #include <climits>
+#include <cstring>
+#include <fstream>
+#include <iostream>
 #include "qbasis.h"
 #include "graph.h"
 
@@ -131,7 +132,7 @@ namespace qbasis {
         if (old.mbits != nullptr) {
             uint16_t total_bytes = static_cast<uint16_t>(old.mbits[0] * 256) + static_cast<uint16_t>(old.mbits[1]);
             mbits = static_cast<uint8_t*>(malloc(total_bytes * sizeof(uint8_t)));
-            for (uint16_t byte_pos = 0; byte_pos < total_bytes; byte_pos++) mbits[byte_pos] = old.mbits[byte_pos];
+            std::memcpy(mbits, old.mbits, total_bytes);
         } else {
             mbits = nullptr;
         }
@@ -684,52 +685,36 @@ namespace qbasis {
     
     double mbasis_elem::diagonal_operator(const std::vector<basis_prop> &props, const opr<double>& lhs) const
     {
-        assert(lhs.q_diagonal() && (! lhs.fermion) && lhs.dim == props[lhs.orbital].dim_local);
-        if (lhs.q_zero()) {
-            return 0.0;
-        } else {
-            return lhs.mat[siteRead(props, lhs.site, lhs.orbital)];
-        }
+        assert((! lhs.fermion) && lhs.dim == props[lhs.orbital].dim_local);
+        return lhs.mat[siteRead(props, lhs.site, lhs.orbital)];
     }
     
     std::complex<double> mbasis_elem::diagonal_operator(const std::vector<basis_prop> &props, const opr<std::complex<double>>& lhs) const
     {
-        assert(lhs.q_diagonal() && (! lhs.fermion) && lhs.dim == props[lhs.orbital].dim_local);
-        if (lhs.q_zero()) {
-            return std::complex<double>(0.0, 0.0);
-        } else {
-            return lhs.mat[siteRead(props, lhs.site, lhs.orbital)];
-        }
+        assert((! lhs.fermion) && lhs.dim == props[lhs.orbital].dim_local);
+        return lhs.mat[siteRead(props, lhs.site, lhs.orbital)];
     }
     
     double mbasis_elem::diagonal_operator(const std::vector<basis_prop> &props, const opr_prod<double>& lhs) const
     {
-        if (lhs.q_zero()) {
-            return 0.0;
-        } else {
-            double res = lhs.coeff;
-            for (const auto &op : lhs.mat_prod) {
-                assert(op.q_diagonal() && (! op.fermion) && op.dim == props[op.orbital].dim_local);
-                res *= diagonal_operator(props, op);
-                if (std::abs(res) < machine_prec) break;
-            }
-            return res;
+        double res = lhs.coeff;
+        for (const auto &op : lhs.mat_prod) {
+            assert((! op.fermion) && op.dim == props[op.orbital].dim_local);
+            res *= diagonal_operator(props, op);
+            if (std::abs(res) < machine_prec) break;
         }
+        return res;
     }
     
     std::complex<double> mbasis_elem::diagonal_operator(const std::vector<basis_prop> &props, const opr_prod<std::complex<double>>& lhs) const
     {
-        if (lhs.q_zero()) {
-            return std::complex<double>(0.0, 0.0);
-        } else {
-            std::complex<double> res = lhs.coeff;
-            for (const auto &op : lhs.mat_prod) {
-                assert(op.q_diagonal() && (! op.fermion) && op.dim == props[op.orbital].dim_local);
-                res *= diagonal_operator(props, op);
-                if (std::abs(res) < machine_prec) break;
-            }
-            return res;
+        std::complex<double> res = lhs.coeff;
+        for (const auto &op : lhs.mat_prod) {
+            assert((! op.fermion) && op.dim == props[op.orbital].dim_local);
+            res *= diagonal_operator(props, op);
+            if (std::abs(res) < machine_prec) break;
         }
+        return res;
     }
     
     double mbasis_elem::diagonal_operator(const std::vector<basis_prop> &props, const mopr<double> &lhs) const
@@ -2212,58 +2197,40 @@ namespace qbasis {
     
     // ----------------- implementation of wavefunction ------------------
     template <typename T>
-    std::pair<mbasis_elem, T> &wavefunction<T>::operator[](uint32_t n)
+    wavefunction<T>::wavefunction(const std::vector<basis_prop> &props, const int &capacity) : bgn(0), end(0)
     {
-        assert(n < size());
-        assert(! elements.empty());
-        auto it = elements.begin();
-        for (decltype(n) i = 0; i < n; i++) ++it;
-        return *it;
+        std::pair<mbasis_elem, T> gs(mbasis_elem(props), static_cast<T>(0));
+        total_bytes = static_cast<int>(gs.first.mbits[0] * 256) + static_cast<int>(gs.first.mbits[1]);
+        ele = std::vector<std::pair<mbasis_elem,T>>(capacity, gs);
     }
     
     template <typename T>
-    const std::pair<mbasis_elem, T> &wavefunction<T>::operator[](uint32_t n) const
+    wavefunction<T>::wavefunction(const mbasis_elem &old, const int &capacity) : bgn(0), end(1)
     {
-        assert(n < size());
-        assert(! elements.empty());
-        auto it = elements.begin();
-        for (decltype(n) i = 0; i < n; i++) ++it;
-        return *it;
+        std::pair<mbasis_elem, T> gs(old,static_cast<T>(1.0));
+        total_bytes = static_cast<int>(old.mbits[0] * 256) + static_cast<int>(old.mbits[1]);
+        ele = std::vector<std::pair<mbasis_elem,T>>(capacity, gs);
     }
     
     template <typename T>
-    void wavefunction<T>::prt_bits(const std::vector<basis_prop> &props) const
+    wavefunction<T>::wavefunction(mbasis_elem &&old, const int &capacity) : bgn(0), end(1)
     {
-        for (auto &ele : elements) {
-            std::cout << "coeff: " << ele.second << std::endl;
-            ele.first.prt_bits(props);
-            std::cout << std::endl;
-        }
-    }
-    
-    template <typename T>
-    void wavefunction<T>::prt_states(const std::vector<basis_prop> &props) const
-    {
-        for (auto &ele : elements) {
-            std::cout << "coeff: " << ele.second << std::endl;
-            ele.first.prt_states(props);
-            std::cout << std::endl;
-        }
+        std::pair<mbasis_elem, T> gs(old,static_cast<T>(1.0));
+        total_bytes = static_cast<int>(old.mbits[0] * 256) + static_cast<int>(old.mbits[1]);
+        ele = std::vector<std::pair<mbasis_elem,T>>(capacity, gs);
     }
     
     template <typename T>
     bool wavefunction<T>::q_sorted() const
     {
-        if (elements.size() == 0 || elements.size() == 1) return true;
+        if (size() == 0 || size() == 1) return true;
+        int capacity = static_cast<int>(ele.size());
         bool check = true;
-        auto it = elements.begin();
-        auto it_prev = it++;
-        while (it != elements.end()) {
-            if (it->first < it_prev->first) {
+        for (int j = (bgn + 1) % capacity; j != end; j = (j + 1) % capacity) {
+            if (ele[j].first < ele[(j + capacity - 1) % capacity].first) {
                 check = false;
                 break;
             }
-            it_prev = it++;
         }
         return check;
     }
@@ -2271,16 +2238,14 @@ namespace qbasis {
     template <typename T>
     bool wavefunction<T>::q_sorted_fully() const
     {
-        if (elements.size() == 0 || elements.size() == 1) return true;
+        if (size() == 0 || size() == 1) return true;
+        int capacity = static_cast<int>(ele.size());
         bool check = true;
-        auto it = elements.begin();
-        auto it_prev = it++;
-        while (it != elements.end()) {
-            if (! (it_prev->first < it->first)) {
+        for (int j = (bgn + 1) % capacity; j != end; j = (j + 1) % capacity) {
+            if ( !(ele[(j + capacity - 1) % capacity].first < ele[j].first) ) {
                 check = false;
                 break;
             }
-            it_prev = it++;
         }
         return check;
     }
@@ -2288,91 +2253,236 @@ namespace qbasis {
     template <typename T>
     double wavefunction<T>::amplitude()
     {
-        if (q_zero()) return 0.0;
-        simplify();
+        if (q_empty()) return 0.0;
+        int capacity = static_cast<int>(ele.size());
         double res = 0.0;
-        for (auto it = elements.begin(); it != elements.end(); it++) {
-            res += std::norm(it->second);
+        for (int j = bgn; j != end; j = (j + 1) % capacity) {
+            res += std::norm(ele[j].second);
         }
         return res;
     }
     
     template <typename T>
-    wavefunction<T> &wavefunction<T>::operator+=(std::pair<mbasis_elem, T> ele)
+    void wavefunction<T>::prt_bits(const std::vector<basis_prop> &props) const
     {
-        if (std::abs(ele.second) < machine_prec) return *this;
-        if (elements.empty()) {
-            elements.push_back(std::move(ele));
-        } else {
-            auto it = elements.begin();
-            while (it != elements.end() && it->first < ele.first) it++;
-            if (it == elements.end()) {
-                elements.insert(it, std::move(ele));
-            } else if(ele.first == it->first) {
-                it->second += ele.second;
-                if (std::abs(it->second) < machine_prec) elements.erase(it);
-            } else {
-                elements.insert(it, std::move(ele));
+        int capacity = static_cast<int>(ele.size());
+        for (int j = bgn; j != end; j = (j + 1) % capacity) {
+            std::cout << "coeff: " << ele[j].second << std::endl;
+            ele[j].first.prt_bits(props);
+            std::cout << std::endl;
+        }
+    }
+    
+    template <typename T>
+    void wavefunction<T>::prt_states(const std::vector<basis_prop> &props) const
+    {
+        int capacity = static_cast<int>(ele.size());
+        for (int j = bgn; j != end; j = (j + 1) % capacity) {
+            std::cout << "coeff: " << ele[j].second << std::endl;
+            ele[j].first.prt_states(props);
+            std::cout << std::endl;
+        }
+    }
+    
+    template <typename T>
+    std::pair<mbasis_elem, T> &wavefunction<T>::operator[](int n)
+    {
+        assert(n >= 0 && n < size());
+        assert(! q_empty());
+        return ele[(bgn + n) % static_cast<int>(ele.size())];
+    }
+    
+    template <typename T>
+    const std::pair<mbasis_elem, T> &wavefunction<T>::operator[](int n) const
+    {
+        assert(n >= 0 && n < size());
+        assert(! q_empty());
+        return ele[(bgn + n) % static_cast<int>(ele.size())];
+    }
+    
+    
+    template <typename T>
+    wavefunction<T> &wavefunction<T>::reserve(const int& capacity_new)
+    {
+        assert(capacity_new > 0);
+        int capacity = static_cast<int>(ele.size());
+        if (capacity_new <= capacity) return *this;
+        
+        auto gs = ele[bgn].first;
+        wavefunction<T> wv_new(gs, capacity_new);
+        wv_new.copy(*this);
+        
+        using std::swap;
+        swap(wv_new, *this);
+        return *this;
+    }
+    
+    template <typename T>
+    wavefunction<T> &wavefunction<T>::add(const mbasis_elem &rhs)
+    {
+        assert(ele[0].first.mbits[0] == rhs.mbits[0] && ele[0].first.mbits[1] == rhs.mbits[1]);
+        int capacity = static_cast<int>(ele.size());
+        if (size() + 1 >= capacity) {
+            capacity += capacity;
+            reserve(capacity);
+        }
+        ele[end].second = static_cast<T>(1.0);
+        std::memcpy(ele[end].first.mbits, rhs.mbits, total_bytes);
+        end = (end + 1) % capacity;
+        return *this;
+    }
+    
+    template <typename T>
+    wavefunction<T> &wavefunction<T>::copy(const mbasis_elem &rhs)
+    {
+        bgn = 0;
+        end = 0;
+        add(rhs);
+        return *this;
+    }
+    
+    template <typename T>
+    wavefunction<T> &wavefunction<T>::add(const std::pair<mbasis_elem, T> &rhs)
+    {
+        assert(ele[0].first.mbits[0] == rhs.first.mbits[0] && ele[0].first.mbits[1] == rhs.first.mbits[1]);
+        int capacity = static_cast<int>(ele.size());
+        if (size() + 1 >= capacity) {
+            capacity += capacity;
+            reserve(capacity);
+        }
+        ele[end].second = rhs.second;
+        std::memcpy(ele[end].first.mbits, rhs.first.mbits, total_bytes);
+        end = (end + 1) % capacity;
+        return *this;
+    }
+    
+    template <typename T>
+    wavefunction<T> &wavefunction<T>::copy(const std::pair<mbasis_elem, T> &rhs)
+    {
+        bgn = 0;
+        end = 0;
+        add(rhs);
+        return *this;
+    }
+    
+    template <typename T>
+    wavefunction<T> &wavefunction<T>::add(const wavefunction<T> &rhs)
+    {
+        if (rhs.q_empty()) return *this;
+        assert(ele[0].first.mbits[0] == rhs.ele[0].first.mbits[0] && ele[0].first.mbits[1] == rhs.ele[0].first.mbits[1]);
+        int capacity = static_cast<int>(ele.size());
+        int cnt_total = rhs.size();
+        if (size() + cnt_total >= capacity) {
+            capacity += capacity;
+            reserve(capacity);
+        }
+        
+        for (int cnt = 0; cnt < cnt_total; cnt++) {
+            if (std::abs(rhs.ele[bgn+cnt].second) > machine_prec) {
+                ele[end].second = rhs.ele[bgn+cnt].second;
+                std::memcpy(ele[end].first.mbits, rhs.ele[bgn+cnt].first.mbits, total_bytes);
+                end = (end + 1) % capacity;
             }
         }
         return *this;
     }
     
     template <typename T>
-    wavefunction<T> &wavefunction<T>::operator+=(const mbasis_elem &ele)
+    wavefunction<T> &wavefunction<T>::copy(const wavefunction<T> &rhs)
     {
-        (*this) += std::pair<mbasis_elem, T>(ele, static_cast<T>(1.0));
+        bgn = 0;
+        end = 0;
+        add(rhs);
+        return *this;
+    }
+    
+    template <typename T>
+    wavefunction<T> &wavefunction<T>::operator+=(mbasis_elem ele_new)
+    {
+        add(ele_new);
+        return *this;
+    }
+    
+    
+    template <typename T>
+    wavefunction<T> &wavefunction<T>::operator+=(std::pair<mbasis_elem, T> ele_new)
+    {
+        add(ele_new);
         return *this;
     }
     
     template <typename T>
     wavefunction<T> &wavefunction<T>::operator+=(wavefunction<T> rhs)
     {
-        if (rhs.elements.empty()) return *this;  // adding zero
-        if (elements.empty()) {                  // itself zero
-            swap(*this, rhs);
-            return *this;
-        }
-        for (auto &ele : rhs.elements) *this += ele;
+        add(rhs);
         return *this;
     }
     
     template <typename T>
     wavefunction<T> &wavefunction<T>::operator*=(const T &rhs)
     {
-        if (elements.empty()) return *this;      // itself zero
+        if (q_empty()) return *this;            // itself zero
         if (std::abs(rhs) < machine_prec) {     // multiply by zero
-            elements.clear();
+            bgn = 0;
+            end = 0;
             return *this;
         }
-        for (auto it = elements.begin(); it != elements.end(); it++) it->second *= rhs;
+        int capacity = static_cast<int>(ele.size());
+        for (int j = bgn; j != end; j = (j + 1) % capacity) ele[j].second *= rhs;
         return *this;
     }
     
     template <typename T>
     wavefunction<T> &wavefunction<T>::simplify()
     {
-        if (! this->q_sorted()) {
-            elements.sort([](const std::pair<mbasis_elem, T> &lhs, const std::pair<mbasis_elem, T> &rhs){return lhs.first < rhs.first; });
+        if (q_empty()) return *this;            // itself zero
+        int size_old = size();
+        int capacity = static_cast<int>(ele.size());
+        
+        // sqeeze into a single chunk
+        using std::swap;
+        if (bgn < end) {
+            for (int j = 0; j < size_old; j++) swap(ele[j], ele[bgn+j]);
+        } else {
+            for (int j = bgn; j < capacity; j++) swap(ele[j], ele[end + (j - bgn)]);
         }
-        auto it = elements.begin();
-        auto it_prev = it++;
-        while (it != elements.end()) {  // combine all terms
-            if (it->first == it_prev->first) {
-                it_prev->second += it->second;
-                it = elements.erase(it);
-            } else {
-                it_prev = it++;
+        bgn = 0;
+        end = size_old;
+        
+        // combine terms
+        std::sort(ele.begin(), ele.begin() + size_old,
+                  [](const std::pair<mbasis_elem, T> &lhs, const std::pair<mbasis_elem, T> &rhs){return lhs.first < rhs.first; });
+        int pos = bgn;
+        while (pos < end) {
+            int pos_next = pos + 1;
+            while (pos_next < end && ele[pos].first == ele[pos_next].first) pos_next++;
+            for (int j = pos + 1; j < pos_next; j++) {
+                ele[pos].second += ele[j].second;
+                ele[j].second = static_cast<T>(0.0);
             }
+            pos = pos_next;
         }
-        it = elements.begin();
-        while (it != elements.end()) { // remove all zero terms
-            if (std::abs(it->second) < machine_prec) {
-                it = elements.erase(it);
+        
+        // delete zeros
+        int pos_zero = bgn;
+        while (pos_zero < end && std::abs(ele[pos_zero].second) > machine_prec) pos_zero++;
+        while (pos_zero < end) {
+            int pos_next = pos_zero + 1;
+            while (pos_next < end && std::abs(ele[pos_next].second) < machine_prec) pos_next++;
+            if (pos_next < end) {
+                swap(ele[pos_zero], ele[pos_next]);
             } else {
-                it++;
+                break;
             }
+            while (pos_zero < end && std::abs(ele[pos_zero].second) > machine_prec) pos_zero++;
         }
+        end = pos_zero;
+        for (int j = 0; j + 1 < end; j++) {
+            assert(ele[j].first < ele[j+1].first);
+            assert(std::abs(ele[j].second) > machine_prec);
+        }
+        if (bgn < end) assert(std::abs(ele[end - 1].second) > machine_prec);
+        
         return *this;
     }
     
@@ -2380,37 +2490,40 @@ namespace qbasis {
     void swap(wavefunction<T> &lhs, wavefunction<T> &rhs)
     {
         using std::swap;
-        swap(lhs.elements, rhs.elements);
+        swap(lhs.bgn, rhs.bgn);
+        swap(lhs.end, rhs.end);
+        swap(lhs.total_bytes, rhs.total_bytes);
+        swap(lhs.ele, rhs.ele);
     }
     
     template <typename T>
     wavefunction<T> operator+(const wavefunction<T> &lhs, const wavefunction<T> &rhs)
     {
-        wavefunction<T> sum = lhs;
-        sum += rhs;
+        wavefunction<T> sum(lhs);
+        sum.add(rhs);
         return sum;
     }
     
     template <typename T>
     wavefunction<T> operator*(const mbasis_elem &lhs, const T &rhs)
     {
-        wavefunction<T> prod;
-        prod += std::pair<mbasis_elem, T>(lhs, rhs);
+        wavefunction<T> prod(lhs);
+        prod *= rhs;
         return prod;
     }
     
     template <typename T>
     wavefunction<T> operator*(const T &lhs, const mbasis_elem &rhs)
     {
-        wavefunction<T> prod;
-        prod += std::pair<mbasis_elem, T>(rhs, lhs);
+        wavefunction<T> prod(rhs);
+        prod *= lhs;
         return prod;
     }
     
     template <typename T>
     wavefunction<T> operator*(const wavefunction<T> &lhs, const T &rhs)
     {
-        wavefunction<T> prod = lhs;
+        wavefunction<T> prod(lhs);
         prod *= rhs;
         return prod;
     }
@@ -2418,7 +2531,7 @@ namespace qbasis {
     template <typename T>
     wavefunction<T> operator*(const T &lhs, const wavefunction<T> &rhs)
     {
-        wavefunction<T> prod = rhs;
+        wavefunction<T> prod(rhs);
         prod *= lhs;
         return prod;
     }
@@ -2430,16 +2543,128 @@ namespace qbasis {
     // |psi> = f_0^\dagger f_2^\dagger f_3^\dagger |0>
     // f_1^\dagger |psi> = - f_0^\dagger f_1^\dagger f_2^\dagger f_3^\dagger |0>
     template <typename T>
-    wavefunction<T> oprXphi(const opr<T> &lhs, const mbasis_elem &rhs, const std::vector<basis_prop> &props)
+    void oprXphi(const opr<T> &lhs, const std::vector<basis_prop> &props, wavefunction<T> &res, const bool &append)
     {
-        wavefunction<T> res;
+        if (res.q_empty()) return;
+        
+        int capacity = static_cast<int>(res.ele.size());
+        int cnt_total = res.size();
+        
+        // if diagonal operator, implementation is simple
+        if (lhs.diagonal) {
+            if (append) {
+                if (cnt_total + cnt_total >= capacity) {
+                    capacity *= 2;
+                    res.reserve(capacity);
+                }
+                for (int cnt = 0; cnt < cnt_total; cnt++) {
+                    auto &rhs = res.ele[res.bgn + cnt];
+                    if (std::abs(rhs.second) < machine_prec) continue;
+                    auto coeff_new = rhs.second * rhs.first.diagonal_operator(props,lhs);
+                    if (std::abs(coeff_new) < machine_prec) continue;
+                    std::memcpy(res.ele[res.end].first.mbits, rhs.first.mbits, res.total_bytes);
+                    res.ele[res.end].second = coeff_new;
+                    res.end = (res.end + 1) % capacity;
+                }
+            } else {
+                for (int j = res.bgn; j != res.end; j = (j+1) % capacity) {
+                    if (std::abs(res.ele[j].second) > machine_prec)
+                        res.ele[j].second *= res.ele[j].first.diagonal_operator(props, lhs);
+                }
+            }
+            return;
+        }
+        
+        // if operator is not diagonal
         auto dim = props[lhs.orbital].dim_local;
         assert(lhs.dim == dim);
+        for (int cnt = 0; cnt < cnt_total; cnt++) {                              // need operate on res cnt_total times
+            if (res.size() + static_cast<int>(dim) >= capacity) {
+                capacity *= 2;
+                res.reserve(capacity);
+            }
+            
+            // check if the particular element in original wavefunction equals == 0
+            auto &rhs = append ? res.ele[res.bgn+cnt] : res.ele[res.bgn];
+            if (std::abs(rhs.second) < machine_prec) {
+                if (! append) res.bgn = (res.bgn + 1) % capacity;
+                continue;
+            }
+            
+            uint32_t col = rhs.first.siteRead(props, lhs.site, lhs.orbital);     // actually col <= 255
+            uint32_t displacement = col * dim;
+            
+            // check if the full column == 0
+            bool flag = true;
+            for (uint8_t row = 0; row < dim; row++) {
+                if (std::abs(lhs.mat[row + displacement]) > machine_prec) {
+                    flag = false;
+                    break;
+                }
+            }
+            if (flag) {
+                if (! append) res.bgn = (res.bgn + 1) % capacity;
+                continue;
+            }
+            
+            // count # of fermions traversed by this operator
+            int sgn = 0;
+            if (lhs.fermion) {
+                for (uint32_t orb_cnt = 0; orb_cnt < lhs.orbital; orb_cnt++) {
+                    if (props[orb_cnt].q_fermion()) {
+                        for (uint32_t site_cnt = 0; site_cnt < props[orb_cnt].num_sites; site_cnt++) {
+                            sgn = (sgn + props[orb_cnt].Nfermion_map[rhs.first.siteRead(props, site_cnt, orb_cnt)]) % 2;
+                        }
+                    }
+                }
+                assert(props[lhs.orbital].q_fermion());
+                for (uint32_t site_cnt = 0; site_cnt < lhs.site; site_cnt++) {
+                    sgn = (sgn + props[lhs.orbital].Nfermion_map[rhs.first.siteRead(props, site_cnt, lhs.orbital)]) % 2;
+                }
+            }
+            
+            // write down new elements in wavefunction
+            for (uint8_t row = 0; row < dim; row++) {
+                auto coeff = (sgn == 0 ? lhs.mat[row + displacement] : (-lhs.mat[row + displacement]));
+                coeff *= rhs.second;
+                if (std::abs(coeff) > machine_prec) {
+                    res.ele[res.end].second = coeff;
+                    std::memcpy(res.ele[res.end].first.mbits, rhs.first.mbits, res.total_bytes);
+                    res.ele[res.end].first.siteWrite(props, lhs.site, lhs.orbital, row);
+                    res.end = (res.end + 1) % capacity;
+                }
+            }
+            if (! append) res.bgn = (res.bgn + 1) % capacity;
+        }
+    }
+    
+    
+    template <typename T>
+    void oprXphi(const opr<T> &lhs, const std::vector<basis_prop> &props, wavefunction<T> &res, mbasis_elem rhs, const bool &append)
+    {
+        if (! append) {
+            res.bgn = 0;
+            res.end = 0;
+        }
+        assert(res.ele[0].first.mbits[0] == rhs.mbits[0] && res.ele[0].first.mbits[1] == rhs.mbits[1]);
+        int capacity = static_cast<int>(res.ele.size());
+        
+        auto dim = props[lhs.orbital].dim_local;
+        assert(lhs.dim == dim);
+        
+        if (res.size() + static_cast<int>(dim) >= capacity) {
+            capacity *= 2;
+            res.reserve(capacity);
+        }
+        
         uint32_t col = rhs.siteRead(props, lhs.site, lhs.orbital); // actually col <= 255
         if (lhs.diagonal) {
             assert(! lhs.fermion);
-            if (std::abs(lhs.mat[col]) > machine_prec)
-                res += std::pair<mbasis_elem, T>(rhs, lhs.mat[col]);
+            if (std::abs(lhs.mat[col]) > machine_prec) {
+                res.ele[res.end].second = lhs.mat[col];
+                std::memcpy(res.ele[res.end].first.mbits, rhs.mbits, res.total_bytes);
+                res.end = (res.end + 1) % capacity;
+            }
         } else {
             uint32_t displacement = col * lhs.dim;
             bool flag = true;
@@ -2449,7 +2674,7 @@ namespace qbasis {
                     break;
                 }
             }
-            if (flag) return res;                                 // the full column == 0
+            if (flag) return;                                     // the full column == 0
             int sgn = 0;
             if (lhs.fermion) {                                    // count # of fermions traversed by this operator
                 for (uint32_t orb_cnt = 0; orb_cnt < lhs.orbital; orb_cnt++) {
@@ -2464,90 +2689,151 @@ namespace qbasis {
                     sgn = (sgn + props[lhs.orbital].Nfermion_map[rhs.siteRead(props, site_cnt, lhs.orbital)]) % 2;
                 }
             }
+            
             for (uint8_t row = 0; row < dim; row++) {
                 auto coeff = (sgn == 0 ? lhs.mat[row + displacement] : (-lhs.mat[row + displacement]));
                 if (std::abs(coeff) > machine_prec) {
-                    mbasis_elem state_new(rhs);
-                    state_new.siteWrite(props, lhs.site, lhs.orbital, row);
-                    res += std::pair<mbasis_elem, T>(state_new, coeff);
+                    res.ele[res.end].second = coeff;
+                    std::memcpy(res.ele[res.end].first.mbits, rhs.mbits, res.total_bytes);
+                    res.ele[res.end].first.siteWrite(props, lhs.site, lhs.orbital, row);
+                    res.end = (res.end + 1) % capacity;
                 }
             }
         }
-        return res;
-    }
-
-    template <typename T>
-    wavefunction<T> oprXphi(const opr<T> &lhs, const wavefunction<T> &rhs, const std::vector<basis_prop> &props)
-    {
-        if (rhs.elements.empty()) return rhs;                                       // zero wavefunction
-        wavefunction<T> res;
-        for (auto it = rhs.elements.begin(); it != rhs.elements.end(); it++)
-            res += (it->second * oprXphi(lhs, it->first, props));
-        return res;
     }
     
     template <typename T>
-    wavefunction<T> oprXphi(const opr_prod<T> &lhs, const mbasis_elem &rhs, const std::vector<basis_prop> &props)
+    void oprXphi(const opr<T> &lhs, const std::vector<basis_prop> &props, wavefunction<T> &res, wavefunction<T> phi0, const bool &append)
     {
-        if (lhs.q_zero()) return wavefunction<T>();                                 // zero operator
-        wavefunction<T> res(rhs);
+        if (! append) {
+            res.bgn = 0;
+            res.end = 0;
+        }
+        if (phi0.q_empty()) return;
+        
+        int capacity0 = static_cast<int>(phi0.ele.size());
+        for (int j = phi0.bgn; j != phi0.end; j = (j+1) % capacity0) {
+            if (std::abs(phi0.ele[j].second) < machine_prec) continue;
+            oprXphi(phi0.ele[j].second * lhs, props, res, phi0.ele[j].first, true);
+        }
+    }
+    
+    
+    template <typename T>
+    void oprXphi(const opr_prod<T> &lhs, const std::vector<basis_prop> &props, wavefunction<T> &res)
+    {
+        if (res.q_empty()) return;
+        
         for (auto rit = lhs.mat_prod.rbegin(); rit != lhs.mat_prod.rend(); rit++) {
-            res = oprXphi((*rit), res, props);
+            oprXphi((*rit), props, res, false);
+            
         }
         res *= lhs.coeff;
-        return res;
     }
     
     template <typename T>
-    wavefunction<T> oprXphi(const opr_prod<T> &lhs, const wavefunction<T> &rhs, const std::vector<basis_prop> &props)
+    void oprXphi(const opr_prod<T> &lhs, const std::vector<basis_prop> &props, wavefunction<T> &res, mbasis_elem rhs, const bool &append)
     {
-        if (rhs.elements.empty()) return rhs;                                       // zero wavefunction
-        if (lhs.q_zero()) return wavefunction<T>();                                 // zero operator
-        wavefunction<T> res(rhs);
-        for (auto rit = lhs.mat_prod.rbegin(); rit != lhs.mat_prod.rend(); rit++) {
-            res = oprXphi((*rit), res, props);
+        if (lhs.q_zero()) {
+            if (! append) {
+                res.bgn = 0;
+                res.end = 0;
+            }
+        } else {
+            if (append) {
+                wavefunction<T> temp(rhs);
+                oprXphi(lhs, props, temp);
+                res.add(temp);
+            } else {
+                res.bgn = 0;
+                res.end = 1;
+                res.ele[res.bgn].second = static_cast<T>(1.0);
+                std::memcpy(res.ele[res.bgn].first.mbits, rhs.mbits, res.total_bytes);
+                oprXphi(lhs, props, res);
+            }
         }
-        res *= lhs.coeff;
-        return res;
     }
+    
+    template <typename T>
+    void oprXphi(const opr_prod<T> &lhs, const std::vector<basis_prop> &props, wavefunction<T> &res, wavefunction<T> phi0, const bool &append)
+    {
+        if (! append) {
+            res.bgn = 0;
+            res.end = 0;
+        }
+        oprXphi(lhs, props, phi0);
+        res.add(phi0);
+    }
+    
+    
 
     template <typename T>
-    wavefunction<T> oprXphi(const mopr<T> &lhs, const mbasis_elem &rhs, const std::vector<basis_prop> &props)
+    void oprXphi(const mopr<T> &lhs, const std::vector<basis_prop> &props, wavefunction<T> &res, mbasis_elem rhs, const bool &append)
     {
-        if (lhs.q_zero()) return wavefunction<T>();                                // zero operator
-        wavefunction<T> res;
-        for (auto it = lhs.mats.begin(); it != lhs.mats.end(); it++)
-            res += oprXphi((*it), rhs, props);
-        return res;
+        if (! append) {
+            res.bgn = 0;
+            res.end = 0;
+        }
+        
+        if (lhs.q_zero()) return;                                // zero operator
+        
+        wavefunction<T> temp(rhs);
+        for (auto it = lhs.mats.begin(); it != lhs.mats.end(); it++) {
+            temp.copy(rhs);
+            oprXphi((*it), props, temp);
+            res.add(temp);
+        }
     }
     
     template <typename T>
-    wavefunction<T> oprXphi(const mopr<T> &lhs, const wavefunction<T> &rhs, const std::vector<basis_prop> &props)
+    void oprXphi(const mopr<T> &lhs, const std::vector<basis_prop> &props, wavefunction<T> &res, wavefunction<T> phi0, const bool &append)
     {
-        if (rhs.elements.empty()) return rhs;                                      // zero wavefunction
-        if (lhs.q_zero()) return wavefunction<T>();                                // zero operator
-        wavefunction<T> res;
-        for (auto it = lhs.mats.begin(); it != lhs.mats.end(); it++)
-            res += oprXphi((*it), rhs, props);
-        return res;
+        if (! append) {
+            res.bgn = 0;
+            res.end = 0;
+        }
+        
+        if (lhs.q_zero() || phi0.q_empty()) return;
+        
+        wavefunction<T> temp(phi0);
+        for (auto it = lhs.mats.begin(); it != lhs.mats.end(); it++) {
+            temp.copy(phi0);
+            oprXphi((*it), props, temp);
+            res.add(temp);
+        }
     }
     
     
     template <typename T> void gen_mbasis_by_mopr(const mopr<T> &Ham, std::list<mbasis_elem> &basis, const std::vector<basis_prop> &props)
     {
+        int num_threads = 1;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) num_threads = omp_get_num_threads();
+        }
+        // prepare intermediates in advance
+        std::vector<wavefunction<T>> intermediate_states(num_threads, {props});
+        
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         std::list<mbasis_elem> basis_new;
         
-        #pragma omp parallel for schedule(dynamic,1)
+        #pragma omp parallel for schedule(dynamic,16)
         for (decltype(basis.size()) j = 0; j < basis.size(); j++) {
+            int tid = omp_get_thread_num();
+            
             std::list<mbasis_elem> temp;
             auto it = basis.begin();
             std::advance(it, j);
             auto phi0 = *it;
-            auto states_new = oprXphi(Ham, phi0, props);
-            for (decltype(states_new.size()) cnt = 0; cnt < states_new.size(); cnt++) {
-                if (states_new[cnt].first != phi0) temp.push_back(states_new[cnt].first);
+            
+            for (auto it = Ham.mats.begin(); it != Ham.mats.end(); it++) {
+                intermediate_states[tid].copy(phi0);
+                oprXphi(*it, props, intermediate_states[tid]);
+                for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                    if (intermediate_states[tid][cnt].first != phi0) temp.push_back(intermediate_states[tid][cnt].first);
+                }
             }
             #pragma omp critical
             basis_new.splice(basis_new.end(), temp);
@@ -2599,23 +2885,29 @@ namespace qbasis {
     template wavefunction<double> operator*(const double&, const wavefunction<double>&);
     template wavefunction<std::complex<double>> operator*(const std::complex<double>&, const wavefunction<std::complex<double>>&);
     
-    template wavefunction<double> oprXphi(const opr<double>&, const mbasis_elem&, const std::vector<basis_prop>&);
-    template wavefunction<std::complex<double>> oprXphi(const opr<std::complex<double>>&, const mbasis_elem&, const std::vector<basis_prop>&);
+    template void oprXphi(const opr<double>&,               const std::vector<basis_prop>&, wavefunction<double>&, const bool&);
+    template void oprXphi(const opr<std::complex<double>>&, const std::vector<basis_prop>&, wavefunction<std::complex<double>>&, const bool&);
     
-    template wavefunction<double> oprXphi(const opr<double>&, const wavefunction<double>&, const std::vector<basis_prop>&);
-    template wavefunction<std::complex<double>> oprXphi(const opr<std::complex<double>>&, const wavefunction<std::complex<double>>&, const std::vector<basis_prop>&);
+    template void oprXphi(const opr<double>&,               const std::vector<basis_prop>&, wavefunction<double>&,               mbasis_elem, const bool&);
+    template void oprXphi(const opr<std::complex<double>>&, const std::vector<basis_prop>&, wavefunction<std::complex<double>>&, mbasis_elem, const bool&);
     
-    template wavefunction<double> oprXphi(const opr_prod<double>&, const mbasis_elem&, const std::vector<basis_prop>&);
-    template wavefunction<std::complex<double>> oprXphi(const opr_prod<std::complex<double>>&, const mbasis_elem&, const std::vector<basis_prop>&);
+    template void oprXphi(const opr<double>&,               const std::vector<basis_prop>&, wavefunction<double>&,               wavefunction<double>, const bool&);
+    template void oprXphi(const opr<std::complex<double>>&, const std::vector<basis_prop>&, wavefunction<std::complex<double>>&, wavefunction<std::complex<double>>, const bool&);
     
-    template wavefunction<double> oprXphi(const opr_prod<double>&, const wavefunction<double>&, const std::vector<basis_prop>&);
-    template wavefunction<std::complex<double>> oprXphi(const opr_prod<std::complex<double>>&, const wavefunction<std::complex<double>>&, const std::vector<basis_prop>&);
+    template void oprXphi(const opr_prod<double>&,               const std::vector<basis_prop>&, wavefunction<double>&);
+    template void oprXphi(const opr_prod<std::complex<double>>&, const std::vector<basis_prop>&, wavefunction<std::complex<double>>&);
     
-    template wavefunction<double> oprXphi(const mopr<double>&, const mbasis_elem&, const std::vector<basis_prop>&);
-    template wavefunction<std::complex<double>> oprXphi(const mopr<std::complex<double>>&, const mbasis_elem&, const std::vector<basis_prop>&);
+    template void oprXphi(const opr_prod<double>&,               const std::vector<basis_prop>&, wavefunction<double>&, mbasis_elem, const bool&);
+    template void oprXphi(const opr_prod<std::complex<double>>&, const std::vector<basis_prop>&, wavefunction<std::complex<double>>&, mbasis_elem, const bool&);
     
-    template wavefunction<double> oprXphi(const mopr<double>&, const wavefunction<double>&, const std::vector<basis_prop>&);
-    template wavefunction<std::complex<double>> oprXphi(const mopr<std::complex<double>>&, const wavefunction<std::complex<double>>&, const std::vector<basis_prop>&);
+    template void oprXphi(const opr_prod<double>&,               const std::vector<basis_prop>&, wavefunction<double>&,               wavefunction<double>, const bool&);
+    template void oprXphi(const opr_prod<std::complex<double>>&, const std::vector<basis_prop>&, wavefunction<std::complex<double>>&, wavefunction<std::complex<double>>, const bool&);
+    
+    template void oprXphi(const mopr<double>&,               const std::vector<basis_prop>&, wavefunction<double>&,               mbasis_elem, const bool&);
+    template void oprXphi(const mopr<std::complex<double>>&, const std::vector<basis_prop>&, wavefunction<std::complex<double>>&, mbasis_elem, const bool&);
+    
+    template void oprXphi(const mopr<double>&,               const std::vector<basis_prop>&, wavefunction<double>&,               wavefunction<double>, const bool&);
+    template void oprXphi(const mopr<std::complex<double>>&, const std::vector<basis_prop>&, wavefunction<std::complex<double>>&, wavefunction<std::complex<double>>, const bool&);
     
     template void gen_mbasis_by_mopr(const mopr<double>&, std::list<mbasis_elem>&, const std::vector<basis_prop>&);
     template void gen_mbasis_by_mopr(const mopr<std::complex<double>>&, std::list<mbasis_elem>&, const std::vector<basis_prop>&);

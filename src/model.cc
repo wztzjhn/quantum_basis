@@ -311,32 +311,74 @@ namespace qbasis {
         if (matrix_free) matrix_free = false;
         assert(dim_full[sec_mat] > 0);
         
+        int num_threads = 1;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) num_threads = omp_get_num_threads();
+        }
+        // prepare intermediates in advance
+        std::vector<wavefunction<T>> intermediate_states(num_threads, {basis_full[sec_mat][0]});
+        
         std::cout << "Generating LIL Hamiltonian matrix (full)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         lil_mat<T> matrix_lil(dim_full[sec_mat], upper_triangle);
-        #pragma omp parallel for schedule(dynamic,1)
+        #pragma omp parallel for schedule(dynamic,16)
         for (MKL_INT i = 0; i < dim_full[sec_mat]; i++) {
-            for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)                                       // diagonal part:
-                matrix_lil.add(i, i, basis_full[sec_mat][i].diagonal_operator(props, Ham_diag[cnt]));
-            qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[sec_mat][i], props);  // non-diagonal part:
-            for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
-                auto &ele_new = intermediate_state[cnt];
-                if (std::abs(ele_new.second) < machine_prec) continue;
-                MKL_INT j;
-                if (Lin_Ja_full[sec_mat].size() > 0 && Lin_Jb_full[sec_mat].size() > 0) {
-                    uint64_t i_a, i_b;
-                    ele_new.first.label_sub(props, i_a, i_b);
-                    j = Lin_Ja_full[sec_mat][i_a] + Lin_Jb_full[sec_mat][i_b];
-                } else {
-                    j = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_mat], ele_new.first, 0, dim_full[sec_mat]);
+            int tid = omp_get_thread_num();
+            // diagonal part:
+            for (auto it = Ham_diag.mats.begin(); it != Ham_diag.mats.end(); it++) {
+                matrix_lil.add(i, i, basis_full[sec_mat][i].diagonal_operator(props, *it));
+            }
+            
+            // non-diagonal part:
+            uint64_t i_a, i_b;
+            MKL_INT j;
+            for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
+                
+                
+                
+                
+                intermediate_states[tid].copy(basis_full[sec_mat][i]);
+                oprXphi(*it, props, intermediate_states[tid]);
+                
+                /*
+                if (i == 6041) {
+                    std::cout << "---state---" << std::endl;
+                    basis_full[sec_mat][i].prt_states(props);
+                    std::cout << std::endl;
+                    
+                    std::cout << "---operator---" << std::endl;
+                    it->prt();
+                    std::cout << std::endl;
+                    
+                    std::cout << "--- new state ---" << std::endl;
+                    for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                        std::cout << "cnt = " << cnt << std::endl;
+                        intermediate_states[tid][cnt].first.prt_states(props);
+                        std::cout << std::endl;
+                    }
                 }
-                assert(j >= 0 && j < dim_full[sec_mat]);
-                if (upper_triangle) {
-                    if (i <= j) matrix_lil.add(i, j, conjugate(ele_new.second));
-                } else {
-                    matrix_lil.add(i, j, conjugate(ele_new.second));
+                */
+                
+                for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                    auto &ele_new = intermediate_states[tid][cnt];
+                    if (std::abs(ele_new.second) < machine_prec) continue;
+                    if (Lin_Ja_full[sec_mat].size() > 0 && Lin_Jb_full[sec_mat].size() > 0) {
+                        ele_new.first.label_sub(props, i_a, i_b);
+                        j = Lin_Ja_full[sec_mat][i_a] + Lin_Jb_full[sec_mat][i_b];
+                    } else {
+                        j = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_mat], ele_new.first, 0, dim_full[sec_mat]);
+                    }
+                    if (j < 0 || j >= dim_full[sec_mat]) continue;
+                    if (upper_triangle) {
+                        if (i <= j) matrix_lil.add(i, j, conjugate(ele_new.second));
+                    } else {
+                        matrix_lil.add(i, j, conjugate(ele_new.second));
+                    }
                 }
+                
             }
         }
         HamMat_csr_full[sec_mat] = csr_mat<T>(matrix_lil);
@@ -360,6 +402,15 @@ namespace qbasis {
         
         bool bosonic = q_bosonic(props);
         
+        int num_threads = 1;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) num_threads = omp_get_num_threads();
+        }
+        // prepare intermediates in advance
+        std::vector<wavefunction<T>> intermediate_states(num_threads, {basis_repr[sec_mat][0]});
+        
         std::cout << "Generating LIL Hamiltonian Matrix (repr)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
@@ -368,7 +419,7 @@ namespace qbasis {
         lil_mat<std::complex<double>> matrix_lil(dim_repr[sec_mat], upper_triangle);
         
         double faked = fake_pos;
-        #pragma omp parallel for schedule(dynamic,1)
+        #pragma omp parallel for schedule(dynamic,16)
         for (MKL_INT i = 0; i < dim_repr[sec_mat]; i++) {
             double nu_i = norm_repr[sec_mat][i];                                // normalization factor for repr i
             if (std::abs(nu_i) < lanczos_precision) {
@@ -377,83 +428,92 @@ namespace qbasis {
                 faked += fake_incr;
                 continue;
             }
-            for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)                 // diagonal part:
+            
+            int tid = omp_get_thread_num();
+            
+            // diagonal part:
+            for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
                 matrix_lil.add(i, i, basis_repr[sec_mat][i].diagonal_operator(props,Ham_diag[cnt]));
             
-            qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_repr[sec_mat][i], props);
+            // non-diagonal part:
             uint64_t state_sub1_label, state_sub2_label;
             std::vector<uint32_t> disp_i(dim_latt), disp_j(dim_latt);
             std::vector<int> disp_i_int(dim_latt), disp_j_int(dim_latt);
             int sgn;
             mbasis_elem state_sub_new1, state_sub_new2, ra_z_Tj_rb;
-            
-            for (uint32_t cnt = 0; cnt < intermediate_state.size(); cnt++) {
-                auto &ele_new = intermediate_state[cnt];
-                // use Weisse Tables to find the representative |ra,rb,j>
-                ele_new.first.label_sub(props, state_sub1_label, state_sub2_label);
-                auto &state_rep1_label = belong2rep_sub[state_sub1_label];       // ra
-                auto &state_rep2_label = belong2rep_sub[state_sub2_label];       // rb
-                auto &ga               = belong2group_sub[state_rep1_label];     // ga
-                auto &gb               = belong2group_sub[state_rep2_label];     // gb
-                std::vector<uint64_t> pos_e{ga, gb};
-                pos_e.insert(pos_e.end(), dist2rep_sub[state_sub1_label].begin(), dist2rep_sub[state_sub1_label].end());
-                pos_e.insert(pos_e.end(), dist2rep_sub[state_sub2_label].begin(), dist2rep_sub[state_sub2_label].end());
-                if (state_rep1_label < state_rep2_label) {                          // ra < rb
-                    disp_i = Weisse_e_lt.index(pos_e).first;
-                    disp_j = Weisse_e_lt.index(pos_e).second;
-                } else if (state_rep2_label < state_rep1_label) {                   // ra > rb
-                    disp_i = Weisse_e_gt.index(pos_e).first;
-                    disp_j = Weisse_e_gt.index(pos_e).second;
-                } else {                                                            // ra == rb
-                    disp_i = Weisse_e_eq.index(pos_e).first;
-                    disp_j = Weisse_e_eq.index(pos_e).second;
-                }
-                for (uint32_t j = 0; j < disp_j.size(); j++) {
-                    disp_i_int[j] = static_cast<int>(disp_i[j]);
-                    disp_j_int[j] = static_cast<int>(disp_j[j]);
-                }
+            uint64_t i_a, i_b;
+            MKL_INT j;
+            for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
+                intermediate_states[tid].copy(basis_repr[sec_mat][i]);
+                oprXphi(*it, props, intermediate_states[tid]);
                 
-                if (state_rep2_label < state_rep1_label && dim_spec_involved) {
-                    state_sub_new1 = basis_sub_repr[state_rep2_label];
-                    state_sub_new2 = basis_sub_repr[state_rep1_label];
-                } else {
-                    state_sub_new1 = basis_sub_repr[state_rep1_label];
-                    state_sub_new2 = basis_sub_repr[state_rep2_label];
-                }
-                
-                state_sub_new2.translate(props_sub_b, latt_sub, disp_j_int, sgn);   // T_j |rb>
-                zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
-                MKL_INT j;
-                if (Lin_Ja_repr[sec_mat].size() > 0 && Lin_Jb_repr[sec_mat].size() > 0) {
-                    uint64_t i_a = state_sub_new1.label(props_sub_a);               // use Lin Tables
-                    uint64_t i_b = state_sub_new2.label(props_sub_b);
-                    j = Lin_Ja_repr[sec_mat][i_a] + Lin_Jb_repr[sec_mat][i_b];
-                } else {
-                    j = binary_search<mbasis_elem,MKL_INT>(basis_repr[sec_mat], ra_z_Tj_rb, 0, dim_repr[sec_mat]);
-                }
-                assert(j >= 0 && j < dim_repr[sec_mat]);
-                assert(ra_z_Tj_rb == basis_repr[sec_mat][j]);
-                double nu_j = norm_repr[sec_mat][j];
-                if (std::abs(nu_j) < lanczos_precision) continue;
-                
-                double exp_coef = 0.0;
-                for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
-                    if (trans_sym[d]) {
-                        exp_coef += momenta[sec_mat][d] * disp_i_int[d] / static_cast<double>(L[d]);
+                for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                    auto &ele_new = intermediate_states[tid][cnt];
+                    // use Weisse Tables to find the representative |ra,rb,j>
+                    ele_new.first.label_sub(props, state_sub1_label, state_sub2_label);
+                    auto &state_rep1_label = belong2rep_sub[state_sub1_label];       // ra
+                    auto &state_rep2_label = belong2rep_sub[state_sub2_label];       // rb
+                    auto &ga               = belong2group_sub[state_rep1_label];     // ga
+                    auto &gb               = belong2group_sub[state_rep2_label];     // gb
+                    std::vector<uint64_t> pos_e{ga, gb};
+                    pos_e.insert(pos_e.end(), dist2rep_sub[state_sub1_label].begin(), dist2rep_sub[state_sub1_label].end());
+                    pos_e.insert(pos_e.end(), dist2rep_sub[state_sub2_label].begin(), dist2rep_sub[state_sub2_label].end());
+                    if (state_rep1_label < state_rep2_label) {                          // ra < rb
+                        disp_i = Weisse_e_lt.index(pos_e).first;
+                        disp_j = Weisse_e_lt.index(pos_e).second;
+                    } else if (state_rep2_label < state_rep1_label) {                   // ra > rb
+                        disp_i = Weisse_e_gt.index(pos_e).first;
+                        disp_j = Weisse_e_gt.index(pos_e).second;
+                    } else {                                                            // ra == rb
+                        disp_i = Weisse_e_eq.index(pos_e).first;
+                        disp_j = Weisse_e_eq.index(pos_e).second;
                     }
-                }
-                auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
-                if (! bosonic) {
-                    ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);          // to get sgn
-                    assert(ra_z_Tj_rb == ele_new.first);
-                    if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
-                }
-                
-
-                if (upper_triangle) {
-                    if (i <= j) matrix_lil.add(i, j, coef);
-                } else {
-                    matrix_lil.add(i, j, coef);
+                    for (uint32_t j = 0; j < disp_j.size(); j++) {
+                        disp_i_int[j] = static_cast<int>(disp_i[j]);
+                        disp_j_int[j] = static_cast<int>(disp_j[j]);
+                    }
+                    
+                    if (state_rep2_label < state_rep1_label && dim_spec_involved) {
+                        state_sub_new1 = basis_sub_repr[state_rep2_label];
+                        state_sub_new2 = basis_sub_repr[state_rep1_label];
+                    } else {
+                        state_sub_new1 = basis_sub_repr[state_rep1_label];
+                        state_sub_new2 = basis_sub_repr[state_rep2_label];
+                    }
+                    
+                    state_sub_new2.translate(props_sub_b, latt_sub, disp_j_int, sgn);   // T_j |rb>
+                    zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
+                    
+                    if (Lin_Ja_repr[sec_mat].size() > 0 && Lin_Jb_repr[sec_mat].size() > 0) {
+                        i_a = state_sub_new1.label(props_sub_a);                    // use Lin Tables
+                        i_b = state_sub_new2.label(props_sub_b);
+                        j = Lin_Ja_repr[sec_mat][i_a] + Lin_Jb_repr[sec_mat][i_b];
+                    } else {
+                        j = binary_search<mbasis_elem,MKL_INT>(basis_repr[sec_mat], ra_z_Tj_rb, 0, dim_repr[sec_mat]);
+                    }
+                    if (j < 0 || j >= dim_repr[sec_mat]) continue;
+                    assert(ra_z_Tj_rb == basis_repr[sec_mat][j]);
+                    double nu_j = norm_repr[sec_mat][j];
+                    if (std::abs(nu_j) < lanczos_precision) continue;
+                    
+                    double exp_coef = 0.0;
+                    for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                        if (trans_sym[d]) {
+                            exp_coef += momenta[sec_mat][d] * disp_i_int[d] / static_cast<double>(L[d]);
+                        }
+                    }
+                    auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
+                    if (! bosonic) {
+                        ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);          // to get sgn
+                        assert(ra_z_Tj_rb == ele_new.first);
+                        if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
+                    }
+                    
+                    if (upper_triangle) {
+                        if (i <= j) matrix_lil.add(i, j, coef);
+                    } else {
+                        matrix_lil.add(i, j, coef);
+                    }
                 }
             }
         }
@@ -484,39 +544,61 @@ namespace qbasis {
     void model<T>::MultMv(const T *x, T *y) const
     {
         assert(matrix_free);
+        int num_threads = 1;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) num_threads = omp_get_num_threads();
+        }
+        
         std::cout << "*" << std::flush;
         if (sec_sym == 0) {
-            #pragma omp parallel for schedule(dynamic,1)
+            // prepare intermediates in advance
+            std::vector<wavefunction<T>> intermediate_states(num_threads, {basis_full[sec_mat][0]});
+            
+            #pragma omp parallel for schedule(dynamic,16)
             for (MKL_INT i = 0; i < dim_full[sec_mat]; i++) {
+                int tid = omp_get_thread_num();
                 y[i] = static_cast<T>(0.0);
+                
+                // diagonal part
                 if (std::abs(x[i]) > machine_prec) {
                     for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
                         y[i] += x[i] * basis_full[sec_mat][i].diagonal_operator(props, Ham_diag[cnt]);
                 }
-                qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[sec_mat][i], props);
-                for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
-                    auto &ele_new = intermediate_state[cnt];
-                    if (std::abs(ele_new.second) < machine_prec) continue;
-                    MKL_INT j;
-                    if (Lin_Ja_full[sec_mat].size() > 0 && Lin_Jb_full[sec_mat].size() > 0) {
-                        uint64_t i_a, i_b;
-                        ele_new.first.label_sub(props, i_a, i_b);
-                        j = Lin_Ja_full[sec_mat][i_a] + Lin_Jb_full[sec_mat][i_b];
-                    } else {
-                        j = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_mat], ele_new.first, 0, dim_full[sec_mat]);
+                
+                // non-diagonal part
+                uint64_t i_a, i_b;
+                MKL_INT j;
+                for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
+                    intermediate_states[tid].copy(basis_full[sec_mat][i]);
+                    oprXphi(*it, props, intermediate_states[tid]);
+                    for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                        auto &ele_new = intermediate_states[tid][cnt];
+                        if (std::abs(ele_new.second) < machine_prec) continue;
+                        if (Lin_Ja_full[sec_mat].size() > 0 && Lin_Jb_full[sec_mat].size() > 0) {
+                            ele_new.first.label_sub(props, i_a, i_b);
+                            j = Lin_Ja_full[sec_mat][i_a] + Lin_Jb_full[sec_mat][i_b];
+                        } else {
+                            j = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_mat], ele_new.first, 0, dim_full[sec_mat]);
+                        }
+                        if (j < 0 || j >= dim_full[sec_mat]) continue;
+                        if (std::abs(x[j]) > machine_prec) y[i] += (x[j] * conjugate(ele_new.second));
                     }
-                    assert(j >= 0 && j < dim_full[sec_mat]);
-                    if (std::abs(x[j]) > machine_prec) y[i] += (x[j] * conjugate(ele_new.second));
                 }
             }
         } else {
+            // prepare intermediates in advance
+            std::vector<wavefunction<T>> intermediate_states(num_threads, {basis_repr[sec_mat][0]});
+            
             auto dim_latt = latt_parent.dimension();
             auto L        = latt_parent.Linear_size();
             bool bosonic  = q_bosonic(props);
             
             double faked = fake_pos;
-            #pragma omp parallel for schedule(dynamic,1)
+            #pragma omp parallel for schedule(dynamic,16)
             for (MKL_INT i = 0; i < dim_repr[sec_mat]; i++) {
+                int tid = omp_get_thread_num();
                 y[i] = static_cast<T>(0.0);
                 
                 double nu_i = norm_repr[sec_mat][i];                             // normalization factor for repr i
@@ -527,82 +609,88 @@ namespace qbasis {
                     continue;
                 }
                 
+                // diagonal part
                 if (std::abs(x[i]) > machine_prec) {
                     for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)          // diagonal part:
                         y[i] += x[i] * basis_repr[sec_mat][i].diagonal_operator(props,Ham_diag[cnt]);
                 }
                 
-                qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_repr[sec_mat][i], props);
+                // non-diagonal part
                 uint64_t state_sub1_label, state_sub2_label;
                 std::vector<uint32_t> disp_i(dim_latt), disp_j(dim_latt);
                 std::vector<int> disp_i_int(dim_latt), disp_j_int(dim_latt);
                 int sgn;
                 mbasis_elem state_sub_new1, state_sub_new2, ra_z_Tj_rb;
-                
-                for (uint32_t cnt = 0; cnt < intermediate_state.size(); cnt++) {
-                    auto &ele_new = intermediate_state[cnt];
-                    // use Weisse Tables to find the representative |ra,rb,j>
-                    ele_new.first.label_sub(props, state_sub1_label, state_sub2_label);
-                    auto &state_rep1_label = belong2rep_sub[state_sub1_label];       // ra
-                    auto &state_rep2_label = belong2rep_sub[state_sub2_label];       // rb
-                    auto &ga               = belong2group_sub[state_rep1_label];     // ga
-                    auto &gb               = belong2group_sub[state_rep2_label];     // gb
-                    std::vector<uint64_t> pos_e{ga, gb};
-                    pos_e.insert(pos_e.end(), dist2rep_sub[state_sub1_label].begin(), dist2rep_sub[state_sub1_label].end());
-                    pos_e.insert(pos_e.end(), dist2rep_sub[state_sub2_label].begin(), dist2rep_sub[state_sub2_label].end());
-                    if (state_rep1_label < state_rep2_label) {                          // ra < rb
-                        disp_i = Weisse_e_lt.index(pos_e).first;
-                        disp_j = Weisse_e_lt.index(pos_e).second;
-                    } else if (state_rep2_label < state_rep1_label) {                   // ra > rb
-                        disp_i = Weisse_e_gt.index(pos_e).first;
-                        disp_j = Weisse_e_gt.index(pos_e).second;
-                    } else {                                                            // ra == rb
-                        disp_i = Weisse_e_eq.index(pos_e).first;
-                        disp_j = Weisse_e_eq.index(pos_e).second;
-                    }
-                    for (uint32_t j = 0; j < disp_j.size(); j++) {
-                        disp_i_int[j] = static_cast<int>(disp_i[j]);
-                        disp_j_int[j] = static_cast<int>(disp_j[j]);
-                    }
+                uint64_t i_a, i_b;
+                MKL_INT j;
+                for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
+                    intermediate_states[tid].copy(basis_repr[sec_mat][i]);
+                    oprXphi(*it, props, intermediate_states[tid]);
                     
-                    if (state_rep2_label < state_rep1_label && dim_spec_involved) {
-                        state_sub_new1 = basis_sub_repr[state_rep2_label];
-                        state_sub_new2 = basis_sub_repr[state_rep1_label];
-                    } else {
-                        state_sub_new1 = basis_sub_repr[state_rep1_label];
-                        state_sub_new2 = basis_sub_repr[state_rep2_label];
-                    }
-                    
-                    state_sub_new2.translate(props_sub_b, latt_sub, disp_j_int, sgn);   // T_j |rb>
-                    zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
-                    MKL_INT j;
-                    if (Lin_Ja_repr[sec_mat].size() > 0 && Lin_Jb_repr[sec_mat].size() > 0) {
-                        uint64_t i_a = state_sub_new1.label(props_sub_a);               // use Lin Tables
-                        uint64_t i_b = state_sub_new2.label(props_sub_b);
-                        j = Lin_Ja_repr[sec_mat][i_a] + Lin_Jb_repr[sec_mat][i_b];
-                    } else {
-                        j = binary_search<mbasis_elem,MKL_INT>(basis_repr[sec_mat], ra_z_Tj_rb, 0, dim_repr[sec_mat]);
-                    }
-                    assert(j >= 0 && j < dim_repr[sec_mat]);
-                    assert(ra_z_Tj_rb == basis_repr[sec_mat][j]);
-                    if (std::abs(x[j]) < machine_prec) continue;
-                    double nu_j = norm_repr[sec_mat][j];
-                    if (std::abs(nu_j) < lanczos_precision) continue;
-                    
-                    double exp_coef = 0.0;
-                    for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
-                        if (trans_sym[d]) {
-                            exp_coef += momenta[sec_mat][d] * disp_i_int[d] / static_cast<double>(L[d]);
+                    for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                        auto &ele_new = intermediate_states[tid][cnt];
+                        // use Weisse Tables to find the representative |ra,rb,j>
+                        ele_new.first.label_sub(props, state_sub1_label, state_sub2_label);
+                        auto &state_rep1_label = belong2rep_sub[state_sub1_label];       // ra
+                        auto &state_rep2_label = belong2rep_sub[state_sub2_label];       // rb
+                        auto &ga               = belong2group_sub[state_rep1_label];     // ga
+                        auto &gb               = belong2group_sub[state_rep2_label];     // gb
+                        std::vector<uint64_t> pos_e{ga, gb};
+                        pos_e.insert(pos_e.end(), dist2rep_sub[state_sub1_label].begin(), dist2rep_sub[state_sub1_label].end());
+                        pos_e.insert(pos_e.end(), dist2rep_sub[state_sub2_label].begin(), dist2rep_sub[state_sub2_label].end());
+                        if (state_rep1_label < state_rep2_label) {                          // ra < rb
+                            disp_i = Weisse_e_lt.index(pos_e).first;
+                            disp_j = Weisse_e_lt.index(pos_e).second;
+                        } else if (state_rep2_label < state_rep1_label) {                   // ra > rb
+                            disp_i = Weisse_e_gt.index(pos_e).first;
+                            disp_j = Weisse_e_gt.index(pos_e).second;
+                        } else {                                                            // ra == rb
+                            disp_i = Weisse_e_eq.index(pos_e).first;
+                            disp_j = Weisse_e_eq.index(pos_e).second;
                         }
+                        for (uint32_t j = 0; j < disp_j.size(); j++) {
+                            disp_i_int[j] = static_cast<int>(disp_i[j]);
+                            disp_j_int[j] = static_cast<int>(disp_j[j]);
+                        }
+                        
+                        if (state_rep2_label < state_rep1_label && dim_spec_involved) {
+                            state_sub_new1 = basis_sub_repr[state_rep2_label];
+                            state_sub_new2 = basis_sub_repr[state_rep1_label];
+                        } else {
+                            state_sub_new1 = basis_sub_repr[state_rep1_label];
+                            state_sub_new2 = basis_sub_repr[state_rep2_label];
+                        }
+                        
+                        state_sub_new2.translate(props_sub_b, latt_sub, disp_j_int, sgn);   // T_j |rb>
+                        zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
+                        if (Lin_Ja_repr[sec_mat].size() > 0 && Lin_Jb_repr[sec_mat].size() > 0) {
+                            i_a = state_sub_new1.label(props_sub_a);               // use Lin Tables
+                            i_b = state_sub_new2.label(props_sub_b);
+                            j = Lin_Ja_repr[sec_mat][i_a] + Lin_Jb_repr[sec_mat][i_b];
+                        } else {
+                            j = binary_search<mbasis_elem,MKL_INT>(basis_repr[sec_mat], ra_z_Tj_rb, 0, dim_repr[sec_mat]);
+                        }
+                        if (j < 0 || j >= dim_repr[sec_mat]) continue;
+                        assert(ra_z_Tj_rb == basis_repr[sec_mat][j]);
+                        if (std::abs(x[j]) < machine_prec) continue;
+                        double nu_j = norm_repr[sec_mat][j];
+                        if (std::abs(nu_j) < lanczos_precision) continue;
+                        
+                        double exp_coef = 0.0;
+                        for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                            if (trans_sym[d]) {
+                                exp_coef += momenta[sec_mat][d] * disp_i_int[d] / static_cast<double>(L[d]);
+                            }
+                        }
+                        auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
+                        if (! bosonic) {
+                            ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);          // to get sgn
+                            assert(ra_z_Tj_rb == ele_new.first);
+                            if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
+                        }
+                        
+                        y[i] += (x[j] * coef);
                     }
-                    auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
-                    if (! bosonic) {
-                        ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);          // to get sgn
-                        assert(ra_z_Tj_rb == ele_new.first);
-                        if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
-                    }
-
-                    y[i] += (x[j] * coef);
                 }
             }
         }
@@ -612,124 +700,153 @@ namespace qbasis {
     void model<T>::MultMv(T *x, T *y)
     {
         assert(matrix_free);
+        int num_threads = 1;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) num_threads = omp_get_num_threads();
+        }
+        
         std::cout << "*" << std::flush;
         if (sec_sym == 0) {
-            #pragma omp parallel for schedule(dynamic,1)
+            // prepare intermediates in advance
+            std::vector<wavefunction<T>> intermediate_states(num_threads, {basis_full[sec_mat][0]});
+            
+            #pragma omp parallel for schedule(dynamic,16)
             for (MKL_INT i = 0; i < dim_full[sec_mat]; i++) {
+                int tid = omp_get_thread_num();
                 y[i] = static_cast<T>(0.0);
+                
+                // diagonal part
                 if (std::abs(x[i]) > machine_prec) {
                     for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
                         y[i] += x[i] * basis_full[sec_mat][i].diagonal_operator(props, Ham_diag[cnt]);
                 }
-                qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[sec_mat][i], props);
-                for (decltype(intermediate_state.size()) cnt = 0; cnt < intermediate_state.size(); cnt++) {
-                    auto &ele_new = intermediate_state[cnt];
-                    if (std::abs(ele_new.second) < machine_prec) continue;
-                    MKL_INT j;
-                    if (Lin_Ja_full[sec_mat].size() > 0 && Lin_Jb_full[sec_mat].size() > 0) {
-                        uint64_t i_a, i_b;
-                        ele_new.first.label_sub(props, i_a, i_b);
-                        j = Lin_Ja_full[sec_mat][i_a] + Lin_Jb_full[sec_mat][i_b];
-                    } else {
-                        j = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_mat], ele_new.first, 0, dim_full[sec_mat]);
+                
+                // non-diagonal part
+                uint64_t i_a, i_b;
+                MKL_INT j;
+                for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
+                    intermediate_states[tid].copy(basis_full[sec_mat][i]);
+                    oprXphi(*it, props, intermediate_states[tid]);
+                    for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                        auto &ele_new = intermediate_states[tid][cnt];
+                        if (std::abs(ele_new.second) < machine_prec) continue;
+                        if (Lin_Ja_full[sec_mat].size() > 0 && Lin_Jb_full[sec_mat].size() > 0) {
+                            ele_new.first.label_sub(props, i_a, i_b);
+                            j = Lin_Ja_full[sec_mat][i_a] + Lin_Jb_full[sec_mat][i_b];
+                        } else {
+                            j = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_mat], ele_new.first, 0, dim_full[sec_mat]);
+                        }
+                        if (j < 0 || j >= dim_full[sec_mat]) continue;
+                        if (std::abs(x[j]) > machine_prec) y[i] += (x[j] * conjugate(ele_new.second));
                     }
-                    assert(j >= 0 && j < dim_full[sec_mat]);
-                    if (std::abs(x[j]) > machine_prec) y[i] += (x[j] * conjugate(ele_new.second));
                 }
             }
         } else {
+            // prepare intermediates in advance
+            std::vector<wavefunction<T>> intermediate_states(num_threads, {basis_repr[sec_mat][0]});
+            
             auto dim_latt = latt_parent.dimension();
             auto L        = latt_parent.Linear_size();
             bool bosonic  = q_bosonic(props);
             
             double faked = fake_pos;
-            #pragma omp parallel for schedule(dynamic,1)
+            #pragma omp parallel for schedule(dynamic,16)
             for (MKL_INT i = 0; i < dim_repr[sec_mat]; i++) {
+                int tid = omp_get_thread_num();
                 y[i] = static_cast<T>(0.0);
                 
                 double nu_i = norm_repr[sec_mat][i];                             // normalization factor for repr i
                 if (std::abs(nu_i) < lanczos_precision) {
-                    y[i] += x[i] * static_cast<T>(faked + fake_incr);
+                    y[i] += x[i] * static_cast<T>(faked);
                     #pragma omp atomic
                     faked += fake_incr;
                     continue;
                 }
                 
+                // diagonal part
                 if (std::abs(x[i]) > machine_prec) {
                     for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)          // diagonal part:
                         y[i] += x[i] * basis_repr[sec_mat][i].diagonal_operator(props,Ham_diag[cnt]);
                 }
                 
-                qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_repr[sec_mat][i], props);
+                // non-diagonal part
                 uint64_t state_sub1_label, state_sub2_label;
                 std::vector<uint32_t> disp_i(dim_latt), disp_j(dim_latt);
                 std::vector<int> disp_i_int(dim_latt), disp_j_int(dim_latt);
                 int sgn;
                 mbasis_elem state_sub_new1, state_sub_new2, ra_z_Tj_rb;
-                
-                for (uint32_t cnt = 0; cnt < intermediate_state.size(); cnt++) {
-                    auto &ele_new = intermediate_state[cnt];
-                    // use Weisse Tables to find the representative |ra,rb,j>
-                    ele_new.first.label_sub(props, state_sub1_label, state_sub2_label);
-                    auto &state_rep1_label = belong2rep_sub[state_sub1_label];       // ra
-                    auto &state_rep2_label = belong2rep_sub[state_sub2_label];       // rb
-                    auto &ga               = belong2group_sub[state_rep1_label];     // ga
-                    auto &gb               = belong2group_sub[state_rep2_label];     // gb
-                    std::vector<uint64_t> pos_e{ga, gb};
-                    pos_e.insert(pos_e.end(), dist2rep_sub[state_sub1_label].begin(), dist2rep_sub[state_sub1_label].end());
-                    pos_e.insert(pos_e.end(), dist2rep_sub[state_sub2_label].begin(), dist2rep_sub[state_sub2_label].end());
-                    if (state_rep1_label < state_rep2_label) {                          // ra < rb
-                        disp_i = Weisse_e_lt.index(pos_e).first;
-                        disp_j = Weisse_e_lt.index(pos_e).second;
-                    } else if (state_rep2_label < state_rep1_label) {                   // ra > rb
-                        disp_i = Weisse_e_gt.index(pos_e).first;
-                        disp_j = Weisse_e_gt.index(pos_e).second;
-                    } else {                                                            // ra == rb
-                        disp_i = Weisse_e_eq.index(pos_e).first;
-                        disp_j = Weisse_e_eq.index(pos_e).second;
-                    }
-                    for (uint32_t j = 0; j < disp_j.size(); j++) {
-                        disp_i_int[j] = static_cast<int>(disp_i[j]);
-                        disp_j_int[j] = static_cast<int>(disp_j[j]);
-                    }
+                uint64_t i_a, i_b;
+                MKL_INT j;
+                for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
+                    intermediate_states[tid].copy(basis_repr[sec_mat][i]);
+                    oprXphi(*it, props, intermediate_states[tid]);
                     
-                    if (state_rep2_label < state_rep1_label && dim_spec_involved) {
-                        state_sub_new1 = basis_sub_repr[state_rep2_label];
-                        state_sub_new2 = basis_sub_repr[state_rep1_label];
-                    } else {
-                        state_sub_new1 = basis_sub_repr[state_rep1_label];
-                        state_sub_new2 = basis_sub_repr[state_rep2_label];
-                    }
-                    
-                    state_sub_new2.translate(props_sub_b, latt_sub, disp_j_int, sgn);   // T_j |rb>
-                    zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
-                    MKL_INT j;
-                    if (Lin_Ja_repr[sec_mat].size() > 0 && Lin_Jb_repr[sec_mat].size() > 0) {
-                        uint64_t i_a = state_sub_new1.label(props_sub_a);               // use Lin Tables
-                        uint64_t i_b = state_sub_new2.label(props_sub_b);
-                        j = Lin_Ja_repr[sec_mat][i_a] + Lin_Jb_repr[sec_mat][i_b];
-                    } else {
-                        j = binary_search<mbasis_elem,MKL_INT>(basis_repr[sec_mat], ra_z_Tj_rb, 0, dim_repr[sec_mat]);
-                    }
-                    assert(j >= 0 && j < dim_repr[sec_mat]);
-                    assert(ra_z_Tj_rb == basis_repr[sec_mat][j]);
-                    if (std::abs(x[j]) < machine_prec) continue;
-                    double nu_j = norm_repr[sec_mat][j];
-                    if (std::abs(nu_j) < lanczos_precision) continue;
-                    
-                    double exp_coef = 0.0;
-                    for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
-                        if (trans_sym[d]) {
-                            exp_coef += momenta[sec_mat][d] * disp_i_int[d] / static_cast<double>(L[d]);
+                    for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                        auto &ele_new = intermediate_states[tid][cnt];
+                        // use Weisse Tables to find the representative |ra,rb,j>
+                        ele_new.first.label_sub(props, state_sub1_label, state_sub2_label);
+                        auto &state_rep1_label = belong2rep_sub[state_sub1_label];       // ra
+                        auto &state_rep2_label = belong2rep_sub[state_sub2_label];       // rb
+                        auto &ga               = belong2group_sub[state_rep1_label];     // ga
+                        auto &gb               = belong2group_sub[state_rep2_label];     // gb
+                        std::vector<uint64_t> pos_e{ga, gb};
+                        pos_e.insert(pos_e.end(), dist2rep_sub[state_sub1_label].begin(), dist2rep_sub[state_sub1_label].end());
+                        pos_e.insert(pos_e.end(), dist2rep_sub[state_sub2_label].begin(), dist2rep_sub[state_sub2_label].end());
+                        if (state_rep1_label < state_rep2_label) {                          // ra < rb
+                            disp_i = Weisse_e_lt.index(pos_e).first;
+                            disp_j = Weisse_e_lt.index(pos_e).second;
+                        } else if (state_rep2_label < state_rep1_label) {                   // ra > rb
+                            disp_i = Weisse_e_gt.index(pos_e).first;
+                            disp_j = Weisse_e_gt.index(pos_e).second;
+                        } else {                                                            // ra == rb
+                            disp_i = Weisse_e_eq.index(pos_e).first;
+                            disp_j = Weisse_e_eq.index(pos_e).second;
                         }
+                        for (uint32_t j = 0; j < disp_j.size(); j++) {
+                            disp_i_int[j] = static_cast<int>(disp_i[j]);
+                            disp_j_int[j] = static_cast<int>(disp_j[j]);
+                        }
+                        
+                        if (state_rep2_label < state_rep1_label && dim_spec_involved) {
+                            state_sub_new1 = basis_sub_repr[state_rep2_label];
+                            state_sub_new2 = basis_sub_repr[state_rep1_label];
+                        } else {
+                            state_sub_new1 = basis_sub_repr[state_rep1_label];
+                            state_sub_new2 = basis_sub_repr[state_rep2_label];
+                        }
+                        
+                        state_sub_new2.translate(props_sub_b, latt_sub, disp_j_int, sgn);   // T_j |rb>
+                        zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
+                        if (Lin_Ja_repr[sec_mat].size() > 0 && Lin_Jb_repr[sec_mat].size() > 0) {
+                            i_a = state_sub_new1.label(props_sub_a);               // use Lin Tables
+                            i_b = state_sub_new2.label(props_sub_b);
+                            j = Lin_Ja_repr[sec_mat][i_a] + Lin_Jb_repr[sec_mat][i_b];
+                        } else {
+                            j = binary_search<mbasis_elem,MKL_INT>(basis_repr[sec_mat], ra_z_Tj_rb, 0, dim_repr[sec_mat]);
+                        }
+                        if (j < 0 || j >= dim_repr[sec_mat]) continue;
+                        assert(ra_z_Tj_rb == basis_repr[sec_mat][j]);
+                        if (std::abs(x[j]) < machine_prec) continue;
+                        double nu_j = norm_repr[sec_mat][j];
+                        if (std::abs(nu_j) < lanczos_precision) continue;
+                        
+                        double exp_coef = 0.0;
+                        for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                            if (trans_sym[d]) {
+                                exp_coef += momenta[sec_mat][d] * disp_i_int[d] / static_cast<double>(L[d]);
+                            }
+                        }
+                        auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
+                        if (! bosonic) {
+                            ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);          // to get sgn
+                            assert(ra_z_Tj_rb == ele_new.first);
+                            if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
+                        }
+                        
+                        y[i] += (x[j] * coef);
                     }
-                    auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
-                    if (! bosonic) {
-                        ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);          // to get sgn
-                        assert(ra_z_Tj_rb == ele_new.first);
-                        if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
-                    }
-                    y[i] += (x[j] * coef);
                 }
             }
         }
@@ -926,32 +1043,44 @@ namespace qbasis {
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         
+        
+        int num_threads = 1;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) num_threads = omp_get_num_threads();
+        }
+        // prepare intermediates in advance
+        std::vector<wavefunction<T>> intermediate_states(num_threads, {props});
+        
         std::cout << "mopr * vec (s = " << sec_old << ", t = " << sec_new << ")... " << std::endl;
         for (MKL_INT j = 0; j < dim_full[sec_new]; j++) vec_new[j] = 0.0;
         
         #pragma omp parallel for schedule(dynamic,16)
         for (MKL_INT j = 0; j < dim_full[sec_old]; j++) {
+            int tid = omp_get_thread_num();
+            
             auto sj = vec_old[j];
             if (std::abs(sj) < lanczos_precision) continue;
             
+            MKL_INT i;
+            uint64_t i_a, i_b;
             std::vector<std::pair<MKL_INT, T>> values;
-            for (uint32_t cnt_opr = 0; cnt_opr < lhs.size(); cnt_opr++) {
-                auto &A = lhs[cnt_opr];
-                if (A.q_diagonal() && (sec_old == sec_new)) {
-                    values.push_back(std::pair<MKL_INT, T>(j,sj * basis_full[sec_old][j].diagonal_operator(props,A)));
+            for (auto it = lhs.mats.begin(); it != lhs.mats.end(); it++) {
+                if (it->q_diagonal() && (sec_old == sec_new)) {
+                    values.push_back(std::pair<MKL_INT, T>(j,sj * basis_full[sec_old][j].diagonal_operator(props,*it)));
                 } else {
-                    auto intermediate_state = oprXphi(A, basis_full[sec_old][j], props);
-                    for (uint32_t cnt = 0; cnt < intermediate_state.size(); cnt++) {
-                        auto &ele = intermediate_state[cnt];
-                        MKL_INT i;
+                    intermediate_states[tid].copy(basis_full[sec_old][j]);
+                    oprXphi(*it, props, intermediate_states[tid]);
+                    for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                        auto &ele = intermediate_states[tid][cnt];
                         if (Lin_Ja_full[sec_new].size() > 0 && Lin_Jb_full[sec_new].size() > 0) {
-                            uint64_t i_a, i_b;
                             ele.first.label_sub(props, i_a, i_b);
                             i = Lin_Ja_full[sec_new][i_a] + Lin_Jb_full[sec_new][i_b];
                         } else {
                             i = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_new], ele.first, 0, dim_full[sec_new]);
                         }
-                        assert(i >= 0 && i < dim_full[sec_new]);
+                        if (i < 0 || i >= dim_full[sec_new]) continue;
                         assert(basis_full[sec_new][i] == ele.first);
                         values.push_back(std::pair<MKL_INT, T>(i, sj * ele.second));
                     }
@@ -1025,6 +1154,15 @@ namespace qbasis {
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         
+        int num_threads = 1;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) num_threads = omp_get_num_threads();
+        }
+        // prepare intermediates in advance
+        std::vector<wavefunction<T>> intermediate_states(num_threads, {props});
+        
         std::cout << "mopr * vec (s = " << sec_old << ", t = " << sec_new << ")... " << std::endl;
         for (MKL_INT j = 0; j < dim_repr[sec_new]; j++) vec_new[j] = 0.0;
         
@@ -1034,23 +1172,25 @@ namespace qbasis {
             double nu_j = norm_repr[sec_old][j];
             if (std::abs(sj) < lanczos_precision || std::abs(nu_j) < lanczos_precision) continue;
             
+            int tid = omp_get_thread_num();
+            
             std::vector<std::pair<MKL_INT, T>> values;
-            for (uint32_t cnt_opr = 0; cnt_opr < lhs.size(); cnt_opr++) {
-                auto &A = lhs[cnt_opr];
-                if (A.q_diagonal()) {                                                    // only momentum changes
+            for (auto it = lhs.mats.begin(); it != lhs.mats.end(); it++) {
+                if (it->q_diagonal()) {                                                    // only momentum changes
                     double nu_i = norm_repr[sec_new][j];
                     if (std::abs(nu_i) > lanczos_precision)
-                        values.push_back(std::pair<MKL_INT, T>(j, std::sqrt(nu_j/nu_i) * sj * basis_repr[sec_old][j].diagonal_operator(props,A)));
+                        values.push_back(std::pair<MKL_INT, T>(j, std::sqrt(nu_j/nu_i) * sj * basis_repr[sec_old][j].diagonal_operator(props,*it)));
                 } else {
-                    auto intermediate_state = oprXphi(A, basis_repr[sec_old][j], props);
+                    intermediate_states[tid].copy(basis_repr[sec_old][j]);
+                    oprXphi(*it, props, intermediate_states[tid]);
                     uint64_t state_sub1_label, state_sub2_label;
                     std::vector<uint32_t> disp_i(dim_latt), disp_j(dim_latt);
                     std::vector<int> disp_i_int(dim_latt), disp_j_int(dim_latt);
                     int sgn;
                     mbasis_elem state_sub_new1, state_sub_new2, ra_z_Tj_rb;
                     
-                    for (uint32_t cnt = 0; cnt < intermediate_state.size(); cnt++) {
-                        auto &ele_new = intermediate_state[cnt];
+                    for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                        auto &ele_new = intermediate_states[tid][cnt];
                         ele_new.first.label_sub(props, state_sub1_label, state_sub2_label);
                         auto &state_rep1_label = belong2rep_sub[state_sub1_label];       // ra
                         auto &state_rep2_label = belong2rep_sub[state_sub2_label];       // rb
@@ -1092,7 +1232,7 @@ namespace qbasis {
                         } else {
                             i = binary_search<mbasis_elem,MKL_INT>(basis_repr[sec_new], ra_z_Tj_rb, 0, dim_repr[sec_new]);
                         }
-                        assert(i >= 0 && i < dim_repr[sec_new]);
+                        if (i < 0 || i >= dim_repr[sec_new]) continue;
                         assert(ra_z_Tj_rb == basis_repr[sec_new][i]);
                         double nu_i = norm_repr[sec_new][i];
                         if (std::abs(nu_i) < lanczos_precision) continue;
@@ -1274,14 +1414,25 @@ namespace qbasis {
         if (matrix_free) matrix_free = false;
         assert(dim_repr[sec_mat] > 0);
         
+        int num_threads = 1;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) num_threads = omp_get_num_threads();
+        }
+        // prepare intermediates in advance
+        std::vector<wavefunction<T>> intermediate_states(num_threads, {props});
+        
         std::cout << "Generating LIL Hamiltonian Matrix (repr) (deprecated)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         lil_mat<std::complex<double>> matrix_lil(dim_repr[sec_mat], upper_triangle);
         
         double faked = fake_pos;
-        #pragma omp parallel for schedule(dynamic,1)
+        #pragma omp parallel for schedule(dynamic,16)
         for (MKL_INT i = 0; i < dim_repr[sec_mat]; i++) {
+            int tid = omp_get_thread_num();
+            
             auto repr_i = basis_repr_deprec[sec_mat][i];
             if (std::abs(basis_coeff_deprec[sec_mat][repr_i]) < lanczos_precision) {
                 matrix_lil.add(i, i, static_cast<T>(faked));
@@ -1289,32 +1440,40 @@ namespace qbasis {
                 faked += fake_incr;
                 continue;
             }
-            for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)                                                      // diagonal part:
+            // diagonal part:
+            for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
                 matrix_lil.add(i, i, basis_full[sec_mat][repr_i].diagonal_operator(props,Ham_diag[cnt]));
-            qbasis::wavefunction<T> intermediate_state = oprXphi(Ham_off_diag, basis_full[sec_mat][repr_i], props);  // non-diagonal part:
-            for (uint32_t cnt = 0; cnt < intermediate_state.size(); cnt++) {
-                auto &ele_new = intermediate_state[cnt];
-                MKL_INT state_j;
-                if (Lin_Ja_full[sec_mat].size() > 0 && Lin_Jb_full[sec_mat].size() > 0) {
-                    uint64_t i_a, i_b;
-                    ele_new.first.label_sub(props, i_a, i_b);
-                    state_j = Lin_Ja_full[sec_mat][i_a] + Lin_Jb_full[sec_mat][i_b];
-                } else {
-                    state_j = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_mat], ele_new.first, 0, dim_full[sec_mat]);
-                }
-                assert(state_j >= 0 && state_j < dim_full[sec_mat]);
-                auto repr_j = basis_belong_deprec[sec_mat][state_j];
-                if (std::abs(basis_coeff_deprec[sec_mat][repr_j]) < lanczos_precision) continue;
+            
+            // non-diagonal part:
+            for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
+                intermediate_states[tid].copy(basis_full[sec_mat][repr_i]);
+                oprXphi(*it, props, intermediate_states[tid]);
                 
-                //MKL_INT j = Lin_Ja_repr[sec_repr][i_a] + Lin_Jb_repr[sec_repr][i_b];
-                auto j = binary_search<MKL_INT,MKL_INT>(basis_repr_deprec[sec_mat], repr_j, 0, dim_repr[sec_mat]);  // < j |P'_k H | i > obtained
-                //if (j < 0 || j >= dim_repr[sec_repr] ) continue;
-                auto coeff = basis_coeff_deprec[sec_mat][state_j]/std::sqrt(std::real(basis_coeff_deprec[sec_mat][repr_i] * basis_coeff_deprec[sec_mat][repr_j]));
-                
-                if (upper_triangle) {
-                    if (i <= j) matrix_lil.add(i, j, conjugate(ele_new.second) * coeff);
-                } else {
-                    matrix_lil.add(i, j, conjugate(ele_new.second) * coeff);
+                for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                    auto &ele_new = intermediate_states[tid][cnt];
+                    MKL_INT state_j;
+                    if (Lin_Ja_full[sec_mat].size() > 0 && Lin_Jb_full[sec_mat].size() > 0) {
+                        uint64_t i_a, i_b;
+                        ele_new.first.label_sub(props, i_a, i_b);
+                        state_j = Lin_Ja_full[sec_mat][i_a] + Lin_Jb_full[sec_mat][i_b];
+                    } else {
+                        state_j = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_mat], ele_new.first, 0, dim_full[sec_mat]);
+                    }
+                    if (state_j < 0 || state_j >= dim_full[sec_mat]) continue;
+                    assert(state_j >= 0 && state_j < dim_full[sec_mat]);
+                    auto repr_j = basis_belong_deprec[sec_mat][state_j];
+                    if (std::abs(basis_coeff_deprec[sec_mat][repr_j]) < lanczos_precision) continue;
+                    
+                    //MKL_INT j = Lin_Ja_repr[sec_repr][i_a] + Lin_Jb_repr[sec_repr][i_b];
+                    auto j = binary_search<MKL_INT,MKL_INT>(basis_repr_deprec[sec_mat], repr_j, 0, dim_repr[sec_mat]);  // < j |P'_k H | i > obtained
+                    //if (j < 0 || j >= dim_repr[sec_repr] ) continue;
+                    auto coeff = basis_coeff_deprec[sec_mat][state_j]/std::sqrt(std::real(basis_coeff_deprec[sec_mat][repr_i] * basis_coeff_deprec[sec_mat][repr_j]));
+                    
+                    if (upper_triangle) {
+                        if (i <= j) matrix_lil.add(i, j, conjugate(ele_new.second) * coeff);
+                    } else {
+                        matrix_lil.add(i, j, conjugate(ele_new.second) * coeff);
+                    }
                 }
             }
         }

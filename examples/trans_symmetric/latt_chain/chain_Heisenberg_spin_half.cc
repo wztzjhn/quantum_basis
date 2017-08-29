@@ -39,7 +39,8 @@ int main() {
     Heisenberg.add_orbital(lattice.total_sites(), "spin-1/2");
     for (int x = 0; x < L; x++) {
         uint32_t site_i, site_j;
-        lattice.coor2site({x}, 0, site_i); // obtain site label of (x)
+        std::vector<int> work(lattice.dimension());
+        lattice.coor2site({x}, 0, site_i, work); // obtain site label of (x)
         // construct operators on each site
         // spin
         auto Splus_i   = qbasis::opr<std::complex<double>>(site_i,0,false,Splus);
@@ -48,7 +49,7 @@ int main() {
 
         // with neighbor (x+1)
         if (bc[0] == "pbc" || (bc[0] == "obc" && x < L - 1)) {
-            lattice.coor2site({x+1}, 0, site_j);
+            lattice.coor2site({x+1}, 0, site_j, work);
             // spin exchanges
             auto Splus_j   = qbasis::opr<std::complex<double>>(site_j,0,false,Splus);
             auto Sminus_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sminus);

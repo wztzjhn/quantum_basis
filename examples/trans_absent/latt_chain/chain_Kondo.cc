@@ -55,7 +55,8 @@ int main() {
     qbasis::mopr<std::complex<double>> Sz_total;
     for (int x = 0; x < L; x++) {
         uint32_t site_i, site_j;
-        lattice.coor2site(std::vector<int>{x}, 0, site_i); // obtain site label of (x)
+        std::vector<int> work(lattice.dimension());
+        lattice.coor2site(std::vector<int>{x}, 0, site_i, work); // obtain site label of (x)
         // construct operators on each site
         // electron
         auto c_up_i    = qbasis::opr<std::complex<double>>(site_i,0,true,c_up);
@@ -74,7 +75,7 @@ int main() {
 
         // with neighbor (x+1)
         if (bc[0] == "pbc" || (bc[0] == "obc" && x < L - 1)) {
-            lattice.coor2site(std::vector<int>{x+1}, 0, site_j);
+            lattice.coor2site(std::vector<int>{x+1}, 0, site_j, work);
             // hopping
             auto c_up_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c_up);
             auto c_dn_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c_dn);

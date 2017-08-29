@@ -41,8 +41,9 @@ int main() {
 
     for (int m = 0; m < Lx; m++) {
             uint32_t site_i, site_j;
-            lattice.coor2site(std::vector<int>{m},   0, site_i); // obtain site label of (x,y)
-            lattice.coor2site(std::vector<int>{m+1}, 0, site_j);
+            std::vector<int> work(lattice.dimension());
+            lattice.coor2site(std::vector<int>{m},   0, site_i, work); // obtain site label of (x,y)
+            lattice.coor2site(std::vector<int>{m+1}, 0, site_j, work);
             // construct operators on each site
             auto c_up_i    = qbasis::opr<std::complex<double>>(site_i,0,true,c_up);
             auto c_dn_i    = qbasis::opr<std::complex<double>>(site_i,0,true,c_dn);

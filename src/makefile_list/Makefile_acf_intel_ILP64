@@ -1,6 +1,6 @@
 CXX       = icpc
-CPPFLAGS  = -Ofast -std=c++11 -w3 -wd383,981 -qopenmp -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
-LIBS      = -L/usr/local/lib -larpack -L${MKLROOT}/lib/intel64 -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -qopenmp
+CPPFLAGS  = -Ofast -std=c++11 -w3 -wd383,981 -DMKL_ILP64 -qopenmp -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
+LIBS      = -L${HOME}/opt/ARPACK_ILP64 -larpack -lgfortran -L${MKLROOT}/lib/intel64 -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -qopenmp
 
 OBJS      = lattice.o \
             miscellaneous.o \

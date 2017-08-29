@@ -44,7 +44,8 @@ int main() {
     for (int m = 0; m < Lx; m++) {
         for (int n = 0; n < Ly; n++) {
             uint32_t site_i, site_j;
-            lattice.coor2site({m,n}, 0, site_i); // obtain site label of (x,y)
+            std::vector<int> work(lattice.dimension());
+            lattice.coor2site({m,n}, 0, site_i, work); // obtain site label of (x,y)
             // construct operators on each site
             auto Splus_i   = qbasis::opr<std::complex<double>>(site_i,0,false,Splus);
             auto Sminus_i  = qbasis::opr<std::complex<double>>(site_i,0,false,Sminus);
@@ -52,7 +53,7 @@ int main() {
 
             // to neighbor a_1
             if (bc[0] == "pbc" || (bc[0] == "obc" && m < Lx - 1)) {
-                lattice.coor2site({m+1,n}, 0, site_j);
+                lattice.coor2site({m+1,n}, 0, site_j, work);
                 auto Splus_j   = qbasis::opr<std::complex<double>>(site_j,0,false,Splus);
                 auto Sminus_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sminus);
                 auto Sz_j      = qbasis::opr<std::complex<double>>(site_j,0,false,Sz);
@@ -62,7 +63,7 @@ int main() {
 
             // to neighbor a_2
             if (bc[1] == "pbc" || (bc[1] == "obc" && n < Ly - 1)) {
-                lattice.coor2site({m,n+1}, 0, site_j);
+                lattice.coor2site({m,n+1}, 0, site_j, work);
                 auto Splus_j   = qbasis::opr<std::complex<double>>(site_j,0,false,Splus);
                 auto Sminus_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sminus);
                 auto Sz_j      = qbasis::opr<std::complex<double>>(site_j,0,false,Sz);
@@ -73,7 +74,7 @@ int main() {
             // to neighbor a_3
             if ((bc[0] == "pbc" || (bc[0] == "obc" && m > 0)) &&
                 (bc[1] == "pbc" || (bc[1] == "obc" && n < Ly - 1))) {
-                lattice.coor2site({m-1,n+1}, 0, site_j);
+                lattice.coor2site({m-1,n+1}, 0, site_j, work);
                 auto Splus_j   = qbasis::opr<std::complex<double>>(site_j,0,false,Splus);
                 auto Sminus_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sminus);
                 auto Sz_j      = qbasis::opr<std::complex<double>>(site_j,0,false,Sz);

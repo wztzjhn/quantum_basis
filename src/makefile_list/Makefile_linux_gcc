@@ -1,5 +1,5 @@
 CXX       = g++
-CPPFLAGS  = -O2 -std=c++11 -Wall -Wextra -m64 -fopenmp -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
+CPPFLAGS  = -Ofast -std=c++11 -Wall -Wextra -m64 -fopenmp -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
 LIBS      = -L${HOME}/installs/lib -larpack -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -fopenmp
 
 OBJS      = lattice.o \
