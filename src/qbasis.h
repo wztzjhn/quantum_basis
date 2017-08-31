@@ -849,6 +849,8 @@ namespace qbasis {
     
 //  --------------------------  part 3: sparse matrices ------------------------
 //  ----------------------------------------------------------------------------
+// Note: sparse matrices in this code are using zero-based convention
+// By default, all diagonal elements are stored, even if they are zero (to be compatible with pardiso, if used in future)
     
     template <typename T> struct lil_mat_elem {
         T val;
@@ -948,11 +950,6 @@ namespace qbasis {
 //  ------------------------------part 4: Lanczos ------------------------------
 //  ----------------------------------------------------------------------------
     
-    // Note: sparse matrices in this code are using zero-based convention
-    
-    // By default, all diagonal elements are stored, even if they are zero (to be compatible with pardiso, if used in future)
-    
-    
     // m = k + np step of Lanczos
     // v of length m+1, hessenberg matrix of size m*m (m-step Lanczos)
     // after decomposition, mat * v[0:m-1] = v[0:m-1] * hessenberg + rnorm * resid * e_m^T,
@@ -976,8 +973,6 @@ namespace qbasis {
     template <typename T, typename MAT>
     void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const MAT &mat, double &rnorm, T resid[],
                  T v[], double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps = true);
-    
-    // if possible, add a block Arnoldi version here
     
     // transform from band storage to general storage
     template <typename T>

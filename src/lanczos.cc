@@ -13,7 +13,7 @@ namespace qbasis {
     void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const MAT &mat, double &rnorm, T resid[],
                  T v[], double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps)
     {
-        MKL_INT m   = k + np;
+        MKL_INT m = k + np;
         assert(m <= ldh && k >= 0 && k < dim && np >=0 && np < dim);
         assert(m < dim);                                                          // # of orthogonal vectors: at most dim
         assert(std::abs(nrm2(dim, resid, 1) - 1.0) < lanczos_precision);          // normalized
