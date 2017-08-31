@@ -213,37 +213,33 @@ namespace qbasis {
     }
     
     template <typename T>
-    void csr_mat<T>::MultMv(const T *x, T *y) const
+    void csr_mat<T>::MultMv2(const T *x, T *y) const
     {
         std::cout << "*" << std::flush;
         assert(val != nullptr && ja != nullptr && ia != nullptr);
-        if (sym) {
-            char matdescar[7] = "HUNC";
-            T zero = static_cast<T>(0.0);
-            T one  = static_cast<T>(1.0);
-            for (MKL_INT j = 0; j < dim; j++) y[j] = zero; // required by mkl_csrmv
-            mkl_csrmv('n', dim, dim, one, matdescar,
-                      val, ja, ia, ia + 1, x, one, y);
-        } else {
-            csrgemv('n', dim, val, ia, ja, x, y);
-        }
+        char matdescra[7] = "HUNC";
+        if (! sym) matdescra[0] = 'G';
+        T one  = static_cast<T>(1.0);
+        mkl_csrmv('n', dim, dim, one, matdescra,
+                  val, ja, ia, ia + 1, x, one, y);
+    }
+    
+    template <typename T>
+    void csr_mat<T>::MultMv(const T *x, T *y) const
+    {
+        T zero = static_cast<T>(0.0);
+        for (MKL_INT j = 0; j < dim; j++) y[j] = zero;
+        MultMv2(x, y);
     }
     template <typename T>
     void csr_mat<T>::MultMv(T *x, T *y)
     {
-        std::cout << "*" << std::flush;
-        assert(val != nullptr && ja != nullptr && ia != nullptr);
-        if (sym) {
-            char matdescar[7] = "HUNC";
-            T zero = static_cast<T>(0.0);
-            T one  = static_cast<T>(1.0);
-            for (MKL_INT j = 0; j < dim; j++) y[j] = zero; // required by mkl_csrmv
-            mkl_csrmv('n', dim, dim, one, matdescar,
-                      val, ja, ia, ia + 1, x, one, y);
-        } else {
-            csrgemv('n', dim, val, ia, ja, x, y);
-        }
+        T zero = static_cast<T>(0.0);
+        for (MKL_INT j = 0; j < dim; j++) y[j] = zero;
+        MultMv2(x, y);
     }
+    
+    
 
     // need fix ldb and ldc to make this subroutine work
     //template <typename T>

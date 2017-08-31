@@ -928,8 +928,11 @@ namespace qbasis {
         csr_mat(lil_mat<T> &old);
         
         // matrix vector product
+        // y = H * x + y, to be used in the 2-vector form of Lanczos
+        void MultMv2(const T *x, T *y) const;
+        // y = H * x
         void MultMv(const T *x, T *y) const;
-        void MultMv(T *x, T *y);  // to be compatible with arpack++
+        void MultMv(T *x, T *y);              // non-const, to be compatible with arpack++
         
         std::vector<T> to_dense() const;
         
@@ -954,13 +957,7 @@ namespace qbasis {
     // v of length m+1, hessenberg matrix of size m*m (m-step Lanczos)
     // after decomposition, mat * v[0:m-1] = v[0:m-1] * hessenberg + rnorm * resid * e_m^T,
     // where e_m has only one nonzero element: e[0:m-2] == 0, e[m-1] = 1
-    
-    // on entry, assuming k steps of Lanczos already performed:
-    // v_0, ..., v_{k-1} stored in v, v{k} stored in resid
-    // alpha_0, ..., alpha_{k-1} in hessenberg matrix
-    // beta_1,  ..., beta_{k-1} in hessenberg matrix, beta_k as rnorm
-    // if on entry k==0, then beta_k=0, v_0=resid, entry value of rnorm irrelevant
-    
+    //
     // ldh: leading dimension of hessenberg
     // alpha[j] = hessenberg[j+ldh], diagonal of hessenberg matrix
     // beta[j]  = hessenberg[j]
@@ -970,6 +967,20 @@ namespace qbasis {
     //              b[3]  a[3] b[4]
     //                    ..  ..  ..    b[k-1]
     //                          b[k-1]  a[k-1]
+    //
+    // on entry, assuming k steps of Lanczos already performed:
+    // alpha_0, ..., alpha_{k-1} in hessenberg matrix
+    // beta_1,  ..., beta_{k-1} in hessenberg matrix, beta_k as rnorm
+    //
+    // if purpose == "iram":
+    // on entry, v_0, ..., v_{k-1} stored in v, v_k stored in resid
+    // on exit,  v_0, ..., v_{m-1} stored in v, v_m stored in resid, rnorm = beta_m
+    //
+    // if purpose == "sl_val" (smallest eigenvalue):
+    //
+    // if purpose == "sl_vec" (smallest eigenvector):
+    
+    
     template <typename T, typename MAT>
     void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const MAT &mat, double &rnorm, T resid[],
                  T v[], double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps = true);
@@ -1223,18 +1234,22 @@ namespace qbasis {
         void generate_Ham_sparse_full(const bool &upper_triangle = true);
         
         // generate the Hamiltonian using basis_repr
-        // a few artificial diagonal elements at 99.99, corresponding to zero norm states
+        // a few artificial diagonal elements above 100, corresponding to zero norm states
         void generate_Ham_sparse_repr(const bool &upper_triangle = true);
         
-        // a few artificial diagonal elements at 99.99, corresponding to zero norm states
+        // a few artificial diagonal elements above 100, corresponding to zero norm states
         void generate_Ham_sparse_repr_deprecated(const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr
         
         // generate a dense matrix of the Hamiltonian
         std::vector<std::complex<double>> to_dense();
         
         // generate matrix on the fly
+        // y = H * x + y
+        void MultMv2(const T *x, T *y) const;
+        // y = H * x
         void MultMv(const T *x, T *y) const;
-        void MultMv(T *x, T *y);  // to be compatible with arpack++
+        void MultMv(T *x, T *y);              // non-const, to be compatible with arpack++
+        
         
         void locate_E0_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
         

@@ -540,8 +540,9 @@ namespace qbasis {
         }
     }
     
+    
     template <typename T>
-    void model<T>::MultMv(const T *x, T *y) const
+    void model<T>::MultMv2(const T *x, T *y) const
     {
         assert(matrix_free);
         int num_threads = 1;
@@ -559,7 +560,6 @@ namespace qbasis {
             #pragma omp parallel for schedule(dynamic,16)
             for (MKL_INT i = 0; i < dim_full[sec_mat]; i++) {
                 int tid = omp_get_thread_num();
-                y[i] = static_cast<T>(0.0);
                 
                 // diagonal part
                 if (std::abs(x[i]) > machine_prec) {
@@ -599,7 +599,6 @@ namespace qbasis {
             #pragma omp parallel for schedule(dynamic,16)
             for (MKL_INT i = 0; i < dim_repr[sec_mat]; i++) {
                 int tid = omp_get_thread_num();
-                y[i] = static_cast<T>(0.0);
                 
                 double nu_i = norm_repr[sec_mat][i];                             // normalization factor for repr i
                 if (std::abs(nu_i) < lanczos_precision) {
@@ -696,160 +695,29 @@ namespace qbasis {
         }
     }
     
+    
+    template <typename T>
+    void model<T>::MultMv(const T *x, T *y) const
+    {
+        T zero = static_cast<T>(0.0);
+        if (sec_sym == 0) {
+            for (MKL_INT j = 0; j < dim_full[sec_mat]; j++) y[j] = zero;
+        } else {
+            for (MKL_INT j = 0; j < dim_repr[sec_mat]; j++) y[j] = zero;
+        }
+        MultMv2(x, y);
+    }
+    
     template <typename T>
     void model<T>::MultMv(T *x, T *y)
     {
-        assert(matrix_free);
-        int num_threads = 1;
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            if (tid == 0) num_threads = omp_get_num_threads();
-        }
-        
-        std::cout << "*" << std::flush;
+        T zero = static_cast<T>(0.0);
         if (sec_sym == 0) {
-            // prepare intermediates in advance
-            std::vector<wavefunction<T>> intermediate_states(num_threads, {basis_full[sec_mat][0]});
-            
-            #pragma omp parallel for schedule(dynamic,16)
-            for (MKL_INT i = 0; i < dim_full[sec_mat]; i++) {
-                int tid = omp_get_thread_num();
-                y[i] = static_cast<T>(0.0);
-                
-                // diagonal part
-                if (std::abs(x[i]) > machine_prec) {
-                    for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
-                        y[i] += x[i] * basis_full[sec_mat][i].diagonal_operator(props, Ham_diag[cnt]);
-                }
-                
-                // non-diagonal part
-                uint64_t i_a, i_b;
-                MKL_INT j;
-                for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
-                    intermediate_states[tid].copy(basis_full[sec_mat][i]);
-                    oprXphi(*it, props, intermediate_states[tid]);
-                    for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
-                        auto &ele_new = intermediate_states[tid][cnt];
-                        if (std::abs(ele_new.second) < machine_prec) continue;
-                        if (Lin_Ja_full[sec_mat].size() > 0 && Lin_Jb_full[sec_mat].size() > 0) {
-                            ele_new.first.label_sub(props, i_a, i_b);
-                            j = Lin_Ja_full[sec_mat][i_a] + Lin_Jb_full[sec_mat][i_b];
-                        } else {
-                            j = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_mat], ele_new.first, 0, dim_full[sec_mat]);
-                        }
-                        if (j < 0 || j >= dim_full[sec_mat]) continue;
-                        if (std::abs(x[j]) > machine_prec) y[i] += (x[j] * conjugate(ele_new.second));
-                    }
-                }
-            }
+            for (MKL_INT j = 0; j < dim_full[sec_mat]; j++) y[j] = zero;
         } else {
-            // prepare intermediates in advance
-            std::vector<wavefunction<T>> intermediate_states(num_threads, {basis_repr[sec_mat][0]});
-            
-            auto dim_latt = latt_parent.dimension();
-            auto L        = latt_parent.Linear_size();
-            bool bosonic  = q_bosonic(props);
-            
-            double faked = fake_pos;
-            #pragma omp parallel for schedule(dynamic,16)
-            for (MKL_INT i = 0; i < dim_repr[sec_mat]; i++) {
-                int tid = omp_get_thread_num();
-                y[i] = static_cast<T>(0.0);
-                
-                double nu_i = norm_repr[sec_mat][i];                             // normalization factor for repr i
-                if (std::abs(nu_i) < lanczos_precision) {
-                    y[i] += x[i] * static_cast<T>(faked);
-                    #pragma omp atomic
-                    faked += fake_incr;
-                    continue;
-                }
-                
-                // diagonal part
-                if (std::abs(x[i]) > machine_prec) {
-                    for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)          // diagonal part:
-                        y[i] += x[i] * basis_repr[sec_mat][i].diagonal_operator(props,Ham_diag[cnt]);
-                }
-                
-                // non-diagonal part
-                uint64_t state_sub1_label, state_sub2_label;
-                std::vector<uint32_t> disp_i(dim_latt), disp_j(dim_latt);
-                std::vector<int> disp_i_int(dim_latt), disp_j_int(dim_latt);
-                int sgn;
-                mbasis_elem state_sub_new1, state_sub_new2, ra_z_Tj_rb;
-                uint64_t i_a, i_b;
-                MKL_INT j;
-                for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
-                    intermediate_states[tid].copy(basis_repr[sec_mat][i]);
-                    oprXphi(*it, props, intermediate_states[tid]);
-                    
-                    for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
-                        auto &ele_new = intermediate_states[tid][cnt];
-                        // use Weisse Tables to find the representative |ra,rb,j>
-                        ele_new.first.label_sub(props, state_sub1_label, state_sub2_label);
-                        auto &state_rep1_label = belong2rep_sub[state_sub1_label];       // ra
-                        auto &state_rep2_label = belong2rep_sub[state_sub2_label];       // rb
-                        auto &ga               = belong2group_sub[state_rep1_label];     // ga
-                        auto &gb               = belong2group_sub[state_rep2_label];     // gb
-                        std::vector<uint64_t> pos_e{ga, gb};
-                        pos_e.insert(pos_e.end(), dist2rep_sub[state_sub1_label].begin(), dist2rep_sub[state_sub1_label].end());
-                        pos_e.insert(pos_e.end(), dist2rep_sub[state_sub2_label].begin(), dist2rep_sub[state_sub2_label].end());
-                        if (state_rep1_label < state_rep2_label) {                          // ra < rb
-                            disp_i = Weisse_e_lt.index(pos_e).first;
-                            disp_j = Weisse_e_lt.index(pos_e).second;
-                        } else if (state_rep2_label < state_rep1_label) {                   // ra > rb
-                            disp_i = Weisse_e_gt.index(pos_e).first;
-                            disp_j = Weisse_e_gt.index(pos_e).second;
-                        } else {                                                            // ra == rb
-                            disp_i = Weisse_e_eq.index(pos_e).first;
-                            disp_j = Weisse_e_eq.index(pos_e).second;
-                        }
-                        for (uint32_t j = 0; j < disp_j.size(); j++) {
-                            disp_i_int[j] = static_cast<int>(disp_i[j]);
-                            disp_j_int[j] = static_cast<int>(disp_j[j]);
-                        }
-                        
-                        if (state_rep2_label < state_rep1_label && dim_spec_involved) {
-                            state_sub_new1 = basis_sub_repr[state_rep2_label];
-                            state_sub_new2 = basis_sub_repr[state_rep1_label];
-                        } else {
-                            state_sub_new1 = basis_sub_repr[state_rep1_label];
-                            state_sub_new2 = basis_sub_repr[state_rep2_label];
-                        }
-                        
-                        state_sub_new2.translate(props_sub_b, latt_sub, disp_j_int, sgn);   // T_j |rb>
-                        zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
-                        if (Lin_Ja_repr[sec_mat].size() > 0 && Lin_Jb_repr[sec_mat].size() > 0) {
-                            i_a = state_sub_new1.label(props_sub_a);               // use Lin Tables
-                            i_b = state_sub_new2.label(props_sub_b);
-                            j = Lin_Ja_repr[sec_mat][i_a] + Lin_Jb_repr[sec_mat][i_b];
-                        } else {
-                            j = binary_search<mbasis_elem,MKL_INT>(basis_repr[sec_mat], ra_z_Tj_rb, 0, dim_repr[sec_mat]);
-                        }
-                        if (j < 0 || j >= dim_repr[sec_mat]) continue;
-                        assert(ra_z_Tj_rb == basis_repr[sec_mat][j]);
-                        if (std::abs(x[j]) < machine_prec) continue;
-                        double nu_j = norm_repr[sec_mat][j];
-                        if (std::abs(nu_j) < lanczos_precision) continue;
-                        
-                        double exp_coef = 0.0;
-                        for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
-                            if (trans_sym[d]) {
-                                exp_coef += momenta[sec_mat][d] * disp_i_int[d] / static_cast<double>(L[d]);
-                            }
-                        }
-                        auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
-                        if (! bosonic) {
-                            ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);          // to get sgn
-                            assert(ra_z_Tj_rb == ele_new.first);
-                            if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
-                        }
-                        
-                        y[i] += (x[j] * coef);
-                    }
-                }
-            }
+            for (MKL_INT j = 0; j < dim_repr[sec_mat]; j++) y[j] = zero;
         }
+        MultMv2(x, y);
     }
     
     
