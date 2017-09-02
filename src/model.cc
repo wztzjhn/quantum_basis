@@ -530,7 +530,7 @@ namespace qbasis {
     template <typename T>
     std::vector<std::complex<double>> model<T>::to_dense()
     {
-        std::cout << "Fall back to use matrix explicitly." << std::endl;
+        std::cout << "Fall back to generate matrix explicitly!" << std::endl;
         if (sec_sym == 0) {
             generate_Ham_sparse_full();
             return HamMat_csr_full[sec_mat].to_dense();
@@ -695,19 +695,6 @@ namespace qbasis {
         }
     }
     
-    
-    template <typename T>
-    void model<T>::MultMv(const T *x, T *y) const
-    {
-        T zero = static_cast<T>(0.0);
-        if (sec_sym == 0) {
-            for (MKL_INT j = 0; j < dim_full[sec_mat]; j++) y[j] = zero;
-        } else {
-            for (MKL_INT j = 0; j < dim_repr[sec_mat]; j++) y[j] = zero;
-        }
-        MultMv2(x, y);
-    }
-    
     template <typename T>
     void model<T>::MultMv(T *x, T *y)
     {
@@ -755,57 +742,37 @@ namespace qbasis {
     template <typename T>
     void model<T>::locate_E0_full_lanczos()
     {
-        assert(false);
         sec_sym = 0;                       // work with dim_full
-        std::cout << "Calculating ground state (full, with simple Lanczos)..." << std::endl;
+        T one = static_cast<T>(1.0);
+        std::cout << "Calculating ground state energy (full, using simple Lanczos)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         
         std::default_random_engine generator;
-        std::uniform_real_distribution<double> distribution(-1.0,1.0);
-        std::vector<T> resid(dim_full[sec_mat]), v(dim_full[sec_mat]*3);
-        for (MKL_INT j = 0; j < dim_full[sec_mat]; j++) resid[j] = static_cast<T>(distribution(generator));
-        double rnorm = nrm2(dim_full[sec_mat], resid.data(), 1);
-        scal(dim_full[sec_mat], 1.0 / rnorm, resid.data(), 1);
-        MKL_INT ldh = 2000;                                     // at most 2000 steps
-        std::vector<double> hessenberg(ldh, 0.0), ritz(ldh), e(ldh-1);
+        //std::uniform_real_distribution<double> distribution(-1.0,1.0);
+        std::vector<T> v(dim_full[sec_mat]*2, one);
+        //for (MKL_INT j = 0; j < dim_full[sec_mat]; j++) resid[j] = static_cast<T>(distribution(generator));
+        double rnorm = nrm2(dim_full[sec_mat], v.data(), 1);
+        scal(dim_full[sec_mat], 1.0 / rnorm, v.data(), 1);
+        MKL_INT maxit = 1000;                                     // at most 1000 steps
+        std::vector<double> hessenberg(maxit, 0.0), ritz, s;
         
-        MKL_INT total_steps = 0;
-        MKL_INT step = 6;
-        E0 = 1.0e10;
-        std::vector<std::pair<double, MKL_INT>> eigenvals(ldh);
-        eigenvals[0].first = 1.0e9;
-        while (std::abs(E0 - eigenvals[0].first) > lanczos_precision && total_steps < ldh) {
-            if (eigenvals[0].first < E0) {
-                E0 = eigenvals[0].first;
-            }
-            if (matrix_free) {
-                lanczos(0, step, dim_full[sec_mat], *this, rnorm, resid.data(), v.data(), hessenberg.data(), 2000, false);
-            } else {
-                lanczos(0, step, dim_full[sec_mat], HamMat_csr_full[sec_mat], rnorm, resid.data(), v.data(), hessenberg.data(), 2000, false);
-            }
-            total_steps += step;
-            copy(total_steps, hessenberg.data() + ldh, 1, ritz.data(), 1);
-            copy(total_steps-1, hessenberg.data() + 1, 1, e.data(), 1);
-            int info = sterf(total_steps, ritz.data(), e.data());
-            assert(info == 0);
-            for (decltype(eigenvals.size()) j = 0; j < eigenvals.size(); j++) {
-                eigenvals[j].first = ritz[j];
-                eigenvals[j].second = static_cast<MKL_INT>(j);
-            }
-            std::sort(eigenvals.begin(), eigenvals.end(),
-                      [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return a.first < b.first; });
-            std::cout << "Lanczos steps: " << total_steps << std::endl;
-            std::cout << "Ritz values: "
-                      << std::setw(25) << eigenvals[0].first << std::setw(25) << eigenvals[1].first
-                      << std::setw(25) << eigenvals[2].first << std::setw(25) << eigenvals[3].first
-                      << std::setw(25) << eigenvals[4].first << std::endl;
+        MKL_INT m;
+        if (matrix_free) {
+            lanczos(0, maxit-1, maxit, m, dim_full[sec_mat], *this, v.data(), hessenberg.data(), "sr_val");
+        } else {
+            lanczos(0, maxit-1, maxit, m, dim_full[sec_mat], HamMat_csr_full[sec_mat], v.data(), hessenberg.data(), "sr_val");
         }
-        assert(total_steps < ldh);
-        
+        assert(m < maxit);
+        hess_eigen(hessenberg.data(), maxit, m, "sr", ritz, s);
+        eigenvals_full.resize(1);
+        eigenvals_full[0] = ritz[0];
+        E0 = eigenvals_full[0];
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+        std::cout << "Lanczos steps: " << m << std::endl;
+        std::cout << "Lanczos accuracy: " << std::abs(hessenberg[m] * s[m-1]) << std::endl;
         std::cout << "E0   = " << E0 << std::endl;
     }
     

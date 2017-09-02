@@ -9,10 +9,8 @@ namespace qbasis {
         dim(n), nnz(n), sym(sym_),
         mat(std::vector<std::forward_list<lil_mat_elem<T>>>(n, std::forward_list<lil_mat_elem<T>>(1)))
     {
-        //mtx = new std::mutex[n];
         mat.shrink_to_fit();
         for (MKL_INT i = 0; i < n; i++) {
-            //mtx[i].unlock();
             mat[i].front().col = i;
             mat[i].front().val = 0.0;
         }
@@ -22,7 +20,6 @@ namespace qbasis {
     template <typename T>
     void lil_mat<T>::add(const MKL_INT &row, const MKL_INT &col, const T &val)
     {
-        //std::lock_guard<std::mutex> lck(mtx[row]);
         assert(row >= 0 && row < static_cast<MKL_INT>(mat.size()) &&
                col >=0 && col < static_cast<MKL_INT>(mat.size()));
         assert(sym ? row <= col : true);
@@ -225,39 +222,18 @@ namespace qbasis {
     }
     
     template <typename T>
-    void csr_mat<T>::MultMv(const T *x, T *y) const
-    {
-        T zero = static_cast<T>(0.0);
-        for (MKL_INT j = 0; j < dim; j++) y[j] = zero;
-        MultMv2(x, y);
-    }
-    template <typename T>
     void csr_mat<T>::MultMv(T *x, T *y)
     {
         T zero = static_cast<T>(0.0);
         for (MKL_INT j = 0; j < dim; j++) y[j] = zero;
         MultMv2(x, y);
     }
-    
-    
-
-    // need fix ldb and ldc to make this subroutine work
-    //template <typename T>
-    //void csr_mat<T>::MultMm(const T *x, T *y, MKL_INT n) const
-    //{
-    //    T zero = static_cast<T>(0.0);
-    //    T one  = static_cast<T>(1.0);
-    //    for (MKL_INT j = 0; j < dim * n; j++) y[j] = zero; // required by mkl_csrmm
-    //    char matdescar[7] = "HUNC";
-    //    matdescar[0] = sym ? 'H' : 'G';
-    //    mkl_csrmm('n', dim, n, dim, one, matdescar,
-    //              val, ja, ia, ia + 1, x, n, zero, y, n);
-    //}
 
     template <typename T>
     std::vector<T> csr_mat<T>::to_dense() const
     {
-        if (dim > 500) std::cout << "Warning: converting a large matrix to dense format!!!" << std::endl;
+        std::cout << "Converting CSR to " << dim << "x" << dim << " dense matrix!" << std::endl;
+        if (dim > 500) std::cout << "Warning: Dense matrix large!!!" << std::endl;
         std::vector<T> res(dim*dim,static_cast<T>(0.0));
         for (MKL_INT row = 0; row < dim; row++) {
             MKL_INT pt_row_curr = ia[row];

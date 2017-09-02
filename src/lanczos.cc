@@ -5,207 +5,225 @@
 #include "areig.h"
 namespace qbasis {
     
+    
+    void log_Lanczos_srval(const MKL_INT &k, const std::vector<double> &ritz,
+                           const double hessenberg[], const MKL_INT &maxit,
+                           const double &accuracy,
+                           const double &accu_E0, const double &accu_E1)
+    {
+        assert(k > 2);
+        std::ofstream fout("log_Lanczos.txt", std::ios::out | std::ios::app);
+        fout << std::setprecision(10);
+        fout << std::setw(20) << "#(1)" << std::setw(20) << "(2)" << std::setw(20) << "(3)"
+             << std::setw(20) << "(4)"  << std::setw(20) << "(5)" << std::setw(20) << "(6)"
+             << std::setw(20) << "(7)"  << std::setw(20) << "(8)" << std::setw(20) << "(9)"
+             << std::setw(20) << "(10)" << std::endl;
+        fout << std::setw(20) << "Iter(k)"
+             << std::setw(20) << "Ritz[0]"  << std::setw(20) << "Ritz[1]"
+             << std::setw(20) << "Ritz[2]"  << std::setw(20) << "Ritz[3]"
+             << std::setw(20) << "a[k-1]"     << std::setw(20) << "b[k]"
+             << std::setw(20) << "accuracy" << std::setw(20) << "accu_E0"
+             << std::setw(20) << "accu_E1"  << std::endl;
+        fout << std::setw(20) << k
+             << std::setw(20) << ritz[0] << std::setw(20) << ritz[1]
+             << std::setw(20) << ritz[2] << std::setw(20) << ritz[3]
+             << std::setw(20) << hessenberg[maxit+k-1] << std::setw(20) << hessenberg[k]
+             << std::setw(20) << accuracy << std::setw(20) << accu_E0
+             << std::setw(20) << accu_E1 << std::endl;
+        fout.close();
+    }
+    
     // need further classification:
     // 1. ask lanczos to restart with a new linearly independent vector when v_m+1 = 0
     // 2. need add DGKS re-orthogonalization (when MemoSteps == true)
     // 3. add partial and selective re-orthogonalization (when MemoSteps == false)
     template <typename T, typename MAT>
-    void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const MAT &mat, double &rnorm, T resid[],
-                 T v[], double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps)
+    void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &maxit, MKL_INT &m, const MKL_INT &dim,
+                 const MAT &mat, T v[], double hessenberg[], const std::string &purpose)
     {
-        MKL_INT m = k + np;
-        assert(m <= ldh && k >= 0 && k < dim && np >=0 && np < dim);
-        assert(m < dim);                                                          // # of orthogonal vectors: at most dim
-        assert(std::abs(nrm2(dim, resid, 1) - 1.0) < lanczos_precision);          // normalized
+        MKL_INT mm = k + np;
+        assert(mm < maxit && k >= 0 && k < dim && np >=0 && np < dim);
+        assert(mm < dim);                                                        // # of orthogonal vectors: at most dim
+        m = k;
         if (np == 0) return;
-        std::vector<T*> vpt(m+1);                                                 // pointers of v_0, v_1, ..., v_m
-        if (MemoSteps) {                                                          // v has m cols
-            for (MKL_INT j = 0; j < m; j++) vpt[j] = &v[j*dim];
-        } else {                                                                  // v has only 3 cols
-            for (MKL_INT j = 0, cnt = 0; j < m; j++) {
-                vpt[j] = &v[cnt*dim];
-                cnt = (cnt + 1) % 3;
-            }
+        T zero = static_cast<T>(0.0);
+        std::vector<T*> vpt(mm+1);                                               // pointers of v[0],v[1],...,v[m]
+        if (purpose == "iram") {                                                 // v has m+1 cols
+            for (MKL_INT j = 0; j <= mm; j++) vpt[j] = &v[j*dim];
+        } else if (purpose == "sr_val") {                                        // v has only 2 cols
+            for (MKL_INT j = 0; j <= mm; j++) vpt[j] = &v[(j%2)*dim];
+        } else {
+            assert(false);
         }
-        vpt[m] = resid;
-        copy(dim, resid, 1, vpt[k], 1);                                           // v_k = resid
-        if(k > 0) hessenberg[k] = rnorm;                                          // beta_k = rnorm
-        if (k == 0 && m > 1) {                                                    // prepare at least 2 vectors to start
+        std::vector<double> ritz(mm), s(mm * mm);                                // Ritz values and eigenvecs of Hess
+        
+        assert(std::abs(nrm2(dim, vpt[k], 1) - 1.0) < lanczos_precision);        // v[k] should be normalized
+        if (k == 0) {                                                            // prepare 2 vectors to start
             hessenberg[0] = 0.0;
-            mat.MultMv(vpt[0], vpt[1]);                                           // w_0, not orthogonal to v[0] yet
-            hessenberg[ldh] = std::real(dotc(dim, vpt[0], 1, vpt[1], 1));         // alpha[0]
-            axpy(dim, -hessenberg[ldh], vpt[0], 1, vpt[1], 1);                    // w_0, orthogonal but not normalized yet
-            hessenberg[1] = nrm2(dim, vpt[1], 1);                                 // beta[1]
-            scal(dim, 1.0 / hessenberg[1], vpt[1], 1);                            // v[1]
-            ++k;
+            for (MKL_INT l = 0; l < dim; l++) vpt[1][l] = zero;                  // v[1] = 0
+            mat.MultMv2(vpt[0], vpt[1]);                                         // v[1] = H * v[0] + v[1]
+            hessenberg[maxit] = std::real(dotc(dim, vpt[0], 1, vpt[1], 1));      // a[0] = (v[1], v[0])
+            axpy(dim, -hessenberg[maxit], vpt[0], 1, vpt[1], 1);                 // v[1] = v[1] - a[0] * v[0]
+            hessenberg[1] = nrm2(dim, vpt[1], 1);                                // b[1] = || v[1] ||
+            scal(dim, 1.0 / hessenberg[1], vpt[1], 1);                           // v[1] = v[1] / b[1]
+            m = ++k;
             --np;
         }
-        for (MKL_INT j = k; j < m-1; j++) {
-            mat.MultMv(vpt[j], vpt[j+1]);
-            axpy(dim, -hessenberg[j], vpt[j-1], 1, vpt[j+1], 1);                  // w_j
-            hessenberg[ldh+j] = std::real(dotc(dim, vpt[j], 1, vpt[j+1], 1));     // alpha[j]
-            axpy(dim, -hessenberg[ldh+j], vpt[j], 1, vpt[j+1], 1);                // w_j
-            hessenberg[j+1] = nrm2(dim, vpt[j+1], 1);                             // beta[j+1]
-            scal(dim, 1.0 / hessenberg[j+1], vpt[j+1], 1);                        // v[j+1]
+        
+        double theta0_prev, theta1_prev;                                          // record Ritz values from last step
+        do {                                                                      // while m < mm
+            m++;
+            for (MKL_INT l = 0; l < dim; l++)
+                vpt[m][l] = -hessenberg[m-1] * vpt[m-2][l];                       // v[m] = -b[m-1] * v[m-2]
+            mat.MultMv2(vpt[m-1], vpt[m]);                                        // v[m] = H * v[m-1] + v[m]
+            hessenberg[maxit+m-1] = std::real(dotc(dim, vpt[m-1], 1, vpt[m], 1)); // a[m-1]   = (v[m], v[m-1])
+            axpy(dim, -hessenberg[maxit+m-1], vpt[m-1], 1, vpt[m], 1);            // v[m] = v[m] - a[m-1] * v[m-1]
+            hessenberg[m] = nrm2(dim, vpt[m], 1);                                 // b[m] = || v[m] ||
+            scal(dim, 1.0 / hessenberg[m], vpt[m], 1);                            // v[m] = v[m] / b[m]
+            hess_eigen(hessenberg, maxit, m, "sr", ritz, s);                      // calculate {theta, s}
+            if (purpose == "sr_val" && m > 3) {
+                double accuracy = std::abs(hessenberg[m] * s[m-1]);
+                double accu_E0  = std::abs((ritz[0] - theta0_prev) / ritz[0]);
+                double accu_E1  = std::abs((ritz[1] - theta1_prev) / ritz[1]);
+                log_Lanczos_srval(m, ritz, hessenberg, maxit, accuracy, accu_E0, accu_E1);
+                if (accuracy < lanczos_precision) {
+                    std::cout << std::endl;
+                    return;
+                }
+            }
+            theta0_prev = ritz[0];
+            theta1_prev = ritz[1];
+            
             // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            // stupid re-orthogonalization, change checking criteria and replace with DGKS later!!!
-            // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            if (MemoSteps) {
-                for (MKL_INT l = 0; l < j; l++) {
-                    auto q = dotc(dim, &v[l*dim], 1, vpt[j+1], 1);
+            // naive re-orthogonalization, change checking criteria and replace with DGKS later
+            if (purpose == "iram") {
+                for (MKL_INT l = 0; l < m-1; l++) {
+                    auto q = dotc(dim, vpt[l], 1, vpt[m], 1);
                     double qabs = std::abs(q);
                     if (qabs > lanczos_precision) {
-                        axpy(dim, -q, &v[l*dim], 1, vpt[j+1], 1);
-                        scal(dim, 1.0 / std::sqrt(1.0 - qabs * qabs), vpt[j+1], 1);
+                        axpy(dim, -q, vpt[l], 1, vpt[m], 1);
+                        scal(dim, 1.0 / std::sqrt(1.0 - qabs * qabs), vpt[m], 1);
                     }
                 }
             }
-        }
-        mat.MultMv(vpt[m-1], vpt[m]);
-        if(m > 1) axpy(dim, -hessenberg[m-1], vpt[m-2], 1, vpt[m], 1);
-        hessenberg[ldh+m-1] = std::real(dotc(dim, vpt[m-1], 1, vpt[m], 1));       // alpha[k-1]
-        axpy(dim, -hessenberg[ldh+m-1], vpt[m-1], 1, vpt[m], 1);                  // w_{k-1}
-        rnorm = nrm2(dim, vpt[m], 1);
-        scal(dim, 1.0 / rnorm, vpt[m], 1);                                        // v[k]
-        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        // stupid re-orthogonalization
-        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        if (MemoSteps) {
-            for (MKL_INT l = 0; l < m-1; l++) {
-                auto q = dotc(dim, &v[l*dim], 1, vpt[m], 1);
-                double qabs = std::abs(q);
-                if (qabs > lanczos_precision) {
-                    axpy(dim, -q, &v[l*dim], 1, vpt[m], 1);
-                    scal(dim, 1.0 / std::sqrt(1.0 - qabs * qabs), vpt[m], 1);
-                }
-            }
-        }
+        } while (m < mm);
+    }
+    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &maxit, MKL_INT &m, const MKL_INT &dim,
+                          const csr_mat<double> &mat, double v[],
+                          double hessenberg[], const std::string &purpose);
+    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &maxit, MKL_INT &m, const MKL_INT &dim,
+                          const csr_mat<std::complex<double>> &mat, std::complex<double> v[],
+                          double hessenberg[], const std::string &purpose);
+    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &maxit, MKL_INT &m, const MKL_INT &dim,
+                          const model<std::complex<double>> &mat, std::complex<double> v[],
+                          double hessenberg[], const std::string &purpose);
+//    template void lanczos(MKL_INT k, MKL_INT np, MKL_INT &mm, const MKL_INT &dim,
+//                          const model<double> &mat, double v[],
+//                          double hessenberg[], const MKL_INT &ldh, const std::string &purpose);
+    
+    
+    void hess_eigen(const double hessenberg[], const MKL_INT &maxit, const MKL_INT &m,
+                    const std::string &order, std::vector<double> &ritz, std::vector<double> &s)
+    {
+        assert(m > 0 && m < maxit);
+        ritz.resize(m);
+        s.resize(m*m);
+        std::vector<double> b(m);
+        std::vector<double> eigenvecs(m*m);
         
-    }
-    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const csr_mat<std::complex<double>> &mat,
-                          double &rnorm, std::complex<double> resid[], std::complex<double> v[],
-                          double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps);
-    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const model<std::complex<double>> &mat,
-                          double &rnorm, std::complex<double> resid[], std::complex<double> v[],
-                          double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps);
-    //    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const csr_mat<double> &mat,
-    //                          double &rnorm, double resid[], double v[],
-    //                          double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps);
-    //    template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const model<double> &mat,
-    //                          double &rnorm, double resid[], double v[],
-    //                          double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps);
-    
-    
-
-
-    template <typename T>
-    void hess2matform(const double hessenberg[], T mat[], const MKL_INT &m, const MKL_INT &ldh)
-    {
-        assert(m <= ldh);
-        for (MKL_INT j = 0; j < m; j++) {
-            for (MKL_INT i = 0; i < m; i++) {
-                mat[i + j * ldh] = 0.0;
-            }
-        }
-        mat[0] = hessenberg[ldh];
-        if(m > 1) mat[ldh] = hessenberg[1];
-        for (MKL_INT i =1; i < m-1; i++) {
-            mat[i + i * ldh]     = hessenberg[i+ldh];
-            mat[i + (i-1) * ldh] = hessenberg[i];
-            mat[i + (i+1) * ldh] = hessenberg[i+1];
-        }
-        if (m > 1) {
-            mat[m-1 + (m-1) * ldh] = hessenberg[ldh + m -1];
-            mat[m-1 + (m-2) * ldh] = hessenberg[m-1];
-        }
-    }
-
-
-    void select_shifts(const double hessenberg[], const MKL_INT &ldh, const MKL_INT &m,
-                       const std::string &order, double ritz[], double s[])
-    {
-        assert(m>0 && ldh >= m);
-        int info;
-        copy(m, hessenberg + ldh, 1, ritz, 1);
-        std::vector<double> e(m-1);
-        copy(m-1, hessenberg + 1, 1, e.data(), 1);
-        std::vector<double> eigenvecs;
-        if (s == nullptr) {
-            info = sterf(m, ritz, e.data());               // ritz rewritten by eigenvalues in ascending order
-        } else {
-            eigenvecs.resize(m*m);
-            info = stedc(LAPACK_COL_MAJOR, 'I', m, ritz, e.data(), eigenvecs.data(), m);
-        }
+        copy(m, hessenberg + maxit, 1, ritz.data(), 1);                          // ritz = a
+        copy(m, hessenberg,         1, b.data(),    1);                          // b
+        // ritz to be rewritten by eigenvalues in ascending order
+        int info = stedc(LAPACK_COL_MAJOR, 'I', m, ritz.data(), b.data() + 1, eigenvecs.data(), m);
         assert(info == 0);
+        
         std::vector<std::pair<double, MKL_INT>> eigenvals(m);
-        for (decltype(eigenvals.size()) j = 0; j < eigenvals.size(); j++) {
+        for (MKL_INT j = 0; j < m; j++) {
             eigenvals[j].first = ritz[j];
-            eigenvals[j].second = static_cast<MKL_INT>(j);
+            eigenvals[j].second = j;
         }
-        if (order == "SR" || order == "sr" || order == "SA" || order == "sa") {      // smallest real part
+        if (order == "SR" || order == "sr" || order == "SA" || order == "sa") {  // smallest real part
             std::sort(eigenvals.begin(), eigenvals.end(),
                       [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return a.first < b.first; });
         } else if (order == "LR" || order == "lr" || order == "LA" || order == "la") { // largest real part
             std::sort(eigenvals.begin(), eigenvals.end(),
                       [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return b.first < a.first; });
-        } else if (order == "SM" || order == "sm") { // smallest magnitude
+        } else if (order == "SM" || order == "sm") {                             // smallest magnitude
             std::sort(eigenvals.begin(), eigenvals.end(),
                       [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return std::abs(a.first) < std::abs(b.first); });
-        } else if (order == "LM" || order == "lm") { // largest magnitude
+        } else if (order == "LM" || order == "lm") {                             // largest magnitude
             std::sort(eigenvals.begin(), eigenvals.end(),
                       [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return std::abs(b.first) < std::abs(a.first); });
         }
         for (decltype(eigenvals.size()) j = 0; j < eigenvals.size(); j++) ritz[j] = eigenvals[j].first;
-        if (s != nullptr) {
-            for (MKL_INT j = 0; j < m; j++) copy(m, eigenvecs.data() + m * eigenvals[j].second, 1, s + ldh * j, 1);
+        for (MKL_INT j = 0; j < m; j++) copy(m, eigenvecs.data() + m * eigenvals[j].second, 1, s.data() + m * j, 1);
+    }
+
+
+    void hess2dense(const double hessenberg[], const MKL_INT &maxit, const MKL_INT &m, std::vector<double> &mat)
+    {
+        assert(m > 0 && m < maxit);
+        mat.assign(m*m, 0.0);
+        
+        mat[0] = hessenberg[maxit];
+        if(m > 1) mat[m] = hessenberg[1];
+        for (MKL_INT i = 1; i < m - 1; i++) {
+            mat[i +     i * m] = hessenberg[i + maxit];
+            mat[i + (i-1) * m] = hessenberg[i];
+            mat[i + (i+1) * m] = hessenberg[i + 1];
+        }
+        if (m > 1) {
+            mat[m-1 + (m-1) * m] = hessenberg[maxit + m -1];
+            mat[m-1 + (m-2) * m] = hessenberg[m-1];
         }
     }
+
 
     // when there is time, re-write this subroutine with bulge-chasing
     template <typename T>
     void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
-                        double &rnorm, T resid[], T v[], double hessenberg[], const MKL_INT &ldh,
-                        double Q[], const MKL_INT &ldq)
+                        T v[], double hessenberg[], const MKL_INT &maxit, std::vector<double> &Q)
     {
         lapack_int info;
         const T zero = 0.0;
         const T one = 1.0;
         MKL_INT k = m - np;
-        assert(np>0 && np < m);
-        std::vector<double> hess_full(m*ldh), hess_qr(m*ldh);
+        assert(np > 0 && np < m);
+        std::vector<double> hess_full(m*m), hess_qr(m*m);
         std::vector<double> tau(m);
-        for (MKL_INT j = 0; j < m; j++) {                                              // Q = I
-            for (MKL_INT i = 0; i < m; i++) Q[i + j * ldq] = (i == j ? 1.0 : 0.0);
+        Q.resize(m*m);
+        for (MKL_INT j = 0; j < m; j++) {                                            // Q = I
+            for (MKL_INT i = 0; i < m; i++) Q[i + j * m] = (i == j ? 1.0 : 0.0);
         }
-        hess2matform(hessenberg, hess_full.data(), m, ldh);
+        hess2dense(hessenberg, maxit, m, hess_full);
         for (MKL_INT j = 0; j < np; j++) {
             //std::cout << "QR shift with theta = " << shift[j] << std::endl;
             hess_qr = hess_full;
-            for (MKL_INT i = 0; i < m; i++) hess_qr[i + i * ldh] -= shift[j];         // H - shift[j] * I
-            info = geqrf(LAPACK_COL_MAJOR, m, m, hess_qr.data(), ldh, tau.data());    // upper triangle of hess_copy represents R, lower + tau represent Q
+            for (MKL_INT i = 0; i < m; i++) hess_qr[i + i * m] -= shift[j];       // H - shift[j] * I
+            info = geqrf(LAPACK_COL_MAJOR, m, m, hess_qr.data(), m, tau.data());  // upper triangle of hess_copy represents R, lower + tau represent Q
             assert(info == 0);
-            info = ormqr(LAPACK_COL_MAJOR, 'L', 'T', m, m, m, hess_qr.data(), ldh,    // H_new = Q^T * H
-                         tau.data(), hess_full.data(), ldh);
+            info = ormqr(LAPACK_COL_MAJOR, 'L', 'T', m, m, m, hess_qr.data(), m,  // H_new = Q^T * H
+                         tau.data(), hess_full.data(), m);
             assert(info == 0);
-            info = ormqr(LAPACK_COL_MAJOR, 'R', 'N', m, m, m, hess_qr.data(), ldh,    // H_new = Q^T * H * Q
-                         tau.data(), hess_full.data(), ldh);
+            info = ormqr(LAPACK_COL_MAJOR, 'R', 'N', m, m, m, hess_qr.data(), m,  // H_new = Q^T * H * Q
+                         tau.data(), hess_full.data(), m);
             assert(info == 0);
-            info = ormqr(LAPACK_COL_MAJOR, 'R', 'N', m, m, m, hess_qr.data(), ldh,    // Q_new = Q_old * Q
-                         tau.data(), Q, ldq);
+            info = ormqr(LAPACK_COL_MAJOR, 'R', 'N', m, m, m, hess_qr.data(), m,  // Q_new = Q_old * Q
+                         tau.data(), Q.data(), m);
             assert(info == 0);
         }
 
-        for (MKL_INT j = 0; j < k; j++) hessenberg[j + ldh] = hess_full[j + j * ldh]; // diagonal elements of hessenberg matrix
-        for (MKL_INT j = 1; j < k; j++) hessenberg[j] = hess_full[j + (j-1) * ldh];   // subdiagonal
+        for (MKL_INT j = 0; j < k; j++) hessenberg[j + maxit] = hess_full[j + j * maxit]; // diagonal elements of hessenberg matrix
+        for (MKL_INT j = 1; j < k; j++) hessenberg[j] = hess_full[j + (j-1) * maxit];   // subdiagonal
         std::vector<T> v_old(dim * m);
         copy(dim * m, v, 1, v_old.data(), 1);
-        std::vector<T> Q_typeT(m*ldq);
-        for (MKL_INT j = 0; j < m*ldq; j++) Q_typeT[j] = Q[j];
-        gemm('n', 'n', dim, m, m, one, v_old.data(), dim, Q_typeT.data(), ldq, zero, v, dim); // v updated
-        scal(dim, rnorm*Q_typeT[m-1 + ldq*(k-1)], resid, 1);
-        axpy(dim, static_cast<T>(hess_full[k + (k-1)*ldh]), v+k*dim, 1, resid, 1);
-        rnorm = nrm2(dim, resid, 1);                                                  // rnorm updated
-        scal(dim, 1.0 / rnorm, resid, 1);                                             // resid updated
+        std::vector<T> Q_typeT(m*m);
+        for (MKL_INT j = 0; j < m*m; j++) Q_typeT[j] = Q[j];
+        gemm('n', 'n', dim, m, m, one, v_old.data(), dim, Q_typeT.data(), m, zero, v, dim); // v updated
+        scal(dim, hessenberg[m]*Q_typeT[m-1 + m*(k-1)], v+m*dim, 1);
+        axpy(dim, static_cast<T>(hess_full[k + (k-1)*maxit]), v+k*dim, 1, v+m*dim, 1);
+        hessenberg[m] = nrm2(dim, v+m*dim, 1);                                                  // rnorm updated
+        scal(dim, 1.0 / hessenberg[m], v+m*dim, 1);                                             // resid updated
 
 
 
@@ -252,6 +270,10 @@ namespace qbasis {
         //    // ------ check here, can be removed --------
 
     }
+    template void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
+                                 double v[], double hessenberg[], const MKL_INT &maxit, std::vector<double> &Q);
+    template void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
+                                 std::complex<double> v[], double hessenberg[], const MKL_INT &maxit, std::vector<double> &Q);
 
     // interface to arpack++
     void call_arpack(const MKL_INT &dim, csr_mat<double> &mat, double v0[],
@@ -400,19 +422,20 @@ namespace qbasis {
             for (MKL_INT j = 0; j < nconv; j++)
                 copy(dim, eigenvecs_copy.data() + dim * eigenvals_copy[j].second, 1, eigenvecs + dim * j, 1);
         } else {                                                                       // hand-coded arpack
-            std::vector<T> resid(dim, static_cast<T>(0.0)), v(dim*ncv);
-            std::vector<double> hessenberg(ncv*ncv), ritz(ncv), Q(ncv*ncv);
+            MKL_INT m = ncv;
+            MKL_INT maxit = m + 1;
+            std::vector<T> v(dim*(m+1));
+            std::vector<double> hessenberg(maxit*2), ritz(m), s(m*m), Q(m*m);
             double rnorm = nrm2(dim, v0, 1);
-            axpy(dim, 1.0/rnorm, v0, 1, resid.data(), 1);                              // resid = v0 normalized
-            rnorm = 0.0;
-            lanczos(0, ncv, dim, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv, true);
+            axpy(dim, 1.0/rnorm, v0, 1, v.data(), 1);                                  // v[0] = v0 normalized
+            lanczos(0, ncv, maxit, m, dim, mat, v.data(), hessenberg.data(), "iram");
+            assert(m == ncv);
 
             MKL_INT step = 0, step_max=100;
             while (step < step_max) {
-                select_shifts(hessenberg.data(), ncv, ncv, order, ritz.data());
-                perform_shifts(dim, ncv, np, ritz.data()+nev, rnorm, resid.data(), v.data(),
-                               hessenberg.data(), ncv, Q.data(), ncv);
-                lanczos(nev, np, dim, mat, rnorm, resid.data(), v.data(), hessenberg.data(), ncv, true);
+                hess_eigen(hessenberg.data(), maxit, m, order, ritz, s);
+                perform_shifts(dim, ncv, np, ritz.data()+nev, v.data(), hessenberg.data(), maxit, Q);
+                lanczos(nev, np, maxit, m, dim, mat, v.data(), hessenberg.data(), "iram");
                 for (MKL_INT j = 0; j < nev; j++) {
                     std::cout << std::setw(16) << ritz[j];
                 }
@@ -434,15 +457,8 @@ namespace qbasis {
     // Explicit instantiation
 
 
-    //template void hess2matform(const double hessenberg[], double mat[], const MKL_INT &m, const MKL_INT &ldh);
-    template void hess2matform(const double hessenberg[], std::complex<double> mat[], const MKL_INT &m, const MKL_INT &ldh);
+    
 
-//    template void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
-//                                 double &rnorm, double resid[], double v[], double hessenberg[], const MKL_INT &ldh,
-//                                 double Q[], const MKL_INT &ldq);
-    template void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
-                                 double &rnorm, std::complex<double> resid[], std::complex<double> v[], double hessenberg[], const MKL_INT &ldh,
-                                 double Q[], const MKL_INT &ldq);
 
 //    template void iram(const MKL_INT &dim, csr_mat<double> &mat, double v0[],
 //                       const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,

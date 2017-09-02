@@ -39,6 +39,7 @@ illustrator
 performance_test
 examples/trans_absent/test
 examples/trans_symmetric/platform_comet/test
+plots
 refs
 
 # Other files

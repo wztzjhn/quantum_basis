@@ -850,8 +850,7 @@ namespace qbasis {
 //  --------------------------  part 3: sparse matrices ------------------------
 //  ----------------------------------------------------------------------------
 // Note: sparse matrices in this code are using zero-based convention
-// By default, all diagonal elements are stored, even if they are zero (to be compatible with pardiso, if used in future)
-    
+// By default, all diagonal elements are stored, even if they are zero (to be compatible with pardiso)
     template <typename T> struct lil_mat_elem {
         T val;
         MKL_INT col;
@@ -886,7 +885,7 @@ namespace qbasis {
         // print
         void prt() const;
         
-        void use_full_matrix() {sym = false; }
+        void use_full_matrix() { sym = false; }
         
     private:
         MKL_INT dim;    // dimension of the matrix
@@ -923,21 +922,17 @@ namespace qbasis {
         
         MKL_INT dimension() const {return dim; }
         
-        // construcotr from a lil_mat, and if sym_ == true, use only the upper triangle
+        // construcotr from an lil_mat, and if sym_ == true, use only the upper triangle
         // then destroy the lil_mat
         csr_mat(lil_mat<T> &old);
         
         // matrix vector product
-        // y = H * x + y, to be used in the 2-vector form of Lanczos
+        // y = H * x + y
         void MultMv2(const T *x, T *y) const;
         // y = H * x
-        void MultMv(const T *x, T *y) const;
         void MultMv(T *x, T *y);              // non-const, to be compatible with arpack++
         
         std::vector<T> to_dense() const;
-        
-        // matrix matrix product, x and y of shape dim * n
-        //void MultMm(const T *x, T *y, MKL_INT n) const;
         
     private:
         MKL_INT dim;
@@ -953,47 +948,58 @@ namespace qbasis {
 //  ------------------------------part 4: Lanczos ------------------------------
 //  ----------------------------------------------------------------------------
     
-    // m = k + np step of Lanczos
+    // m step of Lanczos (for iram: m = k + np; for simple Lanczos, m depends on the convergence speed)
+    // on entry, assuming k steps of Lanczos already performed
     // v of length m+1, hessenberg matrix of size m*m (m-step Lanczos)
-    // after decomposition, mat * v[0:m-1] = v[0:m-1] * hessenberg + rnorm * resid * e_m^T,
+    // after decomposition, mat * v[0:m-1] = v[0:m-1] * hessenberg + b[m] * v[m] * e_m^T,
     // where e_m has only one nonzero element: e[0:m-2] == 0, e[m-1] = 1
     //
-    // ldh: leading dimension of hessenberg
-    // alpha[j] = hessenberg[j+ldh], diagonal of hessenberg matrix
-    // beta[j]  = hessenberg[j]
-    //  a[0]  b[1]      -> note: beta[0] not used
+    // maxit: maximum allowed Lanczos steps, m < maxit
+    // maxit also serves as the leading dimension of hessenberg matrix
+    // a[j] = hessenberg[j+maxit], diagonal of hessenberg matrix
+    // b[j] = hessenberg[j]
+    //  a[0]  b[1]      -> note: b[0] not used
     //  b[1]  a[1]  b[2]
     //        b[2]  a[2]  b[3]
     //              b[3]  a[3] b[4]
     //                    ..  ..  ..    b[k-1]
     //                          b[k-1]  a[k-1]
-    //
-    // on entry, assuming k steps of Lanczos already performed:
-    // alpha_0, ..., alpha_{k-1} in hessenberg matrix
-    // beta_1,  ..., beta_{k-1} in hessenberg matrix, beta_k as rnorm
+    // on entry:
+    //     a[0], ..., a[k-1]       in hessenberg matrix
+    //     b[0], ..., b[k-1], b[k] in hessenberg matrix
+    // on exit:
+    //     a[0], ..., a[m-1]       in hessenberg matrix
+    //     b[0], ..., b[m-1], b[m] in hessenberg matrix
     //
     // if purpose == "iram":
-    // on entry, v_0, ..., v_{k-1} stored in v, v_k stored in resid
-    // on exit,  v_0, ..., v_{m-1} stored in v, v_m stored in resid, rnorm = beta_m
+    // on entry:
+    //     v[0], ..., v[k] stored in v
+    // on exit:
+    //     v[0], ..., v[m] stored in v
     //
-    // if purpose == "sl_val" (smallest eigenvalue):
+    // if purpose == "sr_val" (smallest eigenvalue):
+    // on entry:
+    //     v[k-1], v[k] stored in v. If k%2==0, stored as {v[k],v[k-1]}; else stored as {v[k-1],v[k]}
+    // on exit:
+    //     v[m-1], v[m] stored in v. If m%2==0, stored as {v[m],v[m-1]}; else stored as {v[m-1],v[m]}
     //
-    // if purpose == "sl_vec" (smallest eigenvector):
-    
+    // if purpose == "sr_vec" (smallest eigenvector):
+    // same as "sr_val", but with one extra column storing the eigenvector
     
     template <typename T, typename MAT>
-    void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &dim, const MAT &mat, double &rnorm, T resid[],
-                 T v[], double hessenberg[], const MKL_INT &ldh, const bool &MemoSteps = true);
+    void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &maxit, MKL_INT &m, const MKL_INT &dim,
+                 const MAT &mat, T v[], double hessenberg[], const std::string &purpose);
+    
+    // compute eigenvalues and eigenvectors of hessenberg matrix
+    // on entry, hessenberg should have leading dimension maxit
+    // on exit, ritz of size m, s of size m*m
+    // order = "sm", "lm", "sr", "lr", where 's': small, 'l': large, 'm': magnitude, 'r': real part
+    void hess_eigen(const double hessenberg[], const MKL_INT &maxit, const MKL_INT &m,
+                    const std::string &order, std::vector<double> &ritz, std::vector<double> &s);
     
     // transform from band storage to general storage
-    template <typename T>
-    void hess2matform(const double hessenberg[], T mat[], const MKL_INT &m, const MKL_INT &ldh);
-    
-    // compute eigenvalues (and optionally eigenvectors, stored in s) of hessenberg matrix
-    // on entry, hessenberg and s should have the same leading dimension: ldh
-    // order = "sm", "lm", "sr", "lr", where 's': small, 'l': large, 'm': magnitude, 'r': real part
-    void select_shifts(const double hessenberg[], const MKL_INT &ldh, const MKL_INT &m,
-                       const std::string &order, double ritz[], double s[] = nullptr);
+    // on exit, mat of size m*m
+    void hess2dense(const double hessenberg[], const MKL_INT &maxit, const MKL_INT &m, std::vector<double> &mat);
     
     // --------------------------
     // ideally, here we should use the bulge-chasing algorithm; for this moment, we simply use the less efficient brute force QR factorization
@@ -1004,8 +1010,7 @@ namespace qbasis {
     // \tilde{V} = V Q
     template <typename T>
     void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
-                        double &rnorm, T resid[], T v[], double hessenberg[], const MKL_INT &ldh,
-                        double Q[], const MKL_INT &ldq);
+                        T v[], double hessenberg[], const MKL_INT &maxit, std::vector<double> &Q);
     
     // implicitly restarted Arnoldi method
     // nev: number of eigenvalues needed
@@ -1247,7 +1252,6 @@ namespace qbasis {
         // y = H * x + y
         void MultMv2(const T *x, T *y) const;
         // y = H * x
-        void MultMv(const T *x, T *y) const;
         void MultMv(T *x, T *y);              // non-const, to be compatible with arpack++
         
         
