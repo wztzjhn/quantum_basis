@@ -48,26 +48,43 @@ namespace qbasis {
         if (np == 0) return;
         T zero = static_cast<T>(0.0);
         std::vector<T*> vpt(mm+1);                                               // pointers of v[0],v[1],...,v[m]
+        T* ypt = &v[2*dim];                                                      // for eigenvector y
         if (purpose == "iram") {                                                 // v has m+1 cols
             for (MKL_INT j = 0; j <= mm; j++) vpt[j] = &v[j*dim];
-        } else if (purpose == "sr_val") {                                        // v has only 2 cols
+        } else if (purpose == "sr_val" || purpose == "sr_vec") {                 // v has only 2 cols
             for (MKL_INT j = 0; j <= mm; j++) vpt[j] = &v[(j%2)*dim];
-        } else {
+       } else {
             assert(false);
         }
+        
         std::vector<double> ritz(mm), s(mm * mm);                                // Ritz values and eigenvecs of Hess
+        if (purpose == "sr_vec") hess_eigen(hessenberg, maxit, mm, "sr", ritz, s);
         
         assert(std::abs(nrm2(dim, vpt[k], 1) - 1.0) < lanczos_precision);        // v[k] should be normalized
         if (k == 0) {                                                            // prepare 2 vectors to start
             hessenberg[0] = 0.0;
             for (MKL_INT l = 0; l < dim; l++) vpt[1][l] = zero;                  // v[1] = 0
             mat.MultMv2(vpt[0], vpt[1]);                                         // v[1] = H * v[0] + v[1]
-            hessenberg[maxit] = std::real(dotc(dim, vpt[0], 1, vpt[1], 1));      // a[0] = (v[1], v[0])
+            if (purpose == "iram" || purpose == "sr_val") {                      // a[0] = (v[1], v[0])
+                hessenberg[maxit] = std::real(dotc(dim, vpt[0], 1, vpt[1], 1));
+            } else if (purpose == "sr_vec") {
+                assert(hessenberg[maxit] == std::real(dotc(dim, vpt[0], 1, vpt[1], 1)));
+            } else {
+                assert(false);
+            }
             axpy(dim, -hessenberg[maxit], vpt[0], 1, vpt[1], 1);                 // v[1] = v[1] - a[0] * v[0]
-            hessenberg[1] = nrm2(dim, vpt[1], 1);                                // b[1] = || v[1] ||
+            if (purpose == "iram" || purpose == "sr_val") {                      // b[1] = || v[1] ||
+                hessenberg[1] = nrm2(dim, vpt[1], 1);
+            } else if (purpose == "sr_vec") {
+                assert(hessenberg[1] == nrm2(dim, vpt[1], 1));
+            } else {
+                assert(false);
+            }
             scal(dim, 1.0 / hessenberg[1], vpt[1], 1);                           // v[1] = v[1] / b[1]
             m = ++k;
             --np;
+            if (purpose == "sr_vec") axpy(dim, s[m], vpt[m], 1, ypt, 1);         // y += s[m] * v[m]
+            
         }
         
         double theta0_prev, theta1_prev;                                          // record Ritz values from last step
@@ -76,23 +93,37 @@ namespace qbasis {
             for (MKL_INT l = 0; l < dim; l++)
                 vpt[m][l] = -hessenberg[m-1] * vpt[m-2][l];                       // v[m] = -b[m-1] * v[m-2]
             mat.MultMv2(vpt[m-1], vpt[m]);                                        // v[m] = H * v[m-1] + v[m]
-            hessenberg[maxit+m-1] = std::real(dotc(dim, vpt[m-1], 1, vpt[m], 1)); // a[m-1]   = (v[m], v[m-1])
-            axpy(dim, -hessenberg[maxit+m-1], vpt[m-1], 1, vpt[m], 1);            // v[m] = v[m] - a[m-1] * v[m-1]
-            hessenberg[m] = nrm2(dim, vpt[m], 1);                                 // b[m] = || v[m] ||
-            scal(dim, 1.0 / hessenberg[m], vpt[m], 1);                            // v[m] = v[m] / b[m]
-            hess_eigen(hessenberg, maxit, m, "sr", ritz, s);                      // calculate {theta, s}
-            if (purpose == "sr_val" && m > 3) {
-                double accuracy = std::abs(hessenberg[m] * s[m-1]);
-                double accu_E0  = std::abs((ritz[0] - theta0_prev) / ritz[0]);
-                double accu_E1  = std::abs((ritz[1] - theta1_prev) / ritz[1]);
-                log_Lanczos_srval(m, ritz, hessenberg, maxit, accuracy, accu_E0, accu_E1);
-                if (accuracy < lanczos_precision) {
-                    std::cout << std::endl;
-                    return;
-                }
+            
+            if (purpose == "iram" || purpose == "sr_val") {                       // a[m-1] = (v[m], v[m-1])
+                hessenberg[maxit+m-1] = std::real(dotc(dim, vpt[m-1], 1, vpt[m], 1));
+            } else if (purpose == "sr_vec") {
+                //std::cout << "err[a] = " << std::abs(hessenberg[maxit+m-1] - std::real(dotc(dim, vpt[m-1], 1, vpt[m], 1))) << std::endl;
+                assert(hessenberg[maxit+m-1] == std::real(dotc(dim, vpt[m-1], 1, vpt[m], 1)));
+            } else {
+                assert(false);
             }
-            theta0_prev = ritz[0];
-            theta1_prev = ritz[1];
+            axpy(dim, -hessenberg[maxit+m-1], vpt[m-1], 1, vpt[m], 1);            // v[m] = v[m] - a[m-1] * v[m-1]
+            if (purpose == "iram" || purpose == "sr_val") {                       // b[m] = || v[m] ||
+                hessenberg[m] = nrm2(dim, vpt[m], 1);
+            } else if (purpose == "sr_vec") {
+                assert(hessenberg[m] == nrm2(dim, vpt[m], 1));
+            } else {
+                assert(false);
+            }
+            scal(dim, 1.0 / hessenberg[m], vpt[m], 1);                            // v[m] = v[m] / b[m]
+            if (purpose == "sr_val") {
+                hess_eigen(hessenberg, maxit, m, "sr", ritz, s);                  // calculate {theta, s}
+                if (m > 3) {
+                    double accuracy = std::abs(hessenberg[m] * s[m-1]);
+                    double accu_E0  = std::abs((ritz[0] - theta0_prev) / ritz[0]);
+                    double accu_E1  = std::abs((ritz[1] - theta1_prev) / ritz[1]);
+                    log_Lanczos_srval(m, ritz, hessenberg, maxit, accuracy, accu_E0, accu_E1);
+                    if (accuracy < lanczos_precision) break;
+                }
+                theta0_prev = ritz[0];
+                theta1_prev = ritz[1];
+            }
+            if (purpose == "sr_vec") axpy(dim, s[m], vpt[m], 1, ypt, 1);          // y += s[m] * v[m]
             
             // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             // naive re-orthogonalization, change checking criteria and replace with DGKS later
@@ -107,6 +138,7 @@ namespace qbasis {
                 }
             }
         } while (m < mm);
+        std::cout << std::endl;
     }
     template void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &maxit, MKL_INT &m, const MKL_INT &dim,
                           const csr_mat<double> &mat, double v[],
@@ -155,7 +187,7 @@ namespace qbasis {
             std::sort(eigenvals.begin(), eigenvals.end(),
                       [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return std::abs(b.first) < std::abs(a.first); });
         }
-        for (decltype(eigenvals.size()) j = 0; j < eigenvals.size(); j++) ritz[j] = eigenvals[j].first;
+        for (MKL_INT j = 0; j < m; j++) ritz[j] = eigenvals[j].first;
         for (MKL_INT j = 0; j < m; j++) copy(m, eigenvecs.data() + m * eigenvals[j].second, 1, s.data() + m * j, 1);
     }
 

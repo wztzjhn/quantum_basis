@@ -750,12 +750,12 @@ namespace qbasis {
         
         std::default_random_engine generator;
         //std::uniform_real_distribution<double> distribution(-1.0,1.0);
-        std::vector<T> v(dim_full[sec_mat]*2, one);
+        std::vector<T> v(dim_full[sec_mat]*3, one);
         //for (MKL_INT j = 0; j < dim_full[sec_mat]; j++) resid[j] = static_cast<T>(distribution(generator));
         double rnorm = nrm2(dim_full[sec_mat], v.data(), 1);
-        scal(dim_full[sec_mat], 1.0 / rnorm, v.data(), 1);
+        scal(dim_full[sec_mat]*3, 1.0 / rnorm, v.data(), 1);
         MKL_INT maxit = 1000;                                     // at most 1000 steps
-        std::vector<double> hessenberg(maxit, 0.0), ritz, s;
+        std::vector<double> hessenberg(2*maxit, 0.0), ritz, s;
         
         MKL_INT m;
         if (matrix_free) {
@@ -774,6 +774,28 @@ namespace qbasis {
         std::cout << "Lanczos steps: " << m << std::endl;
         std::cout << "Lanczos accuracy: " << std::abs(hessenberg[m] * s[m-1]) << std::endl;
         std::cout << "E0   = " << E0 << std::endl;
+        
+        // calculate eigenvector
+        start = end;
+        std::cout << "Calculating ground state eigenvec (full, using simple Lanczos)..." << std::endl;
+        copy(dim_full[sec_mat], v.data() + 2 * dim_full[sec_mat], 1, v.data(), 1);     // reset v0
+        scal(dim_full[sec_mat], s[0], v.data() + 2 * dim_full[sec_mat], 1);            // y = s0 * v0
+        MKL_INT m_check;
+        if (matrix_free) {
+            lanczos(0, m-1, maxit, m_check, dim_full[sec_mat], *this, v.data(), hessenberg.data(), "sr_vec");
+        } else {
+            lanczos(0, m-1, maxit, m_check, dim_full[sec_mat], HamMat_csr_full[sec_mat], v.data(), hessenberg.data(), "sr_vec");
+        }
+        copy(dim_full[sec_mat], v.data() + 2 * dim_full[sec_mat], 1, v.data(), 1);     // copy eigenvec to head of v
+        v.resize(dim_full[sec_mat]);
+        eigenvecs_full.clear();
+        using std::swap;
+        swap(eigenvecs_full,v);
+        nconv = 1;
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+        std::cout << "Lanczos steps: " << m_check << std::endl;
     }
     
     template <typename T>
