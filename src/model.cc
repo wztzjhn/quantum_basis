@@ -776,7 +776,7 @@ namespace qbasis {
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
         std::cout << "Lanczos steps: " << m << std::endl;
         std::cout << "Lanczos accuracy: " << std::abs(hessenberg[m] * s[m-1]) << std::endl;
-        std::cout << "E0   = " << E0 << std::endl;
+        std::cout << "E0   = " << E0 << std::endl << std::endl;
         if (ncv == 0) return;
         
         // calculate ground state eigenvector
@@ -790,24 +790,22 @@ namespace qbasis {
         } else {
             lanczos(0, m-1, maxit, m_check, dim_full[sec_mat], HamMat_csr_full[sec_mat], v.data(), hessenberg.data(), "sr_vec0");
         }
-        nconv = 1;
         end = std::chrono::system_clock::now();
         elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
-        std::cout << "Lanczos steps: " << m_check << std::endl;
+        std::cout << "Lanczos steps: " << m_check << std::endl << std::endl;
         
         // postpone write down ground state eigenvector, if gap needed
-        
         if (nev == 2) {
             start = end;
             std::cout << "Calculating 1st excited state energy (full, using simple Lanczos)..." << std::endl;
             for (MKL_INT j = 0; j < dim_full[sec_mat]; j++) v[j] = one;
+            rnorm = nrm2(dim_full[sec_mat], v.data(), 1);
             scal(dim_full[sec_mat], 1.0 / rnorm, v.data(), 1);
             auto alpha = dotc(dim_full[sec_mat], v.data(), 1, v.data() + 2 * dim_full[sec_mat], 1); // (v0, phi0)
             axpy(dim_full[sec_mat], -alpha, v.data() + 2 * dim_full[sec_mat], 1, v.data(), 1);      // v0 = v0 - alpha * phi0
             rnorm = nrm2(dim_full[sec_mat], v.data(), 1);
             scal(dim_full[sec_mat], 1.0 / rnorm, v.data(), 1);                                      // normalize v0
-            
             if (ncv == 1) {
                 if (matrix_free) {
                     lanczos(0, maxit-1, maxit, m, dim_full[sec_mat], *this, v.data(), hessenberg.data(), "sr_val1_rough");
@@ -821,8 +819,6 @@ namespace qbasis {
                     lanczos(0, maxit-1, maxit, m, dim_full[sec_mat], HamMat_csr_full[sec_mat], v.data(), hessenberg.data(), "sr_val1");
                 }
             }
-            
-            
             assert(m < maxit);
             hess_eigen(hessenberg.data(), maxit, m, "sr", ritz, s);
             eigenvals_full.resize(2);
@@ -834,15 +830,42 @@ namespace qbasis {
             std::cout << "Lanczos steps: " << m << std::endl;
             std::cout << "Lanczos accuracy: " << std::abs(hessenberg[m] * s[m-1]) << std::endl;
             std::cout << "E1   = " << eigenvals_full[1] << std::endl;
-            std::cout << "gap  = " << gap << std::endl;
-            
+            std::cout << "gap  = " << gap << std::endl << std::endl;
+        }
+        nconv = 1;
+        if (ncv < 2) {
+            copy(dim_full[sec_mat], v.data() + 2 * dim_full[sec_mat], 1, v.data(), 1); // copy eigenvec to head of v
+            v.resize(dim_full[sec_mat]);
+            swap(eigenvecs_full,v);
+            return;
         }
         
+        start = end;
+        std::cout << "Calculating 1st excited state eigenvec (full, using simple Lanczos)..." << std::endl;
+        v.resize(4*dim_full[sec_mat]);
         
-        copy(dim_full[sec_mat], v.data() + 2 * dim_full[sec_mat], 1, v.data(), 1);     // copy eigenvec to head of v
-        v.resize(dim_full[sec_mat]);
+        for (MKL_INT j = 0; j < dim_full[sec_mat]; j++) v[j] = one;
+        rnorm = nrm2(dim_full[sec_mat], v.data(), 1);
+        scal(dim_full[sec_mat], 1.0 / rnorm, v.data(), 1);
+        auto alpha = dotc(dim_full[sec_mat], v.data(), 1, v.data() + 2 * dim_full[sec_mat], 1); // (v0, phi0)
+        axpy(dim_full[sec_mat], -alpha, v.data() + 2 * dim_full[sec_mat], 1, v.data(), 1);      // v0 = v0 - alpha * phi0
+        rnorm = nrm2(dim_full[sec_mat], v.data(), 1);
+        scal(dim_full[sec_mat], 1.0 / rnorm, v.data(), 1);                                      // normalize v0
+        copy(dim_full[sec_mat], v.data(), 1, v.data() + 3 * dim_full[sec_mat], 1);
+        scal(dim_full[sec_mat], s[0], v.data() + 3 * dim_full[sec_mat], 1);                     // y = s0 * v0
+        if (matrix_free) {
+            lanczos(0, m-1, maxit, m_check, dim_full[sec_mat], *this, v.data(), hessenberg.data(), "sr_vec1");
+        } else {
+            lanczos(0, m-1, maxit, m_check, dim_full[sec_mat], HamMat_csr_full[sec_mat], v.data(), hessenberg.data(), "sr_vec1");
+        }
+        end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+        std::cout << "Lanczos steps: " << m_check << std::endl << std::endl;
+        nconv = 2;
+        copy(2*dim_full[sec_mat], v.data() + 2 * dim_full[sec_mat], 1, v.data(), 1); // copy eigenvec to head of v
+        v.resize(2*dim_full[sec_mat]);
         swap(eigenvecs_full,v);
-        
     }
     
     template <typename T>

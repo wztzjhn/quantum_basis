@@ -50,7 +50,9 @@ namespace qbasis {
         if (np == 0) return;
         T zero = static_cast<T>(0.0);
         std::vector<T*> vpt(mm+1);                                               // pointers of v[0],v[1],...,v[m]
-        T* ypt = &v[2*dim];                                                      // for eigenvector y
+        T* phipt = &v[2*dim];                                                    // for ground state eigenvector
+        T* ypt = (purpose.find("vec1") != npos) ? &v[3*dim] : &v[2*dim];         // for eigenvector y
+        
         if (purpose == "iram") {                                                 // v has m+1 cols
             for (MKL_INT j = 0; j <= mm; j++) vpt[j] = &v[j*dim];
         } else {                                                                 // v has only 2 or 3 cols
@@ -110,9 +112,9 @@ namespace qbasis {
             }
             scal(dim, 1.0 / hessenberg[m], vpt[m], 1);                           // v[m] = v[m] / b[m]
             if (purpose.find('1') != npos) {                                     // re-orthogonalization again phi0
-                auto temp = dotc(dim, vpt[m], 1, ypt, 1);
+                auto temp = dotc(dim, vpt[m], 1, phipt, 1);
                 if (std::abs(temp) > lanczos_precision) {
-                    axpy(dim, -temp, ypt, 1, vpt[m], 1);
+                    axpy(dim, -temp, phipt, 1, vpt[m], 1);
                     double rnorm = nrm2(dim, vpt[m], 1);
                     scal(dim, 1.0 / rnorm, vpt[m], 1);
                 }

@@ -32,7 +32,7 @@ Currently the known working compilers are g++, icpc, and clang++ (c++11 required
 (openmp in clang++ not tested yet)
 
 The code can be compiled in two modes:
-- 32-bit integer (less cost)
+- 32-bit integer
 - 64-bit integer (if the unrestricted Hilbert space reaches 10^9, it is necessary to use 64-bit mode)
 
 **In the 64-bit mode**:
