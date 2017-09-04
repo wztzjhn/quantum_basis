@@ -740,8 +740,11 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::locate_E0_full_lanczos()
+    void model<T>::locate_E0_full_lanczos(const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
     {
+        assert(nev > 0 && nev <=2 && ncv >= nev - 1 && ncv <= nev);
+        using std::swap;
+        eigenvecs_full.clear();
         sec_sym = 0;                       // work with dim_full
         T one = static_cast<T>(1.0);
         std::cout << "Calculating ground state energy (full, using simple Lanczos)..." << std::endl;
@@ -754,48 +757,92 @@ namespace qbasis {
         //for (MKL_INT j = 0; j < dim_full[sec_mat]; j++) resid[j] = static_cast<T>(distribution(generator));
         double rnorm = nrm2(dim_full[sec_mat], v.data(), 1);
         scal(dim_full[sec_mat]*3, 1.0 / rnorm, v.data(), 1);
-        MKL_INT maxit = 1000;                                     // at most 1000 steps
         std::vector<double> hessenberg(2*maxit, 0.0), ritz, s;
         
         MKL_INT m;
         if (matrix_free) {
-            lanczos(0, maxit-1, maxit, m, dim_full[sec_mat], *this, v.data(), hessenberg.data(), "sr_val");
+            lanczos(0, maxit-1, maxit, m, dim_full[sec_mat], *this, v.data(), hessenberg.data(), "sr_val0");
         } else {
-            lanczos(0, maxit-1, maxit, m, dim_full[sec_mat], HamMat_csr_full[sec_mat], v.data(), hessenberg.data(), "sr_val");
+            lanczos(0, maxit-1, maxit, m, dim_full[sec_mat], HamMat_csr_full[sec_mat], v.data(), hessenberg.data(), "sr_val0");
         }
         assert(m < maxit);
         hess_eigen(hessenberg.data(), maxit, m, "sr", ritz, s);
         eigenvals_full.resize(1);
         eigenvals_full[0] = ritz[0];
         E0 = eigenvals_full[0];
+        nconv = 0;
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
         std::cout << "Lanczos steps: " << m << std::endl;
         std::cout << "Lanczos accuracy: " << std::abs(hessenberg[m] * s[m-1]) << std::endl;
         std::cout << "E0   = " << E0 << std::endl;
+        if (ncv == 0) return;
         
-        // calculate eigenvector
+        // calculate ground state eigenvector
         start = end;
         std::cout << "Calculating ground state eigenvec (full, using simple Lanczos)..." << std::endl;
         copy(dim_full[sec_mat], v.data() + 2 * dim_full[sec_mat], 1, v.data(), 1);     // reset v0
         scal(dim_full[sec_mat], s[0], v.data() + 2 * dim_full[sec_mat], 1);            // y = s0 * v0
         MKL_INT m_check;
         if (matrix_free) {
-            lanczos(0, m-1, maxit, m_check, dim_full[sec_mat], *this, v.data(), hessenberg.data(), "sr_vec");
+            lanczos(0, m-1, maxit, m_check, dim_full[sec_mat], *this, v.data(), hessenberg.data(), "sr_vec0");
         } else {
-            lanczos(0, m-1, maxit, m_check, dim_full[sec_mat], HamMat_csr_full[sec_mat], v.data(), hessenberg.data(), "sr_vec");
+            lanczos(0, m-1, maxit, m_check, dim_full[sec_mat], HamMat_csr_full[sec_mat], v.data(), hessenberg.data(), "sr_vec0");
         }
-        copy(dim_full[sec_mat], v.data() + 2 * dim_full[sec_mat], 1, v.data(), 1);     // copy eigenvec to head of v
-        v.resize(dim_full[sec_mat]);
-        eigenvecs_full.clear();
-        using std::swap;
-        swap(eigenvecs_full,v);
         nconv = 1;
         end = std::chrono::system_clock::now();
         elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
         std::cout << "Lanczos steps: " << m_check << std::endl;
+        
+        // postpone write down ground state eigenvector, if gap needed
+        
+        if (nev == 2) {
+            start = end;
+            std::cout << "Calculating 1st excited state energy (full, using simple Lanczos)..." << std::endl;
+            for (MKL_INT j = 0; j < dim_full[sec_mat]; j++) v[j] = one;
+            scal(dim_full[sec_mat], 1.0 / rnorm, v.data(), 1);
+            auto alpha = dotc(dim_full[sec_mat], v.data(), 1, v.data() + 2 * dim_full[sec_mat], 1); // (v0, phi0)
+            axpy(dim_full[sec_mat], -alpha, v.data() + 2 * dim_full[sec_mat], 1, v.data(), 1);      // v0 = v0 - alpha * phi0
+            rnorm = nrm2(dim_full[sec_mat], v.data(), 1);
+            scal(dim_full[sec_mat], 1.0 / rnorm, v.data(), 1);                                      // normalize v0
+            
+            if (ncv == 1) {
+                if (matrix_free) {
+                    lanczos(0, maxit-1, maxit, m, dim_full[sec_mat], *this, v.data(), hessenberg.data(), "sr_val1_rough");
+                } else {
+                    lanczos(0, maxit-1, maxit, m, dim_full[sec_mat], HamMat_csr_full[sec_mat], v.data(), hessenberg.data(), "sr_val1_rough");
+                }
+            } else {
+                if (matrix_free) {
+                    lanczos(0, maxit-1, maxit, m, dim_full[sec_mat], *this, v.data(), hessenberg.data(), "sr_val1");
+                } else {
+                    lanczos(0, maxit-1, maxit, m, dim_full[sec_mat], HamMat_csr_full[sec_mat], v.data(), hessenberg.data(), "sr_val1");
+                }
+            }
+            
+            
+            assert(m < maxit);
+            hess_eigen(hessenberg.data(), maxit, m, "sr", ritz, s);
+            eigenvals_full.resize(2);
+            eigenvals_full[1] = ritz[0];
+            gap = eigenvals_full[1] - eigenvals_full[0];
+            end = std::chrono::system_clock::now();
+            std::chrono::duration<double> elapsed_seconds = end - start;
+            std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+            std::cout << "Lanczos steps: " << m << std::endl;
+            std::cout << "Lanczos accuracy: " << std::abs(hessenberg[m] * s[m-1]) << std::endl;
+            std::cout << "E1   = " << eigenvals_full[1] << std::endl;
+            std::cout << "gap  = " << gap << std::endl;
+            
+        }
+        
+        
+        copy(dim_full[sec_mat], v.data() + 2 * dim_full[sec_mat], 1, v.data(), 1);     // copy eigenvec to head of v
+        v.resize(dim_full[sec_mat]);
+        swap(eigenvecs_full,v);
+        
     }
     
     template <typename T>

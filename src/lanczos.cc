@@ -9,10 +9,11 @@ namespace qbasis {
     void log_Lanczos_srval(const MKL_INT &k, const std::vector<double> &ritz,
                            const double hessenberg[], const MKL_INT &maxit,
                            const double &accuracy,
-                           const double &accu_E0, const double &accu_E1)
+                           const double &accu_E0, const double &accu_E1,
+                           const std::string &filename)
     {
         assert(k > 2);
-        std::ofstream fout("log_Lanczos.txt", std::ios::out | std::ios::app);
+        std::ofstream fout(filename, std::ios::out | std::ios::app);
         fout << std::setprecision(10);
         fout << std::setw(20) << "#(1)" << std::setw(20) << "(2)" << std::setw(20) << "(3)"
              << std::setw(20) << "(4)"  << std::setw(20) << "(5)" << std::setw(20) << "(6)"
@@ -35,8 +36,8 @@ namespace qbasis {
     
     // need further classification:
     // 1. ask lanczos to restart with a new linearly independent vector when v_m+1 = 0
-    // 2. need add DGKS re-orthogonalization (when MemoSteps == true)
-    // 3. add partial and selective re-orthogonalization (when MemoSteps == false)
+    // 2. add DGKS re-orthogonalization (when purpose == iram)
+    // 3. add partial and selective re-orthogonalization (when purpose == sr_xxx)
     template <typename T, typename MAT>
     void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &maxit, MKL_INT &m, const MKL_INT &dim,
                  const MAT &mat, T v[], double hessenberg[], const std::string &purpose)
@@ -44,6 +45,7 @@ namespace qbasis {
         MKL_INT mm = k + np;
         assert(mm < maxit && k >= 0 && k < dim && np >=0 && np < dim);
         assert(mm < dim);                                                        // # of orthogonal vectors: at most dim
+        auto &npos = std::string::npos;
         m = k;
         if (np == 0) return;
         T zero = static_cast<T>(0.0);
@@ -51,79 +53,85 @@ namespace qbasis {
         T* ypt = &v[2*dim];                                                      // for eigenvector y
         if (purpose == "iram") {                                                 // v has m+1 cols
             for (MKL_INT j = 0; j <= mm; j++) vpt[j] = &v[j*dim];
-        } else if (purpose == "sr_val" || purpose == "sr_vec") {                 // v has only 2 cols
+        } else {                                                                 // v has only 2 or 3 cols
             for (MKL_INT j = 0; j <= mm; j++) vpt[j] = &v[(j%2)*dim];
-       } else {
-            assert(false);
         }
         
         std::vector<double> ritz(mm), s(mm * mm);                                // Ritz values and eigenvecs of Hess
-        if (purpose == "sr_vec") hess_eigen(hessenberg, maxit, mm, "sr", ritz, s);
+        if (purpose.find("vec") != npos) hess_eigen(hessenberg, maxit, mm, "sr", ritz, s);
         
         assert(std::abs(nrm2(dim, vpt[k], 1) - 1.0) < lanczos_precision);        // v[k] should be normalized
         if (k == 0) {                                                            // prepare 2 vectors to start
             hessenberg[0] = 0.0;
             for (MKL_INT l = 0; l < dim; l++) vpt[1][l] = zero;                  // v[1] = 0
             mat.MultMv2(vpt[0], vpt[1]);                                         // v[1] = H * v[0] + v[1]
-            if (purpose == "iram" || purpose == "sr_val") {                      // a[0] = (v[1], v[0])
+            if (purpose == "iram" || purpose.find("val") != npos) {              // a[0] = (v[0], v[1])
                 hessenberg[maxit] = std::real(dotc(dim, vpt[0], 1, vpt[1], 1));
-            } else if (purpose == "sr_vec") {
-                assert(hessenberg[maxit] == std::real(dotc(dim, vpt[0], 1, vpt[1], 1)));
+            } else if (purpose.find("vec") != npos) {
+                assert(std::abs(hessenberg[maxit] - std::real(dotc(dim, vpt[0], 1, vpt[1], 1))) < lanczos_precision);
             } else {
                 assert(false);
             }
             axpy(dim, -hessenberg[maxit], vpt[0], 1, vpt[1], 1);                 // v[1] = v[1] - a[0] * v[0]
-            if (purpose == "iram" || purpose == "sr_val") {                      // b[1] = || v[1] ||
+            if (purpose == "iram" || purpose.find("val") != npos) {              // b[1] = || v[1] ||
                 hessenberg[1] = nrm2(dim, vpt[1], 1);
-            } else if (purpose == "sr_vec") {
-                assert(hessenberg[1] == nrm2(dim, vpt[1], 1));
+            } else if (purpose.find("vec") != npos) {
+                assert(std::abs(hessenberg[1] - nrm2(dim, vpt[1], 1)) < lanczos_precision);
             } else {
                 assert(false);
             }
             scal(dim, 1.0 / hessenberg[1], vpt[1], 1);                           // v[1] = v[1] / b[1]
             m = ++k;
             --np;
-            if (purpose == "sr_vec") axpy(dim, s[m], vpt[m], 1, ypt, 1);         // y += s[m] * v[m]
-            
+            if (purpose.find("vec") != npos) axpy(dim, s[m], vpt[m], 1, ypt, 1); // y += s[m] * v[m]
         }
         
-        double theta0_prev, theta1_prev;                                          // record Ritz values from last step
-        do {                                                                      // while m < mm
+        double theta0_prev, theta1_prev;                                         // record Ritz values from last step
+        do {                                                                     // while m < mm
             m++;
             for (MKL_INT l = 0; l < dim; l++)
-                vpt[m][l] = -hessenberg[m-1] * vpt[m-2][l];                       // v[m] = -b[m-1] * v[m-2]
-            mat.MultMv2(vpt[m-1], vpt[m]);                                        // v[m] = H * v[m-1] + v[m]
+                vpt[m][l] = -hessenberg[m-1] * vpt[m-2][l];                      // v[m] = -b[m-1] * v[m-2]
+            mat.MultMv2(vpt[m-1], vpt[m]);                                       // v[m] = H * v[m-1] + v[m]
             
-            if (purpose == "iram" || purpose == "sr_val") {                       // a[m-1] = (v[m], v[m-1])
+            if (purpose == "iram" || purpose.find("val") != npos) {              // a[m-1] = (v[m-1], v[m])
                 hessenberg[maxit+m-1] = std::real(dotc(dim, vpt[m-1], 1, vpt[m], 1));
-            } else if (purpose == "sr_vec") {
-                //std::cout << "err[a] = " << std::abs(hessenberg[maxit+m-1] - std::real(dotc(dim, vpt[m-1], 1, vpt[m], 1))) << std::endl;
-                assert(hessenberg[maxit+m-1] == std::real(dotc(dim, vpt[m-1], 1, vpt[m], 1)));
+            } else if (purpose.find("vec") != npos) {
+                assert(std::abs(hessenberg[maxit+m-1] - std::real(dotc(dim, vpt[m-1], 1, vpt[m], 1))) < lanczos_precision);
             } else {
                 assert(false);
             }
-            axpy(dim, -hessenberg[maxit+m-1], vpt[m-1], 1, vpt[m], 1);            // v[m] = v[m] - a[m-1] * v[m-1]
-            if (purpose == "iram" || purpose == "sr_val") {                       // b[m] = || v[m] ||
+            axpy(dim, -hessenberg[maxit+m-1], vpt[m-1], 1, vpt[m], 1);           // v[m] = v[m] - a[m-1] * v[m-1]
+            if (purpose == "iram" || purpose.find("val") != npos) {              // b[m] = || v[m] ||
                 hessenberg[m] = nrm2(dim, vpt[m], 1);
-            } else if (purpose == "sr_vec") {
-                assert(hessenberg[m] == nrm2(dim, vpt[m], 1));
+            } else if (purpose.find("vec") != npos) {
+                assert(std::abs(hessenberg[m] - nrm2(dim, vpt[m], 1)) < lanczos_precision);
             } else {
                 assert(false);
             }
-            scal(dim, 1.0 / hessenberg[m], vpt[m], 1);                            // v[m] = v[m] / b[m]
-            if (purpose == "sr_val") {
+            scal(dim, 1.0 / hessenberg[m], vpt[m], 1);                           // v[m] = v[m] / b[m]
+            if (purpose.find('1') != npos) {                                     // re-orthogonalization again phi0
+                auto temp = dotc(dim, vpt[m], 1, ypt, 1);
+                if (std::abs(temp) > lanczos_precision) {
+                    axpy(dim, -temp, ypt, 1, vpt[m], 1);
+                    double rnorm = nrm2(dim, vpt[m], 1);
+                    scal(dim, 1.0 / rnorm, vpt[m], 1);
+                }
+            }
+            
+            if (purpose.find("val") != npos) {
                 hess_eigen(hessenberg, maxit, m, "sr", ritz, s);                  // calculate {theta, s}
                 if (m > 3) {
                     double accuracy = std::abs(hessenberg[m] * s[m-1]);
                     double accu_E0  = std::abs((ritz[0] - theta0_prev) / ritz[0]);
                     double accu_E1  = std::abs((ritz[1] - theta1_prev) / ritz[1]);
-                    log_Lanczos_srval(m, ritz, hessenberg, maxit, accuracy, accu_E0, accu_E1);
-                    if (accuracy < lanczos_precision) break;
+                    log_Lanczos_srval(m, ritz, hessenberg, maxit, accuracy, accu_E0, accu_E1, "log_Lanczos_"+purpose+".txt");
+                    if ( accuracy < lanczos_precision ||
+                        (purpose.find("rough") != npos && accu_E0 < lanczos_precision)) break;
                 }
                 theta0_prev = ritz[0];
                 theta1_prev = ritz[1];
             }
-            if (purpose == "sr_vec") axpy(dim, s[m], vpt[m], 1, ypt, 1);          // y += s[m] * v[m]
+            if (purpose.find("vec") != npos) axpy(dim, s[m], vpt[m], 1, ypt, 1); // y += s[m] * v[m]
             
             // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             // naive re-orthogonalization, change checking criteria and replace with DGKS later

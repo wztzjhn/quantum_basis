@@ -977,14 +977,14 @@ namespace qbasis {
     // on exit:
     //     v[0], ..., v[m] stored in v
     //
-    // if purpose == "sr_val" (smallest eigenvalue):
+    // if purpose == "sr_val0" (smallest eigenvalue):
     // on entry:
     //     v[k-1], v[k] stored in v. If k%2==0, stored as {v[k],v[k-1]}; else stored as {v[k-1],v[k]}
     // on exit:
     //     v[m-1], v[m] stored in v. If m%2==0, stored as {v[m],v[m-1]}; else stored as {v[m-1],v[m]}
     //
-    // if purpose == "sr_vec" (smallest eigenvector):
-    // same as "sr_val", but with one extra column storing the eigenvector
+    // if purpose == "sr_vec0" (smallest eigenvector):
+    // same as "sr_val0", but with one extra column storing the eigenvector
     
     template <typename T, typename MAT>
     void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &maxit, MKL_INT &m, const MKL_INT &dim,
@@ -1254,11 +1254,16 @@ namespace qbasis {
         // y = H * x
         void MultMv(T *x, T *y);              // non-const, to be compatible with arpack++
         
-        
+        // Note: nev, ncv, maxit following ARPACK definition
         void locate_E0_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
         
-        // Don't use! Accuracy not good enough yet.
-        void locate_E0_full_lanczos();
+        // Note: nev, ncv, maxit have different meanings comparing to IRAM!
+        // 1 <= nev <= 2, nev-1 <= ncv <= nev
+        // nev = 1, calcualte up to ground state energy
+        // nev = 2, calculate up to 1st excited state energy
+        // ncv = 1, calculate up to ground state eigenvector
+        // ncv = 2, calculate up to 1st excited excited state eigenvector
+        void locate_E0_full_lanczos(const MKL_INT &nev = 2, const MKL_INT &ncv = 1, MKL_INT maxit = 1000);
         
         void locate_Emax_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
         
