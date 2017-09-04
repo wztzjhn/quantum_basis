@@ -201,6 +201,20 @@ namespace qbasis {
     template std::complex<double> continued_fraction(std::complex<double> a[], std::complex<double> b[], const MKL_INT &len);
     
     
+    template <typename T>
+    void swap_vec(const MKL_INT n, T *x, const MKL_INT incx, T *y, const MKL_INT incy)
+    {
+        using std::swap;
+        MKL_INT xp = 0;
+        MKL_INT yp = 0;
+        for (MKL_INT j = 0; j < n; j++) {
+            swap(x[xp],y[yp]);
+            xp += incx;
+            yp += incy;
+        }
+    }
+    template void swap_vec(const MKL_INT n, double *x, const MKL_INT incx, double *y, const MKL_INT incy);
+    template void swap_vec(const MKL_INT n, std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy);
     
 
     //  -------------- Multi-dimensional array data structure ------------------

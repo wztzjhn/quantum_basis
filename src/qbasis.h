@@ -1399,6 +1399,8 @@ namespace qbasis {
     template <typename T>
     T continued_fraction(T a[], T b[], const MKL_INT &len); // b0 not used
     
+    template <typename T>
+    void swap_vec(const MKL_INT n, T *x, const MKL_INT incx, T *y, const MKL_INT incy);
     
 }
 

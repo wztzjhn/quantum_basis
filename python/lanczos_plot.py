@@ -51,7 +51,7 @@ for row in range(0,row_total):
 fig, ax = plt.subplots(2, sharex=True, figsize=(6,8))
 
 ymin = np.floor(r0[row_end-1])
-ymax = ymin + 2
+ymax = ymin + 3
 ax[0].set_ylim(ymin,ymax)
 ax[0].set_ylabel("Ritz values")
 ax[0].plot(x,r0,"+-")

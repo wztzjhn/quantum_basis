@@ -89,6 +89,7 @@ namespace qbasis {
         }
         
         double theta0_prev, theta1_prev;                                         // record Ritz values from last step
+        int cnt_accuE0 = 0;
         do {                                                                     // while m < mm
             m++;
             for (MKL_INT l = 0; l < dim; l++)
@@ -114,6 +115,7 @@ namespace qbasis {
             if (purpose.find('1') != npos) {                                     // re-orthogonalization again phi0
                 auto temp = dotc(dim, vpt[m], 1, phipt, 1);
                 if (std::abs(temp) > lanczos_precision) {
+                    std::cout << "-" << std::flush;
                     axpy(dim, -temp, phipt, 1, vpt[m], 1);
                     double rnorm = nrm2(dim, vpt[m], 1);
                     scal(dim, 1.0 / rnorm, vpt[m], 1);
@@ -126,9 +128,16 @@ namespace qbasis {
                     double accuracy = std::abs(hessenberg[m] * s[m-1]);
                     double accu_E0  = std::abs((ritz[0] - theta0_prev) / ritz[0]);
                     double accu_E1  = std::abs((ritz[1] - theta1_prev) / ritz[1]);
-                    log_Lanczos_srval(m, ritz, hessenberg, maxit, accuracy, accu_E0, accu_E1, "log_Lanczos_"+purpose+".txt");
-                    if ( accuracy < lanczos_precision ||
-                        (purpose.find("rough") != npos && accu_E0 < lanczos_precision)) break;
+                    log_Lanczos_srval(m, ritz, hessenberg, maxit, accuracy, accu_E0, accu_E1,
+                                      "log_Lanczos_"+purpose+".txt");
+                    if (accu_E0 < lanczos_precision) {
+                        cnt_accuE0++;
+                    } else {
+                        cnt_accuE0 = 0;
+                    }
+                    if ( (cnt_accuE0 > 20) &&
+                        (accuracy < lanczos_precision ||
+                        (purpose.find("rough") != npos && accu_E0 < lanczos_precision))) break;
                 }
                 theta0_prev = ritz[0];
                 theta1_prev = ritz[1];
@@ -393,6 +402,8 @@ namespace qbasis {
         assert(maxit >= 20);
         MKL_INT np = ncv - nev;
         MKL_INT niter;
+        std::string orderC(order);
+        std::transform(orderC.begin(), orderC.end(), orderC.begin(), ::toupper);
         
         if (dim <= 30) {                                                                // fall back to full diagonalization
             auto mat_dense = mat.to_dense();
@@ -405,18 +416,20 @@ namespace qbasis {
                 eigenvals_copy[j].first = eigenvals_all[j];
                 eigenvals_copy[j].second = j;
             }
-            if (order == "SR" || order == "sr" || order == "SA" || order == "sa") {      // smallest real part
+            if (orderC == "SR"|| orderC == "SA") {                               // smallest real part
                 std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
                           [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return a.first < b.first; });
-            } else if (order == "LR" || order == "lr" || order == "LA" || order == "la") { // largest real part
+            } else if (orderC == "LR"|| orderC == "LA") {                        // largest real part
                 std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
                           [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return b.first < a.first; });
-            } else if (order == "SM" || order == "sm") { // smallest magnitude
+            } else if (orderC == "SM") {                                         // smallest magnitude
                 std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
                           [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return std::abs(a.first) < std::abs(b.first); });
-            } else if (order == "LM" || order == "lm") { // largest magnitude
+            } else if (orderC == "LM") {                                         // largest magnitude
                 std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
                           [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return std::abs(b.first) < std::abs(a.first); });
+            } else {
+                assert(false);
             }
             for (MKL_INT j = 0; j < nconv; j++)
                 eigenvals[j] = eigenvals_copy[j].first;
@@ -427,42 +440,41 @@ namespace qbasis {
             for (MKL_INT j = 0; j < nconv; j++)
                 copy(dim, mat_dense.data() + dim * eigenvals_copy[j].second, 1, eigenvecs + dim * j, 1);
         } else if (use_arpack) {
-            std::string order_cap(order);
-            std::vector<T> eigenvecs_copy(nev*dim);
-            std::transform(order_cap.begin(), order_cap.end(), order_cap.begin(), ::toupper);
-            call_arpack(dim, mat, v0, nev, ncv, maxit, nconv, niter, order_cap, eigenvals, eigenvecs_copy.data());
-            // sort the arpack eigenvals
+            call_arpack(dim, mat, v0, nev, ncv, maxit, nconv, niter, orderC, eigenvals, eigenvecs);
             assert(nconv > 0);
-            std::vector<std::pair<double, MKL_INT>> eigenvals_copy(nconv);
-            for (MKL_INT j = 0; j < nconv; j++) {
-                eigenvals_copy[j].first = eigenvals[j];
-                eigenvals_copy[j].second = j;
-            }
-            if (order == "SR" || order == "sr" || order == "SA" || order == "sa") {      // smallest real part
-                std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
-                          [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return a.first < b.first; });
-            } else if (order == "LR" || order == "lr" || order == "LA" || order == "la") { // largest real part
-                std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
-                          [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return b.first < a.first; });
-            } else if (order == "SM" || order == "sm") { // smallest magnitude
-                std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
-                          [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return std::abs(a.first) < std::abs(b.first); });
-            } else if (order == "LM" || order == "lm") { // largest magnitude
-                std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
-                          [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return std::abs(b.first) < std::abs(a.first); });
-            }
-            for (decltype(eigenvals_copy.size()) j = 0; j < eigenvals_copy.size(); j++)
-                eigenvals[j] = eigenvals_copy[j].first;
             std::cout << std::endl << "(nev,ncv,nconv) = (" << nev << "," << ncv << "," << nconv << ")" << std::endl;
             std::cout << "Number of implicit restarts: " << niter << std::endl;
+            auto comp = [&orderC](const double &a, const double &b)
+            {
+                if (orderC == "SR" || orderC == "SA") {
+                    return a < b;
+                } else if (orderC == "LR" || orderC == "LA") {
+                    return b < a;
+                } else if (orderC == "SM") {
+                    return std::abs(a) < std::abs(b);
+                } else {
+                    assert(orderC == "LM");
+                    return std::abs(b) < std::abs(a);
+                }
+            };
+            // bubble sort the eigenvalues and eigenvecs
+            using std::swap;
+            for (MKL_INT j = 1; j < nconv; j++) {
+                bool sorted = true;
+                for (MKL_INT i = 0; i < nconv - j; i++) {
+                    if (comp(eigenvals[i+1],eigenvals[i])) {
+                        swap(eigenvals[i],eigenvals[i+1]);
+                        swap_vec(dim, eigenvecs + i * dim, 1, eigenvecs + (i+1) * dim, 1);
+                        sorted = false;
+                    }
+                }
+                if (sorted) break;
+            }
             for (MKL_INT j = 0; j < nconv; j++) {
                 std::cout << "E_" << j << " = " << eigenvals[j] << std::endl;
             }
             std::cout << "Caution: IRAM may miss a few degenerate eigenstates!" << std::endl;
             std::cout << "(in these cases, try a different set of {nev, ncv} may help finding the missing eigenstates)" << std::endl;
-            // sort the arpack eigenvecs
-            for (MKL_INT j = 0; j < nconv; j++)
-                copy(dim, eigenvecs_copy.data() + dim * eigenvals_copy[j].second, 1, eigenvecs + dim * j, 1);
         } else {                                                                       // hand-coded arpack
             MKL_INT m = ncv;
             MKL_INT maxit = m + 1;

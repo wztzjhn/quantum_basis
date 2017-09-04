@@ -29,6 +29,9 @@
 *.app
 *.x
 
+# Figures
+*.png
+
 # Folders
 xbuild
 build
