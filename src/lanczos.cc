@@ -182,6 +182,10 @@ namespace qbasis {
         assert(std::abs(nrm2(dim, v, 1) - 1.0) < lanczos_precision);
         for (MKL_INT j = 0; j < dim; j++) assert(std::abs(p[j] - r[j]) < lanczos_precision);
         accu = nrm2(dim, r, 1);
+        std::ofstream fout("log_CG.txt", std::ios::out | std::ios::app);
+        fout << std::setprecision(10);
+        fout << std::setw(20) << accu << std::endl;
+        fout.close();
         while (m < maxit && accu > lanczos_precision) {
             copy(dim, p, 1, pp, 1);
             scal(dim, machine_prec - E0, pp, 1);
@@ -195,6 +199,10 @@ namespace qbasis {
             axpy(dim, static_cast<T>(1.0), r, 1, p, 1);                          // p[m+1]   = r[m+1] + beta^2 * p[m]
             accu *= beta;                                                        // gamma[m+1] = beta[m] * gamma[m]
             m++;
+            std::ofstream fout("log_CG.txt", std::ios::out | std::ios::app);
+            fout << std::setprecision(10);
+            fout << std::setw(20) << accu << std::endl;
+            fout.close();
         }
         std::cout << std::endl;
     }
