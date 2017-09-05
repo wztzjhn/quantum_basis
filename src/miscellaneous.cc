@@ -1,3 +1,4 @@
+#include <random>
 #include "qbasis.h"
 #include "graph.h"
 
@@ -202,19 +203,32 @@ namespace qbasis {
     
     
     template <typename T>
-    void swap_vec(const MKL_INT n, T *x, const MKL_INT incx, T *y, const MKL_INT incy)
+    void swap_vec(const MKL_INT &n, T *x, T *y)
     {
         using std::swap;
-        MKL_INT xp = 0;
-        MKL_INT yp = 0;
-        for (MKL_INT j = 0; j < n; j++) {
-            swap(x[xp],y[yp]);
-            xp += incx;
-            yp += incy;
+        for (MKL_INT j = 0; j < n; j++) swap(x[j],y[j]);
+    }
+    template void swap_vec(const MKL_INT &n, double *x, double *y);
+    template void swap_vec(const MKL_INT &n, std::complex<double> *x, std::complex<double> *y);
+    
+    template <typename T>
+    void randomize_vec(const MKL_INT &n, T *x, const uint32_t &seed)
+    {
+        if (seed == 0) {
+            T ele = static_cast<T>(sqrt(1.0 / n));
+            for (MKL_INT j = 0; j < n; j++) x[j] = ele;
+            assert(std::abs(nrm2(n, x, 1) - 1.0) < lanczos_precision);
+        } else {
+            std::minstd_rand0 g(seed);
+            double pref = 1.0 / 2147483647.0;
+            for (MKL_INT j = 0; j < n; j++) x[j] = g() * pref - 0.5;
+            double rnorm = nrm2(n, x, 1);
+            scal(n, 1.0/rnorm, x, 1);
+            assert(std::abs(nrm2(n, x, 1) - 1.0) < lanczos_precision);
         }
     }
-    template void swap_vec(const MKL_INT n, double *x, const MKL_INT incx, double *y, const MKL_INT incy);
-    template void swap_vec(const MKL_INT n, std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy);
+    template void randomize_vec(const MKL_INT &n, double *x, const uint32_t &seed);
+    template void randomize_vec(const MKL_INT &n, std::complex<double> *x, const uint32_t &seed);
     
 
     //  -------------- Multi-dimensional array data structure ------------------

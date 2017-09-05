@@ -990,6 +990,16 @@ namespace qbasis {
     void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &maxit, MKL_INT &m, const MKL_INT &dim,
                  const MAT &mat, T v[], double hessenberg[], const std::string &purpose);
     
+    // Iterative sparse solver using conjugate gradient method
+    // given well converged eigenvalue E0, and a good initital guess v[0], solves (H - E0) * v[j] = 0
+    // on entry: assuming m-step finished, v contains the initital guess v[m]
+    //           r[0] = -(H-E0)*v[0], p[0] = r[0]
+    // on exit:  v rewritten by the converged solution
+    template <typename T, typename MAT>
+    void eigenvec_CG(const MKL_INT &dim, const MKL_INT &maxit, MKL_INT &m,
+                     const MAT &mat, const T &E0, double &accu,
+                     T v[], T r[], T p[], T pp[]);
+    
     // compute eigenvalues and eigenvectors of hessenberg matrix
     // on entry, hessenberg should have leading dimension maxit
     // on exit, ritz of size m, s of size m*m
@@ -1263,7 +1273,7 @@ namespace qbasis {
         // nev = 2, calculate up to 1st excited state energy
         // ncv = 1, calculate up to ground state eigenvector
         // ncv = 2, calculate up to 1st excited excited state eigenvector
-        void locate_E0_full_lanczos(const MKL_INT &nev = 2, const MKL_INT &ncv = 1, MKL_INT maxit = 1000);
+        void locate_E0_full_lanczos(const MKL_INT &nev = 2, const MKL_INT &ncv = 2, MKL_INT maxit = 1000);
         
         void locate_Emax_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
         
@@ -1314,6 +1324,7 @@ namespace qbasis {
     private:
         double Emax;
         double E0;
+        double E1;
         double gap;
         
         double fake_pos;
@@ -1399,8 +1410,14 @@ namespace qbasis {
     template <typename T>
     T continued_fraction(T a[], T b[], const MKL_INT &len); // b0 not used
     
+    
     template <typename T>
-    void swap_vec(const MKL_INT n, T *x, const MKL_INT incx, T *y, const MKL_INT incy);
+    void swap_vec(const MKL_INT &n, T *x, T *y);
+    
+    // fill x with Lehmer 16807 random numbers
+    // seed == 0 reserved for filling 1/n to each element
+    template <typename T>
+    void randomize_vec(const MKL_INT &n, T *x, const uint32_t &seed = 1);
     
 }
 

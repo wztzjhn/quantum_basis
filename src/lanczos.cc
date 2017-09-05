@@ -112,8 +112,8 @@ namespace qbasis {
                 assert(false);
             }
             scal(dim, 1.0 / hessenberg[m], vpt[m], 1);                           // v[m] = v[m] / b[m]
-            if (purpose.find('1') != npos) {                                     // re-orthogonalization again phi0
-                auto temp = dotc(dim, vpt[m], 1, phipt, 1);
+            if (purpose.find("val1") != npos || purpose.find("vec1") != npos) {  // re-orthogonalization again phi0
+                auto temp = dotc(dim, phipt, 1, vpt[m], 1);
                 if (std::abs(temp) > lanczos_precision) {
                     std::cout << "-" << std::flush;
                     axpy(dim, -temp, phipt, 1, vpt[m], 1);
@@ -135,7 +135,7 @@ namespace qbasis {
                     } else {
                         cnt_accuE0 = 0;
                     }
-                    if ( (cnt_accuE0 > 20) &&
+                    if ( (cnt_accuE0 > 15) &&
                         (accuracy < lanczos_precision ||
                         (purpose.find("rough") != npos && accu_E0 < lanczos_precision))) break;
                 }
@@ -171,6 +171,44 @@ namespace qbasis {
 //    template void lanczos(MKL_INT k, MKL_INT np, MKL_INT &mm, const MKL_INT &dim,
 //                          const model<double> &mat, double v[],
 //                          double hessenberg[], const MKL_INT &ldh, const std::string &purpose);
+    
+    
+    template <typename T, typename MAT>
+    void eigenvec_CG(const MKL_INT &dim, const MKL_INT &maxit, MKL_INT &m,
+                     const MAT &mat, const T &E0, double &accu,
+                     T v[], T r[], T p[], T pp[])
+    {
+        assert(m >= 0 && m < maxit);
+        assert(std::abs(nrm2(dim, v, 1) - 1.0) < lanczos_precision);
+        for (MKL_INT j = 0; j < dim; j++) assert(std::abs(p[j] - r[j]) < lanczos_precision);
+        accu = nrm2(dim, r, 1);
+        while (m < maxit && accu > lanczos_precision) {
+            copy(dim, p, 1, pp, 1);
+            scal(dim, machine_prec - E0, pp, 1);
+            mat.MultMv2(p,pp);                                                   // pp[m]    = (H - E0) * p[m]
+            T delta = dotc(dim, p, 1, pp, 1);                                    // delta[m] = (p[m], pp[m])
+            T alpha = accu * accu / delta;                                       // alpha[m] = gamma[m]^2 / delta[m]
+            axpy(dim,  alpha,  p, 1, v, 1);                                      // v[m+1]   = v[m] + alpha[m] * p[m]
+            axpy(dim, -alpha, pp, 1, r, 1);                                      // r[m+1]   = r[m] - alpha[m] * pp[m]
+            double beta = nrm2(dim, r, 1) / accu;                                // beta[m]  = gamma[m+1] / gamma[m]
+            scal(dim, static_cast<T>(beta*beta), p, 1);
+            axpy(dim, static_cast<T>(1.0), r, 1, p, 1);                          // p[m+1]   = r[m+1] + beta^2 * p[m]
+            accu *= beta;                                                        // gamma[m+1] = beta[m] * gamma[m]
+            m++;
+        }
+        std::cout << std::endl;
+    }
+    template void eigenvec_CG(const MKL_INT &dim, const MKL_INT &maxit, MKL_INT &m,
+                              const csr_mat<double> &mat, const double &E0, double &accu,
+                              double v[], double r[], double p[], double pp[]);
+    template void eigenvec_CG(const MKL_INT &dim, const MKL_INT &maxit, MKL_INT &m,
+                              const csr_mat<std::complex<double>> &mat, const std::complex<double> &E0, double &accu,
+                              std::complex<double> v[], std::complex<double> r[],
+                              std::complex<double> p[], std::complex<double> pp[]);
+    template void eigenvec_CG(const MKL_INT &dim, const MKL_INT &maxit, MKL_INT &m,
+                              const model<std::complex<double>> &mat, const std::complex<double> &E0, double &accu,
+                              std::complex<double> v[], std::complex<double> r[],
+                              std::complex<double> p[], std::complex<double> pp[]);
     
     
     void hess_eigen(const double hessenberg[], const MKL_INT &maxit, const MKL_INT &m,
@@ -464,7 +502,7 @@ namespace qbasis {
                 for (MKL_INT i = 0; i < nconv - j; i++) {
                     if (comp(eigenvals[i+1],eigenvals[i])) {
                         swap(eigenvals[i],eigenvals[i+1]);
-                        swap_vec(dim, eigenvecs + i * dim, 1, eigenvecs + (i+1) * dim, 1);
+                        swap_vec(dim, eigenvecs + i * dim, eigenvecs + (i+1) * dim);
                         sorted = false;
                     }
                 }
