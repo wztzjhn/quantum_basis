@@ -236,28 +236,39 @@ namespace qbasis {
     template <typename T>
     int vec_disk_read(const std::string &filename, MKL_INT n, T *x)
     {
-        assert(n > 0);
-        uint64_t buffer_total_size = static_cast<uint64_t>(n) * sizeof(T);       // in terms of bytes
-        const uint64_t buffer_each_size  = 1024*1024;                            // 1M per chunk
-        uint64_t total_chunks = buffer_total_size / buffer_each_size;
-        uint64_t size_last_chunk = (buffer_total_size - 1) % buffer_each_size + 1;
-        if (size_last_chunk != buffer_each_size) total_chunks += 1;
+        assert(n >= 0);
+        boost::crc_32_type res_crc;
+        uint64_t filesize_ideal = sizeof(MKL_INT) + sizeof(T) * n + sizeof(decltype(res_crc.checksum()));
+        if (fs::file_size(fs::path(filename)) != filesize_ideal) {
+            std::cout << filename << " corrupted!" << std::endl;
+            return 1;
+        }
         
         std::ifstream fin(filename, std::ios::in | std::ios::binary);
-        boost::crc_32_type res_crc;
         MKL_INT n_check;
         fin.read(reinterpret_cast<char*>(&n_check), sizeof(MKL_INT));
-        if (n != n_check) return 1;
+        if (n != n_check) {
+            std::cout << filename << " corrupted!" << std::endl;
+            return 1;
+        }
         res_crc.process_bytes(&n, sizeof(MKL_INT));
         
-        char* pos = reinterpret_cast<char*>(x);
-        for (uint64_t chunk = 1; chunk < total_chunks; chunk++) {
-            fin.read(pos, buffer_each_size);
-            res_crc.process_bytes(pos, buffer_each_size);
-            pos += buffer_each_size;
+        const uint64_t buffer_each_size  = 1024*1024;                            // 1M per chunk
+        if (n > 0) {
+            uint64_t buffer_total_size = static_cast<uint64_t>(n) * sizeof(T);   // in terms of bytes
+            uint64_t total_chunks = buffer_total_size / buffer_each_size;
+            uint64_t size_last_chunk = (buffer_total_size - 1) % buffer_each_size + 1;
+            if (size_last_chunk != buffer_each_size) total_chunks += 1;
+            
+            char* pos = reinterpret_cast<char*>(x);
+            for (uint64_t chunk = 1; chunk < total_chunks; chunk++) {
+                fin.read(pos, buffer_each_size);
+                res_crc.process_bytes(pos, buffer_each_size);
+                pos += buffer_each_size;
+            }
+            fin.read(pos, size_last_chunk);
+            res_crc.process_bytes(pos, size_last_chunk);
         }
-        fin.read(pos, size_last_chunk);
-        res_crc.process_bytes(pos, size_last_chunk);
         
         auto checksum = res_crc.checksum();
         decltype(checksum) checksum_check;
@@ -277,31 +288,28 @@ namespace qbasis {
     template <typename T>
     int vec_disk_write(const std::string &filename, MKL_INT n, T *x)
     {
-        assert(n > 0);
-        uint64_t buffer_total_size = static_cast<uint64_t>(n) * sizeof(T);       // in terms of bytes
-        const uint64_t buffer_each_size  = 1024*1024;                            // 1M per chunk
-        uint64_t total_chunks = buffer_total_size / buffer_each_size;
-        uint64_t size_last_chunk = (buffer_total_size - 1) % buffer_each_size + 1;
-        if (size_last_chunk != buffer_each_size) total_chunks += 1;
-        /*
-        std::cout << "buffer total size = " << buffer_total_size << std::endl;
-        std::cout << "buffer each size = " << buffer_each_size << std::endl;
-        std::cout << "total chunks = " << total_chunks << std::endl;
-        std::cout << "size of last chunk = " << size_last_chunk << std::endl;
-        */
+        assert(n >= 0);
         std::ofstream fout(filename, std::ios::out | std::ios::binary);
         boost::crc_32_type res_crc;
         fout.write(reinterpret_cast<char*>(&n), sizeof(MKL_INT));
         res_crc.process_bytes(&n, sizeof(MKL_INT));
         
-        char* pos = reinterpret_cast<char*>(x);
-        for (uint64_t chunk = 1; chunk < total_chunks; chunk++) {
-            fout.write(pos, buffer_each_size);
-            res_crc.process_bytes(pos, buffer_each_size);
-            pos += buffer_each_size;
+        const uint64_t buffer_each_size  = 1024*1024;                            // 1M per chunk
+        if (n > 0) {
+            uint64_t buffer_total_size = static_cast<uint64_t>(n) * sizeof(T);   // in terms of bytes
+            uint64_t total_chunks = buffer_total_size / buffer_each_size;
+            uint64_t size_last_chunk = (buffer_total_size - 1) % buffer_each_size + 1;
+            if (size_last_chunk != buffer_each_size) total_chunks += 1;
+            
+            char* pos = reinterpret_cast<char*>(x);
+            for (uint64_t chunk = 1; chunk < total_chunks; chunk++) {
+                fout.write(pos, buffer_each_size);
+                res_crc.process_bytes(pos, buffer_each_size);
+                pos += buffer_each_size;
+            }
+            fout.write(pos, size_last_chunk);
+            res_crc.process_bytes(pos, size_last_chunk);
         }
-        fout.write(pos, size_last_chunk);
-        res_crc.process_bytes(pos, size_last_chunk);
         
         auto checksum = res_crc.checksum();
         fout.write(reinterpret_cast<char*>(&checksum), sizeof(decltype(checksum)));
