@@ -25,6 +25,28 @@ void test_bubble();
 
 int main(){
     
+    MKL_INT m = 1e4;
+    std::vector<std::complex<double>> xx(m), yy(m);
+    for (int j = 0; j < m; j++) {
+        xx[j] = std::complex<double>{j *0.5, j*0.5};
+        //xx[j] = j * 0.5;
+    }
+    qbasis::vec_disk_write("test.bin", m, xx.data());
+    
+    std::cout << "ll" << std::endl;
+    
+    std::chrono::time_point<std::chrono::system_clock> start, end;
+    start = std::chrono::system_clock::now();
+    auto info = qbasis::vec_disk_read("test.bin", m, yy.data());
+    for (int j = 0; j < 16; j++) {
+        std::cout << "yy[" << j << "] = " << yy[j] << std::endl;
+    }
+    std::cout << "info = " << info << std::endl;
+    end = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end - start;
+    std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+    
+    
     test_basis();
     
     test_basis2();

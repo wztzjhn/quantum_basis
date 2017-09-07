@@ -19,6 +19,10 @@
 #define lapack_complex_double   MKL_Complex16
 #endif
 
+#ifndef BOOST_FILESYSTEM_NO_DEPRECATED
+#define BOOST_FILESYSTEM_NO_DEPRECATED
+#endif
+
 #include <algorithm>
 #include <cassert>
 #include <chrono>
@@ -32,6 +36,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <boost/filesystem.hpp>
 #include "mkl.h"
 
 #ifdef _OPENMP
@@ -49,6 +54,8 @@
 #endif
 
 
+namespace fs = boost::filesystem;
+
 namespace qbasis {
 
 //  -------------part 0: global variables, forward declarations ----------------
@@ -59,6 +66,9 @@ namespace qbasis {
     static const double opr_precision = 1e-12; // used as the threshold value in comparison
     static const double sparse_precision = 1e-14;
     static const double lanczos_precision = 1e-12;
+    
+    // the Lanczos will write vecs to disk
+    static bool enable_ckpt = true;
     
     // Multi-dimensional array
     template <typename> class multi_array;
@@ -990,6 +1000,8 @@ namespace qbasis {
     void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &maxit, MKL_INT &m, const MKL_INT &dim,
                  const MAT &mat, T v[], double hessenberg[], const std::string &purpose);
     
+    
+    
     // Iterative sparse solver using conjugate gradient method
     // given well converged eigenvalue E0, and a good initital guess v[0], solves (H - E0) * v[j] = 0
     // on entry: assuming m-step finished, v contains the initital guess v[m]
@@ -1273,7 +1285,7 @@ namespace qbasis {
         // nev = 2, calculate up to 1st excited state energy
         // ncv = 1, calculate up to ground state eigenvector
         // ncv = 2, calculate up to 1st excited excited state eigenvector
-        void locate_E0_full_lanczos(const MKL_INT &nev = 2, const MKL_INT &ncv = 2, MKL_INT maxit = 1000);
+        void locate_E0_full_lanczos(const MKL_INT &nev = 1, const MKL_INT &ncv = 1, MKL_INT maxit = 1000);
         
         void locate_Emax_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
         
@@ -1412,12 +1424,18 @@ namespace qbasis {
     
     
     template <typename T>
-    void swap_vec(const MKL_INT &n, T *x, T *y);
+    void vec_swap(const MKL_INT &n, T *x, T *y);
     
     // fill x with Lehmer 16807 random numbers
     // seed == 0 reserved for filling 1/n to each element
     template <typename T>
-    void randomize_vec(const MKL_INT &n, T *x, const uint32_t &seed = 1);
+    void vec_randomize(const MKL_INT &n, T *x, const uint32_t &seed = 1);
+    
+    template <typename T>
+    int vec_disk_read(const std::string &filename, MKL_INT n, T *x);
+    
+    template <typename T>
+    int vec_disk_write(const std::string &filename, MKL_INT n, T *x);
     
 }
 

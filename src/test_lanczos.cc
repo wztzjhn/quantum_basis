@@ -42,7 +42,10 @@ void test_lanczos_memoAll() {
     double betak_up = 0.0;
     for (MKL_INT i=0; i<dim; i++) resid_up[i] = x[i];
     
-    lanczos(0, m, dim, sp_csr_uppper, betak_up, resid_up, v_up, hessenberg_up, ldh);
+    // uncomment when testing IRAM
+    /*
+    qbasis::lanczos(0, m, ldh, m, dim, sp_csr_uppper, v_up, hessenberg_up, "iram");
+    //lanczos(0, m, dim, sp_csr_uppper, betak_up, resid_up, v_up, hessenberg_up, ldh);
     
     std::complex<double> *hess_up= new std::complex<double>[ldh*ldh];
     qbasis::hess2matform(hessenberg_up, hess_up, m, ldh);
@@ -98,6 +101,7 @@ void test_lanczos_memoAll() {
     delete [] v_full;
     delete [] resid_full;
     std::cout << std::endl << std::endl;
+    */
 }
 
 void test_iram()

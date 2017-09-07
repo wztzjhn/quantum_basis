@@ -1,4 +1,6 @@
 #include <random>
+#include <fstream>
+#include <boost/crc.hpp>
 #include "qbasis.h"
 #include "graph.h"
 
@@ -203,16 +205,16 @@ namespace qbasis {
     
     
     template <typename T>
-    void swap_vec(const MKL_INT &n, T *x, T *y)
+    void vec_swap(const MKL_INT &n, T *x, T *y)
     {
         using std::swap;
         for (MKL_INT j = 0; j < n; j++) swap(x[j],y[j]);
     }
-    template void swap_vec(const MKL_INT &n, double *x, double *y);
-    template void swap_vec(const MKL_INT &n, std::complex<double> *x, std::complex<double> *y);
+    template void vec_swap(const MKL_INT &n, double *x, double *y);
+    template void vec_swap(const MKL_INT &n, std::complex<double> *x, std::complex<double> *y);
     
     template <typename T>
-    void randomize_vec(const MKL_INT &n, T *x, const uint32_t &seed)
+    void vec_randomize(const MKL_INT &n, T *x, const uint32_t &seed)
     {
         if (seed == 0) {
             T ele = static_cast<T>(sqrt(1.0 / n));
@@ -227,10 +229,89 @@ namespace qbasis {
             assert(std::abs(nrm2(n, x, 1) - 1.0) < lanczos_precision);
         }
     }
-    template void randomize_vec(const MKL_INT &n, double *x, const uint32_t &seed);
-    template void randomize_vec(const MKL_INT &n, std::complex<double> *x, const uint32_t &seed);
+    template void vec_randomize(const MKL_INT &n, double *x, const uint32_t &seed);
+    template void vec_randomize(const MKL_INT &n, std::complex<double> *x, const uint32_t &seed);
     
 
+    template <typename T>
+    int vec_disk_read(const std::string &filename, MKL_INT n, T *x)
+    {
+        assert(n > 0);
+        uint64_t buffer_total_size = static_cast<uint64_t>(n) * sizeof(T);       // in terms of bytes
+        const uint64_t buffer_each_size  = 1024*1024;                            // 1M per chunk
+        uint64_t total_chunks = buffer_total_size / buffer_each_size;
+        uint64_t size_last_chunk = (buffer_total_size - 1) % buffer_each_size + 1;
+        if (size_last_chunk != buffer_each_size) total_chunks += 1;
+        
+        std::ifstream fin(filename, std::ios::in | std::ios::binary);
+        boost::crc_32_type res_crc;
+        MKL_INT n_check;
+        fin.read(reinterpret_cast<char*>(&n_check), sizeof(MKL_INT));
+        if (n != n_check) return 1;
+        res_crc.process_bytes(&n, sizeof(MKL_INT));
+        
+        char* pos = reinterpret_cast<char*>(x);
+        for (uint64_t chunk = 1; chunk < total_chunks; chunk++) {
+            fin.read(pos, buffer_each_size);
+            res_crc.process_bytes(pos, buffer_each_size);
+            pos += buffer_each_size;
+        }
+        fin.read(pos, size_last_chunk);
+        res_crc.process_bytes(pos, size_last_chunk);
+        
+        auto checksum = res_crc.checksum();
+        decltype(checksum) checksum_check;
+        fin.read(reinterpret_cast<char*>(&checksum_check), sizeof(decltype(checksum_check)));
+        fin.close();
+        
+        if (checksum == checksum_check) {
+            return 0;
+        } else {
+            std::cout << filename << " corrupted!" << std::endl;
+            return 1;
+        }
+    }
+    template int vec_disk_read(const std::string &filename, MKL_INT n, double *x);
+    template int vec_disk_read(const std::string &filename, MKL_INT n, std::complex<double> *x);
+    
+    template <typename T>
+    int vec_disk_write(const std::string &filename, MKL_INT n, T *x)
+    {
+        assert(n > 0);
+        uint64_t buffer_total_size = static_cast<uint64_t>(n) * sizeof(T);       // in terms of bytes
+        const uint64_t buffer_each_size  = 1024*1024;                            // 1M per chunk
+        uint64_t total_chunks = buffer_total_size / buffer_each_size;
+        uint64_t size_last_chunk = (buffer_total_size - 1) % buffer_each_size + 1;
+        if (size_last_chunk != buffer_each_size) total_chunks += 1;
+        /*
+        std::cout << "buffer total size = " << buffer_total_size << std::endl;
+        std::cout << "buffer each size = " << buffer_each_size << std::endl;
+        std::cout << "total chunks = " << total_chunks << std::endl;
+        std::cout << "size of last chunk = " << size_last_chunk << std::endl;
+        */
+        std::ofstream fout(filename, std::ios::out | std::ios::binary);
+        boost::crc_32_type res_crc;
+        fout.write(reinterpret_cast<char*>(&n), sizeof(MKL_INT));
+        res_crc.process_bytes(&n, sizeof(MKL_INT));
+        
+        char* pos = reinterpret_cast<char*>(x);
+        for (uint64_t chunk = 1; chunk < total_chunks; chunk++) {
+            fout.write(pos, buffer_each_size);
+            res_crc.process_bytes(pos, buffer_each_size);
+            pos += buffer_each_size;
+        }
+        fout.write(pos, size_last_chunk);
+        res_crc.process_bytes(pos, size_last_chunk);
+        
+        auto checksum = res_crc.checksum();
+        fout.write(reinterpret_cast<char*>(&checksum), sizeof(decltype(checksum)));
+        fout.close();
+        return 0;
+    }
+    template int vec_disk_write(const std::string &filename, MKL_INT n, double *x);
+    template int vec_disk_write(const std::string &filename, MKL_INT n, std::complex<double> *x);
+    
+    
     //  -------------- Multi-dimensional array data structure ------------------
     template <typename T>
     multi_array<T>::multi_array(const std::vector<uint64_t> &linear_size_input):

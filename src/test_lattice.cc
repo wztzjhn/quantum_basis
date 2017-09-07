@@ -6,12 +6,13 @@
 void test_lattice() {
     qbasis::lattice square("square",std::vector<uint32_t>{3,3},std::vector<std::string>{"pbc", "pbc"});
     std::vector<int> coor = {1,2};
+    std::vector<int> work;
     int sub = 0;
     for (uint32_t site = 0; site < square.total_sites(); site++) {
         square.site2coor(coor, sub, site);
         std::cout << "(" << coor[0] << "," << coor[1] << "," << sub << ") : " << site << std::endl;
         uint32_t site2;
-        square.coor2site(coor, sub, site2);
+        square.coor2site(coor, sub, site2, work);
         assert(site == site2);
     }
     
@@ -27,7 +28,7 @@ void test_lattice() {
         kagome.site2coor(coor, sub, site);
         std::cout << "(" << coor[0] << "," << coor[1] << "," << sub << ") : " << site << std::endl;
         uint32_t site2;
-        kagome.coor2site(coor, sub, site2);
+        kagome.coor2site(coor, sub, site2, work);
         assert(site == site2);
     }
     std::cout << std::endl;
@@ -37,7 +38,7 @@ void test_lattice() {
         kagome_child.site2coor(coor, sub, site);
         std::cout << "(" << coor[0] << "," << coor[1] << "," << sub << ") : " << site << std::endl;
         uint32_t site2;
-        kagome_child.coor2site(coor, sub, site2);
+        kagome_child.coor2site(coor, sub, site2, work);
         assert(site == site2);
     }
     std::cout << std::endl;
@@ -49,7 +50,7 @@ void test_lattice() {
         honeycomb.site2coor(coor, sub, site);
         std::cout << "(" << coor[0] << "," << coor[1] << "," << sub << ") : " << site << std::endl;
         uint32_t site2;
-        honeycomb.coor2site(coor, sub, site2);
+        honeycomb.coor2site(coor, sub, site2, work);
         assert(site == site2);
     }
     std::cout << std::endl;
@@ -59,7 +60,7 @@ void test_lattice() {
         honeycomb_child.site2coor(coor, sub, site);
         std::cout << "(" << coor[0] << "," << coor[1] << "," << sub << ") : " << site << std::endl;
         uint32_t site2;
-        honeycomb_child.coor2site(coor, sub, site2);
+        honeycomb_child.coor2site(coor, sub, site2, work);
         assert(site == site2);
     }
     std::cout << std::endl;

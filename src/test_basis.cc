@@ -267,10 +267,11 @@ void test_basis4()
     model_test4.add_orbital(lattice.total_sites(), "spin-1");
     
     qbasis::mopr<std::complex<double>> Sz_total;
-    
+    std::vector<int> work;
     for (int x = 0; x < L; x++) {
         uint32_t site_i, site_j;
-        lattice.coor2site(std::vector<int>{x}, 0, site_i); // obtain site label of (x)
+        
+        lattice.coor2site(std::vector<int>{x}, 0, site_i, work); // obtain site label of (x)
         // construct operators on each site
         // spin
         auto Splus_i   = qbasis::opr<std::complex<double>>(site_i,0,false,Splus);
@@ -279,7 +280,7 @@ void test_basis4()
         
         // with neighbor (x+1)
         if (bc[0] == "pbc" || (bc[0] == "obc" && x < L - 1)) {
-            lattice.coor2site(std::vector<int>{x+1}, 0, site_j);
+            lattice.coor2site(std::vector<int>{x+1}, 0, site_j, work);
             // spin exchanges
             auto Splus_j   = qbasis::opr<std::complex<double>>(site_j,0,false,Splus);
             auto Sminus_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sminus);
@@ -596,11 +597,11 @@ void test_basis5()
     model_test5.add_orbital(lattice.total_sites(), "spin-1/2");
     
     qbasis::mopr<std::complex<double>> Sz_total;
-    
+    std::vector<int> work;
     for (int x = 0; x < Lx; x++) {
         for (int y = 0; y < Ly; y++) {
             uint32_t site_i, site_j;
-            lattice.coor2site(std::vector<int>{x,y}, 0, site_i); // obtain site label of (x,y)
+            lattice.coor2site(std::vector<int>{x,y}, 0, site_i, work); // obtain site label of (x,y)
             // construct operators on each site
             // spin
             auto Splus_i   = qbasis::opr<std::complex<double>>(site_i,0,false,Splus);
@@ -609,7 +610,7 @@ void test_basis5()
         
             // with neighbor (x+1, y)
             if (bc[0] == "pbc" || (bc[0] == "obc" && x < Lx - 1)) {
-                lattice.coor2site(std::vector<int>{x+1,y}, 0, site_j);
+                lattice.coor2site(std::vector<int>{x+1,y}, 0, site_j, work);
                 // spin exchanges
                 auto Splus_j   = qbasis::opr<std::complex<double>>(site_j,0,false,Splus);
                 auto Sminus_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sminus);
@@ -620,7 +621,7 @@ void test_basis5()
             
             // with neighbor (x, y+1)
             if (bc[1] == "pbc" || (bc[1] == "obc" && y < Ly - 1)) {
-                lattice.coor2site(std::vector<int>{x,y+1}, 0, site_j);
+                lattice.coor2site(std::vector<int>{x,y+1}, 0, site_j, work);
                 auto Splus_j   = qbasis::opr<std::complex<double>>(site_j,0,false,Splus);
                 auto Sminus_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sminus);
                 auto Sz_j      = qbasis::opr<std::complex<double>>(site_j,0,false,Sz);

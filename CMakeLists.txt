@@ -54,10 +54,6 @@ endif()
 
 # -- DEPENDENCIES -------------------------------------------
 
-# Boost
-find_package(Boost)
-include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
-
 #MKL
 find_package(MKL REQUIRED)
 include_directories(SYSTEM ${MKL_INCLUDE_DIRS})
@@ -99,6 +95,12 @@ if (ARPACK_FOUND)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lgfortran")
   endif()
 endif()
+
+# Boost
+find_package(Boost REQUIRED COMPONENTS
+             filesystem)
+include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
+set(LIBS "${LIBS} ${Boost_LIBRARIES}")
 
 # Add openmp if Linux platform
 if(CMAKE_COMPILER_IS_GNUCXX)

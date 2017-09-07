@@ -1,3 +1,5 @@
+#include <cstring>
+#include <fstream>
 #include <iostream>
 #include <iomanip>
 #include <random>
@@ -752,7 +754,7 @@ namespace qbasis {
         
         uint32_t seed = 1;
         std::vector<T> v(dim_full[sec_mat]*2);
-        randomize_vec(dim_full[sec_mat], v.data(), seed);
+        vec_randomize(dim_full[sec_mat], v.data(), seed);
         if (ncv > 0) {
             v.resize(dim_full[sec_mat]*4);
             copy(dim_full[sec_mat], v.data(), 1, v.data() + 2 * dim_full[sec_mat], 1);
@@ -760,6 +762,13 @@ namespace qbasis {
         
         std::vector<double> hessenberg(2*maxit, 0.0), ritz, s;
         MKL_INT m;
+        
+        // read checkpoint here
+        // name of checkpoint should be sth like "lczs_E0_sym0_sec0.ckpt"
+        // inside, it should be indicated whether it is finished, or at step-k
+        // if finished, the valid output should be m, hessenberg (and should be recorded)
+        // if not finished, also need store 2 cols of v (outside "lczs_E0_sym0_sec0.ckpt")
+        
         if (matrix_free) {
             lanczos(0, maxit-1, maxit, m, dim_full[sec_mat], *this, v.data(), hessenberg.data(), "sr_val0");
         } else {
@@ -840,7 +849,7 @@ namespace qbasis {
         if (nev == 2) {
             start = std::chrono::system_clock::now();
             std::cout << "Calculating 1st excited state energy (full, simple Lanczos)..." << std::endl;
-            randomize_vec(dim_full[sec_mat], v.data(), seed);
+            vec_randomize(dim_full[sec_mat], v.data(), seed);
             auto alpha = dotc(dim_full[sec_mat], v.data() + 2 * dim_full[sec_mat], 1, v.data(), 1); // (phi0, v0)
             axpy(dim_full[sec_mat], -alpha, v.data() + 2 * dim_full[sec_mat], 1, v.data(), 1);      // v0 -= alpha * phi0
             double rnorm = nrm2(dim_full[sec_mat], v.data(), 1);
@@ -876,7 +885,7 @@ namespace qbasis {
         
         // calculate 1st excited state eigenvector
         v.resize(5*dim_full[sec_mat]);
-        randomize_vec(dim_full[sec_mat], v.data() + 3 * dim_full[sec_mat], seed + 7);
+        vec_randomize(dim_full[sec_mat], v.data() + 3 * dim_full[sec_mat], seed + 7);
         for (MKL_INT j = 0; j < dim_full[sec_mat]; j++) v[j] = 0.0;
         if (matrix_free) {
             this->MultMv2(v.data() + 3 * dim_full[sec_mat], v.data());

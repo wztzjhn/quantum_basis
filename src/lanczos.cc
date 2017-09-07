@@ -37,7 +37,7 @@ namespace qbasis {
     // need further classification:
     // 1. ask lanczos to restart with a new linearly independent vector when v_m+1 = 0
     // 2. add DGKS re-orthogonalization (when purpose == iram)
-    // 3. add partial and selective re-orthogonalization (when purpose == sr_xxx)
+    // 3. add partial and selective re-orthogonalization
     template <typename T, typename MAT>
     void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &maxit, MKL_INT &m, const MKL_INT &dim,
                  const MAT &mat, T v[], double hessenberg[], const std::string &purpose)
@@ -510,7 +510,7 @@ namespace qbasis {
                 for (MKL_INT i = 0; i < nconv - j; i++) {
                     if (comp(eigenvals[i+1],eigenvals[i])) {
                         swap(eigenvals[i],eigenvals[i+1]);
-                        swap_vec(dim, eigenvecs + i * dim, eigenvecs + (i+1) * dim);
+                        vec_swap(dim, eigenvecs + i * dim, eigenvecs + (i+1) * dim);
                         sorted = false;
                     }
                 }

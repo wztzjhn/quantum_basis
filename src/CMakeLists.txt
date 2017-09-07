@@ -1,11 +1,11 @@
 set(QBASIS_SRC
-  lattice.cc
-  model.cc
+  basis.cc
   lanczos.cc
+  lattice.cc
+  miscellaneous.cc
+  model.cc
   sparse.cc
   operators.cc
-  basis.cc
-  miscellaneous.cc
 )
 
 set(QBASIS_INCLUDE qbasis.h)
