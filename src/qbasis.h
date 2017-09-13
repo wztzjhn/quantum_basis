@@ -68,7 +68,7 @@ namespace qbasis {
     static const double lanczos_precision = 1e-12;
     
     // use checkpoint and restart in Lanczos, for long runs
-    static bool enable_ckpt = true;
+    static bool enable_ckpt = false;
     
     // Multi-dimensional array
     template <typename> class multi_array;
@@ -1276,16 +1276,17 @@ namespace qbasis {
         // y = H * x
         void MultMv(T *x, T *y);              // non-const, to be compatible with arpack++
         
-        // Note: nev, ncv, maxit following ARPACK definition
-        void locate_E0_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
-        
-        // Note: nev, ncv, maxit have different meanings comparing to IRAM!
+        // Note: in this function, (nev, ncv, maxit) have different meanings comparing to IRAM!
         // 1 <= nev <= 2, nev-1 <= ncv <= nev
         // nev = 1, calcualte up to ground state energy
         // nev = 2, calculate up to 1st excited state energy
         // ncv = 1, calculate up to ground state eigenvector
         // ncv = 2, calculate up to 1st excited excited state eigenvector
-        void locate_E0_full_lanczos(const MKL_INT &nev = 1, const MKL_INT &ncv = 1, MKL_INT maxit = 1000);
+        // sec_sym_=0: without translation; sec_sym_=1, with translation symmetry
+        void locate_E0_lanczos(const uint32_t &sec_sym_, const MKL_INT &nev = 2, const MKL_INT &ncv = 2, MKL_INT maxit = 1000);
+        
+        // Note: nev, ncv, maxit following ARPACK definition
+        void locate_E0_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
         
         void locate_Emax_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
         

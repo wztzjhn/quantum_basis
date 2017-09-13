@@ -714,6 +714,183 @@ namespace qbasis {
         MultMv2(x, y);
     }
     
+    template <typename T>
+    void model<T>::locate_E0_lanczos(const uint32_t &sec_sym_, const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
+    {
+        std::cout << "Locating E0 with Lanczos (sec_sym = " << sec_sym_ << ")..." << std::endl;
+        assert(nev > 0 && nev <= 2 && ncv >= nev - 1 && ncv <= nev);
+        uint32_t seed   = 1;
+        sec_sym         = sec_sym_;
+        MKL_INT dim     = (sec_sym == 0) ? dim_full[sec_mat] : dim_repr[sec_mat];
+        auto &HamMat    = (sec_sym == 0) ? HamMat_csr_full[sec_mat] : HamMat_csr_repr[sec_mat];
+        auto &eigenvals = (sec_sym == 0) ? eigenvals_full : eigenvals_repr;
+        auto &eigenvecs = (sec_sym == 0) ? eigenvecs_full : eigenvecs_repr;
+        assert(sec_sym < 2);
+        assert(dim > 0);
+        
+        using std::swap;
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        std::chrono::duration<double> elapsed_seconds;
+        eigenvecs.clear();
+        std::vector<double> hessenberg(2*maxit, 0.0), ritz, s;
+        std::vector<T> v;
+        if (ncv > 0) {
+            v.resize(dim*4);
+        } else {
+            v.resize(dim*2);
+        }
+        vec_randomize(dim, v.data(), seed);
+        
+        bool E0_done = false;
+        bool V0_done = false;
+        bool E1_done = false;
+        bool V1_done = false;
+        ckpt_lczsE0_init(E0_done, V0_done, E1_done, V1_done, v);
+        
+        if (! E0_done) {
+            std::cout << "Calculating ground state energy (simple Lanczos)..." << std::endl;
+            start = std::chrono::system_clock::now();
+            MKL_INT m = 0;
+            if (matrix_free) {
+                lanczos(0, maxit-1, maxit, m, dim, *this,  v.data(), hessenberg.data(), "sr_val0");
+            } else {
+                lanczos(0, maxit-1, maxit, m, dim, HamMat, v.data(), hessenberg.data(), "sr_val0");
+            }
+            assert(m < maxit);
+            hess_eigen(hessenberg.data(), maxit, m, "sr", ritz, s);
+            eigenvals.resize(1);
+            eigenvals[0] = ritz[0];
+            E0 = eigenvals[0];
+            nconv = 0;
+            end = std::chrono::system_clock::now();
+            elapsed_seconds = end - start;
+            std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+            std::cout << "Lanczos steps: " << m << std::endl;
+            std::cout << "Lanczos accuracy: " << std::abs(hessenberg[m] * s[m-1]) << std::endl;
+            std::cout << "E0   = " << E0 << std::endl << std::endl;
+            
+            E0_done = true;
+            ckpt_lczsE0_updt(E0_done, V0_done, E1_done, V1_done);
+            ckpt_lanczos_clean();
+        }
+        
+        if (ncv == 0) {
+            // clean up ckpt
+            return;
+        }
+        
+        // obtain ground state eigenvector
+        if (! V0_done) {
+            start = std::chrono::system_clock::now();
+            std::cout << "Calculate ground state eigenvector with CG..." << std::endl;
+            
+            vec_randomize(dim, v.data() + 2 * dim, seed);
+            double accuracy;
+            MKL_INT m = 0;
+            if (matrix_free) {
+                eigenvec_CG(dim, maxit, m, *this,  static_cast<T>(E0), accuracy,
+                            v.data() + 2 * dim, v.data(), v.data() + dim, v.data() + 3 * dim);
+            } else {
+                eigenvec_CG(dim, maxit, m, HamMat, static_cast<T>(E0), accuracy,
+                            v.data() + 2 * dim, v.data(), v.data() + dim, v.data() + 3 * dim);
+            }
+            assert(m >= 0 && m < maxit);
+            assert(accuracy < lanczos_precision);
+            end = std::chrono::system_clock::now();
+            elapsed_seconds = end - start;
+            std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+            std::cout << "CG steps:     " << m << std::endl;
+            std::cout << "Accuracy:     " << accuracy << std::endl;
+            
+            V0_done = true;
+            nconv = 1;
+            ckpt_lczsE0_updt(E0_done, V0_done, E1_done, V1_done);
+            ckpt_CG_clean();
+        }
+        
+        // postpone writing down ground state eigenvector, if gap needed
+        if (nev == 2 && ! E1_done) {
+            start = std::chrono::system_clock::now();
+            std::cout << "Calculating 1st excited state energy (simple Lanczos)..." << std::endl;
+            vec_randomize(dim, v.data(), seed);
+            auto alpha = dotc(dim, v.data() + 2 * dim, 1, v.data(), 1);          // (phi0, v0)
+            axpy(dim, -alpha, v.data() + 2 * dim, 1, v.data(), 1);               // v0 -= alpha * phi0
+            double rnorm = nrm2(dim, v.data(), 1);
+            scal(dim, 1.0 / rnorm, v.data(), 1);                                 // normalize v0
+            
+            MKL_INT m = 0;
+            if (matrix_free) {
+                lanczos(0, maxit-1, maxit, m, dim, *this,  v.data(), hessenberg.data(), "sr_val1");
+            } else {
+                lanczos(0, maxit-1, maxit, m, dim, HamMat, v.data(), hessenberg.data(), "sr_val1");
+            }
+            assert(m < maxit);
+            hess_eigen(hessenberg.data(), maxit, m, "sr", ritz, s);
+            eigenvals.resize(2);
+            eigenvals[1] = ritz[0];
+            E1  = eigenvals[1];
+            gap = eigenvals[1] - eigenvals[0];
+            end = std::chrono::system_clock::now();
+            elapsed_seconds = end - start;
+            std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+            std::cout << "Lanczos steps: " << m << std::endl;
+            std::cout << "Lanczos accuracy: " << std::abs(hessenberg[m] * s[m-1]) << std::endl;
+            std::cout << "E1   = " << E1 << std::endl;
+            std::cout << "gap  = " << gap << std::endl << std::endl;
+            
+            E1_done = true;
+            ckpt_lczsE0_updt(E0_done, V0_done, E1_done, V1_done);
+            ckpt_lanczos_clean();
+        }
+        
+        if (ncv == 1) {
+            copy(dim, v.data() + 2 * dim, 1, v.data(), 1);                       // copy eigenvec to head of v
+            v.resize(dim);
+            swap(eigenvecs,v);
+            // clean ckpt
+            return;
+        }
+        
+        if (! V1_done) {
+            start = std::chrono::system_clock::now();
+            std::cout << "Calculate 1st excited state eigenvector with CG..." << std::endl;
+            
+            v.resize(5*dim);
+            vec_randomize(dim, v.data() + 3 * dim, seed + 7);
+            double accuracy;
+            MKL_INT m = 0;
+            if (matrix_free) {
+                eigenvec_CG(dim, maxit, m, *this,  static_cast<T>(E1), accuracy,
+                            v.data() + 3 * dim, v.data(), v.data() + dim, v.data() + 4 * dim);
+            } else {
+                eigenvec_CG(dim, maxit, m, HamMat, static_cast<T>(E1), accuracy,
+                            v.data() + 3 * dim, v.data(), v.data() + dim, v.data() + 4 * dim);
+            }
+            assert(m >= 0 && m <= maxit);
+            end = std::chrono::system_clock::now();
+            elapsed_seconds = end - start;
+            std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+            std::cout << "CG steps:     " << m << std::endl;
+            std::cout << "Accuracy:     " << accuracy << std::endl;
+            
+            V1_done = true;
+            nconv = 2;
+            copy(2*dim, v.data() + 2 * dim, 1, v.data(), 1);                     // copy eigenvec to head of v
+            v.resize(2*dim);
+            swap(eigenvecs,v);
+            if (gap < lanczos_precision) {                                       // orthogonalize the two degenerate states
+                std::cout << "Orthogonalizing degenerate ground states..." << std::endl;
+                T alpha = dotc(dim, eigenvecs.data(), 1, eigenvecs.data() + dim, 1); // (v0,v1)
+                axpy(dim, -alpha, eigenvecs.data(), 1, eigenvecs.data() + dim, 1);
+                double rnorm = nrm2(dim, eigenvecs.data() + dim, 1);
+                scal(dim, 1.0 / rnorm, eigenvecs.data() + dim, 1);
+            }
+            
+            ckpt_lczsE0_updt(E0_done, V0_done, E1_done, V1_done);
+            ckpt_CG_clean();
+        }
+    }
+    
     
     template <typename T>
     void model<T>::locate_E0_full(const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
@@ -747,179 +924,6 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::locate_E0_full_lanczos(const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
-    {
-        assert(nev > 0 && nev <= 2 && ncv >= nev - 1 && ncv <= nev);
-        using std::swap;
-        std::chrono::time_point<std::chrono::system_clock> start, end;
-        sec_sym = 0;                                                             // work with dim_full
-        uint32_t seed = 1;
-        eigenvecs_full.clear();
-        std::vector<T> v;
-        if (ncv > 0) {
-            v.resize(dim_full[sec_mat]*4);
-        } else {
-            v.resize(dim_full[sec_mat]*2);
-        }
-        vec_randomize(dim_full[sec_mat], v.data(), seed);
-        std::vector<double> hessenberg(2*maxit, 0.0), ritz, s;
-        MKL_INT m;
-        
-        bool E0_done = false;
-        bool V0_done = false;
-        bool E1_done = false;
-        bool V1_done = false;
-        ckpt_lczsE0_init(E0_done, V0_done, E1_done, V1_done, v);
-        
-        if (! E0_done) {
-            std::cout << "Calculating ground state energy (full, simple Lanczos)..." << std::endl;
-            start = std::chrono::system_clock::now();
-            if (matrix_free) {
-                lanczos(0, maxit-1, maxit, m, dim_full[sec_mat], *this, v.data(), hessenberg.data(), "sr_val0");
-            } else {
-                lanczos(0, maxit-1, maxit, m, dim_full[sec_mat], HamMat_csr_full[sec_mat], v.data(), hessenberg.data(), "sr_val0");
-            }
-            assert(m < maxit);
-            hess_eigen(hessenberg.data(), maxit, m, "sr", ritz, s);
-            eigenvals_full.resize(1);
-            eigenvals_full[0] = ritz[0];
-            E0 = eigenvals_full[0];
-            nconv = 0;
-            end = std::chrono::system_clock::now();
-            std::chrono::duration<double> elapsed_seconds = end - start;
-            std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
-            std::cout << "Lanczos steps: " << m << std::endl;
-            std::cout << "Lanczos accuracy: " << std::abs(hessenberg[m] * s[m-1]) << std::endl;
-            std::cout << "E0   = " << E0 << std::endl << std::endl;
-            
-            E0_done = true;
-            ckpt_lczsE0_updt(E0_done, V0_done, E1_done, V1_done);
-            ckpt_lanczos_clean();
-        }
-        
-        if (ncv == 0) {
-            // clean up ckpt
-            return;
-        }
-        
-        // obtain ground state eigenvector
-        if (! V0_done) {
-            start = std::chrono::system_clock::now();
-            std::cout << "Calculate ground state eigenvector with CG..." << std::endl;
-            
-            vec_randomize(dim_full[sec_mat], v.data() + 2 * dim_full[sec_mat], seed);
-            double accuracy;
-            m = 0;
-            if (matrix_free) {
-                eigenvec_CG(dim_full[sec_mat], maxit, m, *this, static_cast<T>(E0), accuracy,
-                            v.data() + 2 * dim_full[sec_mat], v.data(),
-                            v.data() + dim_full[sec_mat], v.data() + 3 * dim_full[sec_mat]);
-            } else {
-                eigenvec_CG(dim_full[sec_mat], maxit, m, HamMat_csr_full[sec_mat], static_cast<T>(E0), accuracy,
-                            v.data() + 2 * dim_full[sec_mat], v.data(),
-                            v.data() + dim_full[sec_mat], v.data() + 3 * dim_full[sec_mat]);
-            }
-            assert(m >= 0 && m < maxit);
-            assert(accuracy < lanczos_precision);
-            end = std::chrono::system_clock::now();
-            std::chrono::duration<double> elapsed_seconds = end - start;
-            std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
-            std::cout << "CG steps: " << m << std::endl;
-            std::cout << "Accuracy: " << accuracy << std::endl;
-            
-            V0_done = true;
-            nconv = 1;
-            ckpt_lczsE0_updt(E0_done, V0_done, E1_done, V1_done);
-            ckpt_CG_clean();
-        }
-        
-        // postpone writing down ground state eigenvector, if gap needed
-        if (nev == 2 && ! E1_done) {
-            start = std::chrono::system_clock::now();
-            std::cout << "Calculating 1st excited state energy (full, simple Lanczos)..." << std::endl;
-            vec_randomize(dim_full[sec_mat], v.data(), seed);
-            auto alpha = dotc(dim_full[sec_mat], v.data() + 2 * dim_full[sec_mat], 1, v.data(), 1); // (phi0, v0)
-            axpy(dim_full[sec_mat], -alpha, v.data() + 2 * dim_full[sec_mat], 1, v.data(), 1);      // v0 -= alpha * phi0
-            double rnorm = nrm2(dim_full[sec_mat], v.data(), 1);
-            scal(dim_full[sec_mat], 1.0 / rnorm, v.data(), 1);                                      // normalize v0
-            
-            std::string purpose = "sr_val1";
-            if (matrix_free) {
-                lanczos(0, maxit-1, maxit, m, dim_full[sec_mat], *this, v.data(), hessenberg.data(), purpose);
-            } else {
-                lanczos(0, maxit-1, maxit, m, dim_full[sec_mat], HamMat_csr_full[sec_mat], v.data(), hessenberg.data(), purpose);
-            }
-            assert(m < maxit);
-            hess_eigen(hessenberg.data(), maxit, m, "sr", ritz, s);
-            eigenvals_full.resize(2);
-            eigenvals_full[1] = ritz[0];
-            E1  = eigenvals_full[1];
-            gap = eigenvals_full[1] - eigenvals_full[0];
-            end = std::chrono::system_clock::now();
-            std::chrono::duration<double> elapsed_seconds = end - start;
-            std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
-            std::cout << "Lanczos steps: " << m << std::endl;
-            std::cout << "Lanczos accuracy: " << std::abs(hessenberg[m] * s[m-1]) << std::endl;
-            std::cout << "E1   = " << E1 << std::endl;
-            std::cout << "gap  = " << gap << std::endl << std::endl;
-            
-            E1_done = true;
-            ckpt_lczsE0_updt(E0_done, V0_done, E1_done, V1_done);
-            ckpt_lanczos_clean();
-        }
-        
-        if (ncv == 1) {
-            copy(dim_full[sec_mat], v.data() + 2 * dim_full[sec_mat], 1, v.data(), 1); // copy eigenvec to head of v
-            v.resize(dim_full[sec_mat]);
-            swap(eigenvecs_full,v);
-            // clean ckpt
-            return;
-        }
-        
-        if (! V1_done) {
-            start = std::chrono::system_clock::now();
-            std::cout << "Calculate 1st excited state eigenvector with CG..." << std::endl;
-            
-            v.resize(5*dim_full[sec_mat]);
-            vec_randomize(dim_full[sec_mat], v.data() + 3 * dim_full[sec_mat], seed + 7);
-            double accuracy;
-            m = 0;
-            if (matrix_free) {
-                eigenvec_CG(dim_full[sec_mat], maxit, m, *this,
-                            static_cast<T>(E1), accuracy, v.data() + 3 * dim_full[sec_mat], v.data(),
-                            v.data() + dim_full[sec_mat], v.data() + 4 * dim_full[sec_mat]);
-            } else {
-                eigenvec_CG(dim_full[sec_mat], maxit, m, HamMat_csr_full[sec_mat],
-                            static_cast<T>(E1), accuracy, v.data() + 3 * dim_full[sec_mat], v.data(),
-                            v.data() + dim_full[sec_mat], v.data() + 4 * dim_full[sec_mat]);
-            }
-            assert(m >= 0 && m <= maxit);
-            end = std::chrono::system_clock::now();
-            std::chrono::duration<double> elapsed_seconds = end - start;
-            std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
-            std::cout << "CG steps: " << m << std::endl;
-            std::cout << "Accuracy: " << accuracy << std::endl;
-            
-            V1_done = true;
-            nconv = 2;
-            copy(2*dim_full[sec_mat], v.data() + 2 * dim_full[sec_mat], 1, v.data(), 1); // copy eigenvec to head of v
-            v.resize(2*dim_full[sec_mat]);
-            swap(eigenvecs_full,v);
-            if (gap < lanczos_precision) {                                       // orthogonalize the two degenerate states
-                std::cout << "Orthogonalizing degenerate ground states..." << std::endl;
-                T alpha = dotc(dim_full[sec_mat], eigenvecs_full.data(), 1,
-                               eigenvecs_full.data() + dim_full[sec_mat], 1);             // (v0,v1)
-                axpy(dim_full[sec_mat], -alpha, eigenvecs_full.data(), 1, eigenvecs_full.data() + dim_full[sec_mat], 1);
-                double rnorm = nrm2(dim_full[sec_mat], eigenvecs_full.data() + dim_full[sec_mat], 1);
-                scal(dim_full[sec_mat], 1.0 / rnorm, eigenvecs_full.data() + dim_full[sec_mat], 1);
-            }
-            
-            ckpt_lczsE0_updt(E0_done, V0_done, E1_done, V1_done);
-            ckpt_CG_clean();
-        }
-    }
-    
-    template <typename T>
     void model<T>::locate_Emax_full(const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
     {
         assert(ncv > nev + 1);
@@ -949,14 +953,11 @@ namespace qbasis {
     void model<T>::locate_E0_repr(const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
     {
         assert(ncv > nev + 1);
+        assert(dim_repr[sec_mat] > 0);
         if (maxit <= 0) maxit = nev * 100; // arpack default
         sec_sym = 1;                       // work with dim_repr
         std::cout << "Calculating ground state (repr)..." << std::endl;
         
-        if (dim_repr[sec_mat] < 1) {
-            std::cout << "dim_repr = " << dim_repr[sec_mat] << "!!!" << std::endl;
-            return;
-        }
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         
@@ -984,13 +985,11 @@ namespace qbasis {
     void model<T>::locate_Emax_repr(const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
     {
         assert(ncv > nev + 1);
+        assert(dim_repr[sec_mat] > 0);
         if (maxit <= 0) maxit = nev * 100; // arpack default
         sec_sym = 1;                       // work with dim_repr
         std::cout << "Calculating highest energy state (repr)..." << std::endl;
-        if (dim_repr[sec_mat] < 1) {
-            std::cout << "dim_repr = " << dim_repr[sec_mat] << "!!!" << std::endl;
-            return;
-        }
+        
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         std::vector<std::complex<double>> v0(dim_repr[sec_mat], 1.0);
@@ -1010,7 +1009,6 @@ namespace qbasis {
         std::cout << "Emax(maybe fake) = " << eigenvals_repr[0] << std::endl;
         Emax = eigenvals_repr[0];  // if we use a parameter extra in normalization calculation, we can know how many faked
     }
-    
     
     template <typename T>
     void model<T>::moprXvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
@@ -1479,15 +1477,24 @@ namespace qbasis {
             fs::create_directory(outdir);
         }
         
+        MKL_INT dim     = (sec_sym == 0) ? dim_full[sec_mat] : dim_repr[sec_mat];
+        auto &eigenvals = (sec_sym == 0) ? eigenvals_full : eigenvals_repr;
+        auto &eigenvecs = (sec_sym == 0) ? eigenvecs_full : eigenvecs_repr;
+        
         std::ofstream fout("out_Qckpt/log_lczs_E0_ckpt.txt", std::ios::out | std::ios::app);
         fout << std::setprecision(10);
         fout << std::endl << "Log start: " << date_and_time() << std::endl;
         fout << "Initializing lczs_E0" << std::endl;
         
-        std::string filename1 = "out_Qckpt/lczs_E0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".Qckpt";
-        std::string filename2 = "out_Qckpt/lczs_E0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".Qckpt2";
-        auto filesize_ideal = 4 * sizeof(bool) + sizeof(MKL_INT) + 3 * sizeof(double);
+        std::string filename1 = "out_Qckpt/lczs_E0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat);
+        if (sec_sym == 1) {
+            filename1 += "_K";
+            for (auto &k : momenta[sec_mat]) filename1 += std::to_string(k);
+        }
+        filename1 += ".Qckpt";
+        std::string filename2 = filename1 + "2";
         
+        auto filesize_ideal = 4 * sizeof(bool) + sizeof(MKL_INT) + 3 * sizeof(double);
         if (fs::exists(fs::path(filename2)) && fs::file_size(fs::path(filename2)) == filesize_ideal) {
             fout << "Resuming from an interrupted update." << std::endl;
             fout << "Loading data from " << filename2 << std::endl;
@@ -1551,49 +1558,47 @@ namespace qbasis {
         }
         
         if (E1_done) {
-            if (sec_sym == 0) {
-                eigenvals_full.resize(2);
-                eigenvals_full[0] = E0;
-                eigenvals_full[1] = E1;
-            } else {
-                eigenvals_repr.resize(2);
-                eigenvals_repr[0] = E0;
-                eigenvals_repr[1] = E1;
-            }
+            eigenvals.resize(2);
+            eigenvals[0] = E0;
+            eigenvals[1] = E1;
         } else if (E0_done) {
-            if (sec_sym == 0) {
-                eigenvals_full.resize(1);
-                eigenvals_full[0] = E0;
-            } else {
-                eigenvals_repr.resize(1);
-                eigenvals_repr[0] = E0;
-            }
+            eigenvals.resize(1);
+            eigenvals[0] = E0;
         }
         
         if (E0_done && V0_done && (! V1_done)) {
             fout << "Reading eigenvec0 from disk." << std::endl;
-            std::string filename = "out_Qckpt/eigenvec0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".dat";
+            std::string filename = "out_Qckpt/eigenvec0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat);
+            if (sec_sym == 1) {
+                filename += "_K";
+                for (auto &k : momenta[sec_mat]) filename += std::to_string(k);
+            }
+            filename += ".dat";
             assert(fs::exists(fs::path(filename)));
-            MKL_INT dim = (sec_sym == 0) ? dim_full[sec_mat] : dim_repr[sec_mat];
             assert(v.size() >= 3 * dim);
             vec_disk_read(filename, dim, v.data() + 2 * dim);
         } else if (V1_done) {
             fout << "Reading eigenvec0/1 from disk." << std::endl;
             std::string flnm0 = "out_Qckpt/eigenvec0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".dat";
             std::string flnm1 = "out_Qckpt/eigenvec1_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".dat";
+            if (sec_sym == 1) {
+                flnm0 += "_K";
+                flnm1 += "_K";
+                for (auto &k : momenta[sec_mat]) {
+                    flnm0 += std::to_string(k);
+                    flnm1 += std::to_string(k);
+                }
+            }
+            flnm0 += ".dat";
+            flnm1 += ".dat";
             assert(fs::exists(fs::path(flnm0)));
             assert(fs::exists(fs::path(flnm1)));
             v.resize(0);
             v.shrink_to_fit();
-            if (sec_sym == 0) {
-                eigenvecs_full.resize(2*dim_full[sec_mat]);
-                vec_disk_read(flnm0, dim_full[sec_mat], eigenvecs_full.data());
-                vec_disk_read(flnm1, dim_full[sec_mat], eigenvecs_full.data() + dim_full[sec_mat]);
-            } else {
-                eigenvecs_repr.resize(2*dim_repr[sec_mat]);
-                vec_disk_read(flnm0, dim_repr[sec_mat], eigenvecs_repr.data());
-                vec_disk_read(flnm1, dim_repr[sec_mat], eigenvecs_repr.data() + dim_repr[sec_mat]);
-            }
+            
+            eigenvecs.resize(2*dim);
+            vec_disk_read(flnm0, dim, eigenvecs.data());
+            vec_disk_read(flnm1, dim, eigenvecs.data() + dim);
         }
         
         fout << "Log end: " << date_and_time() << std::endl << std::endl;
@@ -1606,8 +1611,16 @@ namespace qbasis {
         if (! enable_ckpt) return;
         assert(fs::exists(fs::path("out_Qckpt/lczs_E0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".Qckpt")));
         
-        std::string filename1 = "out_Qckpt/lczs_E0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".Qckpt";
-        std::string filename2 = "out_Qckpt/lczs_E0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".Qckpt2";
+        MKL_INT dim     = (sec_sym == 0) ? dim_full[sec_mat] : dim_repr[sec_mat];
+        auto &eigenvecs = (sec_sym == 0) ? eigenvecs_full : eigenvecs_repr;
+        
+        std::string filename1 = "out_Qckpt/lczs_E0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat);
+        if (sec_sym == 1) {
+            filename1 += "_K";
+            for (auto &k : momenta[sec_mat]) filename1 += std::to_string(k);
+        }
+        filename1 += ".Qckpt";
+        std::string filename2 = filename1 + "2";
         
         std::ofstream fout("out_Qckpt/log_lczs_E0_ckpt.txt", std::ios::out | std::ios::app);
         fout << std::endl << "Log start: " << date_and_time() << std::endl;
@@ -1638,20 +1651,11 @@ namespace qbasis {
         }
         
         if (V1_done) {                                                           // need record eigenvec1
-            std::string filename0 = "out_Qckpt/eigenvec0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".dat";
-            std::string filename1 = "out_Qckpt/eigenvec1_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".dat";
-            if (sec_sym == 0) {
-                assert(eigenvecs_full.size() == 2 * dim_full[sec_mat]);
-                if (! fs::exists(fs::path(filename0)))
-                    vec_disk_write(filename0, dim_full[sec_mat], eigenvecs_full.data());
-                vec_disk_write(filename1, dim_full[sec_mat], eigenvecs_full.data() + dim_full[sec_mat]);
-            } else {
-                assert(eigenvecs_repr.size() == 2 * dim_repr[sec_mat]);
-                if (! fs::exists(fs::path(filename0)))
-                    vec_disk_write(filename0, dim_repr[sec_mat], eigenvecs_repr.data());
-                vec_disk_write(filename1, dim_repr[sec_mat], eigenvecs_repr.data() + dim_repr[sec_mat]);
-            }
-            
+            std::string flnm0 = "out_Qckpt/eigenvec0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".dat";
+            std::string flnm1 = "out_Qckpt/eigenvec1_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".dat";
+            assert(eigenvecs.size() == 2 * dim);
+            if (! fs::exists(fs::path(flnm0))) vec_disk_write(flnm0, dim, eigenvecs.data());
+            vec_disk_write(flnm1, dim, eigenvecs.data() + dim);
         }
         
         fs::remove(fs::path(filename2));
