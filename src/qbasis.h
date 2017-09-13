@@ -67,7 +67,7 @@ namespace qbasis {
     static const double sparse_precision = 1e-14;
     static const double lanczos_precision = 1e-12;
     
-    // the Lanczos will write vecs to disk
+    // use checkpoint and restart in Lanczos, for long runs
     static bool enable_ckpt = true;
     
     // Multi-dimensional array
@@ -1363,6 +1363,11 @@ namespace qbasis {
         std::vector<uint32_t>              belong2group_sub;
         MltArray_PairVec                   Weisse_e_lt, Weisse_e_eq, Weisse_e_gt;
         MltArray_uint32                    Weisse_w_lt, Weisse_w_eq, Weisse_w_gt;
+        
+        void ckpt_lczsE0_init(bool &E0_done, bool &V0_done, bool &E1_done, bool &V1_done, std::vector<T> &v);
+        
+        void ckpt_lczsE0_updt(const bool &E0_done, const bool &V0_done, const bool &E1_done, const bool &V1_done);
+        
     };
     
 
@@ -1371,6 +1376,8 @@ namespace qbasis {
     
 //  --------------------------- Miscellaneous stuff ----------------------------
 //  ----------------------------------------------------------------------------
+    
+    std::string date_and_time();
     
     inline double conjugate(const double &rhs) { return rhs; }
     inline std::complex<double> conjugate(const std::complex<double> &rhs) { return std::conj(rhs); }

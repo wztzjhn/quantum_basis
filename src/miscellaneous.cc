@@ -1,3 +1,4 @@
+#include <ctime>
 #include <random>
 #include <fstream>
 #include <boost/crc.hpp>
@@ -5,6 +6,19 @@
 #include "graph.h"
 
 namespace qbasis {
+    std::string date_and_time()
+    {
+        time_t rawtime;
+        struct tm * timeinfo;
+        char buffer[80];
+        time (&rawtime);
+        timeinfo = localtime(&rawtime);
+        strftime(buffer,sizeof(buffer),"%Y-%m-%d %H:%M:%S %Z",timeinfo);
+        std::string res(buffer);
+        return res;
+    }
+    
+    
     template <typename T1, typename T2>
     T2 int_pow(const T1 &base, const T1 &index)
     {
@@ -237,18 +251,15 @@ namespace qbasis {
     int vec_disk_read(const std::string &filename, MKL_INT n, T *x)
     {
         assert(n >= 0);
+        if (! fs::exists(fs::path(filename))) return 1;
         boost::crc_32_type res_crc;
         uint64_t filesize_ideal = sizeof(MKL_INT) + sizeof(T) * n + sizeof(decltype(res_crc.checksum()));
-        if (fs::file_size(fs::path(filename)) != filesize_ideal) {
-            std::cout << filename << " corrupted!" << std::endl;
-            return 1;
-        }
+        if (fs::file_size(fs::path(filename)) != filesize_ideal) return 1;
         
         std::ifstream fin(filename, std::ios::in | std::ios::binary);
         MKL_INT n_check;
         fin.read(reinterpret_cast<char*>(&n_check), sizeof(MKL_INT));
         if (n != n_check) {
-            std::cout << filename << " corrupted!" << std::endl;
             return 1;
         }
         res_crc.process_bytes(&n, sizeof(MKL_INT));
@@ -278,7 +289,6 @@ namespace qbasis {
         if (checksum == checksum_check) {
             return 0;
         } else {
-            std::cout << filename << " corrupted!" << std::endl;
             return 1;
         }
     }

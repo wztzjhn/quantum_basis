@@ -25,7 +25,14 @@ void test_bubble();
 
 int main(){
     
+    std::cout << qbasis::date_and_time() << std::endl;
+    
     MKL_INT m = 1e4;
+    for (auto &p : fs::directory_iterator("out_Qckpt")) {
+        auto y = p.path();
+        std::cout << "files: " << y.filename().string() << std::endl;
+    }
+    
     std::vector<std::complex<double>> xx(m), yy(m);
     for (int j = 0; j < m; j++) {
         xx[j] = std::complex<double>{j *0.5, j*0.5};
@@ -45,6 +52,8 @@ int main(){
     end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+    
+    
     
     
     test_basis();

@@ -1,10 +1,28 @@
+#include <algorithm>
 #include <iostream>
 #include <iomanip>
-#include <algorithm>
 #include "qbasis.h"
 #include "areig.h"
 namespace qbasis {
     
+    // the ckpt functions are defined in ckpt.cc
+    template <typename T>
+    void ckpt_lanczos_init(MKL_INT &k, const MKL_INT &maxit, const MKL_INT &dim,
+                           int &cnt_accuE0, double &accuracy, double &theta0_prev, double &theta1_prev,
+                           T v[], double hessenberg[], const std::string &purpose);
+    
+    template <typename T>
+    void ckpt_lanczos_update(const MKL_INT &m, const MKL_INT &maxit, const MKL_INT &dim,
+                             int &cnt_accuE0, double &accuracy, double &theta0_prev, double &theta1_prev,
+                             T v[], double hessenberg[], const std::string &purpose);
+    
+    
+    
+    template <typename T>
+    void ckpt_CG_init(MKL_INT &m, const MKL_INT &maxit, const MKL_INT &dim, T v[], T r[], T p[]);
+    
+    template <typename T>
+    void ckpt_CG_update(const MKL_INT &m, const MKL_INT &dim, T v[], T r[], T p[]);
     
     void log_Lanczos_srval(const MKL_INT &k, const std::vector<double> &ritz,
                            const double hessenberg[], const MKL_INT &maxit,
@@ -42,12 +60,21 @@ namespace qbasis {
     void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &maxit, MKL_INT &m, const MKL_INT &dim,
                  const MAT &mat, T v[], double hessenberg[], const std::string &purpose)
     {
-        MKL_INT mm = k + np;
-        assert(mm < maxit && k >= 0 && k < dim && np >=0 && np < dim);
-        assert(mm < dim);                                                        // # of orthogonal vectors: at most dim
         auto &npos = std::string::npos;
+        MKL_INT mm = k + np;
+        double theta0_prev, theta1_prev;                                         // record Ritz values from last step
+        int cnt_accuE0 = 0;
+        double accuracy;
+        
+        
+        ckpt_lanczos_init(k, maxit, dim, cnt_accuE0, accuracy, theta0_prev, theta1_prev, v, hessenberg, purpose);
         m = k;
+        np = mm - k;
+        assert(mm < maxit && k >= 0 && k < dim && np >= 0 && np < dim);
+        assert(purpose != "iram" || mm < dim);                                   // # of orthogonal vectors: at most dim
+        if ( cnt_accuE0 > 15 && accuracy < lanczos_precision) return;
         if (np == 0) return;
+        
         T zero = static_cast<T>(0.0);
         std::vector<T*> vpt(mm+1);                                               // pointers of v[0],v[1],...,v[m]
         T* phipt = &v[2*dim];                                                    // for ground state eigenvector
@@ -86,10 +113,9 @@ namespace qbasis {
             m = ++k;
             --np;
             if (purpose.find("vec") != npos) axpy(dim, s[m], vpt[m], 1, ypt, 1); // y += s[m] * v[m]
+            ckpt_lanczos_update(m, maxit, dim, cnt_accuE0, accuracy, theta0_prev, theta1_prev, v, hessenberg, purpose);
         }
         
-        double theta0_prev, theta1_prev;                                         // record Ritz values from last step
-        int cnt_accuE0 = 0;
         do {                                                                     // while m < mm
             m++;
             for (MKL_INT l = 0; l < dim; l++)
@@ -125,19 +151,20 @@ namespace qbasis {
             if (purpose.find("val") != npos) {
                 hess_eigen(hessenberg, maxit, m, "sr", ritz, s);                  // calculate {theta, s}
                 if (m > 3) {
-                    double accuracy = std::abs(hessenberg[m] * s[m-1]);
+                    accuracy = std::abs(hessenberg[m] * s[m-1]);
                     double accu_E0  = std::abs((ritz[0] - theta0_prev) / ritz[0]);
                     double accu_E1  = std::abs((ritz[1] - theta1_prev) / ritz[1]);
-                    log_Lanczos_srval(m, ritz, hessenberg, maxit, accuracy, accu_E0, accu_E1,
-                                      "log_Lanczos_"+purpose+".txt");
+                    log_Lanczos_srval(m, ritz, hessenberg, maxit, accuracy, accu_E0, accu_E1, "log_Lanczos_"+purpose+".txt");
                     if (accu_E0 < lanczos_precision) {
                         cnt_accuE0++;
                     } else {
                         cnt_accuE0 = 0;
                     }
-                    if ( (cnt_accuE0 > 15) &&
-                        (accuracy < lanczos_precision ||
-                        (purpose.find("rough") != npos && accu_E0 < lanczos_precision))) break;
+                    if ( cnt_accuE0 > 15 && accuracy < lanczos_precision)
+                    {
+                        ckpt_lanczos_update(m, maxit, dim, cnt_accuE0, accuracy, theta0_prev, theta1_prev, v, hessenberg, purpose);
+                        break;
+                    }
                 }
                 theta0_prev = ritz[0];
                 theta1_prev = ritz[1];
@@ -156,6 +183,7 @@ namespace qbasis {
                     }
                 }
             }
+            ckpt_lanczos_update(m, maxit, dim, cnt_accuE0, accuracy, theta0_prev, theta1_prev, v, hessenberg, purpose);
         } while (m < mm);
         std::cout << std::endl;
     }
@@ -173,36 +201,68 @@ namespace qbasis {
 //                          double hessenberg[], const MKL_INT &ldh, const std::string &purpose);
     
     
+    
+    
+    
+    
     template <typename T, typename MAT>
     void eigenvec_CG(const MKL_INT &dim, const MKL_INT &maxit, MKL_INT &m,
                      const MAT &mat, const T &E0, double &accu,
                      T v[], T r[], T p[], T pp[])
     {
+        ckpt_CG_init(m, maxit, dim, v, r, p);
         assert(m >= 0 && m < maxit);
-        assert(std::abs(nrm2(dim, v, 1) - 1.0) < lanczos_precision);
-        for (MKL_INT j = 0; j < dim; j++) assert(std::abs(p[j] - r[j]) < lanczos_precision);
-        accu = nrm2(dim, r, 1);
-        std::ofstream fout("log_CG.txt", std::ios::out | std::ios::app);
-        fout << std::setprecision(10);
-        fout << std::setw(20) << accu << std::endl;
-        fout.close();
-        while (m < maxit && accu > lanczos_precision) {
-            copy(dim, p, 1, pp, 1);
-            scal(dim, machine_prec - E0, pp, 1);
-            mat.MultMv2(p,pp);                                                   // pp[m]    = (H - E0) * p[m]
-            T delta = dotc(dim, p, 1, pp, 1);                                    // delta[m] = (p[m], pp[m])
-            T alpha = accu * accu / delta;                                       // alpha[m] = gamma[m]^2 / delta[m]
-            axpy(dim,  alpha,  p, 1, v, 1);                                      // v[m+1]   = v[m] + alpha[m] * p[m]
-            axpy(dim, -alpha, pp, 1, r, 1);                                      // r[m+1]   = r[m] - alpha[m] * pp[m]
-            double beta = nrm2(dim, r, 1) / accu;                                // beta[m]  = gamma[m+1] / gamma[m]
-            scal(dim, static_cast<T>(beta*beta), p, 1);
-            axpy(dim, static_cast<T>(1.0), r, 1, p, 1);                          // p[m+1]   = r[m+1] + beta^2 * p[m]
-            accu *= beta;                                                        // gamma[m+1] = beta[m] * gamma[m]
-            m++;
-            std::ofstream fout("log_CG.txt", std::ios::out | std::ios::app);
-            fout << std::setprecision(10);
-            fout << std::setw(20) << accu << std::endl;
-            fout.close();
+        if (m == 0) {
+            accu = 0.0;
+        } else {
+            accu = nrm2(dim, r, 1);
+        }
+        
+        while (m < maxit) {
+            if (accu < lanczos_precision) {
+                double rnorm = nrm2(dim, v, 1);
+                if (m == 0 || std::abs(rnorm - 1.0) > lanczos_precision) {       // re-normalize and restart
+                    std::cout << "1" << std::flush;
+                    scal(dim, 1.0/rnorm, v, 1);
+                    for (MKL_INT j = 0; j < dim; j++) r[j] = 0.0;
+                    mat.MultMv2(v,r);
+                    scal(dim, -static_cast<T>(1.0), r, 1);
+                    axpy(dim, E0, v, 1, r, 1);                                   // r = (E0 - H) * v
+                    copy(dim, r, 1, p, 1);                                       // p = r
+                    accu = nrm2(dim, r, 1);
+                    m++;
+                    
+                    std::ofstream fout("log_CG.txt", std::ios::out | std::ios::app);
+                    fout << std::setprecision(10);
+                    fout << std::setw(20) << m << std::setw(20) << accu << std::endl;
+                    fout.close();
+                    ckpt_CG_update(m, dim, v, r, p);
+                    
+                    
+                    if (accu < lanczos_precision) break;
+                } else {
+                    break;
+                }
+            } else {
+                copy(dim, p, 1, pp, 1);
+                scal(dim, machine_prec - E0, pp, 1);
+                mat.MultMv2(p,pp);                                               // pp[m]    = (H - E0) * p[m]
+                T delta = dotc(dim, p, 1, pp, 1);                                // delta[m] = (p[m], pp[m])
+                T alpha = accu * accu / delta;                                   // alpha[m] = gamma[m]^2 / delta[m]
+                axpy(dim,  alpha,  p, 1, v, 1);                                  // v[m+1]   = v[m] + alpha[m] * p[m]
+                axpy(dim, -alpha, pp, 1, r, 1);                                  // r[m+1]   = r[m] - alpha[m] * pp[m]
+                double beta = nrm2(dim, r, 1) / accu;                            // beta[m]  = gamma[m+1] / gamma[m]
+                scal(dim, static_cast<T>(beta*beta), p, 1);
+                axpy(dim, static_cast<T>(1.0), r, 1, p, 1);                      // p[m+1]   = r[m+1] + beta^2 * p[m]
+                accu *= beta;                                                    // gamma[m+1] = beta[m] * gamma[m]
+                m++;
+                
+                ckpt_CG_update(m, dim, v, r, p);
+                std::ofstream fout("log_CG.txt", std::ios::out | std::ios::app);
+                fout << std::setprecision(10);
+                fout << std::setw(20) << m << std::setw(20) << accu << std::endl;
+                fout.close();
+            }
         }
         std::cout << std::endl;
     }

@@ -5,6 +5,7 @@ LIBS      = -L/usr/local/lib -lboost_system -lboost_filesystem -larpack -L${MKLR
 OBJS      = lattice.o \
             miscellaneous.o \
             model.o \
+            ckpt.o \
             lanczos.o \
             sparse.o \
             operators.o \

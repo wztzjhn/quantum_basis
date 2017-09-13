@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+# used for plotting Lanczos progress (energy and accuracy)
+
 from sys import argv
 import numpy as np
 import matplotlib
