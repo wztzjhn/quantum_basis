@@ -1579,8 +1579,8 @@ namespace qbasis {
             vec_disk_read(filename, dim, v.data() + 2 * dim);
         } else if (V1_done) {
             fout << "Reading eigenvec0/1 from disk." << std::endl;
-            std::string flnm0 = "out_Qckpt/eigenvec0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".dat";
-            std::string flnm1 = "out_Qckpt/eigenvec1_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".dat";
+            std::string flnm0 = "out_Qckpt/eigenvec0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat);
+            std::string flnm1 = "out_Qckpt/eigenvec1_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat);
             if (sec_sym == 1) {
                 flnm0 += "_K";
                 flnm1 += "_K";

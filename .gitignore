@@ -40,8 +40,8 @@ bin
 alps_benchmark
 illustrator
 performance_test
-examples/trans_absent/test
-examples/trans_symmetric/platform_comet/test
+test
+out_Qckpt
 plots
 refs
 
