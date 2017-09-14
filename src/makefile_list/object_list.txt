@@ -1,0 +1,8 @@
+OBJS = basis.o \
+       ckpt.o \
+       lanczos.o \
+       lattice.o \
+       miscellaneous.o \
+       model.o \
+       operators.o \
+       sparse.o

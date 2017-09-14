@@ -28,6 +28,9 @@ int main(){
     std::cout << qbasis::date_and_time() << std::endl;
     
     MKL_INT m = 1e4;
+    
+    fs::create_directory(fs::path("out_Qckpt"));
+    
     for (auto &p : fs::directory_iterator("out_Qckpt")) {
         auto y = p.path();
         std::cout << "files: " << y.filename().string() << std::endl;

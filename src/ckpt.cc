@@ -1,10 +1,13 @@
 #include <iostream>
 #include <iomanip>
+#include <fstream>
 #include <regex>
 #include "qbasis.h"
 
 
 namespace qbasis {
+    bool enable_ckpt = false;
+    
     template <typename T>
     void ckpt_lanczos_init(MKL_INT &k, const MKL_INT &maxit, const MKL_INT &dim,
                            int &cnt_accuE0, double &accuracy, double &theta0_prev, double &theta1_prev,
@@ -61,7 +64,7 @@ namespace qbasis {
                     fs::rename(fs::path("out_Qckpt/lanczosY1.dat.new"), fs::path("out_Qckpt/lanczosY1.dat"));
                 }
                 if (fs::exists(fs::path("out_Qckpt/lczs_mlns.dat.new"))) {
-                    fs::remove(fs::path("out_Qckpt/lczs_mlns.dat.new"));
+                    fs::remove(fs::path("out_Qckpt/lczs_mlns.dat"));
                     fs::rename(fs::path("out_Qckpt/lczs_mlns.dat.new"), fs::path("out_Qckpt/lczs_mlns.dat"));
                 }
                 if (purpose != "iram") {

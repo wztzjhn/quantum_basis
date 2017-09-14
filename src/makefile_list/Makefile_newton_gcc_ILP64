@@ -2,15 +2,7 @@ CXX       = g++
 CPPFLAGS  = -O2 -s -std=c++11 -Wall -Wextra -DMKL_ILP64 -m64 -fopenmp -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
 LIBS      = -L${HOME}/opt/ARPACK_ILP64 -larpack -lgfortran -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -fopenmp
 
-OBJS      = lattice.o \
-            miscellaneous.o \
-            model.o \
-            lanczos.o \
-            sparse.o \
-            operators.o \
-            basis.o
-
-EXEC      =
+include makefile_list/object_list.txt
 
 test: $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o
 	$(CXX) $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o $(OPTS) $(LIBS) -o ../bin/test.x

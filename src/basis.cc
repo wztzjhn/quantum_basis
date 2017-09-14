@@ -1680,7 +1680,6 @@ namespace qbasis {
     
     void classify_Weisse_tables(const std::vector<basis_prop> &props_parent,
                                 const std::vector<basis_prop> &props_sub,
-                                const std::vector<mbasis_elem> &basis_sub_full,
                                 const std::vector<mbasis_elem> &basis_sub_repr,
                                 const lattice &latt_parent,
                                 const std::vector<bool> &trans_sym,

@@ -68,7 +68,7 @@ namespace qbasis {
     static const double lanczos_precision = 1e-12;
     
     // use checkpoint and restart in Lanczos, for long runs
-    static bool enable_ckpt = false;
+    extern bool enable_ckpt;
     
     // Multi-dimensional array
     template <typename> class multi_array;
@@ -174,7 +174,6 @@ namespace qbasis {
     // tabulate the maps for (ga,gb,ja,jb) -> (i,j), and (ga,gb,j) -> w
     void classify_Weisse_tables(const std::vector<basis_prop> &props_parent,
                                 const std::vector<basis_prop> &props_sub,
-                                const std::vector<mbasis_elem> &basis_sub_full,
                                 const std::vector<mbasis_elem> &basis_sub_repr,
                                 const lattice &latt_parent,
                                 const std::vector<bool> &trans_sym,
@@ -1283,7 +1282,7 @@ namespace qbasis {
         // ncv = 1, calculate up to ground state eigenvector
         // ncv = 2, calculate up to 1st excited excited state eigenvector
         // sec_sym_=0: without translation; sec_sym_=1, with translation symmetry
-        void locate_E0_lanczos(const uint32_t &sec_sym_, const MKL_INT &nev = 2, const MKL_INT &ncv = 2, MKL_INT maxit = 1000);
+        void locate_E0_lanczos(const uint32_t &sec_sym_, const MKL_INT &nev = 1, const MKL_INT &ncv = 1, MKL_INT maxit = 1000);
         
         // Note: nev, ncv, maxit following ARPACK definition
         void locate_E0_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);

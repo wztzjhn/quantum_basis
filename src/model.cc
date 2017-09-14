@@ -114,7 +114,7 @@ namespace qbasis {
         
         std::cout << "------------------------------------" << std::endl;
         std::cout << "Generating maps (ga,gb,ja,jb) -> (i,j) and (ga,gb,j) -> (w) ... " << std::flush;
-        classify_Weisse_tables(props, props_sub, basis_sub_full, basis_sub_repr, latt, trans_sym,
+        classify_Weisse_tables(props, props_sub, basis_sub_repr, latt, trans_sym,
                                belong2rep_sub, dist2rep_sub, belong2group_sub, groups_parent, groups_sub,
                                Weisse_e_lt, Weisse_e_eq, Weisse_e_gt, Weisse_w_lt, Weisse_w_eq, Weisse_w_gt);
         end = std::chrono::system_clock::now();
@@ -1367,7 +1367,7 @@ namespace qbasis {
         }
         assert(is_sorted_norepeat(basis_repr_deprec[sec_repr]));
         if (dim_repr[sec_repr] > 0 && dim_repr[sec_repr] == static_cast<MKL_INT>(basis_repr[sec_repr].size())) {
-            assert(dim_repr[sec_repr] == basis_repr_deprec[sec_repr].size());
+            assert(dim_repr[sec_repr] == static_cast<MKL_INT>(basis_repr_deprec[sec_repr].size()));
         } else {
             dim_repr[sec_repr] = basis_repr_deprec[sec_repr].size();
         }
@@ -1575,7 +1575,7 @@ namespace qbasis {
             }
             filename += ".dat";
             assert(fs::exists(fs::path(filename)));
-            assert(v.size() >= 3 * dim);
+            assert(static_cast<MKL_INT>(v.size()) >= 3 * dim);
             vec_disk_read(filename, dim, v.data() + 2 * dim);
         } else if (V1_done) {
             fout << "Reading eigenvec0/1 from disk." << std::endl;
@@ -1653,7 +1653,7 @@ namespace qbasis {
         if (V1_done) {                                                           // need record eigenvec1
             std::string flnm0 = "out_Qckpt/eigenvec0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".dat";
             std::string flnm1 = "out_Qckpt/eigenvec1_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".dat";
-            assert(eigenvecs.size() == 2 * dim);
+            assert(static_cast<MKL_INT>(eigenvecs.size()) == 2 * dim);
             if (! fs::exists(fs::path(flnm0))) vec_disk_write(flnm0, dim, eigenvecs.data());
             vec_disk_write(flnm1, dim, eigenvecs.data() + dim);
         }

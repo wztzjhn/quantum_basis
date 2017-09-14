@@ -2,16 +2,7 @@ CXX       = icpc
 CPPFLAGS  = -Ofast -std=c++11 -w3 -wd383,981 -qopenmp -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
 LIBS      = -L/usr/local/lib -larpack -L${MKLROOT}/lib/intel64 -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -qopenmp
 
-OBJS      = lattice.o \
-            miscellaneous.o \
-            model.o \
-            lanczos.o \
-            sparse.o \
-            operators.o \
-            basis.o
-
-EXEC      =
-
+include makefile_list/object_list.txt
 
 test: $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o
 	$(CXX) $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o $(LIBS) -o ../bin/test.x
