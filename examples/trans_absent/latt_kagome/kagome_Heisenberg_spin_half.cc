@@ -4,6 +4,7 @@
 
 // Heisenberg model on kagome lattice
 int main() {
+    qbasis::enable_ckpt = true;
     std::cout << std::setprecision(10);
     // parameters
     double J = 1.0;
@@ -161,10 +162,10 @@ int main() {
 
 
     // obtaining the eigenvals of the matrix
-    Heisenberg.locate_E0_full(15,30);
+    Heisenberg.locate_E0_lanczos(0);
     std::cout << std::endl;
 
 
     // for the parameters considered, we should obtain:
-    assert(std::abs(Heisenberg.eigenvals_full[0] + 5.444875217) < 1e-8);
+    assert(std::abs(Heisenberg.energy_min() + 5.444875217) < 1e-8);
 }

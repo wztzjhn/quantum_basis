@@ -5,6 +5,7 @@
 // spinless fermion model on honeycomb lattice
 // benchmarked with Capponi et al., prb 92, 085146 (2015), Fig. 2
 int main() {
+    qbasis::enable_ckpt = true;
     std::cout << std::setprecision(10);
     // parameters
     double t = 1;
@@ -116,7 +117,7 @@ int main() {
 
     // obtaining the eigenvals of the matrix
     std::cout << "Energy correction per site   = " << (constant / lattice.total_sites()) << std::endl;
-    spinless.locate_E0_full(5,10);
+    spinless.locate_E0_lanczos(0);
     std::cout << "Energy correction = " << constant << std::endl;
     std::cout << "Energy per site   = " << ( spinless.energy_min() + constant ) / lattice.total_sites() << std::endl;
     std::cout << std::endl;

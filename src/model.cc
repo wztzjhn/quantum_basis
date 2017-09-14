@@ -800,7 +800,7 @@ namespace qbasis {
             elapsed_seconds = end - start;
             std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
             std::cout << "CG steps:     " << m << std::endl;
-            std::cout << "Accuracy:     " << accuracy << std::endl;
+            std::cout << "Accuracy:     " << accuracy << std::endl << std::endl;
             
             V0_done = true;
             nconv = 1;
@@ -885,6 +885,7 @@ namespace qbasis {
                 double rnorm = nrm2(dim, eigenvecs.data() + dim, 1);
                 scal(dim, 1.0 / rnorm, eigenvecs.data() + dim, 1);
             }
+            std::cout << std::endl;
             
             ckpt_lczsE0_updt(E0_done, V0_done, E1_done, V1_done);
             ckpt_CG_clean();

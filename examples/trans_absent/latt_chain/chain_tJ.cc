@@ -5,6 +5,7 @@
 // tJ model on chain lattice
 // E0 checked. Excitations seems not correct.
 int main() {
+    qbasis::enable_ckpt = true;
     std::cout << "ground state energy checked correct. 1st excited state inconsistent with ALPS!" << std::endl;
     std::cout << std::setprecision(10);
     // parameters
@@ -92,7 +93,7 @@ int main() {
 
 
     // obtaining the eigenvals of the matrix
-    tJ.locate_E0_full(10,20);
+    tJ.locate_E0_lanczos(0);
     std::cout << std::endl;
 
 

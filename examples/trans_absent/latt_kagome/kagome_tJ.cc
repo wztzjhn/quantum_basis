@@ -5,6 +5,7 @@
 // tJ model on kagome lattice
 // Ground state energy consistent with ALPS, 1st excitation NOT agree. NEED further check.
 int main() {
+    qbasis::enable_ckpt = true;
     std::cout << "ground state energy checked correct. 1st excited state inconsistent with ALPS!" << std::endl;
     std::cout << std::setprecision(10);
     // parameters
@@ -220,7 +221,7 @@ int main() {
 
 
     // obtaining the eigenvals of the matrix
-    tJ.locate_E0_full(15,30);
+    tJ.locate_E0_lanczos(0);
     std::cout << std::endl;
 
 

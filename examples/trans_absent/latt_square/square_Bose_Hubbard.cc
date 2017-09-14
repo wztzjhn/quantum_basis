@@ -4,6 +4,7 @@
 
 // Bose-Hubbard model on square lattice
 int main() {
+    qbasis::enable_ckpt = true;
     std::cout << std::setprecision(10);
     // parameters
     double t = 1;
@@ -90,7 +91,7 @@ int main() {
 
 
     // obtaining the eigenvals of the matrix
-    Hubbard.locate_E0_full();
+    Hubbard.locate_E0_lanczos(0);
     std::cout << std::endl;
 
 

@@ -4,6 +4,7 @@
 
 // Kondo Lattice model on a chain
 int main() {
+    qbasis::enable_ckpt = true;
     std::cout << std::setprecision(10);
     // parameters
     double t = 1;
@@ -112,11 +113,11 @@ int main() {
 
     // optional, will use more memory and give higher speed
     // generating matrix of the Hamiltonian in the full Hilbert space
-    Kondo.generate_Ham_sparse_full();
+    //Kondo.generate_Ham_sparse_full();
     std::cout << std::endl;
 
     // obtaining the eigenvals of the matrix
-    Kondo.locate_E0_full(10,20);
+    Kondo.locate_E0_lanczos(0,2,1);
     std::cout << std::endl;
 
 

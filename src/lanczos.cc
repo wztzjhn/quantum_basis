@@ -70,7 +70,7 @@ namespace qbasis {
         ckpt_lanczos_init(k, maxit, dim, cnt_accuE0, accuracy, theta0_prev, theta1_prev, v, hessenberg, purpose);
         m = k;
         np = mm - k;
-        assert(mm < maxit && k >= 0 && k < dim && np >= 0 && np < dim);
+        assert(mm < maxit && k >= 0 && np >= 0);
         assert(purpose != "iram" || mm < dim);                                   // # of orthogonal vectors: at most dim
         if ( cnt_accuE0 > 15 && accuracy < lanczos_precision) return;
         if (np == 0) return;
