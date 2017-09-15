@@ -8,13 +8,19 @@
 namespace qbasis {
     std::string date_and_time()
     {
-        time_t rawtime;
+        auto now = std::chrono::system_clock::now();
+        auto tp  = now.time_since_epoch();
+        tp -= std::chrono::duration_cast<std::chrono::seconds>(tp);
+        time_t rawtime = std::chrono::system_clock::to_time_t(now);
         struct tm * timeinfo;
-        char buffer[80];
-        time (&rawtime);
         timeinfo = localtime(&rawtime);
-        strftime(buffer,sizeof(buffer),"%Y-%m-%d %H:%M:%S %Z",timeinfo);
+        char buffer[80];
+        strftime(buffer,sizeof(buffer),"%Y-%m-%d %H:%M:%S",timeinfo);
         std::string res(buffer);
+        res += ".";
+        res += std::to_string(static_cast<unsigned>(tp / std::chrono::milliseconds(1)));
+        strftime(buffer,sizeof(buffer), " %Z",timeinfo);
+        res += buffer;
         return res;
     }
     

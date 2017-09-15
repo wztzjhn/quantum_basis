@@ -771,7 +771,6 @@ namespace qbasis {
             
             E0_done = true;
             ckpt_lczsE0_updt(E0_done, V0_done, E1_done, V1_done);
-            ckpt_lanczos_clean();
         }
         
         if (ncv == 0) {
@@ -805,7 +804,6 @@ namespace qbasis {
             V0_done = true;
             nconv = 1;
             ckpt_lczsE0_updt(E0_done, V0_done, E1_done, V1_done);
-            ckpt_CG_clean();
         }
         
         // postpone writing down ground state eigenvector, if gap needed
@@ -840,7 +838,6 @@ namespace qbasis {
             
             E1_done = true;
             ckpt_lczsE0_updt(E0_done, V0_done, E1_done, V1_done);
-            ckpt_lanczos_clean();
         }
         
         if (ncv == 1) {
@@ -888,7 +885,6 @@ namespace qbasis {
             std::cout << std::endl;
             
             ckpt_lczsE0_updt(E0_done, V0_done, E1_done, V1_done);
-            ckpt_CG_clean();
         }
     }
     
@@ -1602,7 +1598,7 @@ namespace qbasis {
             vec_disk_read(flnm1, dim, eigenvecs.data() + dim);
         }
         
-        fout << "Log end: " << date_and_time() << std::endl << std::endl;
+        fout << "Log end (ckpt_lczsE0_init): " << date_and_time() << std::endl << std::endl;
         fout.close();
     }
     

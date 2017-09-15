@@ -329,7 +329,7 @@ namespace qbasis {
         fout << "Current files after clean: " << std::endl;
         for (auto &p : fs::directory_iterator("out_Qckpt")) fout << p << std::endl;
         
-        fout << "Log end: " << date_and_time() << std::endl << std::endl;
+        fout << "Log end: " << date_and_time() << std::endl;
         fout.close();
     }
     
@@ -382,9 +382,9 @@ namespace qbasis {
                 fout << "New data unfinished writing while updating Lanczos step m = " << m << std::endl;
                 fout << "Rewinding one step." << std::endl;
                 m--;
-                assert(fs::exists(fs::path("out_Qckpt/CG_V" + std::to_string(m) + ".dat")));
-                assert(fs::exists(fs::path("out_Qckpt/CG_R" + std::to_string(m) + ".dat")));
-                assert(fs::exists(fs::path("out_Qckpt/CG_P" + std::to_string(m) + ".dat")));
+                assert(m > 0 || fs::exists(fs::path("out_Qckpt/CG_V" + std::to_string(m) + ".dat")));
+                assert(m > 0 || fs::exists(fs::path("out_Qckpt/CG_R" + std::to_string(m) + ".dat")));
+                assert(m > 0 || fs::exists(fs::path("out_Qckpt/CG_P" + std::to_string(m) + ".dat")));
                 fs::remove(fs::path("out_Qckpt/CG_V" + std::to_string(m+1) + ".dat"));
                 fs::remove(fs::path("out_Qckpt/CG_R" + std::to_string(m+1) + ".dat"));
                 fs::remove(fs::path("out_Qckpt/CG_P" + std::to_string(m+1) + ".dat"));
@@ -505,7 +505,7 @@ namespace qbasis {
         fout << "Current files after clean: " << std::endl;
         for (auto &p : fs::directory_iterator("out_Qckpt")) fout << p << std::endl;
         
-        fout << "Log end: " << date_and_time() << std::endl << std::endl;
+        fout << "Log end: " << date_and_time() << std::endl;
         fout.close();
     }
 }
