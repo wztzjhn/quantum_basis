@@ -13,11 +13,11 @@ namespace qbasis {
     void ckpt_CG_clean();
     
     template <typename T>
-    model<T>::model(const double &fake_pos_, const double &fake_incr_):
+    model<T>::model(const double &fake_pos_):
                     matrix_free(true), nconv(0),
                     sec_mat(0),
                     dim_full({0,0}), dim_repr({0,0}),
-                    fake_pos(fake_pos_), fake_incr(fake_incr_)
+                    fake_pos(fake_pos_)
     {
         momenta.resize(2);
         basis_full.resize(2);
@@ -142,6 +142,8 @@ namespace qbasis {
             std::cout << "Due to faliure of Lin Table construction, fall back to bisection index of basis." << std::endl;
             sort_basis_normal_order(basis_full[sec_full]);
         }
+        
+        nconv = 0;
     }
     
     
@@ -272,6 +274,8 @@ namespace qbasis {
                 sort_basis_normal_order(basis_repr[sec_repr]);
                 assert(is_sorted_norepeat(basis_repr[sec_repr]));
             }
+            
+            nconv = 0;
         }
         
         // calculate normalization factors
@@ -318,6 +322,9 @@ namespace qbasis {
         if (matrix_free) matrix_free = false;
         assert(dim_full[sec_mat] > 0);
         
+        MKL_INT dim = dim_full[sec_mat];
+        auto &basis = basis_full[sec_mat];
+        
         int num_threads = 1;
         #pragma omp parallel
         {
@@ -325,18 +332,18 @@ namespace qbasis {
             if (tid == 0) num_threads = omp_get_num_threads();
         }
         // prepare intermediates in advance
-        std::vector<wavefunction<T>> intermediate_states(num_threads, {basis_full[sec_mat][0]});
+        std::vector<wavefunction<T>> intermediate_states(num_threads, {basis[0]});
         
         std::cout << "Generating LIL Hamiltonian matrix (full)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        lil_mat<T> matrix_lil(dim_full[sec_mat], upper_triangle);
+        lil_mat<T> matrix_lil(dim, upper_triangle);
         #pragma omp parallel for schedule(dynamic,16)
-        for (MKL_INT i = 0; i < dim_full[sec_mat]; i++) {
+        for (MKL_INT i = 0; i < dim; i++) {
             int tid = omp_get_thread_num();
             // diagonal part:
             for (auto it = Ham_diag.mats.begin(); it != Ham_diag.mats.end(); it++) {
-                matrix_lil.add(i, i, basis_full[sec_mat][i].diagonal_operator(props, *it));
+                matrix_lil.add(i, i, basis[i].diagonal_operator(props, *it));
             }
             
             // non-diagonal part:
@@ -347,13 +354,13 @@ namespace qbasis {
                 
                 
                 
-                intermediate_states[tid].copy(basis_full[sec_mat][i]);
+                intermediate_states[tid].copy(basis[i]);
                 oprXphi(*it, props, intermediate_states[tid]);
                 
                 /*
                 if (i == 6041) {
                     std::cout << "---state---" << std::endl;
-                    basis_full[sec_mat][i].prt_states(props);
+                    basis[i].prt_states(props);
                     std::cout << std::endl;
                     
                     std::cout << "---operator---" << std::endl;
@@ -376,9 +383,9 @@ namespace qbasis {
                         ele_new.first.label_sub(props, i_a, i_b);
                         j = Lin_Ja_full[sec_mat][i_a] + Lin_Jb_full[sec_mat][i_b];
                     } else {
-                        j = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_mat], ele_new.first, 0, dim_full[sec_mat]);
+                        j = binary_search<mbasis_elem,MKL_INT>(basis, ele_new.first, 0, dim);
                     }
-                    if (j < 0 || j >= dim_full[sec_mat]) continue;
+                    if (j < 0 || j >= dim) continue;
                     if (upper_triangle) {
                         if (i <= j) matrix_lil.add(i, j, conjugate(ele_new.second));
                     } else {
@@ -399,16 +406,14 @@ namespace qbasis {
     void model<T>::generate_Ham_sparse_repr(const bool &upper_triangle)
     {
         if (matrix_free) matrix_free = false;
-        assert(dim_repr[sec_mat] > 0);
-        
+        MKL_INT dim = dim_repr[sec_mat];
+        auto &basis = basis_repr[sec_mat];
+        assert(dim > 0);
         if (dim_spec_involved) {
             assert(Weisse_w_gt.size() == 0);
         } else {
             assert(Weisse_w_lt.size() == Weisse_w_gt.size());
         }
-        
-        bool bosonic = q_bosonic(props);
-        
         int num_threads = 1;
         #pragma omp parallel
         {
@@ -416,23 +421,21 @@ namespace qbasis {
             if (tid == 0) num_threads = omp_get_num_threads();
         }
         // prepare intermediates in advance
-        std::vector<wavefunction<T>> intermediate_states(num_threads, {basis_repr[sec_mat][0]});
+        std::vector<wavefunction<T>> intermediate_states(num_threads, {basis[0]});
+        auto dim_latt = latt_parent.dimension();
+        auto L = latt_parent.Linear_size();
+        bool bosonic = q_bosonic(props);
         
         std::cout << "Generating LIL Hamiltonian Matrix (repr)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        auto dim_latt = latt_parent.dimension();
-        auto L = latt_parent.Linear_size();
-        lil_mat<std::complex<double>> matrix_lil(dim_repr[sec_mat], upper_triangle);
         
-        double faked = fake_pos;
+        lil_mat<std::complex<double>> matrix_lil(dim, upper_triangle);
         #pragma omp parallel for schedule(dynamic,16)
-        for (MKL_INT i = 0; i < dim_repr[sec_mat]; i++) {
+        for (MKL_INT i = 0; i < dim; i++) {
             double nu_i = norm_repr[sec_mat][i];                                // normalization factor for repr i
             if (std::abs(nu_i) < lanczos_precision) {
-                matrix_lil.add(i, i, static_cast<T>(faked));
-                #pragma omp atomic
-                faked += fake_incr;
+                matrix_lil.add(i, i, static_cast<T>(fake_pos + static_cast<double>(i)/static_cast<double>(dim)));
                 continue;
             }
             
@@ -440,7 +443,7 @@ namespace qbasis {
             
             // diagonal part:
             for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
-                matrix_lil.add(i, i, basis_repr[sec_mat][i].diagonal_operator(props,Ham_diag[cnt]));
+                matrix_lil.add(i, i, basis[i].diagonal_operator(props,Ham_diag[cnt]));
             
             // non-diagonal part:
             uint64_t state_sub1_label, state_sub2_label;
@@ -451,7 +454,7 @@ namespace qbasis {
             uint64_t i_a, i_b;
             MKL_INT j;
             for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
-                intermediate_states[tid].copy(basis_repr[sec_mat][i]);
+                intermediate_states[tid].copy(basis[i]);
                 oprXphi(*it, props, intermediate_states[tid]);
                 
                 for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
@@ -496,10 +499,10 @@ namespace qbasis {
                         i_b = state_sub_new2.label(props_sub_b);
                         j = Lin_Ja_repr[sec_mat][i_a] + Lin_Jb_repr[sec_mat][i_b];
                     } else {
-                        j = binary_search<mbasis_elem,MKL_INT>(basis_repr[sec_mat], ra_z_Tj_rb, 0, dim_repr[sec_mat]);
+                        j = binary_search<mbasis_elem,MKL_INT>(basis, ra_z_Tj_rb, 0, dim);
                     }
-                    if (j < 0 || j >= dim_repr[sec_mat]) continue;
-                    assert(ra_z_Tj_rb == basis_repr[sec_mat][j]);
+                    if (j < 0 || j >= dim) continue;
+                    assert(ra_z_Tj_rb == basis[j]);
                     double nu_j = norm_repr[sec_mat][j];
                     if (std::abs(nu_j) < lanczos_precision) continue;
                     
@@ -552,33 +555,34 @@ namespace qbasis {
     void model<T>::MultMv2(const T *x, T *y) const
     {
         assert(matrix_free);
+        MKL_INT dim = (sec_sym == 0) ? dim_full[sec_mat] : dim_repr[sec_mat];
+        auto &basis = (sec_sym == 0) ? basis_full[sec_mat] : basis_repr[sec_mat];
         int num_threads = 1;
         #pragma omp parallel
         {
             int tid = omp_get_thread_num();
             if (tid == 0) num_threads = omp_get_num_threads();
         }
+        // prepare intermediates in advance
+        std::vector<wavefunction<T>> intermediate_states(num_threads, {basis[0]});
         
         std::cout << "*" << std::flush;
         if (sec_sym == 0) {
-            // prepare intermediates in advance
-            std::vector<wavefunction<T>> intermediate_states(num_threads, {basis_full[sec_mat][0]});
-            
             #pragma omp parallel for schedule(dynamic,16)
-            for (MKL_INT i = 0; i < dim_full[sec_mat]; i++) {
+            for (MKL_INT i = 0; i < dim; i++) {
                 int tid = omp_get_thread_num();
                 
                 // diagonal part
                 if (std::abs(x[i]) > machine_prec) {
                     for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
-                        y[i] += x[i] * basis_full[sec_mat][i].diagonal_operator(props, Ham_diag[cnt]);
+                        y[i] += x[i] * basis[i].diagonal_operator(props, Ham_diag[cnt]);
                 }
                 
                 // non-diagonal part
                 uint64_t i_a, i_b;
                 MKL_INT j;
                 for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
-                    intermediate_states[tid].copy(basis_full[sec_mat][i]);
+                    intermediate_states[tid].copy(basis[i]);
                     oprXphi(*it, props, intermediate_states[tid]);
                     for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                         auto &ele_new = intermediate_states[tid][cnt];
@@ -587,38 +591,32 @@ namespace qbasis {
                             ele_new.first.label_sub(props, i_a, i_b);
                             j = Lin_Ja_full[sec_mat][i_a] + Lin_Jb_full[sec_mat][i_b];
                         } else {
-                            j = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_mat], ele_new.first, 0, dim_full[sec_mat]);
+                            j = binary_search<mbasis_elem,MKL_INT>(basis, ele_new.first, 0, dim);
                         }
-                        if (j < 0 || j >= dim_full[sec_mat]) continue;
+                        if (j < 0 || j >= dim) continue;
                         if (std::abs(x[j]) > machine_prec) y[i] += (x[j] * conjugate(ele_new.second));
                     }
                 }
             }
         } else {
-            // prepare intermediates in advance
-            std::vector<wavefunction<T>> intermediate_states(num_threads, {basis_repr[sec_mat][0]});
-            
             auto dim_latt = latt_parent.dimension();
             auto L        = latt_parent.Linear_size();
             bool bosonic  = q_bosonic(props);
             
-            double faked = fake_pos;
             #pragma omp parallel for schedule(dynamic,16)
-            for (MKL_INT i = 0; i < dim_repr[sec_mat]; i++) {
-                int tid = omp_get_thread_num();
-                
+            for (MKL_INT i = 0; i < dim; i++) {
                 double nu_i = norm_repr[sec_mat][i];                             // normalization factor for repr i
                 if (std::abs(nu_i) < lanczos_precision) {
-                    y[i] += x[i] * static_cast<T>(faked);
-                    #pragma omp atomic
-                    faked += fake_incr;
+                    y[i] += x[i] * static_cast<T>(fake_pos + static_cast<double>(i)/static_cast<double>(dim));
                     continue;
                 }
+                
+                int tid = omp_get_thread_num();
                 
                 // diagonal part
                 if (std::abs(x[i]) > machine_prec) {
                     for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)          // diagonal part:
-                        y[i] += x[i] * basis_repr[sec_mat][i].diagonal_operator(props,Ham_diag[cnt]);
+                        y[i] += x[i] * basis[i].diagonal_operator(props,Ham_diag[cnt]);
                 }
                 
                 // non-diagonal part
@@ -630,7 +628,7 @@ namespace qbasis {
                 uint64_t i_a, i_b;
                 MKL_INT j;
                 for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
-                    intermediate_states[tid].copy(basis_repr[sec_mat][i]);
+                    intermediate_states[tid].copy(basis[i]);
                     oprXphi(*it, props, intermediate_states[tid]);
                     
                     for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
@@ -674,10 +672,10 @@ namespace qbasis {
                             i_b = state_sub_new2.label(props_sub_b);
                             j = Lin_Ja_repr[sec_mat][i_a] + Lin_Jb_repr[sec_mat][i_b];
                         } else {
-                            j = binary_search<mbasis_elem,MKL_INT>(basis_repr[sec_mat], ra_z_Tj_rb, 0, dim_repr[sec_mat]);
+                            j = binary_search<mbasis_elem,MKL_INT>(basis, ra_z_Tj_rb, 0, dim);
                         }
-                        if (j < 0 || j >= dim_repr[sec_mat]) continue;
-                        assert(ra_z_Tj_rb == basis_repr[sec_mat][j]);
+                        if (j < 0 || j >= dim) continue;
+                        assert(ra_z_Tj_rb == basis[j]);
                         if (std::abs(x[j]) < machine_prec) continue;
                         double nu_j = norm_repr[sec_mat][j];
                         if (std::abs(nu_j) < lanczos_precision) continue;
@@ -781,7 +779,7 @@ namespace qbasis {
         // obtain ground state eigenvector
         if (! V0_done) {
             start = std::chrono::system_clock::now();
-            std::cout << "Calculate ground state eigenvector with CG..." << std::endl;
+            std::cout << "Calculating ground state eigenvector with CG..." << std::endl;
             
             vec_randomize(dim, v.data() + 2 * dim, seed);
             double accuracy;
@@ -1386,7 +1384,6 @@ namespace qbasis {
     {
         if (matrix_free) matrix_free = false;
         assert(dim_repr[sec_mat] > 0);
-        
         int num_threads = 1;
         #pragma omp parallel
         {
@@ -1401,16 +1398,13 @@ namespace qbasis {
         start = std::chrono::system_clock::now();
         lil_mat<std::complex<double>> matrix_lil(dim_repr[sec_mat], upper_triangle);
         
-        double faked = fake_pos;
         #pragma omp parallel for schedule(dynamic,16)
         for (MKL_INT i = 0; i < dim_repr[sec_mat]; i++) {
             int tid = omp_get_thread_num();
             
             auto repr_i = basis_repr_deprec[sec_mat][i];
             if (std::abs(basis_coeff_deprec[sec_mat][repr_i]) < lanczos_precision) {
-                matrix_lil.add(i, i, static_cast<T>(faked));
-                #pragma omp atomic
-                faked += fake_incr;
+                matrix_lil.add(i, i, static_cast<T>(fake_pos + static_cast<double>(i)/static_cast<double>(dim_repr[sec_mat])));
                 continue;
             }
             // diagonal part:
@@ -1480,46 +1474,49 @@ namespace qbasis {
         
         std::ofstream fout("out_Qckpt/log_lczs_E0_ckpt.txt", std::ios::out | std::ios::app);
         fout << std::setprecision(10);
-        fout << std::endl << "Log start: " << date_and_time() << std::endl;
+        fout << std::endl << "Log start (ckpt_lczsE0_init): " << date_and_time() << std::endl;
         fout << "Initializing lczs_E0" << std::endl;
         
-        std::string filename1 = "out_Qckpt/lczs_E0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat);
-        if (sec_sym == 1) {
-            filename1 += "_K";
-            for (auto &k : momenta[sec_mat]) filename1 += std::to_string(k);
-        }
-        filename1 += ".Qckpt";
-        std::string filename2 = filename1 + "2";
-        
         auto filesize_ideal = 4 * sizeof(bool) + sizeof(MKL_INT) + 3 * sizeof(double);
-        if (fs::exists(fs::path(filename2)) && fs::file_size(fs::path(filename2)) == filesize_ideal) {
-            fout << "Resuming from an interrupted update." << std::endl;
-            fout << "Loading data from " << filename2 << std::endl;
-            std::ifstream ftemp(filename2, std::ios::in | std::ios::binary);
-            ftemp.read(reinterpret_cast<char*>(&E0_done), sizeof(bool));
-            fout << "E0_done: " << E0_done << std::endl;
-            ftemp.read(reinterpret_cast<char*>(&V0_done), sizeof(bool));
-            fout << "V0_done: " << V0_done << std::endl;
-            ftemp.read(reinterpret_cast<char*>(&E1_done), sizeof(bool));
-            fout << "E1_done: " << E1_done << std::endl;
-            ftemp.read(reinterpret_cast<char*>(&V1_done), sizeof(bool));
-            fout << "V1_done: " << V1_done << std::endl;
-            ftemp.read(reinterpret_cast<char*>(&nconv), sizeof(MKL_INT));
-            fout << "nconv: " << nconv << std::endl;
-            ftemp.read(reinterpret_cast<char*>(&E0), sizeof(double));
-            if (E0_done) fout << "E0: " << E0 << std::endl;
-            ftemp.read(reinterpret_cast<char*>(&E1), sizeof(double));
-            if (E1_done) fout << "E1: " << E0 << std::endl;
-            ftemp.read(reinterpret_cast<char*>(&gap), sizeof(double));
-            if (E1_done) fout << "gap: " << gap << std::endl;
+        
+        std::string filename0 = "out_Qckpt/lczs_E0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat);
+        if (sec_sym == 1) {
+            filename0 += "_K";
+            for (auto &k : momenta[sec_mat]) filename0 += std::to_string(k);
+        }
+        filename0 += ".Qckpt";
+        std::string filename1 = filename0 + "1";
+        std::string filename2 = filename0 + "2";
+        
+        if ((! fs::exists(fs::path(filename0)) && ! fs::exists(fs::path(filename1))) ||
+            (fs::exists(fs::path(filename0)) && fs::file_size(fs::path(filename0)) != filesize_ideal)) {  // un-initialized
+            fout << "Initializing checkpoint for lczs_E0." << std::endl;
+            std::ofstream ftemp(filename0, std::ios::out | std::ios::binary);
+            ftemp.write(reinterpret_cast<const char*>(&E0_done), sizeof(bool));
+            ftemp.write(reinterpret_cast<const char*>(&V0_done), sizeof(bool));
+            ftemp.write(reinterpret_cast<const char*>(&E1_done), sizeof(bool));
+            ftemp.write(reinterpret_cast<const char*>(&V1_done), sizeof(bool));
+            ftemp.write(reinterpret_cast<char*>(&nconv), sizeof(MKL_INT));
+            ftemp.write(reinterpret_cast<char*>(&E0), sizeof(double));
+            ftemp.write(reinterpret_cast<char*>(&E1), sizeof(double));
+            ftemp.write(reinterpret_cast<char*>(&gap), sizeof(double));
             ftemp.close();
+        } else {
+            bool updating = (fs::exists(fs::path(filename1)) &&
+                             fs::file_size(fs::path(filename1)) == filesize_ideal) ? true : false;
+            fout << "Resuming from an interrupted update? " << updating << std::endl;
+            if (updating && fs::exists(fs::path(filename2))) {
+                fout << "New data finished writing." << std::endl;
+                fs::remove(fs::path(filename0));
+                fs::copy(fs::path(filename1), fs::path(filename0));
+                ckpt_lanczos_clean();
+                ckpt_CG_clean();
+            }
             fs::remove(fs::path(filename1));
-            fs::copy(fs::path(filename2), fs::path(filename1));
             fs::remove(fs::path(filename2));
-        } else if (fs::exists(fs::path(filename1)) && fs::file_size(fs::path(filename1)) == filesize_ideal) {
-            fout << "Previous lczs_E0 update succeed." << std::endl;
-            fout << "Loading data from " << filename1 << std::endl;
-            std::ifstream ftemp(filename1, std::ios::in | std::ios::binary);
+            fout << "loading data from " << filename0 << std::endl;
+            
+            std::ifstream ftemp(filename0, std::ios::in | std::ios::binary);
             ftemp.read(reinterpret_cast<char*>(&E0_done), sizeof(bool));
             fout << "E0_done: " << E0_done << std::endl;
             ftemp.read(reinterpret_cast<char*>(&V0_done), sizeof(bool));
@@ -1537,21 +1534,6 @@ namespace qbasis {
             ftemp.read(reinterpret_cast<char*>(&gap), sizeof(double));
             if (E1_done) fout << "gap: " << gap << std::endl;
             ftemp.close();
-        } else {
-            fout << "Initializing checkpoint for lczs_E0." << std::endl;
-            std::ofstream ftemp(filename2, std::ios::out | std::ios::binary);
-            ftemp.write(reinterpret_cast<const char*>(&E0_done), sizeof(bool));
-            ftemp.write(reinterpret_cast<const char*>(&V0_done), sizeof(bool));
-            ftemp.write(reinterpret_cast<const char*>(&E1_done), sizeof(bool));
-            ftemp.write(reinterpret_cast<const char*>(&V1_done), sizeof(bool));
-            ftemp.write(reinterpret_cast<char*>(&nconv), sizeof(MKL_INT));
-            ftemp.write(reinterpret_cast<char*>(&E0), sizeof(double));
-            ftemp.write(reinterpret_cast<char*>(&E1), sizeof(double));
-            ftemp.write(reinterpret_cast<char*>(&gap), sizeof(double));
-            ftemp.close();
-            fs::remove(fs::path(filename1));
-            fs::copy(fs::path(filename2), fs::path(filename1));
-            fs::remove(fs::path(filename2));
         }
         
         if (E1_done) {
@@ -1606,61 +1588,88 @@ namespace qbasis {
     void model<T>::ckpt_lczsE0_updt(const bool &E0_done, const bool &V0_done, const bool &E1_done, const bool &V1_done)
     {
         if (! enable_ckpt) return;
-        assert(fs::exists(fs::path("out_Qckpt/lczs_E0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".Qckpt")));
         
         MKL_INT dim     = (sec_sym == 0) ? dim_full[sec_mat] : dim_repr[sec_mat];
         auto &eigenvecs = (sec_sym == 0) ? eigenvecs_full : eigenvecs_repr;
         
-        std::string filename1 = "out_Qckpt/lczs_E0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat);
+        std::string filename0 = "out_Qckpt/lczs_E0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat);
         if (sec_sym == 1) {
-            filename1 += "_K";
-            for (auto &k : momenta[sec_mat]) filename1 += std::to_string(k);
+            filename0 += "_K";
+            for (auto &k : momenta[sec_mat]) filename0 += std::to_string(k);
         }
-        filename1 += ".Qckpt";
-        std::string filename2 = filename1 + "2";
+        filename0 += ".Qckpt";
+        std::string filename1 = filename0 + "1";
+        std::string filename2 = filename0 + "2";
+        assert(fs::exists(fs::path(filename0)));
         
         std::ofstream fout("out_Qckpt/log_lczs_E0_ckpt.txt", std::ios::out | std::ios::app);
-        fout << std::endl << "Log start: " << date_and_time() << std::endl;
+        fout << std::setprecision(10);
+        fout << std::endl << "Log start (ckpt_lczsE0_updt): " << date_and_time() << std::endl;
         fout << "Updating lczs_E0" << std::endl;
         
+        fs::remove(fs::path(filename1));
         fs::remove(fs::path(filename2));
-        fs::copy(fs::path(filename1), fs::path(filename2));                      // filename1 -> filename2
+        
         std::ofstream ftemp(filename1, std::ios::out | std::ios::binary);
+        fout << "E0_done: " << E0_done << std::endl;
         ftemp.write(reinterpret_cast<const char*>(&E0_done), sizeof(bool));
+        fout << "V0_done: " << V0_done << std::endl;
         ftemp.write(reinterpret_cast<const char*>(&V0_done), sizeof(bool));
+        fout << "E1_done: " << E1_done << std::endl;
         ftemp.write(reinterpret_cast<const char*>(&E1_done), sizeof(bool));
+        fout << "V1_done: " << V1_done << std::endl;
         ftemp.write(reinterpret_cast<const char*>(&V1_done), sizeof(bool));
+        fout << "nconv: " << nconv << std::endl;
         ftemp.write(reinterpret_cast<char*>(&nconv), sizeof(MKL_INT));
+        if (E0_done) fout << "E0: " << E0 << std::endl;
         ftemp.write(reinterpret_cast<char*>(&E0), sizeof(double));
+        if (E1_done) fout << "E1: " << E0 << std::endl;
         ftemp.write(reinterpret_cast<char*>(&E1), sizeof(double));
+        if (E1_done) fout << "gap: " << gap << std::endl;
         ftemp.write(reinterpret_cast<char*>(&gap), sizeof(double));
         ftemp.close();
         
-        if (E0_done && V0_done && (! E1_done) && (! V1_done)) {                  // need record eigenvec0
+        std::string flnm0 = "out_Qckpt/eigenvec0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat);
+        std::string flnm1 = "out_Qckpt/eigenvec1_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat);
+        if (sec_sym == 1) {
+            flnm0 += "_K";
+            flnm1 += "_K";
+            for (auto &k : momenta[sec_mat]) {
+                flnm0 += std::to_string(k);
+                flnm1 += std::to_string(k);
+            }
+        }
+        flnm0 += ".dat";
+        flnm1 += ".dat";
+        
+        if (E0_done && V0_done && (! E1_done) && (! V1_done)) {                  // record eigenvec0
             for (auto &p : fs::directory_iterator("out_Qckpt"))
             {
                 if (std::regex_match(p.path().filename().string(), std::regex("CG_V[[:digit:]]+\\.dat")))
                 {
-                    fs::remove(fs::path("out_Qckpt/eigenvec0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".dat"));
-                    fs::copy(fs::path(p.path()), fs::path("out_Qckpt/eigenvec0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".dat"));
+                    fs::remove(fs::path(flnm0));
+                    fs::copy(fs::path(p.path()), fs::path(flnm0));
                 }
             }
         }
-        
-        if (V1_done) {                                                           // need record eigenvec1
-            std::string flnm0 = "out_Qckpt/eigenvec0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".dat";
-            std::string flnm1 = "out_Qckpt/eigenvec1_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat) + ".dat";
+        if (V1_done) {                                                           // record eigenvec0/1
             assert(static_cast<MKL_INT>(eigenvecs.size()) == 2 * dim);
             if (! fs::exists(fs::path(flnm0))) vec_disk_write(flnm0, dim, eigenvecs.data());
             vec_disk_write(flnm1, dim, eigenvecs.data() + dim);
         }
         
-        fs::remove(fs::path(filename2));
+        // before/after this point, have to use old/new data
+        fs::copy(fs::path(filename1), fs::path(filename2));
         
-        fout << "Log end: " << date_and_time() << std::endl << std::endl;
+        fs::remove(fs::path(filename0));                                         // at this moment, filename0 disappear
+        fs::copy(fs::path(filename1), fs::path(filename0));
+        ckpt_lanczos_clean();
+        ckpt_CG_clean();
+        fs::remove(fs::path(filename1));
+        fs::remove(fs::path(filename2));
+        fout << "Log end (ckpt_lczsE0_updt): " << date_and_time() << std::endl << std::endl;
         fout.close();
     }
-    
     
     
     // Explicit instantiation

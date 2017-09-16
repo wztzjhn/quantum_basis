@@ -16,7 +16,7 @@
 #endif
 
 #ifndef lapack_complex_double
-#define lapack_complex_double   MKL_Complex16
+#define lapack_complex_double MKL_Complex16
 #endif
 
 #ifndef BOOST_FILESYSTEM_NO_DEPRECATED
@@ -1196,7 +1196,7 @@ namespace qbasis {
         // ---------------- deprecated --------------------
         
         
-        model(const double &fake_pos_ = 100.1, const double &fake_incr_ = 0.1);
+        model(const double &fake_pos_ = 100.0);
         
         ~model() {}
         
@@ -1340,7 +1340,6 @@ namespace qbasis {
         double gap;
         
         double fake_pos;
-        double fake_incr;
         
         lattice latt_parent;
         lattice latt_sub;

@@ -6,7 +6,7 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
 #set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 SET(CMAKE_INSTALL_PREFIX "$ENV{HOME}/installs")
-SET(CMAKE_LIBRARY_PATH "$ENV{HOME}/installs/lib")
+#SET(CMAKE_LIBRARY_PATH "$ENV{HOME}/installs/lib")
 
 # -- COMPILE OPTIONS -------------------------------------------
 set(INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
@@ -98,7 +98,7 @@ endif()
 
 # Boost
 find_package(Boost REQUIRED COMPONENTS
-             filesystem)
+             filesystem system)
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 set(LIBS "${LIBS} ${Boost_LIBRARIES}")
 

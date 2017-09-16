@@ -229,6 +229,10 @@ namespace qbasis {
                 vec_disk_write("out_Qckpt/lanczosV" + std::to_string(m-1) + ".dat", dim, v + ((m-1)%2) * dim);
             vec_disk_write("out_Qckpt/lanczosV" + std::to_string(m) + ".dat", dim, v + (m%2) * dim);
             if (purpose.find("val0") == npos) vec_disk_write("out_Qckpt/lanczosY0.dat.new", dim, v + 2 * dim);
+            fout << "cnt_accuE0 = " << cnt_accuE0 << std::endl;
+            fout << "accuracy (* 1e12) = " << accuracy * 1e12 << std::endl;
+            fout << "theta0_prev = " << theta0_prev << std::endl;
+            fout << "theta1_prev = " << theta1_prev << std::endl;
             std::ofstream f_mlns("out_Qckpt/lczs_mlns.dat.new", std::ios::out | std::ios::binary);
             f_mlns.write(reinterpret_cast<const char*>(&cnt_accuE0), sizeof(int));
             f_mlns.write(reinterpret_cast<const char*>(&accuracy), sizeof(double));
