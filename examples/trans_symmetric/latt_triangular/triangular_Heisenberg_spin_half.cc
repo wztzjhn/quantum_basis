@@ -4,6 +4,7 @@
 
 // Heisenberg model on triangular lattices
 int main() {
+    qbasis::enable_ckpt = false;
     std::cout << std::setprecision(10);
     // parameters
     double J1 = 1.0;
@@ -115,7 +116,7 @@ int main() {
             std::cout << std::endl;
 
             // obtaining the lowest eigenvals of the matrix
-            Heisenberg.locate_E0_repr(4,10);
+            Heisenberg.locate_E0_lanczos(1);
             std::cout << std::endl;
 
             E0_list.push_back(Heisenberg.eigenvals_repr[0]);

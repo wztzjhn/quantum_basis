@@ -4,6 +4,7 @@
 
 // Fermi-Hubbard model on square lattice
 int main() {
+    qbasis::enable_ckpt = true;
     std::cout << std::setprecision(10);
     // parameters
     double t = 1;
@@ -104,11 +105,11 @@ int main() {
             Hubbard.enumerate_basis_repr({m,n}, {Nup,Ndown}, {Nup_total,Ndn_total});
 
             // generating matrix of the Hamiltonian in the subspace
-            Hubbard.generate_Ham_sparse_repr();
+            //Hubbard.generate_Ham_sparse_repr();
             std::cout << std::endl;
 
             // obtaining the lowest eigenvals of the matrix
-            Hubbard.locate_E0_repr(4,10);
+            Hubbard.locate_E0_lanczos(1);
             std::cout << std::endl;
 
             E0_list.push_back(Hubbard.eigenvals_repr[0]);

@@ -5,6 +5,7 @@
 // spinless fermion model on honeycomb lattice
 // benchmarked with Capponi et al., prb 92, 085146 (2015), Fig. 2
 int main() {
+    qbasis::enable_ckpt = true;
     std::cout << std::setprecision(10);
     // parameters
     double t = 1;
@@ -115,11 +116,11 @@ int main() {
             spinless.enumerate_basis_repr({m,n}, {Nfermion}, {N_total});
 
             // generating matrix of the Hamiltonian in the subspace
-            spinless.generate_Ham_sparse_repr();
+            //spinless.generate_Ham_sparse_repr();
             std::cout << std::endl;
 
             // obtaining the lowest eigenvals of the matrix
-            spinless.locate_E0_repr(4,10);
+            spinless.locate_E0_lanczos(1);
             std::cout << std::endl;
 
             E0_list.push_back(spinless.eigenvals_repr[0]);
