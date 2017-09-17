@@ -4,7 +4,7 @@
 
 // tJ model on kagome lattice
 int main() {
-    qbasis::enable_ckpt = true;
+    qbasis::enable_ckpt = false;
     std::cout << std::setprecision(10);
     // parameters
     double t = 1.0;
@@ -208,21 +208,30 @@ int main() {
         }
     }
 
-    // constructing the Hilbert space basis
-    tJ.enumerate_basis_full({Sz_total, N_total}, {Sz_total_val, N_total_val});
+    // to use translational symmetry, we first fill the Weisse tables
+    tJ.fill_Weisse_table(lattice);
 
+    std::vector<double> E0_list;
+    for (int m = 0; m < Lx; m++) {
+        for (int n = 0; n < Ly; n++) {
+            // constructing the Hilbert space basis
+            tJ.enumerate_basis_repr({m,n}, {Sz_total, N_total}, {Sz_total_val, N_total_val});
 
-    // optional, will use more memory and give higher speed
-    // generating matrix of the Hamiltonian in the full Hilbert space
-    tJ.generate_Ham_sparse_full();
-    std::cout << std::endl;
+            // generating matrix of the Hamiltonian in the subspace
+            tJ.generate_Ham_sparse_repr();
+            std::cout << std::endl;
 
+            // obtaining the lowest eigenvals of the matrix
+            tJ.locate_E0_lanczos(1);
+            std::cout << std::endl;
 
-    // obtaining the eigenvals of the matrix
-    tJ.locate_E0_lanczos(0);
-    std::cout << std::endl;
-
+            E0_list.push_back(tJ.eigenvals_repr[0]);
+        }
+    }
 
     // for the parameters considered, we should obtain:
-    assert(std::abs(tJ.eigenvals_full[0] + 15.41931496) < 1e-8);
+    assert(std::abs(E0_list[0] + 15.41931496) < 1e-8);
+    assert(std::abs(E0_list[1] + 14.40277723) < 1e-8);
+    assert(std::abs(E0_list[2] + 14.40277723) < 1e-8);
+    assert(std::abs(E0_list[3] + 14.40277723) < 1e-8);
 }

@@ -3,16 +3,21 @@ Basis of condensed matter quantum lattice problems, for usage in exact diagonali
 
 ## Examples
 To learn how to use this library to design ED code for your own models, please refer to the folder "examples":
-- Heisenberg spin-1/2 chain
-- Heisenberg spin-1 chain
-- Heisenberg spin-1/2 triangular lattice
-- Heisenberg spin-1/2 kagome lattice
-- Spinless fermion on honeycomb lattice
-- Fermi-Hubbard Model on square lattice
-- Bose-Hubbard Model on square lattice
-- Kondo Lattice Model on a chain
-- tJ Model on chain lattice (E0 checked, but E1 inconsistent with ALPS)
-- tJ Model on kagome lattice (E0 checked, but E1 inconsistent with ALPS)
+- Chain
+  - Heisenberg spin-1/2
+  - Heisenberg spin-1
+  - Kondo Lattice model
+  - t-J model
+- Honeycomb lattice
+  - Spinless fermion
+- Kagome lattice
+  - Heisenberg spin-1/2
+  - t-J model
+- Square lattice
+  - Bose-Hubbard model
+  - Fermi-Hubbard model
+- Triangular lattice
+  - Heisenberg spin-1/2
 
 ## Dependencies:
 - [Boost](http://www.boost.org/)

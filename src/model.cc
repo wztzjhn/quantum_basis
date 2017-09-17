@@ -808,6 +808,7 @@ namespace qbasis {
         if (nev == 2 && ! E1_done) {
             start = std::chrono::system_clock::now();
             std::cout << "Calculating 1st excited state energy (simple Lanczos)..." << std::endl;
+            std::cout << "Lanczos may/maynot miss degenerate states, BE CAREFUL!" << std::endl;
             vec_randomize(dim, v.data(), seed);
             auto alpha = dotc(dim, v.data() + 2 * dim, 1, v.data(), 1);          // (phi0, v0)
             axpy(dim, -alpha, v.data() + 2 * dim, 1, v.data(), 1);               // v0 -= alpha * phi0

@@ -4,7 +4,7 @@
 
 // tJ model on chain lattice
 int main() {
-    qbasis::enable_ckpt = true;
+    qbasis::enable_ckpt = false;
     std::cout << std::setprecision(10);
     // parameters
     double t = 1.0;
@@ -80,22 +80,28 @@ int main() {
 
     }
 
-    // constructing the Hilbert space basis
-    tJ.enumerate_basis_full({Sz_total, N_total}, {Sz_total_val, N_total_val});
+    // to use translational symmetry, we first fill the Weisse tables
+    tJ.fill_Weisse_table(lattice);
 
+    std::vector<double> E0_list;
+    for (int momentum = 0; momentum < Lx; momentum++) {
+        // constructing the Hilbert space basis
+        tJ.enumerate_basis_repr({momentum}, {Sz_total, N_total}, {Sz_total_val, N_total_val});
 
-    // optional, will use more memory and give higher speed
-    // generating matrix of the Hamiltonian in the full Hilbert space
-    tJ.generate_Ham_sparse_full();
-    std::cout << std::endl;
+        // optional in future, will use more memory and give higher speed
+        // generating matrix of the Hamiltonian in the full Hilbert space
+        tJ.generate_Ham_sparse_repr();
+        std::cout << std::endl;
 
+        // obtaining the eigenvals of the matrix
+        tJ.locate_E0_lanczos(1);
+        std::cout << std::endl;
 
-    // obtaining the eigenvals of the matrix
-    tJ.locate_E0_full(4,8);
-    std::cout << std::endl;
+        E0_list.push_back(tJ.eigenvals_repr[0]);
 
+    }
 
-    // for the parameters considered, we should obtain:
-    assert(std::abs(tJ.eigenvals_full[0] + 9.762087307) < 1e-8);
-    assert(std::abs(tJ.eigenvals_full[1] + 9.762087307) < 1e-8);
+    for (int momentum = 0; momentum < Lx; momentum++) {
+        std::cout << "E0(k=" << momentum << ")=\t" << E0_list[momentum] << std::endl;
+    }
 }
