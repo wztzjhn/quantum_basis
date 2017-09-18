@@ -4,7 +4,7 @@ CPPFLAGS  = -g -O2 -std=c++11 -Weverything -Wno-c++98-compat-pedantic -Wno-c++98
             -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
 LIBS      = -L/usr/local/lib -larpack \
             -L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl \
-            -lboost_system-mt -lboost_filesystem-mt
+            -lboost_filesystem-mt -lboost_system-mt
 
 include makefile_list/object_list.txt
 

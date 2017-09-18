@@ -5,7 +5,7 @@ CPPFLAGS  = -Ofast -std=c++11 -w3 -wd383,981 -qopenmp \
 LIBS      = -L/usr/local/lib -larpack \
             -L${MKLROOT}/lib/intel64 -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl \
             -qopenmp \
-            -lboost_system -lboost_filesystem
+            -lboost_filesystem -lboost_system
 
 include makefile_list/object_list.txt
 
