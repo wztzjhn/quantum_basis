@@ -1,6 +1,12 @@
 CXX       = g++
-CPPFLAGS  = -Ofast -s -std=c++11 -Wall -Wextra -DMKL_ILP64 -m64 -fopenmp -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
-LIBS      = -L${HOME}/opt/ARPACK_ILP64 -larpack -lgfortran -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -fopenmp
+CPPFLAGS  = -O2 -std=c++11 -Wall -Wextra -DMKL_ILP64 -m64 -fopenmp \
+            -isystem ${MKLROOT}/include \
+            -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig \
+            -isystem ${HOME}/installs/include
+LIBS      = -L${HOME}/opt/ARPACK_ILP64 -larpack -lgfortran \
+            -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl \
+            -fopenmp \
+            -L${HOME}/installs/lib -lboost_filesystem -lboost_system
 
 include makefile_list/object_list.txt
 
