@@ -1,5 +1,5 @@
 CXX       = icpc
-CPPFLAGS  = -Ofast -std=c++11 -w3 -wd383,981 -qopenmp \
+CPPFLAGS  = -O2 -std=c++11 -w3 -wd383,981 -qopenmp \
             -isystem ${MKLROOT}/include \
             -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
 LIBS      = -L/usr/local/lib -larpack \

@@ -20,7 +20,7 @@ To learn how to use this library to design ED code for your own models, please r
   - Heisenberg spin-1/2
 
 ## Dependencies:
-- [Boost](http://www.boost.org/)
+- [Boost](http://www.boost.org/) (Boost lib and Qbasis lib have to be built with compatible compilers)
 - [MKL](https://software.intel.com/en-us/intel-mkl) (some old versions may not work)
 - [arpack](https://github.com/opencollab/arpack-ng) (dependency to be removed in future)
 - [arpack++](https://github.com/wztzjhn/arpackpp) (dependency to be removed in future)

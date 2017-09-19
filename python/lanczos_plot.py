@@ -70,7 +70,7 @@ ax[1].plot(x,accu1,"x-", label=r'$|\Delta E_1 / E_1|$')
 ax[1].plot(x,accu,"md-", label=r'$||H \phi_0 -E_0 \phi_0 ||$')
 ax[1].plot(x,1e-12*np.ones(row_total),"k--")
 
-plt.legend()
+plt.legend(loc=3)
 plt.tight_layout()
 plt.savefig(filename+".png")
 plt.show()
