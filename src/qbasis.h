@@ -1070,9 +1070,11 @@ namespace qbasis {
         // return a vector containing the positions of each site after translation
         std::vector<uint32_t> translation_plan(const std::vector<int> &disp) const;
         
-        // return a vector containing the positions of each site after c2 (180) or c4 (90) rotation
-        std::vector<uint32_t> c2_rotation_plan() const;
-        std::vector<uint32_t> c4_rotation_plan() const;
+        // return a vector containing the positions of each site after rotation
+        // x -> x', by (x' - x0) = R (x - x0)
+        // roughly implemented, check before use!
+        std::vector<uint32_t> rotation_plan(const uint32_t &origin, const double &angle) const;
+        
         std::vector<uint32_t> reflection_plan() const;
         
         // combine two plans

@@ -22,6 +22,24 @@ void test_lattice() {
     }
     std::cout << std::endl;
     
+    std::cout << "Rotation by pi/2" << std::endl;
+    plan = square.rotation_plan(0, qbasis::pi/2);
+    for (uint32_t j = 0; j < square.total_sites(); j++) {
+        std::cout << j << " -> " << plan[j] << std::endl;
+    }
+    std::cout << std::endl;
+    
+    
+    qbasis::lattice tri("triangular",std::vector<uint32_t>{3,3},std::vector<std::string>{"pbc", "pbc"});
+    std::cout << "Rotation by pi" << std::endl;
+    plan = tri.rotation_plan(4, qbasis::pi);
+    for (uint32_t j = 0; j < square.total_sites(); j++) {
+        std::cout << j << " -> " << plan[j] << std::endl;
+    }
+    std::cout << std::endl;
+    
+    
+    
     std::cout << "kagome" << std::endl;
     qbasis::lattice kagome("kagome",std::vector<uint32_t>{2,3},std::vector<std::string>{"pbc", "pbc"});
     for (uint32_t site = 0; site < kagome.total_sites(); site++) {

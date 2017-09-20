@@ -877,9 +877,12 @@ namespace qbasis {
             if (gap < lanczos_precision) {                                       // orthogonalize the two degenerate states
                 std::cout << "Orthogonalizing degenerate ground states..." << std::endl;
                 T alpha = dotc(dim, eigenvecs.data(), 1, eigenvecs.data() + dim, 1); // (v0,v1)
+                std::cout << "Before: v0 . v1 = " << alpha << std::endl;
                 axpy(dim, -alpha, eigenvecs.data(), 1, eigenvecs.data() + dim, 1);
                 double rnorm = nrm2(dim, eigenvecs.data() + dim, 1);
                 scal(dim, 1.0 / rnorm, eigenvecs.data() + dim, 1);
+                alpha = dotc(dim, eigenvecs.data(), 1, eigenvecs.data() + dim, 1);   // (v0,v1)
+                std::cout << "After:  v0 . v1 = " << alpha << std::endl;
             }
             std::cout << std::endl;
             

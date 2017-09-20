@@ -71,10 +71,13 @@ int main(){
     
     
     test_operator();
+    
+    test_lattice();
+    
     /*
     test_lanczos_memoAll();
     
-    test_lattice();
+    
     
     test_lattice2();
     

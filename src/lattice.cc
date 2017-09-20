@@ -509,25 +509,50 @@ namespace qbasis {
         return result;
     }
     
-    std::vector<uint32_t> lattice::c4_rotation_plan() const
+    std::vector<uint32_t> lattice::rotation_plan(const uint32_t &origin, const double &angle) const
     {
         assert(dim == 2);
-        assert(L[0] == L[1]);
-        assert(std::abs(a[0][0] * a[1][0] + a[0][1] * a[1][1]) < opr_precision); // basis orthogonal
         std::vector<uint32_t> result(total_sites());
-        std::vector<int> coor(dim), temp(dim), work(dim);
+        std::vector<int> coor(dim), work(dim);
+        std::vector<double> x0(dim), x1(dim), xwork(dim);
         int sub;
+        
+        // obtain x0
+        site2coor(coor, sub, origin);
+        x0[0] = coor[0] * a[0][0] + coor[1] * a[1][0];
+        x0[1] = coor[0] * a[0][1] + coor[1] * a[1][1];
+        
+        // rotation matrix
+        std::vector<double> matR(4);
+        matR[0] = cos(angle);
+        matR[1] = sin(angle);
+        matR[2] = -matR[1];
+        matR[3] = matR[0];
         
         // currently only the simplest case implemented: one sublattice. More complicated cases come later
         assert(num_sub == 1);
         if (num_sub == 1) {
             for (uint32_t site = 0; site < total_sites(); site++) {
                 site2coor(coor, sub, site);
-                temp[0] = static_cast<int>(L[1]) - 1 - coor[1];
-                temp[1] = coor[0];
-                coor2site(temp, sub, result[site], work);
+                xwork[0] = coor[0] * a[0][0] + coor[1] * a[1][0] - x0[0];
+                xwork[1] = coor[0] * a[0][1] + coor[1] * a[1][1] - x0[1];
+                x1[0] = x0[0] + matR[0] * xwork[0] + matR[2] * xwork[1];
+                x1[1] = x0[1] + matR[1] * xwork[0] + matR[3] * xwork[1];
+                xwork[0] = ( b[0][0] * x1[0] + b[0][1] * x1[1] ) * 0.5 / pi;
+                xwork[1] = ( b[1][0] * x1[0] + b[1][1] * x1[1] ) * 0.5 / pi;
+                coor[0] = static_cast<int>(xwork[0] >= 0 ? xwork[0] + 0.5 : xwork[0] - 0.5);
+                coor[1] = static_cast<int>(xwork[1] >= 0 ? xwork[1] + 0.5 : xwork[1] - 0.5);
+                if (std::abs(coor[0] - xwork[0]) > opr_precision || std::abs(coor[1] - xwork[1]) > opr_precision)
+                    std::cerr << "Lattice rotation failed!";
+                coor2site(coor, sub, result[site], work);
             }
         }
+        
+        // check no repetition
+        auto result_check = result;
+        std::sort(result_check.begin(), result_check.end());
+        assert(is_sorted_norepeat(result_check));
+        
         return result;
     }
     
