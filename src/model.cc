@@ -641,10 +641,7 @@ namespace qbasis {
                 
                 // non-diagonal part
                 uint64_t state_sub1_label, state_sub2_label;
-                std::vector<uint32_t> disp_i(dim_latt), disp_j(dim_latt);
-                std::vector<int> disp_i_int(dim_latt), disp_j_int(dim_latt);
                 int sgn;
-                mbasis_elem state_sub_new1, state_sub_new2, ra_z_Tj_rb;
                 uint64_t i_a, i_b;
                 MKL_INT j;
                 for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
@@ -664,39 +661,39 @@ namespace qbasis {
                         pos_e.insert(pos_e.end(), dist2rep_sub[state_sub1_label].begin(), dist2rep_sub[state_sub1_label].end());
                         pos_e.insert(pos_e.end(), dist2rep_sub[state_sub2_label].begin(), dist2rep_sub[state_sub2_label].end());
                         if (state_rep1_label < state_rep2_label) {                          // ra < rb
-                            disp_i = Weisse_e_lt.index(pos_e).first;
-                            disp_j = Weisse_e_lt.index(pos_e).second;
+                            disp_i[tid] = Weisse_e_lt.index(pos_e).first;
+                            disp_j[tid] = Weisse_e_lt.index(pos_e).second;
                         } else if (state_rep2_label < state_rep1_label) {                   // ra > rb
-                            disp_i = Weisse_e_gt.index(pos_e).first;
-                            disp_j = Weisse_e_gt.index(pos_e).second;
+                            disp_i[tid] = Weisse_e_gt.index(pos_e).first;
+                            disp_j[tid] = Weisse_e_gt.index(pos_e).second;
                         } else {                                                            // ra == rb
-                            disp_i = Weisse_e_eq.index(pos_e).first;
-                            disp_j = Weisse_e_eq.index(pos_e).second;
+                            disp_i[tid] = Weisse_e_eq.index(pos_e).first;
+                            disp_j[tid] = Weisse_e_eq.index(pos_e).second;
                         }
-                        for (uint32_t j = 0; j < disp_j.size(); j++) {
-                            disp_i_int[j] = static_cast<int>(disp_i[j]);
-                            disp_j_int[j] = static_cast<int>(disp_j[j]);
+                        for (uint32_t j = 0; j < disp_j[tid].size(); j++) {
+                            disp_i_int[tid][j] = static_cast<int>(disp_i[tid][j]);
+                            disp_j_int[tid][j] = static_cast<int>(disp_j[tid][j]);
                         }
                         
                         if (state_rep2_label < state_rep1_label && dim_spec_involved) {
-                            state_sub_new1 = basis_sub_repr[state_rep2_label];
-                            state_sub_new2 = basis_sub_repr[state_rep1_label];
+                            state_sub_new1[tid] = basis_sub_repr[state_rep2_label];
+                            state_sub_new2[tid] = basis_sub_repr[state_rep1_label];
                         } else {
-                            state_sub_new1 = basis_sub_repr[state_rep1_label];
-                            state_sub_new2 = basis_sub_repr[state_rep2_label];
+                            state_sub_new1[tid] = basis_sub_repr[state_rep1_label];
+                            state_sub_new2[tid] = basis_sub_repr[state_rep2_label];
                         }
-                        latt_sub.translation_plan(plans_sub[tid], disp_j_int, scratch_coors[tid], scratch_works[tid]);
-                        state_sub_new2.transform(props_sub_b, plans_sub[tid], sgn);   // T_j |rb>
-                        zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
+                        latt_sub.translation_plan(plans_sub[tid], disp_j_int[tid], scratch_coors[tid], scratch_works[tid]);
+                        state_sub_new2[tid].transform(props_sub_b, plans_sub[tid], sgn);   // T_j |rb>
+                        zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1[tid], state_sub_new2[tid], ra_z_Tj_rb[tid]); // |ra> z T_j |rb>
                         if (Lin_Ja_repr[sec_mat].size() > 0 && Lin_Jb_repr[sec_mat].size() > 0) {
-                            i_a = state_sub_new1.label(props_sub_a, scratch_works1[tid], scratch_works2[tid]);     // use Lin Tables
-                            i_b = state_sub_new2.label(props_sub_b, scratch_works1[tid], scratch_works2[tid]);
+                            i_a = state_sub_new1[tid].label(props_sub_a, scratch_works1[tid], scratch_works2[tid]);     // use Lin Tables
+                            i_b = state_sub_new2[tid].label(props_sub_b, scratch_works1[tid], scratch_works2[tid]);
                             j = Lin_Ja_repr[sec_mat][i_a] + Lin_Jb_repr[sec_mat][i_b];
                         } else {
-                            j = binary_search<mbasis_elem,MKL_INT>(basis, ra_z_Tj_rb, 0, dim);
+                            j = binary_search<mbasis_elem,MKL_INT>(basis, ra_z_Tj_rb[tid], 0, dim);
                         }
                         if (j < 0 || j >= dim) continue;
-                        assert(ra_z_Tj_rb == basis[j]);
+                        assert(ra_z_Tj_rb[tid] == basis[j]);
                         if (std::abs(x[j]) < machine_prec) continue;
                         double nu_j = norm_repr[sec_mat][j];
                         if (std::abs(nu_j) < lanczos_precision) continue;
@@ -704,14 +701,14 @@ namespace qbasis {
                         double exp_coef = 0.0;
                         for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                             if (trans_sym[d]) {
-                                exp_coef += momenta[sec_mat][d] * disp_i_int[d] / static_cast<double>(L[d]);
+                                exp_coef += momenta[sec_mat][d] * disp_i_int[tid][d] / static_cast<double>(L[d]);
                             }
                         }
                         auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
                         if (! bosonic) {
-                            latt_parent.translation_plan(plans_parent[tid], disp_i_int, scratch_coors[tid], scratch_works[tid]);
-                            ra_z_Tj_rb.transform(props, plans_parent[tid], sgn);   // to get sgn
-                            assert(ra_z_Tj_rb == ele_new.first);
+                            latt_parent.translation_plan(plans_parent[tid], disp_i_int[tid], scratch_coors[tid], scratch_works[tid]);
+                            ra_z_Tj_rb[tid].transform(props, plans_parent[tid], sgn);   // to get sgn
+                            assert(ra_z_Tj_rb[tid] == ele_new.first);
                             if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
                         }
                         
