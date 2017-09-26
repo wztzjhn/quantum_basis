@@ -358,7 +358,8 @@ namespace qbasis {
         return true;
     }
     
-    uint64_t mbasis_elem::label(const std::vector<basis_prop> &props, const uint32_t &orbital) const
+    uint64_t mbasis_elem::label(const std::vector<basis_prop> &props, const uint32_t &orbital,
+                                std::vector<uint8_t> &work) const
     {
         auto dim_local = props[orbital].dim_local;
         auto num_sites = props[orbital].num_sites;
@@ -372,68 +373,85 @@ namespace qbasis {
                 res = (res + mbits[byte_pos]) * 256;
             res += mbits[byte_pos_bgn];
         } else {
-            std::vector<uint8_t> nums;
-            std::vector<uint8_t> base(num_sites,dim_local);
+            if (work.size() < num_sites + num_sites) work.resize(num_sites + num_sites);
+            std::fill(work.begin(), work.end(), dim_local);
+            uint8_t* nums = work.data();
+            uint8_t* base = nums + num_sites;
             for (decltype(num_sites) site = 0; site < num_sites; site++)
-                nums.push_back(siteRead(props, site, orbital));
-            res = dynamic_base<uint8_t, uint64_t>(nums, base);
+                nums[site] = siteRead(props, site, orbital);
+            dynamic_base_vec2num<uint8_t,uint64_t>(static_cast<MKL_INT>(num_sites), base, nums, res);
         }
         return res;
     }
     
-    uint64_t mbasis_elem::label(const std::vector<basis_prop> &props) const
+    uint64_t mbasis_elem::label(const std::vector<basis_prop> &props,
+                                std::vector<uint8_t> &work1, std::vector<uint64_t> &work2) const
     {
         if (props.size() == 1) {
-            return label(props, 0);
+            return label(props, 0, work1);
         } else {
-            std::vector<uint64_t> base, nums;
+            uint32_t N_orbs = props.size();
+            if (work2.size() < N_orbs + N_orbs) work2.resize(N_orbs + N_orbs);
+            uint64_t* nums = work2.data();
+            uint64_t* base = nums + N_orbs;
             for (uint32_t orb = 0; orb < props.size(); orb++) {
-                nums.push_back(label(props,orb));
-                base.push_back(int_pow<uint32_t, uint64_t>(static_cast<uint32_t>(props[orb].dim_local), props[orb].num_sites));
+                nums[orb] = label(props,orb, work1);
+                base[orb] = int_pow<uint32_t, uint64_t>(static_cast<uint32_t>(props[orb].dim_local), props[orb].num_sites);
             }
-            return dynamic_base<uint64_t, uint64_t>(nums, base);
+            uint64_t res;
+            dynamic_base_vec2num<uint64_t,uint64_t>(static_cast<MKL_INT>(N_orbs), base, nums, res);
+            return res;
         }
     }
     
     void mbasis_elem::label_sub(const std::vector<basis_prop> &props, const uint32_t &orbital,
-                                uint64_t &label1, uint64_t &label2) const
+                                uint64_t &label1, uint64_t &label2, std::vector<uint8_t> &work) const
     {
         auto dim_local = props[orbital].dim_local;
         uint32_t num_sites = props[orbital].num_sites;
         uint32_t num_sites_sub1 = (num_sites + 1) / 2;
         uint32_t num_sites_sub2 = num_sites - num_sites_sub1;
         
-        std::vector<uint8_t> nums_sub1(num_sites_sub1), nums_sub2(num_sites_sub2);
-        std::vector<uint8_t> base_sub1(num_sites_sub1,dim_local), base_sub2(num_sites_sub2,dim_local);
+        if (work.size() < num_sites + num_sites) work.resize(num_sites + num_sites);
+        std::fill(work.begin(), work.end(), dim_local);
+        uint8_t* nums_sub1 = work.data();
+        uint8_t* nums_sub2 = nums_sub1 + num_sites_sub1;
+        uint8_t* base_sub1 = nums_sub2 + num_sites_sub2;
+        uint8_t* base_sub2 = base_sub1 + num_sites_sub1;
         
         for (uint32_t site = 0; site < num_sites_sub2; site++) {
             nums_sub1[site] = siteRead(props, site + site,     orbital);
             nums_sub2[site] = siteRead(props, site + site + 1, orbital);
         }
-        if (num_sites_sub1 > num_sites_sub2) nums_sub1.back() = siteRead(props, num_sites - 1, orbital);
-        label1 = dynamic_base<uint8_t, uint64_t>(nums_sub1, base_sub1);
-        label2 = dynamic_base<uint8_t, uint64_t>(nums_sub2, base_sub2);
+        if (num_sites_sub1 > num_sites_sub2) nums_sub1[num_sites_sub1 - 1] = siteRead(props, num_sites - 1, orbital);
+        dynamic_base_vec2num<uint8_t,uint64_t>(static_cast<MKL_INT>(num_sites_sub1), base_sub1, nums_sub1, label1);
+        dynamic_base_vec2num<uint8_t,uint64_t>(static_cast<MKL_INT>(num_sites_sub2), base_sub2, nums_sub2, label2);
     }
     
     void mbasis_elem::label_sub(const std::vector<basis_prop> &props,
-                                uint64_t &label1, uint64_t &label2) const
+                                uint64_t &label1, uint64_t &label2,
+                                std::vector<uint8_t> &work1, std::vector<uint64_t> &work2) const
     {
         auto N_orbs = props.size();
         if (N_orbs == 1) {
-            label_sub(props, 0, label1, label2);
+            label_sub(props, 0, label1, label2, work1);
         } else {
-            std::vector<uint64_t> base_sub1(N_orbs), base_sub2(N_orbs), nums_sub1(N_orbs), nums_sub2(N_orbs);
+            if (work2.size() < 4*N_orbs) work2.resize(4*N_orbs);
+            uint64_t* base_sub1 = work2.data();
+            uint64_t* base_sub2 = base_sub1 + N_orbs;
+            uint64_t* nums_sub1 = base_sub2 + N_orbs;
+            uint64_t* nums_sub2 = nums_sub1 + N_orbs;
             for (uint32_t orb = 0; orb < props.size(); orb++) {
                 uint32_t num_sites = props[orb].num_sites;
                 uint32_t num_sites_sub1 = (num_sites + 1) / 2;
                 uint32_t num_sites_sub2 = num_sites - num_sites_sub1;
                 uint32_t local_dim = static_cast<uint32_t>(props[orb].dim_local);
-                label_sub(props, orb, nums_sub1[orb], nums_sub2[orb]);
+                label_sub(props, orb, nums_sub1[orb], nums_sub2[orb], work1);
                 base_sub1[orb] = int_pow<uint32_t, uint64_t>(local_dim, num_sites_sub1);
                 base_sub2[orb] = int_pow<uint32_t, uint64_t>(local_dim, num_sites_sub2);
             }
-            label1 = dynamic_base<uint64_t, uint64_t>(nums_sub1, base_sub1);
-            label2 = dynamic_base<uint64_t, uint64_t>(nums_sub2, base_sub2);
+            dynamic_base_vec2num<uint64_t,uint64_t>(static_cast<MKL_INT>(N_orbs), base_sub1, nums_sub1, label1);
+            dynamic_base_vec2num<uint64_t,uint64_t>(static_cast<MKL_INT>(N_orbs), base_sub2, nums_sub2, label2);
         }
     }
     
@@ -1218,14 +1236,24 @@ namespace qbasis {
         Lin_Ja = std::vector<MKL_INT>(dim_sub_a,-1);
         Lin_Jb = std::vector<MKL_INT>(dim_sub_b,-1);
         
+        int num_threads = 1;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) num_threads = omp_get_num_threads();
+        }
+        std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
+        std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
+        
         // first loop over the basis to generate the list (Ia, Ib, J)
         // the element J may not be necessary, remove if not used
         std::cout << "building the (Ia,Ib,J) table...                    " << std::flush;
         std::vector<std::vector<MKL_INT>> table_pre(dim,std::vector<MKL_INT>(3));
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT j = 0; j < dim; j++) {
+            int tid = omp_get_thread_num();
             uint64_t i_a, i_b;
-            basis[j].label_sub(props, i_a, i_b);
+            basis[j].label_sub(props, i_a, i_b, scratch_works1[tid], scratch_works2[tid]);
             // value of table_pre[j][2] will be fixed later
             table_pre[j][0] = static_cast<MKL_INT>(i_a);
             table_pre[j][1] = static_cast<MKL_INT>(i_b);
@@ -1326,10 +1354,9 @@ namespace qbasis {
             std::cout << "double checking Lin Table validity...              " << std::flush;
             #pragma omp parallel for schedule(dynamic,1)
             for (MKL_INT j = 0; j < dim; j++) {
-                mbasis_elem sub_a, sub_b;
-                unzipper_basis(props, props_sub_a, props_sub_b, basis[j], sub_a, sub_b);
-                auto i_a = sub_a.label(props_sub_a);
-                auto i_b = sub_b.label(props_sub_b);
+                int tid = omp_get_thread_num();
+                uint64_t i_a, i_b;
+                basis[j].label_sub(props, i_a, i_b, scratch_works1[tid], scratch_works2[tid]);
                 assert(Lin_Ja[i_a] + Lin_Jb[i_b] == j);
             }
             end = std::chrono::system_clock::now();
@@ -1739,6 +1766,8 @@ namespace qbasis {
         std::vector<uint32_t> plan_parent(latt_parent.total_sites());
         std::vector<uint32_t> plan_sub(latt_sub.total_sites());
         std::vector<int> scratch_coor(latt_parent.dimension()), scratch_work(latt_parent.dimension());
+        std::vector<uint8_t> scratch_work1;
+        std::vector<uint64_t> scratch_work2;
         
         // gather a list of examples for different groups
         std::vector<std::vector<mbasis_elem>> examples(num_groups);
@@ -1820,7 +1849,7 @@ namespace qbasis {
                         int sgn;
                         latt_sub.translation_plan(plan_sub, disp_j_int, scratch_coor, scratch_work);
                         rb_new.transform(props_sub, plan_sub, sgn);                               // Tj |rb>
-                        auto rb_new_label = rb_new.label(props_sub);
+                        auto rb_new_label = rb_new.label(props_sub, scratch_work1, scratch_work2);
                         assert(basis_sub_repr[belong2rep[rb_new_label]] == rb);
                         auto dist_to_rb = dist2rep[rb_new_label];
                         if (dist_to_rb != disp_j_int) {                                           // remove over-countings
@@ -1839,7 +1868,8 @@ namespace qbasis {
                             Ti_ra_z_Tj_rb.transform(props_parent, plan_parent, sgn);                  // Ti (|ra> z Tj |rb>)
                             // now need find ja, jb
                             uint64_t state_sub1_label, state_sub2_label;
-                            Ti_ra_z_Tj_rb.label_sub(props_parent, state_sub1_label, state_sub2_label); // |a>, |b>
+                            Ti_ra_z_Tj_rb.label_sub(props_parent, state_sub1_label, state_sub2_label,
+                                                    scratch_work1, scratch_work2);                // |a>, |b>
                             
                             auto state_rep1_label = belong2rep[state_sub1_label];
                             auto state_rep2_label = belong2rep[state_sub2_label];
@@ -1880,7 +1910,7 @@ namespace qbasis {
                         int sgn;
                         latt_sub.translation_plan(plan_sub, disp_j_int, scratch_coor, scratch_work);
                         rb_new.transform(props_sub, plan_sub, sgn);                               // Tj |rb>
-                        auto rb_new_label = rb_new.label(props_sub);
+                        auto rb_new_label = rb_new.label(props_sub, scratch_work1, scratch_work2);
                         assert(basis_sub_repr[belong2rep[rb_new_label]] == rb);
                         auto dist_to_rb = dist2rep[rb_new_label];
                         if (dist_to_rb != disp_j_int) {                                           // remove over-countings
@@ -1899,7 +1929,8 @@ namespace qbasis {
                             Ti_ra_z_Tj_rb.transform(props_parent, plan_parent, sgn);                  // Ti (|ra> z Tj |rb>)
                             // now need find ja, jb
                             uint64_t state_sub1_label, state_sub2_label;
-                            Ti_ra_z_Tj_rb.label_sub(props_parent, state_sub1_label, state_sub2_label);
+                            Ti_ra_z_Tj_rb.label_sub(props_parent, state_sub1_label, state_sub2_label,
+                                                    scratch_work1, scratch_work2);
                             auto state_rep1_label = belong2rep[state_sub1_label];
                             auto state_rep2_label = belong2rep[state_sub2_label];
                             auto &state_rep1      = basis_sub_repr[state_rep1_label];             // |ra'>
@@ -1939,7 +1970,7 @@ namespace qbasis {
                         int sgn;
                         latt_sub.translation_plan(plan_sub, disp_j_int, scratch_coor, scratch_work);
                         rb_new.transform(props_sub, plan_sub, sgn);                               // Tj |rb>
-                        auto rb_new_label = rb_new.label(props_sub);
+                        auto rb_new_label = rb_new.label(props_sub, scratch_work1, scratch_work2);
                         assert(basis_sub_repr[belong2rep[rb_new_label]] == rb);
                         auto dist_to_rb = dist2rep[rb_new_label];
                         if (dist_to_rb != disp_j_int) {                                           // remove over-countings
@@ -1958,7 +1989,8 @@ namespace qbasis {
                             Ti_ra_z_Tj_rb.transform(props_parent, plan_parent, sgn);              // Ti (|ra> z Tj |rb>)
                             // now need find ja, jb
                             uint64_t state_sub1_label, state_sub2_label;
-                            Ti_ra_z_Tj_rb.label_sub(props_parent, state_sub1_label, state_sub2_label);
+                            Ti_ra_z_Tj_rb.label_sub(props_parent, state_sub1_label, state_sub2_label,
+                                                    scratch_work1, scratch_work2);
                             assert(belong2rep[state_sub1_label] == belong2rep[state_sub2_label]);
                             auto &dist2rep1       = dist2rep[state_sub1_label];                   // ja
                             auto &dist2rep2       = dist2rep[state_sub2_label];                   // jb

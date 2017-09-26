@@ -54,10 +54,28 @@ namespace qbasis {
         return res;
     }
     template uint32_t dynamic_base(const std::vector<uint8_t> &nums, const std::vector<uint8_t> &base);
-    template uint64_t dynamic_base(const std::vector<uint8_t> &nums, const std::vector<uint8_t> &base);
+    //template uint64_t dynamic_base(const std::vector<uint8_t> &nums, const std::vector<uint8_t> &base);
     template uint32_t dynamic_base(const std::vector<uint32_t> &nums, const std::vector<uint32_t> &base);
-    template uint64_t dynamic_base(const std::vector<uint64_t> &nums, const std::vector<uint64_t> &base);
+    //template uint64_t dynamic_base(const std::vector<uint64_t> &nums, const std::vector<uint64_t> &base);
     template MKL_INT dynamic_base(const std::vector<MKL_INT> &nums, const std::vector<MKL_INT> &base);
+    
+    template <typename T1, typename T2>
+    void dynamic_base_vec2num(const MKL_INT &len, const T1* base, const T1* vec, T2 &num)
+    {
+        assert(len > 0);
+        num = 0;
+        MKL_INT j = len - 1;
+        while (vec[j] == 0 && j > 0) j--;
+        while (j > 0) {
+            assert(vec[j] < base[j]);
+            num = (num + vec[j]) * base[j-1];
+            j--;
+        }
+        assert(vec[0] < base[0]);
+        num += vec[0];
+    }
+    template void dynamic_base_vec2num(const MKL_INT &len, const uint8_t* base, const uint8_t* vec, uint64_t &num);
+    template void dynamic_base_vec2num(const MKL_INT &len, const uint64_t* base, const uint64_t* vec, uint64_t &num);
     
     template <typename T1, typename T2>
     std::vector<T1> dynamic_base(const T2 &total, const std::vector<T1> &base)

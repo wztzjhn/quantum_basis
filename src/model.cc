@@ -180,6 +180,13 @@ namespace qbasis {
         }
         std::cout << "):" << std::endl;
         
+        int num_threads = 1;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) num_threads = omp_get_num_threads();
+        }
+        
         // now start enumerating representatives, if not generated before (or generated but already destroyed)
         if (dim_repr[sec_repr] <= 0 || static_cast<MKL_INT>(basis_repr[sec_repr].size()) != dim_repr[sec_repr]) {
             std::cout << "Enumerating basis_repr..." << std::endl;
@@ -188,12 +195,6 @@ namespace qbasis {
             dim_repr[sec_repr] = 0;
             auto report = basis_sub_repr.size() > 100 ? (basis_sub_repr.size() / 10) : basis_sub_repr.size();
             
-            int num_threads = 1;
-            #pragma omp parallel
-            {
-                int tid = omp_get_thread_num();
-                if (tid == 0) num_threads = omp_get_num_threads();
-            }
             std::vector<std::vector<uint32_t>> plans_parent(num_threads);
             std::vector<std::vector<uint32_t>> plans_sub(num_threads);
             std::vector<std::vector<int>> scratch_works(num_threads);
@@ -299,10 +300,14 @@ namespace qbasis {
         MKL_INT extra = 0;
         norm_repr[sec_repr].clear();
         norm_repr[sec_repr].resize(dim_repr[sec_repr]);
+        std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
+        std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT j = 0; j < dim_repr[sec_repr]; j++) {
+            int tid = omp_get_thread_num();
             uint64_t state_sub1_label, state_sub2_label;
-            basis_repr[sec_repr][j].label_sub(props, state_sub1_label, state_sub2_label);
+            basis_repr[sec_repr][j].label_sub(props, state_sub1_label, state_sub2_label,
+                                              scratch_works1[tid], scratch_works2[tid]);
             auto &ra_label = belong2rep_sub[state_sub1_label];
             auto &rb_label = belong2rep_sub[state_sub2_label];
             auto &ga = belong2group_sub[ra_label];
@@ -347,6 +352,8 @@ namespace qbasis {
         }
         // prepare intermediates in advance
         std::vector<wavefunction<T>> intermediate_states(num_threads, {basis[0]});
+        std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
+        std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
         
         std::cout << "Generating LIL Hamiltonian matrix (full)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
@@ -364,37 +371,13 @@ namespace qbasis {
             uint64_t i_a, i_b;
             MKL_INT j;
             for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
-                
-                
-                
-                
                 intermediate_states[tid].copy(basis[i]);
                 oprXphi(*it, props, intermediate_states[tid]);
-                
-                /*
-                if (i == 6041) {
-                    std::cout << "---state---" << std::endl;
-                    basis[i].prt_states(props);
-                    std::cout << std::endl;
-                    
-                    std::cout << "---operator---" << std::endl;
-                    it->prt();
-                    std::cout << std::endl;
-                    
-                    std::cout << "--- new state ---" << std::endl;
-                    for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
-                        std::cout << "cnt = " << cnt << std::endl;
-                        intermediate_states[tid][cnt].first.prt_states(props);
-                        std::cout << std::endl;
-                    }
-                }
-                */
-                
                 for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                     auto &ele_new = intermediate_states[tid][cnt];
                     if (std::abs(ele_new.second) < machine_prec) continue;
                     if (Lin_Ja_full[sec_mat].size() > 0 && Lin_Jb_full[sec_mat].size() > 0) {
-                        ele_new.first.label_sub(props, i_a, i_b);
+                        ele_new.first.label_sub(props, i_a, i_b, scratch_works1[tid], scratch_works2[tid]);
                         j = Lin_Ja_full[sec_mat][i_a] + Lin_Jb_full[sec_mat][i_b];
                     } else {
                         j = binary_search<mbasis_elem,MKL_INT>(basis, ele_new.first, 0, dim);
@@ -443,6 +426,8 @@ namespace qbasis {
         std::vector<std::vector<uint32_t>> plans_sub(num_threads);
         std::vector<std::vector<int>> scratch_works(num_threads);
         std::vector<std::vector<int>> scratch_coors(num_threads);
+        std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
+        std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
         
         std::cout << "Generating LIL Hamiltonian Matrix (repr)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
@@ -478,7 +463,8 @@ namespace qbasis {
                 for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                     auto &ele_new = intermediate_states[tid][cnt];
                     // use Weisse Tables to find the representative |ra,rb,j>
-                    ele_new.first.label_sub(props, state_sub1_label, state_sub2_label);
+                    ele_new.first.label_sub(props, state_sub1_label, state_sub2_label,
+                                            scratch_works1[tid], scratch_works2[tid]);
                     auto &state_rep1_label = belong2rep_sub[state_sub1_label];       // ra
                     auto &state_rep2_label = belong2rep_sub[state_sub2_label];       // rb
                     auto &ga               = belong2group_sub[state_rep1_label];     // ga
@@ -513,8 +499,8 @@ namespace qbasis {
                     zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
                     
                     if (Lin_Ja_repr[sec_mat].size() > 0 && Lin_Jb_repr[sec_mat].size() > 0) {
-                        i_a = state_sub_new1.label(props_sub_a);                    // use Lin Tables
-                        i_b = state_sub_new2.label(props_sub_b);
+                        i_a = state_sub_new1.label(props_sub_a, scratch_works1[tid], scratch_works2[tid]);    // use Lin Tables
+                        i_b = state_sub_new2.label(props_sub_b, scratch_works1[tid], scratch_works2[tid]);
                         j = Lin_Ja_repr[sec_mat][i_a] + Lin_Jb_repr[sec_mat][i_b];
                     } else {
                         j = binary_search<mbasis_elem,MKL_INT>(basis, ra_z_Tj_rb, 0, dim);
@@ -588,6 +574,8 @@ namespace qbasis {
         std::vector<std::vector<uint32_t>> plans_sub(num_threads);
         std::vector<std::vector<int>> scratch_works(num_threads);
         std::vector<std::vector<int>> scratch_coors(num_threads);
+        std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
+        std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
         
         std::cout << "*" << std::flush;
         if (sec_sym == 0) {
@@ -611,7 +599,8 @@ namespace qbasis {
                         auto &ele_new = intermediate_states[tid][cnt];
                         if (std::abs(ele_new.second) < machine_prec) continue;
                         if (Lin_Ja_full[sec_mat].size() > 0 && Lin_Jb_full[sec_mat].size() > 0) {
-                            ele_new.first.label_sub(props, i_a, i_b);
+                            ele_new.first.label_sub(props, i_a, i_b,
+                                                    scratch_works1[tid], scratch_works2[tid]);
                             j = Lin_Ja_full[sec_mat][i_a] + Lin_Jb_full[sec_mat][i_b];
                         } else {
                             j = binary_search<mbasis_elem,MKL_INT>(basis, ele_new.first, 0, dim);
@@ -626,15 +615,23 @@ namespace qbasis {
             auto L        = latt_parent.Linear_size();
             bool bosonic  = q_bosonic(props);
             
+            std::vector<std::vector<uint32_t>> disp_i(num_threads,std::vector<uint32_t>(dim_latt));
+            std::vector<std::vector<uint32_t>> disp_j(num_threads,std::vector<uint32_t>(dim_latt));
+            std::vector<std::vector<int>> disp_i_int(num_threads,std::vector<int>(dim_latt));
+            std::vector<std::vector<int>> disp_j_int(num_threads,std::vector<int>(dim_latt));
+            std::vector<mbasis_elem> state_sub_new1(num_threads);
+            std::vector<mbasis_elem> state_sub_new2(num_threads);
+            std::vector<mbasis_elem> ra_z_Tj_rb(num_threads);
+            
             #pragma omp parallel for schedule(dynamic,16)
             for (MKL_INT i = 0; i < dim; i++) {
+                int tid = omp_get_thread_num();
+                
                 double nu_i = norm_repr[sec_mat][i];                             // normalization factor for repr i
                 if (std::abs(nu_i) < lanczos_precision) {
                     y[i] += x[i] * static_cast<T>(fake_pos + static_cast<double>(i)/static_cast<double>(dim));
                     continue;
                 }
-                
-                int tid = omp_get_thread_num();
                 
                 // diagonal part
                 if (std::abs(x[i]) > machine_prec) {
@@ -657,7 +654,8 @@ namespace qbasis {
                     for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                         auto &ele_new = intermediate_states[tid][cnt];
                         // use Weisse Tables to find the representative |ra,rb,j>
-                        ele_new.first.label_sub(props, state_sub1_label, state_sub2_label);
+                        ele_new.first.label_sub(props, state_sub1_label, state_sub2_label,
+                                                scratch_works1[tid], scratch_works2[tid]);
                         auto &state_rep1_label = belong2rep_sub[state_sub1_label];       // ra
                         auto &state_rep2_label = belong2rep_sub[state_sub2_label];       // rb
                         auto &ga               = belong2group_sub[state_rep1_label];     // ga
@@ -691,8 +689,8 @@ namespace qbasis {
                         state_sub_new2.transform(props_sub_b, plans_sub[tid], sgn);   // T_j |rb>
                         zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
                         if (Lin_Ja_repr[sec_mat].size() > 0 && Lin_Jb_repr[sec_mat].size() > 0) {
-                            i_a = state_sub_new1.label(props_sub_a);               // use Lin Tables
-                            i_b = state_sub_new2.label(props_sub_b);
+                            i_a = state_sub_new1.label(props_sub_a, scratch_works1[tid], scratch_works2[tid]);     // use Lin Tables
+                            i_b = state_sub_new2.label(props_sub_b, scratch_works1[tid], scratch_works2[tid]);
                             j = Lin_Ja_repr[sec_mat][i_a] + Lin_Jb_repr[sec_mat][i_b];
                         } else {
                             j = binary_search<mbasis_elem,MKL_INT>(basis, ra_z_Tj_rb, 0, dim);
@@ -1051,6 +1049,8 @@ namespace qbasis {
         }
         // prepare intermediates in advance
         std::vector<wavefunction<T>> intermediate_states(num_threads, {props});
+        std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
+        std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
         
         std::cout << "mopr * vec (s = " << sec_old << ", t = " << sec_new << ")... " << std::endl;
         for (MKL_INT j = 0; j < dim_full[sec_new]; j++) vec_new[j] = 0.0;
@@ -1074,7 +1074,8 @@ namespace qbasis {
                     for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                         auto &ele = intermediate_states[tid][cnt];
                         if (Lin_Ja_full[sec_new].size() > 0 && Lin_Jb_full[sec_new].size() > 0) {
-                            ele.first.label_sub(props, i_a, i_b);
+                            ele.first.label_sub(props, i_a, i_b,
+                                                scratch_works1[tid], scratch_works2[tid]);
                             i = Lin_Ja_full[sec_new][i_a] + Lin_Jb_full[sec_new][i_b];
                         } else {
                             i = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_new], ele.first, 0, dim_full[sec_new]);
@@ -1165,6 +1166,8 @@ namespace qbasis {
         std::vector<std::vector<uint32_t>> plans_sub(num_threads);
         std::vector<std::vector<int>> scratch_works(num_threads);
         std::vector<std::vector<int>> scratch_coors(num_threads);
+        std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
+        std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
         
         std::cout << "mopr * vec (s = " << sec_old << ", t = " << sec_new << ")... " << std::endl;
         for (MKL_INT j = 0; j < dim_repr[sec_new]; j++) vec_new[j] = 0.0;
@@ -1194,7 +1197,8 @@ namespace qbasis {
                     
                     for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                         auto &ele_new = intermediate_states[tid][cnt];
-                        ele_new.first.label_sub(props, state_sub1_label, state_sub2_label);
+                        ele_new.first.label_sub(props, state_sub1_label, state_sub2_label,
+                                                scratch_works1[tid], scratch_works2[tid]);
                         auto &state_rep1_label = belong2rep_sub[state_sub1_label];       // ra
                         auto &state_rep2_label = belong2rep_sub[state_sub2_label];       // rb
                         auto &ga               = belong2group_sub[state_rep1_label];     // ga
@@ -1229,8 +1233,8 @@ namespace qbasis {
                         zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
                         MKL_INT i;
                         if (Lin_Ja_repr[sec_new].size() > 0 && Lin_Jb_repr[sec_new].size() > 0) {
-                            uint64_t i_a = state_sub_new1.label(props_sub_a);               // use Lin Tables
-                            uint64_t i_b = state_sub_new2.label(props_sub_b);
+                            uint64_t i_a = state_sub_new1.label(props_sub_a, scratch_works1[tid], scratch_works2[tid]); // use Lin Tables
+                            uint64_t i_b = state_sub_new2.label(props_sub_b, scratch_works1[tid], scratch_works2[tid]);
                             i = Lin_Ja_repr[sec_new][i_a] + Lin_Jb_repr[sec_new][i_b];
                         } else {
                             i = binary_search<mbasis_elem,MKL_INT>(basis_repr[sec_new], ra_z_Tj_rb, 0, dim_repr[sec_new]);
@@ -1337,6 +1341,8 @@ namespace qbasis {
         std::vector<std::vector<uint32_t>> plans_sub(num_threads);
         std::vector<std::vector<int>> scratch_works(num_threads);
         std::vector<std::vector<int>> scratch_coors(num_threads);
+        std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
+        std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
         
         momenta[sec_repr] = momentum;
         
@@ -1387,7 +1393,8 @@ namespace qbasis {
                 MKL_INT j;
                 if (Lin_Ja_full[sec_full].size() > 0 && Lin_Jb_full[sec_full].size() > 0) {
                     uint64_t i_a, i_b;
-                    basis_temp.label_sub(props, i_a, i_b);
+                    basis_temp.label_sub(props, i_a, i_b,
+                                         scratch_works1[tid], scratch_works2[tid]);
                     j = Lin_Ja_full[sec_full][i_a] + Lin_Jb_full[sec_full][i_b];
                 } else {
                     j = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_full], basis_temp, 0, dim_full[sec_full]);
@@ -1441,6 +1448,8 @@ namespace qbasis {
         }
         // prepare intermediates in advance
         std::vector<wavefunction<T>> intermediate_states(num_threads, {props});
+        std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
+        std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
         
         std::cout << "Generating LIL Hamiltonian Matrix (repr) (deprecated)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
@@ -1470,7 +1479,8 @@ namespace qbasis {
                     MKL_INT state_j;
                     if (Lin_Ja_full[sec_mat].size() > 0 && Lin_Jb_full[sec_mat].size() > 0) {
                         uint64_t i_a, i_b;
-                        ele_new.first.label_sub(props, i_a, i_b);
+                        ele_new.first.label_sub(props, i_a, i_b,
+                                                scratch_works1[tid], scratch_works2[tid]);
                         state_j = Lin_Ja_full[sec_mat][i_a] + Lin_Jb_full[sec_mat][i_b];
                     } else {
                         state_j = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_mat], ele_new.first, 0, dim_full[sec_mat]);

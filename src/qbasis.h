@@ -389,15 +389,22 @@ namespace qbasis {
         bool q_same_state_all_site(const std::vector<basis_prop> &props) const;
         
         // get a label
-        uint64_t label(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
+        // preferred size of work: 2*num_sites
+        uint64_t label(const std::vector<basis_prop> &props, const uint32_t &orbital,
+                       std::vector<uint8_t> &work) const;
         
-        uint64_t label(const std::vector<basis_prop> &props) const;
+        // preferred size of work1: 2*num_sites, work2: 2*num_orbs
+        uint64_t label(const std::vector<basis_prop> &props,
+                       std::vector<uint8_t> &work1, std::vector<uint64_t> &work2) const;
         
+        // preferred size of work: 2*num_sites
         void label_sub(const std::vector<basis_prop> &props, const uint32_t &orbital,
-                       uint64_t &label1, uint64_t &label2) const;
+                       uint64_t &label1, uint64_t &label2, std::vector<uint8_t> &work) const;
         
+        // preferred size of work1: 2*num_sites, work2: 4*num_orbs
         void label_sub(const std::vector<basis_prop> &props,
-                       uint64_t &label1, uint64_t &label2) const;
+                       uint64_t &label1, uint64_t &label2,
+                       std::vector<uint8_t> &work1, std::vector<uint64_t> &work2) const;
         
         // return a vector of length dim_local (for orbital), reporting # of each state
         std::vector<uint32_t> statistics(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
@@ -1400,7 +1407,10 @@ namespace qbasis {
     //                   num[1]   num[0]
     // 1 + 0 * 2 + 1 * 2^2 + 0 * 2^3 + 0 * 2^4
     template <typename T1, typename T2>
-    T2 dynamic_base(const std::vector<T1> &nums, const std::vector<T1> &base);
+    T2 dynamic_base(const std::vector<T1> &nums, const std::vector<T1> &base);   // deprecated
+    template <typename T1, typename T2>
+    void dynamic_base_vec2num(const MKL_INT &len, const T1* base, const T1* vec, T2 &num);
+    
     // the other way around
     template <typename T1, typename T2>
     std::vector<T1> dynamic_base(const T2 &total, const std::vector<T1> &base);
