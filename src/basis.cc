@@ -568,7 +568,7 @@ namespace qbasis {
         }
         return *this;
     }
-    
+    /*
     mbasis_elem &mbasis_elem::translate(const std::vector<basis_prop> &props,
                                         const qbasis::lattice &latt, const std::vector<int> &disp, int &sgn,
                                         const uint32_t &orbital) {
@@ -583,13 +583,15 @@ namespace qbasis {
         transform(props, plan, sgn);
         return *this;
     }
-    
+    */
     // need re-write this function to more general cases (pbc mixing obc in different dimensions)
     mbasis_elem &mbasis_elem::translate_to_unique_state(const std::vector<basis_prop> &props,
                                                         const qbasis::lattice &latt, std::vector<int> &disp_vec) {
         for (decltype(latt.dimension()) j = 1; j < latt.dimension(); j++) {
             assert(latt.boundary()[j-1] == latt.boundary()[j]); // relax in future
         }
+        std::vector<uint32_t> scratch_plan;
+        std::vector<int> scratch_coor, scratch_work;
         uint32_t total_sites    = props[0].num_sites;
         uint32_t total_orbitals = props.size();
         assert(latt.total_sites() == total_sites);
@@ -638,7 +640,8 @@ namespace qbasis {
                     disp[j] = static_cast<int>(linear_size[j]) - 1 - coor_smart[j];
                 auto state_new = *this;
                 int sgn;
-                state_new.translate(props, latt, disp, sgn);
+                latt.translation_plan(scratch_plan, disp, scratch_coor, scratch_work);
+                state_new.transform(props, scratch_plan, sgn);
                 if(state_new < state_min) {
                     state_min = state_new;
                     disp_vec = disp;
@@ -678,7 +681,8 @@ namespace qbasis {
                     disp_vec[dim]--;
                 }
             }
-            this->translate(props, latt, disp_vec, sgn);
+            latt.translation_plan(scratch_plan, disp_vec, scratch_coor, scratch_work);
+            this->transform(props, scratch_plan, sgn);
         }
         return *this;
     }
@@ -790,6 +794,8 @@ namespace qbasis {
         for (decltype(latt.dimension()) j = 1; j < latt.dimension(); j++) {
             assert(latt.boundary()[j-1] == latt.boundary()[j]); // relax in future
         }
+        std::vector<uint32_t> scratch_plan;
+        std::vector<int> scratch_coor, scratch_work;
         uint32_t total_sites    = props[0].num_sites;
         uint32_t total_orbitals = props.size();
         assert(latt.total_sites() == total_sites);
@@ -913,7 +919,8 @@ namespace qbasis {
             if (flag) continue;
             auto rhs_new = rhs;
             int sgn;
-            rhs_new.translate(props, latt, disp, sgn);
+            latt.translation_plan(scratch_plan, disp, scratch_coor, scratch_work);
+            rhs_new.transform(props, scratch_plan, sgn);
             if (lhs == rhs_new) return true;
         }
         return false;
@@ -1363,6 +1370,8 @@ namespace qbasis {
         }
         std::vector<uint32_t> disp(base.size());
         std::vector<int> disp2;
+        std::vector<uint32_t> scratch_plan(latt.total_sites());
+        std::vector<int> scratch_coor(latt.dimension()), scratch_work(latt.dimension());
         
         for (uint64_t i = 0; i < dim_all; i++) {
             if (belong2rep[i] != unreachable) continue;          // already fixed
@@ -1384,7 +1393,8 @@ namespace qbasis {
                     }
                     auto basis_temp = basis_all[i];
                     int sgn;
-                    basis_temp.translate(props, latt, disp2, sgn);
+                    latt.translation_plan(scratch_plan, disp2, scratch_coor, scratch_work);
+                    basis_temp.transform(props, scratch_plan, sgn);
                     uint64_t j = binary_search<mbasis_elem,uint64_t>(basis_all, basis_temp, 0, dim_all);
                     if (j < dim_all) {                          // found
                         if (belong2rep[j] == unreachable) {     // not fixed
@@ -1423,6 +1433,9 @@ namespace qbasis {
         // for each representative, find its group
         #pragma omp parallel for schedule(dynamic,1)
         for (uint64_t j = 0; j < dim_repr; j++) {
+            std::vector<uint32_t> scratch_plan(latt.total_sites());
+            std::vector<int> scratch_coor(latt.dimension()), scratch_work(latt.dimension());
+            
             // loop over groups, to check which one the repr belongs to
             for (uint32_t g = 0; g < num_groups; g++) {
                 bool flag = true;
@@ -1432,7 +1445,8 @@ namespace qbasis {
                     int sgn;
                     for (uint32_t i = 0; i < dim; i++) disp[i] = groups[g].first[d][i];
                     auto basis_temp = reps[j];
-                    basis_temp.translate(props, latt, disp, sgn);
+                    latt.translation_plan(scratch_plan, disp, scratch_coor, scratch_work);
+                    basis_temp.transform(props, scratch_plan, sgn);
                     if (basis_temp != reps[j]) {
                         flag = false;
                         break;
@@ -1722,6 +1736,9 @@ namespace qbasis {
         } else {
             dim_spec_involved = trans_sym[dim_spec];
         }
+        std::vector<uint32_t> plan_parent(latt_parent.total_sites());
+        std::vector<uint32_t> plan_sub(latt_sub.total_sites());
+        std::vector<int> scratch_coor(latt_parent.dimension()), scratch_work(latt_parent.dimension());
         
         // gather a list of examples for different groups
         std::vector<std::vector<mbasis_elem>> examples(num_groups);
@@ -1801,7 +1818,8 @@ namespace qbasis {
                         std::vector<int> disp_j_int(latt_sub_dim);
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         int sgn;
-                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);                   // Tj |rb>
+                        latt_sub.translation_plan(plan_sub, disp_j_int, scratch_coor, scratch_work);
+                        rb_new.transform(props_sub, plan_sub, sgn);                               // Tj |rb>
                         auto rb_new_label = rb_new.label(props_sub);
                         assert(basis_sub_repr[belong2rep[rb_new_label]] == rb);
                         auto dist_to_rb = dist2rep[rb_new_label];
@@ -1817,8 +1835,8 @@ namespace qbasis {
                             std::vector<int> disp_i_int(latt_sub_dim);
                             for (uint32_t j = 0; j < latt_sub_dim; j++) disp_i_int[j] = static_cast<int>(disp_i[j]);
                             auto Ti_ra_z_Tj_rb = ra_z_Tj_rb;
-                            Ti_ra_z_Tj_rb.translate(props_parent, latt_parent, disp_i_int, sgn);  // Ti (|ra> z Tj |rb>)
-                            
+                            latt_parent.translation_plan(plan_parent, disp_i_int, scratch_coor, scratch_work);
+                            Ti_ra_z_Tj_rb.transform(props_parent, plan_parent, sgn);                  // Ti (|ra> z Tj |rb>)
                             // now need find ja, jb
                             uint64_t state_sub1_label, state_sub2_label;
                             Ti_ra_z_Tj_rb.label_sub(props_parent, state_sub1_label, state_sub2_label); // |a>, |b>
@@ -1860,8 +1878,8 @@ namespace qbasis {
                         std::vector<int> disp_j_int(latt_sub_dim);
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         int sgn;
-                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);                   // Tj |rb>
-                        
+                        latt_sub.translation_plan(plan_sub, disp_j_int, scratch_coor, scratch_work);
+                        rb_new.transform(props_sub, plan_sub, sgn);                               // Tj |rb>
                         auto rb_new_label = rb_new.label(props_sub);
                         assert(basis_sub_repr[belong2rep[rb_new_label]] == rb);
                         auto dist_to_rb = dist2rep[rb_new_label];
@@ -1877,8 +1895,8 @@ namespace qbasis {
                             std::vector<int> disp_i_int(latt_sub_dim);
                             for (uint32_t j = 0; j < latt_sub_dim; j++) disp_i_int[j] = static_cast<int>(disp_i[j]);
                             auto Ti_ra_z_Tj_rb = ra_z_Tj_rb;
-                            Ti_ra_z_Tj_rb.translate(props_parent, latt_parent, disp_i_int, sgn);  // Ti (|ra> z Tj |rb>)
-                            
+                            latt_parent.translation_plan(plan_parent, disp_i_int, scratch_coor, scratch_work);
+                            Ti_ra_z_Tj_rb.transform(props_parent, plan_parent, sgn);                  // Ti (|ra> z Tj |rb>)
                             // now need find ja, jb
                             uint64_t state_sub1_label, state_sub2_label;
                             Ti_ra_z_Tj_rb.label_sub(props_parent, state_sub1_label, state_sub2_label);
@@ -1919,8 +1937,8 @@ namespace qbasis {
                         std::vector<int> disp_j_int(latt_sub_dim);
                         for (uint32_t j = 0; j < latt_sub_dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                         int sgn;
-                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);                   // Tj |rb>
-                        
+                        latt_sub.translation_plan(plan_sub, disp_j_int, scratch_coor, scratch_work);
+                        rb_new.transform(props_sub, plan_sub, sgn);                               // Tj |rb>
                         auto rb_new_label = rb_new.label(props_sub);
                         assert(basis_sub_repr[belong2rep[rb_new_label]] == rb);
                         auto dist_to_rb = dist2rep[rb_new_label];
@@ -1936,8 +1954,8 @@ namespace qbasis {
                             std::vector<int> disp_i_int(latt_sub_dim);
                             for (uint32_t j = 0; j < latt_sub_dim; j++) disp_i_int[j] = static_cast<int>(disp_i[j]);
                             auto Ti_ra_z_Tj_rb = ra_z_Tj_rb;
-                            Ti_ra_z_Tj_rb.translate(props_parent, latt_parent, disp_i_int, sgn);  // Ti (|ra> z Tj |rb>)
-                            
+                            latt_parent.translation_plan(plan_parent, disp_i_int, scratch_coor, scratch_work);
+                            Ti_ra_z_Tj_rb.transform(props_parent, plan_parent, sgn);              // Ti (|ra> z Tj |rb>)
                             // now need find ja, jb
                             uint64_t state_sub1_label, state_sub2_label;
                             Ti_ra_z_Tj_rb.label_sub(props_parent, state_sub1_label, state_sub2_label);
@@ -1982,7 +2000,8 @@ namespace qbasis {
                         auto rb_new = examples[gb].back();
                         assert(ra < rb_new);
                         int sgn;
-                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);                   // Tj |rb>
+                        latt_sub.translation_plan(plan_sub, disp_j_int, scratch_coor, scratch_work);
+                        rb_new.transform(props_sub, plan_sub, sgn);                               // Tj |rb>
                         mbasis_elem ra_z_Tj_rb;
                         zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb); // |ra> z Tj |rb>
                         // loop over groups, to check which one the repr belongs to
@@ -1993,7 +2012,8 @@ namespace qbasis {
                                 std::vector<int> disp(latt_sub_dim);
                                 for (uint32_t i = 0; i < latt_sub_dim; i++) disp[i] = groups_parent[g].first[d][i];
                                 auto temp = ra_z_Tj_rb;
-                                temp.translate(props_parent, latt_parent, disp, sgn);
+                                latt_parent.translation_plan(plan_parent, disp, scratch_coor, scratch_work);
+                                temp.transform(props_parent, plan_parent, sgn);
                                 if (temp != ra_z_Tj_rb) {
                                     flag = false;
                                     break;
@@ -2013,7 +2033,8 @@ namespace qbasis {
                         auto rb_new = examples[gb].front();
                         assert(ra == rb_new);
                         int sgn;
-                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);                   // Tj |rb>
+                        latt_sub.translation_plan(plan_sub, disp_j_int, scratch_coor, scratch_work);
+                        rb_new.transform(props_sub, plan_sub, sgn);                               // Tj |rb>
                         mbasis_elem ra_z_Tj_rb;
                         zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb); // |ra> z Tj |rb>
                         // loop over groups, to check which one the repr belongs to
@@ -2024,7 +2045,8 @@ namespace qbasis {
                                 std::vector<int> disp(latt_sub_dim);
                                 for (uint32_t i = 0; i < latt_sub_dim; i++) disp[i] = groups_parent[g].first[d][i];
                                 auto temp = ra_z_Tj_rb;
-                                temp.translate(props_parent, latt_parent, disp, sgn);
+                                latt_parent.translation_plan(plan_parent, disp, scratch_coor, scratch_work);
+                                temp.transform(props_parent, plan_parent, sgn);
                                 if (temp != ra_z_Tj_rb) {
                                     flag = false;
                                     break;
@@ -2061,7 +2083,8 @@ namespace qbasis {
                         auto rb_new = examples[gb].front();
                         assert(rb_new < ra);
                         int sgn;
-                        rb_new.translate(props_sub, latt_sub, disp_j_int, sgn);                   // Tj |rb>
+                        latt_sub.translation_plan(plan_sub, disp_j_int, scratch_coor, scratch_work);
+                        rb_new.transform(props_sub, plan_sub, sgn);                               // Tj |rb>
                         mbasis_elem ra_z_Tj_rb;
                         zipper_basis(props_parent, props_sub, props_sub, ra, rb_new, ra_z_Tj_rb); // |ra> z Tj |rb>
                         // loop over groups, to check which one the repr belongs to
@@ -2072,7 +2095,8 @@ namespace qbasis {
                                 std::vector<int> disp(latt_sub_dim);
                                 for (uint32_t i = 0; i < latt_sub_dim; i++) disp[i] = groups_parent[g].first[d][i];
                                 auto temp = ra_z_Tj_rb;
-                                temp.translate(props_parent, latt_parent, disp, sgn);
+                                latt_parent.translation_plan(plan_parent, disp, scratch_coor, scratch_work);
+                                temp.transform(props_parent, plan_parent, sgn);
                                 if (temp != ra_z_Tj_rb) {
                                     flag = false;
                                     break;
@@ -2106,6 +2130,8 @@ namespace qbasis {
         uint32_t dim = latt_parent.dimension();
         uint32_t N   = latt_parent.total_sites();
         auto L       = latt_parent.Linear_size();
+        std::vector<uint32_t> plan_parent(latt_parent.total_sites());
+        std::vector<int> scratch_work(latt_parent.dimension()), scratch_coor(latt_parent.dimension());
         
         std::vector<uint32_t> zerovec(dim,0);
         assert(std::any_of(group_parent.first.begin(), group_parent.first.end(), [zerovec](std::vector<uint32_t> i){ return i != zerovec; }));
@@ -2131,7 +2157,8 @@ namespace qbasis {
                 for (uint32_t d_in = 0; d_in < dim; d_in++) disp[d_in] = static_cast<int>(xyz[d_in]);
                 int sgn;
                 auto basis_temp = repr;
-                basis_temp.translate(props, latt_parent, disp, sgn);
+                latt_parent.translation_plan(plan_parent, disp, scratch_coor, scratch_work);
+                basis_temp.transform(props, plan_parent, sgn);
                 numerator += static_cast<uint32_t>(sgn % 2) * N / 2;
             }
             
@@ -2169,7 +2196,8 @@ namespace qbasis {
             latt_parent.site2coor(disp, sub, site);
             
             auto basis_temp = repr;
-            basis_temp.translate(props, latt_parent, disp, sgn);
+            latt_parent.translation_plan(plan_parent, disp, scratch_coor, scratch_work);
+            basis_temp.transform(props, plan_parent, sgn);
             if (basis_temp != repr) continue;
             double exp_coef = 0.0;
             for (uint32_t d = 0; d < latt_parent.dimension(); d++) {

@@ -494,7 +494,7 @@ namespace qbasis {
         return res;
     }
     
-    
+    /*
     std::vector<uint32_t> lattice::translation_plan(const std::vector<int> &disp) const
     {
         assert(static_cast<uint32_t>(disp.size()) == dim);
@@ -507,6 +507,22 @@ namespace qbasis {
             coor2site(coor,sub,result[site], work);
         }
         return result;
+    }
+    */
+    
+    void lattice::translation_plan(std::vector<uint32_t> &plan, const std::vector<int> &disp,
+                                   std::vector<int> &scratch_coor, std::vector<int> &scratch_work) const
+    {
+        if (plan.size() != Nsites) plan.resize(Nsites);
+        assert(disp.size() == dim);
+        if (scratch_coor.size() != dim) scratch_coor.resize(dim);
+        if (scratch_work.size() != dim) scratch_work.resize(dim);
+        int sub;
+        for (uint32_t site = 0; site < Nsites; site++) {
+            site2coor(scratch_coor, sub, site);
+            for (uint32_t j = 0; j < dim; j++) scratch_coor[j] += disp[j];
+            coor2site(scratch_coor,sub,plan[site], scratch_work);
+        }
     }
     
     std::vector<uint32_t> lattice::rotation_plan(const uint32_t &origin, const double &angle) const

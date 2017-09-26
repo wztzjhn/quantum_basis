@@ -421,13 +421,13 @@ namespace qbasis {
         // inner pair: first=site, second=orbital
         mbasis_elem& transform(const std::vector<basis_prop> &props,
                                const std::vector<std::vector<std::pair<uint32_t,uint32_t>>> &plan, int &sgn);
-        
+        /*
         mbasis_elem& translate(const std::vector<basis_prop> &props,
                                const lattice &latt, const std::vector<int> &disp, int &sgn,
                                const uint32_t &orbital);
         mbasis_elem& translate(const std::vector<basis_prop> &props,
                                const lattice &latt, const std::vector<int> &disp, int &sgn);
-        
+        */
         // change to a basis element which is the unique (fully determined by the lattice and its state) among its translational equivalents
         // Translation(disp_vec) * old state = new state
         mbasis_elem& translate_to_unique_state(const std::vector<basis_prop> &props,
@@ -1068,7 +1068,11 @@ namespace qbasis {
         void site2coor_old(std::vector<int> &coor, int &sub, const uint32_t &site) const;
         
         // return a vector containing the positions of each site after translation
-        std::vector<uint32_t> translation_plan(const std::vector<int> &disp) const;
+        //std::vector<uint32_t> translation_plan(const std::vector<int> &disp) const;
+        
+        void translation_plan(std::vector<uint32_t> &plan, const std::vector<int> &disp,
+                              std::vector<int> &scratch_coor, std::vector<int> &scratch_work) const;
+        
         
         // return a vector containing the positions of each site after rotation
         // x -> x', by (x' - x0) = R (x - x0)

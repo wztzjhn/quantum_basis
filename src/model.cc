@@ -187,8 +187,21 @@ namespace qbasis {
             std::list<std::vector<mbasis_elem>> basis_temp;
             dim_repr[sec_repr] = 0;
             auto report = basis_sub_repr.size() > 100 ? (basis_sub_repr.size() / 10) : basis_sub_repr.size();
+            
+            int num_threads = 1;
+            #pragma omp parallel
+            {
+                int tid = omp_get_thread_num();
+                if (tid == 0) num_threads = omp_get_num_threads();
+            }
+            std::vector<std::vector<uint32_t>> plans_parent(num_threads);
+            std::vector<std::vector<uint32_t>> plans_sub(num_threads);
+            std::vector<std::vector<int>> scratch_works(num_threads);
+            std::vector<std::vector<int>> scratch_coors(num_threads);
+            
             #pragma omp parallel for schedule(dynamic,1)
             for (decltype(basis_sub_repr.size()) ra = 0; ra < basis_sub_repr.size(); ra++) {
+                int tid = omp_get_thread_num();
                 if (ra > 0 && ra % report == 0) {
                     std::cout << "progress: "
                     << (static_cast<double>(ra) / static_cast<double>(basis_sub_repr.size()) * 100.0) << "%" << std::endl;
@@ -215,7 +228,8 @@ namespace qbasis {
                         if (omega < groups_parent.size()) {  // valid representative
                             mbasis_elem rb_new = basis_sub_repr[rb];
                             for (uint32_t j = 0; j < latt_sub.dimension(); j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
-                            rb_new.translate(props_sub_b, latt_sub, disp_j_int, sgn);
+                            latt_sub.translation_plan(plans_sub[tid], disp_j_int, scratch_coors[tid], scratch_works[tid]);
+                            rb_new.transform(props_sub_b, plans_sub[tid], sgn);
                             mbasis_elem ra_z_Tj_rb;
                             zipper_basis(props, props_sub_a, props_sub_b, basis_sub_repr[ra], rb_new, ra_z_Tj_rb);
                             // check if the symmetries are obeyed
@@ -425,6 +439,10 @@ namespace qbasis {
         auto dim_latt = latt_parent.dimension();
         auto L = latt_parent.Linear_size();
         bool bosonic = q_bosonic(props);
+        std::vector<std::vector<uint32_t>> plans_parent(num_threads);
+        std::vector<std::vector<uint32_t>> plans_sub(num_threads);
+        std::vector<std::vector<int>> scratch_works(num_threads);
+        std::vector<std::vector<int>> scratch_coors(num_threads);
         
         std::cout << "Generating LIL Hamiltonian Matrix (repr)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
@@ -490,8 +508,8 @@ namespace qbasis {
                         state_sub_new1 = basis_sub_repr[state_rep1_label];
                         state_sub_new2 = basis_sub_repr[state_rep2_label];
                     }
-                    
-                    state_sub_new2.translate(props_sub_b, latt_sub, disp_j_int, sgn);   // T_j |rb>
+                    latt_sub.translation_plan(plans_sub[tid], disp_j_int, scratch_coors[tid], scratch_works[tid]);
+                    state_sub_new2.transform(props_sub_b, plans_sub[tid], sgn);    // T_j |rb>
                     zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
                     
                     if (Lin_Ja_repr[sec_mat].size() > 0 && Lin_Jb_repr[sec_mat].size() > 0) {
@@ -514,7 +532,8 @@ namespace qbasis {
                     }
                     auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
                     if (! bosonic) {
-                        ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);          // to get sgn
+                        latt_parent.translation_plan(plans_parent[tid], disp_i_int, scratch_coors[tid], scratch_works[tid]);
+                        ra_z_Tj_rb.transform(props, plans_parent[tid], sgn);      // to get sgn
                         assert(ra_z_Tj_rb == ele_new.first);
                         if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
                     }
@@ -565,6 +584,10 @@ namespace qbasis {
         }
         // prepare intermediates in advance
         std::vector<wavefunction<T>> intermediate_states(num_threads, {basis[0]});
+        std::vector<std::vector<uint32_t>> plans_parent(num_threads);
+        std::vector<std::vector<uint32_t>> plans_sub(num_threads);
+        std::vector<std::vector<int>> scratch_works(num_threads);
+        std::vector<std::vector<int>> scratch_coors(num_threads);
         
         std::cout << "*" << std::flush;
         if (sec_sym == 0) {
@@ -664,8 +687,8 @@ namespace qbasis {
                             state_sub_new1 = basis_sub_repr[state_rep1_label];
                             state_sub_new2 = basis_sub_repr[state_rep2_label];
                         }
-                        
-                        state_sub_new2.translate(props_sub_b, latt_sub, disp_j_int, sgn);   // T_j |rb>
+                        latt_sub.translation_plan(plans_sub[tid], disp_j_int, scratch_coors[tid], scratch_works[tid]);
+                        state_sub_new2.transform(props_sub_b, plans_sub[tid], sgn);   // T_j |rb>
                         zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
                         if (Lin_Ja_repr[sec_mat].size() > 0 && Lin_Jb_repr[sec_mat].size() > 0) {
                             i_a = state_sub_new1.label(props_sub_a);               // use Lin Tables
@@ -688,7 +711,8 @@ namespace qbasis {
                         }
                         auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
                         if (! bosonic) {
-                            ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);          // to get sgn
+                            latt_parent.translation_plan(plans_parent[tid], disp_i_int, scratch_coors[tid], scratch_works[tid]);
+                            ra_z_Tj_rb.transform(props, plans_parent[tid], sgn);   // to get sgn
                             assert(ra_z_Tj_rb == ele_new.first);
                             if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
                         }
@@ -1137,6 +1161,10 @@ namespace qbasis {
         }
         // prepare intermediates in advance
         std::vector<wavefunction<T>> intermediate_states(num_threads, {props});
+        std::vector<std::vector<uint32_t>> plans_parent(num_threads);
+        std::vector<std::vector<uint32_t>> plans_sub(num_threads);
+        std::vector<std::vector<int>> scratch_works(num_threads);
+        std::vector<std::vector<int>> scratch_coors(num_threads);
         
         std::cout << "mopr * vec (s = " << sec_old << ", t = " << sec_new << ")... " << std::endl;
         for (MKL_INT j = 0; j < dim_repr[sec_new]; j++) vec_new[j] = 0.0;
@@ -1196,8 +1224,8 @@ namespace qbasis {
                             state_sub_new1 = basis_sub_repr[state_rep1_label];
                             state_sub_new2 = basis_sub_repr[state_rep2_label];
                         }
-                        
-                        state_sub_new2.translate(props_sub_b, latt_sub, disp_j_int, sgn);   // T_j |rb>
+                        latt_sub.translation_plan(plans_sub[tid], disp_j_int, scratch_coors[tid], scratch_works[tid]);
+                        state_sub_new2.transform(props_sub_b, plans_sub[tid], sgn);   // T_j |rb>
                         zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
                         MKL_INT i;
                         if (Lin_Ja_repr[sec_new].size() > 0 && Lin_Jb_repr[sec_new].size() > 0) {
@@ -1220,7 +1248,8 @@ namespace qbasis {
                         }
                         auto coef = std::sqrt(nu_j / nu_i) * sj * ele_new.second * std::exp(std::complex<double>(0.0, -2.0 * pi * exp_coef));
                         if (! bosonic) {
-                            ra_z_Tj_rb.translate(props, latt_parent, disp_i_int, sgn);          // to get sgn
+                            latt_parent.translation_plan(plans_parent[tid], disp_i_int, scratch_coors[tid], scratch_works[tid]);
+                            ra_z_Tj_rb.transform(props, plans_parent[tid], sgn);          // to get sgn
                             assert(ra_z_Tj_rb == ele_new.first);
                             if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
                         }
@@ -1267,10 +1296,13 @@ namespace qbasis {
         
         qbasis::mopr<T> opr_trans;                                               // O_t = (1/N) \sum_R T(R) O T(-R)
         std::vector<uint32_t> disp(base.size(),0);
+        std::vector<uint32_t> plan(latt_parent.total_sites());
+        std::vector<int> scratch_coor(latt_parent.dimension()), scratch_work(latt_parent.dimension());
+        
         while (! dynamic_base_overflow(disp, base)) {
             std::vector<int> disp_int(base.size());
             for (uint32_t d = 0; d < disp.size(); d++) disp_int[d] = static_cast<int>(disp[d]);
-            auto plan = latt_parent.translation_plan(disp_int);
+            latt_parent.translation_plan(plan, disp_int, scratch_coor, scratch_work);
             auto opr_temp = lhs;
             opr_temp.transform(plan);
             opr_trans += static_cast<T>(1.0/denominator) * opr_temp;
@@ -1294,6 +1326,17 @@ namespace qbasis {
         latt_parent = latt;
         assert(latt_parent.dimension() == static_cast<uint32_t>(momentum.size()));
         assert(dim_full[sec_full] > 0 && dim_full[sec_full] == static_cast<MKL_INT>(basis_full[sec_full].size()));
+        
+        int num_threads = 1;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) num_threads = omp_get_num_threads();
+        }
+        std::vector<std::vector<uint32_t>> plans_parent(num_threads);
+        std::vector<std::vector<uint32_t>> plans_sub(num_threads);
+        std::vector<std::vector<int>> scratch_works(num_threads);
+        std::vector<std::vector<int>> scratch_coors(num_threads);
         
         momenta[sec_repr] = momentum;
         
@@ -1326,6 +1369,7 @@ namespace qbasis {
             basis_coeff_deprec[sec_repr][i] = std::complex<double>(1.0, 0.0);
             #pragma omp parallel for schedule(dynamic,1)
             for (uint32_t site = num_sub; site < latt_parent.total_sites(); site += num_sub) {
+                int tid = omp_get_thread_num();
                 std::vector<int> disp;
                 int sub, sgn;
                 latt_parent.site2coor(disp, sub, site);
@@ -1338,7 +1382,8 @@ namespace qbasis {
                 }
                 if (flag) continue;            // such translation forbidden
                 auto basis_temp = basis_full[sec_full][i];
-                basis_temp.translate(props, latt_parent, disp, sgn);
+                latt_parent.translation_plan(plans_parent[tid], disp, scratch_coors[tid], scratch_works[tid]);
+                basis_temp.transform(props, plans_parent[tid], sgn);
                 MKL_INT j;
                 if (Lin_Ja_full[sec_full].size() > 0 && Lin_Jb_full[sec_full].size() > 0) {
                     uint64_t i_a, i_b;
