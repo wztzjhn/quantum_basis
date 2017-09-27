@@ -9,21 +9,45 @@ namespace qbasis {
     void initialize(const bool &enable_ckpt_)
     {
         std::cout << "----- Qbasis Version 2017/09/26 -----" << std::endl;
-        
         #pragma omp parallel
         {
             int tid = omp_get_thread_num();
             if (tid == 0) {
-                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
-                std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl << std::endl;
+#if _OPENMP >= 201307
+                std::cout << "OMP version: " << _OPENMP << std::endl;
+                auto policy = omp_get_proc_bind();
+                std::cout << "OMP bind policy       = ";
+                switch (policy) {
+                    case 0:
+                        std::cout << "false" << std::endl;
+                        break;
+                    case 1:
+                        std::cout << "true" << std::endl;
+                        break;
+                    case 2:
+                        std::cout << "master" << std::endl;
+                        break;
+                    case 3:
+                        std::cout << "close" << std::endl;
+                        break;
+                    case 4:
+                        std::cout << "spread" << std::endl;
+                        break;
+                    default:
+                        std::cout << "?" << std::endl;
+                }
+#endif
+                std::cout << "OMP number of procs   = " << omp_get_num_procs() << std::endl;
+                std::cout << "OMP number of threads = " << omp_get_num_threads() << std::endl << std::endl;
             }
         }
+
         
         char buf[198];
         mkl_get_version_string(buf, 198);
         std::string version_str(buf);
         std::cout << version_str << std::endl;
-        std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl;
+        std::cout << "MKL number of threads = " << mkl_get_max_threads() << std::endl;
         MKL_INT mkl_int_max = LLONG_MAX;
         if (mkl_int_max != LLONG_MAX) {
             mkl_int_max = INT_MAX;
@@ -41,7 +65,6 @@ namespace qbasis {
         } else {
             std::cout << "Checkpoint/Restart disabled." << std::endl;
         }
-        
         std::cout << "----- ||||||||||||||||||||||||| -----" << std::endl << std::endl;
     }
     

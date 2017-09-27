@@ -45,6 +45,7 @@
   #define omp_get_thread_num() 0
   #define omp_get_num_threads() 1
   #define omp_get_num_procs() 1
+  #define omp_get_proc_bind() 0
 #endif
 
 #if defined(__clang__)
