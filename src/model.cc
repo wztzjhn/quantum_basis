@@ -302,7 +302,7 @@ namespace qbasis {
         norm_repr[sec_repr].resize(dim_repr[sec_repr]);
         std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
         std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
-        #pragma omp parallel for schedule(dynamic,1)
+        #pragma omp parallel for schedule(dynamic,16)
         for (MKL_INT j = 0; j < dim_repr[sec_repr]; j++) {
             int tid = omp_get_thread_num();
             uint64_t state_sub1_label, state_sub2_label;

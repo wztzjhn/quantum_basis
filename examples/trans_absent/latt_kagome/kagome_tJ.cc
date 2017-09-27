@@ -4,7 +4,7 @@
 
 // tJ model on kagome lattice
 int main() {
-    qbasis::enable_ckpt = true;
+    qbasis::initialize(true);
     std::cout << std::setprecision(10);
     // parameters
     double t = 1.0;

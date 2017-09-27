@@ -4,7 +4,7 @@
 
 // Heisenberg model on triangular lattices
 int main() {
-    qbasis::enable_ckpt = false;
+    qbasis::initialize();
     std::cout << std::setprecision(10);
     // parameters
     double J1 = 1.0;
@@ -91,8 +91,8 @@ int main() {
 
     // to use translational symmetry, we first fill the Weisse tables
     Heisenberg.fill_Weisse_table(lattice);
-    
-    
+
+
     // measurement opeartors
     auto Sz0Sz1 = qbasis::opr<std::complex<double>>(0,0,false,Sz) *
     qbasis::opr<std::complex<double>>(1,0,false,Sz);
@@ -101,7 +101,7 @@ int main() {
     auto Sp0Sm1 = qbasis::opr<std::complex<double>>(0,0,false,Splus) *
     qbasis::opr<std::complex<double>>(1,0,false,Sminus);
     std::complex<double> m1, m2, m3;
-    
+
 
     std::vector<double> E0_list;
     for (int m = 0; m < Lx; m++) {
@@ -120,7 +120,7 @@ int main() {
             std::cout << std::endl;
 
             E0_list.push_back(Heisenberg.eigenvals_repr[0]);
-        
+
             if (m == 0 && n == 0) {
                 m1 = Heisenberg.measure_repr(Sz0Sz1, 0, 0);
                 m2 = Heisenberg.measure_repr(Sz0Sz2, 0, 0);
@@ -136,7 +136,7 @@ int main() {
     assert(std::abs(E0_list[2] + 7.944709784) < 1e-8);
     assert(std::abs(E0_list[3] + 8.002263841) < 1e-8);
     assert(std::abs(E0_list[6] + 7.588987242) < 1e-8);
-    
+
     std::cout << "Sz0Sz1 = " << m1 << std::endl;
     std::cout << "Sz0Sz2 = " << m2 << std::endl;
     std::cout << "Sp0Sm1 = " << m3 << std::endl;

@@ -4,7 +4,7 @@
 
 // tJ model on chain lattice
 int main() {
-    qbasis::enable_ckpt = false;
+    qbasis::initialize();
     std::cout << std::setprecision(10);
     // parameters
     double t = 1.0;

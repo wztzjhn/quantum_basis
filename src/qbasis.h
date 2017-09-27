@@ -70,6 +70,9 @@ namespace qbasis {
     // use checkpoint and restart in Lanczos, for long runs
     extern bool enable_ckpt;
     
+    // initialize global variables & print out info
+    void initialize(const bool &enable_ckpt_=false);
+    
     // Multi-dimensional array
     template <typename> class multi_array;
     template <typename T> void swap(multi_array<T>&, multi_array<T>&);

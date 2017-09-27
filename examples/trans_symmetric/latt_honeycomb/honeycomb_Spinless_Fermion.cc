@@ -5,7 +5,7 @@
 // spinless fermion model on honeycomb lattice
 // benchmarked with Capponi et al., prb 92, 085146 (2015), Fig. 2
 int main() {
-    qbasis::enable_ckpt = true;
+    qbasis::initialize(true);
     std::cout << std::setprecision(10);
     // parameters
     double t = 1;

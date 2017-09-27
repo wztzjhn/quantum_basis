@@ -6,6 +6,46 @@
 #include "graph.h"
 
 namespace qbasis {
+    void initialize(const bool &enable_ckpt_)
+    {
+        std::cout << "----- Qbasis Version 2017/09/26 -----" << std::endl;
+        
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) {
+                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
+                std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl << std::endl;
+            }
+        }
+        
+        char buf[198];
+        mkl_get_version_string(buf, 198);
+        std::string version_str(buf);
+        std::cout << version_str << std::endl;
+        std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl;
+        MKL_INT mkl_int_max = LLONG_MAX;
+        if (mkl_int_max != LLONG_MAX) {
+            mkl_int_max = INT_MAX;
+            assert(mkl_int_max == INT_MAX);
+            std::cout << "MKL Using 32-bit integers." << std::endl;
+        } else {
+            std::cout << "MKL Using 64-bit integers." << std::endl;
+        }
+        std::cout << std::endl;
+        assert(mkl_int_max > 0);
+        
+        enable_ckpt = enable_ckpt_;
+        if (enable_ckpt) {
+            std::cout << "Checkpoint/Restart enabled." << std::endl;
+        } else {
+            std::cout << "Checkpoint/Restart disabled." << std::endl;
+        }
+        
+        std::cout << "----- ||||||||||||||||||||||||| -----" << std::endl << std::endl;
+    }
+    
+    
     std::string date_and_time()
     {
         auto now = std::chrono::system_clock::now();

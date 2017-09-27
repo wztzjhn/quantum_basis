@@ -1003,29 +1003,6 @@ namespace qbasis {
                          std::vector<double> val_lst)
     {
         std::cout << "Enumerating basis with " << val_lst.size() << " conserved quantum numbers..." << std::endl;
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            if (tid == 0) {
-                std::cout << "Number of procs   = " << omp_get_num_procs() << std::endl;
-                std::cout << "Number of OMP threads = " << omp_get_num_threads() << std::endl;
-            }
-        }
-        std::cout << "Number of MKL threads = " << mkl_get_max_threads() << std::endl;
-        
-        // checking if reaching code capability
-        MKL_INT mkl_int_max = LLONG_MAX;
-        if (mkl_int_max != LLONG_MAX) {
-            mkl_int_max = INT_MAX;
-            //std::cout << "int_max = " << INT_MAX << std::endl;
-            assert(mkl_int_max == INT_MAX);
-            std::cout << "Using 32-bit integers." << std::endl;
-        } else {
-            std::cout << "Using 64-bit integers." << std::endl;
-        }
-        std::cout << std::endl;
-        assert(mkl_int_max > 0);
-        
         uint32_t n_sites = props[0].num_sites;
         assert(conserve_lst.size() == val_lst.size());
         
