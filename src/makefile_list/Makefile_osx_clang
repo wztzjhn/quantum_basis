@@ -8,8 +8,8 @@ LIBS      = -L/usr/local/lib -larpack \
 
 include makefile_list/object_list.txt
 
-test: $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o
-	$(CXX) $(OBJS) test.o test_basis.o test_lanczos.o test_lattice.o test_operator.o $(OPTS) $(LIBS) -o ../bin/test.x
+test: $(OBJS) $(OBJS_EXTRA)
+	$(CXX) $(OBJS) $(OBJS_EXTRA) $(OPTS) $(LIBS) -o ../bin/test.x
 
 libqbasis.a: $(OBJS)
 	ar rvs libqbasis.a $(OBJS)

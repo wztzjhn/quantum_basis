@@ -14,11 +14,11 @@ set(QBASIS_INCLUDE qbasis.h)
 add_library(qbasis SHARED ${QBASIS_SRC})
 target_link_libraries(qbasis ${LIBS})
 
-add_executable(triangular_Heisenberg_spin_half.x ../examples/trans_symmetric/latt_triangular/triangular_Heisenberg_spin_half.cc ${QBASIS_SRC})
-target_link_libraries(triangular_Heisenberg_spin_half.x ${LIBS})
-
-add_executable(test.x test.cc test_basis.cc test_operator.cc test_lanczos.cc test_lattice.cc ${QBASIS_SRC})
+add_executable(test.x extra/test.cc extra/test_basis.cc extra/test_operator.cc extra/test_lanczos.cc extra/test_lattice.cc ${QBASIS_SRC})
 target_link_libraries(test.x ${LIBS})
+
+add_executable(half_repr.x ../examples/trans_symmetric/latt_chain/chain_Heisenberg_spin_half.cc ${QBASIS_SRC})
+target_link_libraries(half_repr.x ${LIBS})
 
 add_executable(ss_energy.x ../../2017_ShastrySutherland/variational/src/subroutines.cc ../../2017_ShastrySutherland/variational/src/ss_energy.cc ${QBASIS_SRC})
 target_link_libraries(ss_energy.x ${LIBS})

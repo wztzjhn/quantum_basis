@@ -1,8 +1,8 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-#include "qbasis.h"
-#include "graph.h"
+#include "../qbasis.h"
+#include "../graph.h"
 
 void test_basis() {
     std::cout << "--------- test basis ---------" << std::endl;
@@ -34,10 +34,12 @@ void test_basis() {
     qbasis::enumerate_basis<double>(props1, basis_list1);
     qbasis::sort_basis_normal_order(basis_list1);
     //std::cout << "basis_list1: " << std::endl;
+    std::vector<uint8_t> work1;
+    std::vector<uint64_t> work2;
     for (uint64_t j = 0; j < basis_list1.size(); j++) {
         //std::cout << "j = " << j << "\t";
         //basis_list1[j].prt_bits(props1);
-        assert(j == basis_list1[j].label(props1));
+        assert(j == basis_list1[j].label(props1, work1, work2));
         //std::cout << std::endl;
     }
     //std::cout << std::endl;

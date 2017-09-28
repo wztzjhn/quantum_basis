@@ -1,7 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-#include "qbasis.h"
+#include "../qbasis.h"
 
 void test_lattice() {
     qbasis::lattice square("square",std::vector<uint32_t>{3,3},std::vector<std::string>{"pbc", "pbc"});
@@ -16,7 +16,9 @@ void test_lattice() {
         assert(site == site2);
     }
     
-    auto plan = square.translation_plan(std::vector<int>{2, 1});
+    std::vector<int> scratch_coor, scratch_work;
+    std::vector<uint32_t> plan;
+    square.translation_plan(plan, {2, 1}, scratch_coor, scratch_work);
     for (uint32_t j = 0; j < square.total_sites(); j++) {
         std::cout << j << " -> " << plan[j] << std::endl;
     }

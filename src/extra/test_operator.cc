@@ -1,7 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-#include "qbasis.h"
+#include "../qbasis.h"
 
 void test_operator(){
     using namespace qbasis;
