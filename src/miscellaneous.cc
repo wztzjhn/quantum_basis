@@ -14,9 +14,9 @@ namespace qbasis {
             int tid = omp_get_thread_num();
             if (tid == 0) {
 #if _OPENMP >= 201307
-                std::cout << "OMP version: " << _OPENMP << std::endl;
+                std::cout << "OMP version:            " << _OPENMP << std::endl;
                 auto policy = omp_get_proc_bind();
-                std::cout << "OMP bind policy       = ";
+                std::cout << "OMP bind policy:        ";
                 switch (policy) {
                     case 0:
                         std::cout << "false" << std::endl;
@@ -37,38 +37,34 @@ namespace qbasis {
                         std::cout << "?" << std::endl;
                 }
 #endif
-                std::cout << "OMP number of procs   = " << omp_get_num_procs() << std::endl;
-                std::cout << "OMP number of threads = " << omp_get_num_threads() << std::endl << std::endl;
+                std::cout << "OMP number of procs:    " << omp_get_num_procs() << std::endl;
+                std::cout << "OMP number of threads:  " << omp_get_num_threads() << std::endl << std::endl;
             }
         }
-
         
-        char buf[198];
-        mkl_get_version_string(buf, 198);
-        std::string version_str(buf);
-        std::cout << version_str << std::endl;
-        std::cout << "MKL number of threads = " << mkl_get_max_threads() << std::endl;
-        MKL_INT mkl_int_max = LLONG_MAX;
-        if (mkl_int_max != LLONG_MAX) {
-            mkl_int_max = INT_MAX;
-            assert(mkl_int_max == INT_MAX);
-            std::cout << "MKL Using 32-bit integers." << std::endl;
+        MKLVersion ver;
+        MKL_Get_Version(&ver);
+        std::cout << "MKL version:            " << ver.MajorVersion << "." << ver.MinorVersion << "." << ver.UpdateVersion << std::endl;
+        std::cout << "MKL product status:     " << ver.ProductStatus << std::endl;
+        std::cout << "MKL build:              " << ver.Build << std::endl;
+        std::cout << "Platform:               " << ver.Platform << std::endl;
+        std::cout << "Processor optimization: " << ver.Processor << std::endl;
+        std::cout << "MKL number of threads:  " << mkl_get_max_threads() << std::endl;
+        if (typeid(MKL_INT) == typeid(MKL_INT64)) {
+            std::cout << "MKL integer length:     64-bit (ILP64)" << std::endl << std::endl;
         } else {
-            std::cout << "MKL Using 64-bit integers." << std::endl;
+            std::cout << "MKL integer length:     32-bit (LP64)" << std::endl << std::endl;
         }
-        std::cout << std::endl;
-        assert(mkl_int_max > 0);
         
         enable_ckpt = enable_ckpt_;
         if (enable_ckpt) {
-            std::cout << "Checkpoint/Restart enabled." << std::endl;
+            std::cout << "Checkpoint/Restart:     ON" << std::endl;
         } else {
-            std::cout << "Checkpoint/Restart disabled." << std::endl;
+            std::cout << "Checkpoint/Restart:     OFF" << std::endl;
         }
         std::cout << "----- ||||||||||||||||||||||||| -----" << std::endl << std::endl;
     }
-    
-    
+
     std::string date_and_time()
     {
         auto now = std::chrono::system_clock::now();
@@ -86,7 +82,6 @@ namespace qbasis {
         res += buffer;
         return res;
     }
-    
     
     template <typename T1, typename T2>
     T2 int_pow(const T1 &base, const T1 &index)

@@ -1547,6 +1547,7 @@ namespace qbasis {
     
     
     // sparse blas routines
+    /*
     inline // double
     void csrgemv(const char transa, const MKL_INT m, const double *a, const MKL_INT *ia, const MKL_INT *ja, const double *x, double *y) {
         mkl_cspblas_dcsrgemv(&transa, &m, a, ia, ja, x, y);
@@ -1565,8 +1566,9 @@ namespace qbasis {
     void csrsymv(const char uplo, const MKL_INT m, const std::complex<double> *a, const MKL_INT *ia, const MKL_INT *ja, const std::complex<double> *x, std::complex<double> *y) {
         mkl_cspblas_zcsrsymv(&uplo, &m, a, ia, ja, x, y);
     }
+    */
     
-    // more general function to perform matrix vector product in mkl
+    // general function to perform matrix vector product in mkl
     inline // double
     void mkl_csrmv(const char transa, const MKL_INT m, const MKL_INT k, const double alpha, const char *matdescra,
                    const double *val, const MKL_INT *indx, const MKL_INT *pntrb, const MKL_INT *pntre,
