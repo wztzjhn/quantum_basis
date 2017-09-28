@@ -19,7 +19,7 @@ int main() {
 
     // lattice object
     std::vector<std::string> bc{"pbc", "pbc"};
-    qbasis::lattice lattice("triangular",std::vector<uint32_t>{static_cast<uint32_t>(Lx), static_cast<uint32_t>(Ly)},bc);
+    qbasis::lattice lattice("triangular",{static_cast<uint32_t>(Lx), static_cast<uint32_t>(Ly)},bc);
 
 
     // local matrix representation
@@ -46,7 +46,7 @@ int main() {
         for (int n = 0; n < Ly; n++) {
             uint32_t site_i, site_j;
             std::vector<int> work(lattice.dimension());
-            lattice.coor2site(std::vector<int>{m,n}, 0, site_i, work); // obtain site label of (x,y)
+            lattice.coor2site({m,n}, 0, site_i, work); // obtain site label of (x,y)
             // construct operators on each site
             auto Splus_i   = qbasis::opr<std::complex<double>>(site_i,0,false,Splus);
             auto Sminus_i  = qbasis::opr<std::complex<double>>(site_i,0,false,Sminus);
@@ -54,7 +54,7 @@ int main() {
 
             // to neighbor a_1
             if (bc[0] == "pbc" || (bc[0] == "obc" && m < Lx - 1)) {
-                lattice.coor2site(std::vector<int>{m+1,n}, 0, site_j, work);
+                lattice.coor2site({m+1,n}, 0, site_j, work);
                 auto Splus_j   = qbasis::opr<std::complex<double>>(site_j,0,false,Splus);
                 auto Sminus_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sminus);
                 auto Sz_j      = qbasis::opr<std::complex<double>>(site_j,0,false,Sz);
@@ -64,7 +64,7 @@ int main() {
 
             // to neighbor a_2
             if (bc[1] == "pbc" || (bc[1] == "obc" && n < Ly - 1)) {
-                lattice.coor2site(std::vector<int>{m,n+1}, 0, site_j, work);
+                lattice.coor2site({m,n+1}, 0, site_j, work);
                 auto Splus_j   = qbasis::opr<std::complex<double>>(site_j,0,false,Splus);
                 auto Sminus_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sminus);
                 auto Sz_j      = qbasis::opr<std::complex<double>>(site_j,0,false,Sz);
@@ -75,7 +75,7 @@ int main() {
             // to neighbor a_3
             if ((bc[0] == "pbc" || (bc[0] == "obc" && m > 0)) &&
                 (bc[1] == "pbc" || (bc[1] == "obc" && n < Ly - 1))) {
-                lattice.coor2site(std::vector<int>{m-1,n+1}, 0, site_j, work);
+                lattice.coor2site({m-1,n+1}, 0, site_j, work);
                 auto Splus_j   = qbasis::opr<std::complex<double>>(site_j,0,false,Splus);
                 auto Sminus_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sminus);
                 auto Sz_j      = qbasis::opr<std::complex<double>>(site_j,0,false,Sz);

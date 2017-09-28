@@ -25,7 +25,7 @@ int main() {
     // lattice object
     std::vector<std::string> bc{"pbc", "pbc"};
     assert(bc[0] == "pbc" && bc[1] == "pbc"); // "obc" requires more careful job in the following
-    qbasis::lattice lattice("kagome",std::vector<uint32_t>{static_cast<uint32_t>(Lx), static_cast<uint32_t>(Ly)},bc);
+    qbasis::lattice lattice("kagome",{static_cast<uint32_t>(Lx), static_cast<uint32_t>(Ly)},bc);
 
 
     // local matrix representation
@@ -45,9 +45,9 @@ int main() {
         for (int n = 0; n < Ly; n++) {
             uint32_t site_i0, site_i1, site_i2;
             std::vector<int> work(lattice.dimension());
-            lattice.coor2site(std::vector<int>{m,n}, 0, site_i0, work); // obtain site label of (x,y)
-            lattice.coor2site(std::vector<int>{m,n}, 1, site_i1, work);
-            lattice.coor2site(std::vector<int>{m,n}, 2, site_i2, work);
+            lattice.coor2site({m,n}, 0, site_i0, work); // obtain site label of (x,y)
+            lattice.coor2site({m,n}, 1, site_i1, work);
+            lattice.coor2site({m,n}, 2, site_i2, work);
             // construct operators on each site
             auto c_up_i0    = qbasis::opr<std::complex<double>>(site_i0,0,true,c_up);
             auto c_dn_i0    = qbasis::opr<std::complex<double>>(site_i0,0,true,c_dn);
@@ -91,7 +91,7 @@ int main() {
             //    1 <- 0 -- 1
             {
                 uint32_t site_j1;
-                lattice.coor2site(std::vector<int>{m-1,n}, 1, site_j1, work);
+                lattice.coor2site({m-1,n}, 1, site_j1, work);
                 auto c_up_j1    = qbasis::opr<std::complex<double>>(site_j1,0,true,c_up);
                 auto c_dn_j1    = qbasis::opr<std::complex<double>>(site_j1,0,true,c_dn);
                 auto c_up_dg_j1 = c_up_j1; c_up_dg_j1.dagger();
@@ -137,7 +137,7 @@ int main() {
             //         2
             {
                 uint32_t site_j2;
-                lattice.coor2site(std::vector<int>{m+1,n-1}, 2, site_j2, work);
+                lattice.coor2site({m+1,n-1}, 2, site_j2, work);
                 auto c_up_j2    = qbasis::opr<std::complex<double>>(site_j2,0,true,c_up);
                 auto c_dn_j2    = qbasis::opr<std::complex<double>>(site_j2,0,true,c_dn);
                 auto c_up_dg_j2 = c_up_j2; c_up_dg_j2.dagger();
@@ -183,7 +183,7 @@ int main() {
             //   0
             {
                 uint32_t site_j0;
-                lattice.coor2site(std::vector<int>{m,n+1}, 0, site_j0, work);
+                lattice.coor2site({m,n+1}, 0, site_j0, work);
                 auto c_up_j0    = qbasis::opr<std::complex<double>>(site_j0,0,true,c_up);
                 auto c_dn_j0    = qbasis::opr<std::complex<double>>(site_j0,0,true,c_dn);
                 auto c_up_dg_j0 = c_up_j0; c_up_dg_j0.dagger();

@@ -98,7 +98,6 @@ namespace qbasis {
         std::cout << "Elapsed time for generating sublattice full basis: " << elapsed_seconds.count() << "s." << std::endl << std::endl;
         start = end;
         
-        std::cout << "------------------------------------" << std::endl;
         std::cout << "Classifying sublattice basis... " << std::flush;
         classify_trans_full2rep(props_sub, basis_sub_full, latt_sub, trans_sym, basis_sub_repr, belong2rep_sub, dist2rep_sub);
         classify_trans_rep2group(props_sub, basis_sub_repr, latt_sub, trans_sym, groups_sub, omega_g_sub, belong2group_sub);
@@ -112,7 +111,6 @@ namespace qbasis {
         for (decltype(basis_sub_repr.size()) j = 0; j < basis_sub_repr.size(); j++) check_dim_sub_full += omega_g_sub[belong2group_sub[j]];
         assert(check_dim_sub_full == static_cast<uint64_t>(basis_sub_full.size()));
         
-        std::cout << "------------------------------------" << std::endl;
         std::cout << "Generating maps (ga,gb,ja,jb) -> (i,j) and (ga,gb,j) -> (w) ... " << std::flush;
         classify_Weisse_tables(props, props_sub, basis_sub_repr, latt, trans_sym,
                                belong2rep_sub, dist2rep_sub, belong2group_sub, groups_parent, groups_sub,
@@ -120,7 +118,7 @@ namespace qbasis {
         end = std::chrono::system_clock::now();
         elapsed_seconds = end - start;
         std::cout << elapsed_seconds.count() << "s." << std::endl;
-        std::cout << std::endl;
+        std::cout << "====================================" << std::endl << std::endl;
     }
     
     

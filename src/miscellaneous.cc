@@ -2,45 +2,30 @@
 #include <random>
 #include <fstream>
 #include <boost/crc.hpp>
+#include <boost/version.hpp>
 #include "qbasis.h"
 #include "graph.h"
 
 namespace qbasis {
     void initialize(const bool &enable_ckpt_)
     {
-        std::cout << "----- Qbasis Version 2017/09/26 -----" << std::endl;
+        std::cout << "----- Qbasis Version 2017/09/28 -----" << std::endl;
+#if defined(_OPENMP)
+        std::cout << "OMP version:            " << _OPENMP << std::endl;
         #pragma omp parallel
         {
             int tid = omp_get_thread_num();
             if (tid == 0) {
-#if _OPENMP >= 201307
-                std::cout << "OMP version:            " << _OPENMP << std::endl;
+                #if _OPENMP >= 201307
                 auto policy = omp_get_proc_bind();
-                std::cout << "OMP bind policy:        ";
-                switch (policy) {
-                    case 0:
-                        std::cout << "false" << std::endl;
-                        break;
-                    case 1:
-                        std::cout << "true" << std::endl;
-                        break;
-                    case 2:
-                        std::cout << "master" << std::endl;
-                        break;
-                    case 3:
-                        std::cout << "close" << std::endl;
-                        break;
-                    case 4:
-                        std::cout << "spread" << std::endl;
-                        break;
-                    default:
-                        std::cout << "?" << std::endl;
-                }
-#endif
+                std::vector<std::string> policy_names = {"false","true","master","close","spread"};
+                std::cout << "OMP bind policy:        " << policy_names[policy] << std::endl;
+                #endif
                 std::cout << "OMP number of procs:    " << omp_get_num_procs() << std::endl;
                 std::cout << "OMP number of threads:  " << omp_get_num_threads() << std::endl << std::endl;
             }
         }
+#endif
         
         MKLVersion ver;
         MKL_Get_Version(&ver);
@@ -56,13 +41,11 @@ namespace qbasis {
             std::cout << "MKL integer length:     32-bit (LP64)" << std::endl << std::endl;
         }
         
+        std::cout << "Boost lib version:      " << BOOST_LIB_VERSION << std::endl << std::endl;
+        
         enable_ckpt = enable_ckpt_;
-        if (enable_ckpt) {
-            std::cout << "Checkpoint/Restart:     ON" << std::endl;
-        } else {
-            std::cout << "Checkpoint/Restart:     OFF" << std::endl;
-        }
-        std::cout << "----- ||||||||||||||||||||||||| -----" << std::endl << std::endl;
+        std::cout << "Checkpoint/Restart:     " << (enable_ckpt?"ON":"OFF") << std::endl;
+        std::cout << "=====================================" << std::endl << std::endl;
     }
 
     std::string date_and_time()

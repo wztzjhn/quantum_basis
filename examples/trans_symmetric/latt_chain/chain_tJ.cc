@@ -22,7 +22,7 @@ int main() {
 
     // lattice object
     std::vector<std::string> bc{"pbc"};
-    qbasis::lattice lattice("chain",std::vector<uint32_t>{static_cast<uint32_t>(Lx)},bc);
+    qbasis::lattice lattice("chain",{static_cast<uint32_t>(Lx)},bc);
 
 
     // local matrix representation
@@ -41,8 +41,8 @@ int main() {
     for (int m = 0; m < Lx; m++) {
             uint32_t site_i, site_j;
             std::vector<int> work(lattice.dimension());
-            lattice.coor2site(std::vector<int>{m},   0, site_i, work); // obtain site label of (x,y)
-            lattice.coor2site(std::vector<int>{m+1}, 0, site_j, work);
+            lattice.coor2site({m},   0, site_i, work); // obtain site label of (x,y)
+            lattice.coor2site({m+1}, 0, site_j, work);
             // construct operators on each site
             auto c_up_i    = qbasis::opr<std::complex<double>>(site_i,0,true,c_up);
             auto c_dn_i    = qbasis::opr<std::complex<double>>(site_i,0,true,c_dn);
