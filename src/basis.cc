@@ -586,22 +586,7 @@ namespace qbasis {
         }
         return *this;
     }
-    /*
-    mbasis_elem &mbasis_elem::translate(const std::vector<basis_prop> &props,
-                                        const qbasis::lattice &latt, const std::vector<int> &disp, int &sgn,
-                                        const uint32_t &orbital) {
-        auto plan = latt.translation_plan(disp);
-        transform(props, plan, sgn, orbital);
-        return *this;
-    }
     
-    mbasis_elem &mbasis_elem::translate(const std::vector<basis_prop> &props,
-                                        const qbasis::lattice &latt, const std::vector<int> &disp, int &sgn) {
-        auto plan = latt.translation_plan(disp);
-        transform(props, plan, sgn);
-        return *this;
-    }
-    */
     // need re-write this function to more general cases (pbc mixing obc in different dimensions)
     mbasis_elem &mbasis_elem::translate_to_unique_state(const std::vector<basis_prop> &props,
                                                         const qbasis::lattice &latt, std::vector<int> &disp_vec) {
@@ -2350,6 +2335,14 @@ namespace qbasis {
         
         using std::swap;
         swap(wv_new, *this);
+        return *this;
+    }
+    
+    template <typename T>
+    wavefunction<T> &wavefunction<T>::clear()
+    {
+        bgn = 0;
+        end = 0;
         return *this;
     }
     

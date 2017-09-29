@@ -545,8 +545,9 @@ namespace qbasis {
         const std::pair<mbasis_elem, T>& operator[](int n) const;
         
         //    ------------ arithmetics -------------
-        // enlarge capacity
-        wavefunction& reserve(const int& capacity_new);
+        wavefunction& reserve(const int& capacity_new);                          // enlarge capacity
+        
+        wavefunction& clear();                                                   // clear but memory not released
         
         wavefunction& operator+=(mbasis_elem ele_new);
         

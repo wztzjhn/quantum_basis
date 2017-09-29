@@ -22,4 +22,4 @@ install: libqbasis.a
 	$(CXX) $(CPPFLAGS) -c -o $@ $<
 
 clean:
-	$(RM) *.o
+	$(RM) *.o *.a extra/*.o
