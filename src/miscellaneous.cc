@@ -11,6 +11,7 @@ namespace qbasis {
     {
         std::cout << "----- Qbasis Version 2017/09/28 -----" << std::endl;
 #if defined(_OPENMP)
+        std::cout << "Recommended environment variables: OMP_PLACES=cores, OMP_PROC_BIND=spread" << std::endl;
         std::cout << "OMP version:            " << _OPENMP << std::endl;
         #pragma omp parallel
         {
@@ -25,6 +26,7 @@ namespace qbasis {
                 std::cout << "OMP number of threads:  " << omp_get_num_threads() << std::endl << std::endl;
             }
         }
+        
 #endif
         
         MKLVersion ver;
