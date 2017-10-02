@@ -187,7 +187,7 @@ namespace qbasis {
         
         // now start enumerating representatives, if not generated before (or generated but already destroyed)
         if (dim_repr[sec_repr] <= 0 || static_cast<MKL_INT>(basis_repr[sec_repr].size()) != dim_repr[sec_repr]) {
-            std::cout << "Enumerating basis_repr..." << std::endl;
+            std::cout << "Enumerating basis_repr with " << val_lst.size() << " conserved quantum numbers..." << std::endl;
             basis_repr[sec_repr].clear();
             std::list<std::vector<mbasis_elem>> basis_temp;
             dim_repr[sec_repr] = 0;
@@ -1104,7 +1104,7 @@ namespace qbasis {
     
     
     template <typename T>
-    T model<T>::measure_full(const mopr<T> &lhs, const uint32_t &sec_full, const MKL_INT &which_col)
+    T model<T>::measure_full_static(const mopr<T> &lhs, const uint32_t &sec_full, const MKL_INT &which_col)
     {
         assert(which_col >= 0 && which_col < nconv);
         MKL_INT base = dim_full[sec_full] * which_col;
@@ -1115,7 +1115,7 @@ namespace qbasis {
     
     
     template <typename T>
-    T model<T>::measure_full(const std::vector<mopr<T>> &lhs, const std::vector<uint32_t> &sec_old_list, const MKL_INT &which_col)
+    T model<T>::measure_full_static(const std::vector<mopr<T>> &lhs, const std::vector<uint32_t> &sec_old_list, const MKL_INT &which_col)
     {
         assert(which_col >= 0 && which_col < nconv);
         assert(sec_old_list.size() > 0 && sec_old_list.size() == lhs.size());
@@ -1134,6 +1134,24 @@ namespace qbasis {
             vec_new = vec_temp;
         }
         return dotc(dim_full[sec_old_list[0]], eigenvecs_full.data() + base, 1, vec_new.data(), 1);
+    }
+    
+    template <typename T>
+    void model<T>::measure_full_dynamic(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+                                        const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[])
+    {
+        std::vector<T> vec_new(2*dim_full[sec_new]);
+        auto lhs_dg = lhs;
+        lhs_dg.dagger();
+        moprXeigenvec_full(lhs_dg, sec_old, sec_new, 0, vec_new.data());         // vec_new = lhs^\dagger * |phi>
+        norm = nrm2(dim_full[sec_new], vec_new.data(), 1);                       // norm = sqrt(<phi| lhs * lhs^\dagger |phi>)
+        if (std::abs(norm) < lanczos_precision) return;
+        scal(dim_full[sec_new], 1.0 / norm, vec_new.data(), 1);                  // normalize vec_new
+        if (matrix_free) {
+            lanczos(0, maxit-1, maxit, m, dim_full[sec_new], *this, vec_new.data(), hessenberg, "dnmcs");
+        } else {
+            lanczos(0, maxit-1, maxit, m, dim_full[sec_new], HamMat_csr_full[sec_mat], vec_new.data(), hessenberg, "dnmcs");
+        }
     }
     
     

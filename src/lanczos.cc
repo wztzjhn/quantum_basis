@@ -66,7 +66,6 @@ namespace qbasis {
         int cnt_accuE0 = 0;
         double accuracy;
         
-        
         ckpt_lanczos_init(k, maxit, dim, cnt_accuE0, accuracy, theta0_prev, theta1_prev, v, hessenberg, purpose);
         m = k;
         np = mm - k;
@@ -94,16 +93,16 @@ namespace qbasis {
             hessenberg[0] = 0.0;
             for (MKL_INT l = 0; l < dim; l++) vpt[1][l] = zero;                  // v[1] = 0
             mat.MultMv2(vpt[0], vpt[1]);                                         // v[1] = H * v[0] + v[1]
-            if (purpose == "iram" || purpose.find("val") != npos) {              // a[0] = (v[0], v[1])
-                hessenberg[maxit] = std::real(dotc(dim, vpt[0], 1, vpt[1], 1));
+            if (purpose == "iram" || purpose.find("val") != npos || purpose == "dnmcs") {
+                hessenberg[maxit] = std::real(dotc(dim, vpt[0], 1, vpt[1], 1));  // a[0] = (v[0], v[1])
             } else if (purpose.find("vec") != npos) {
                 assert(std::abs(hessenberg[maxit] - std::real(dotc(dim, vpt[0], 1, vpt[1], 1))) < lanczos_precision);
             } else {
                 assert(false);
             }
             axpy(dim, -hessenberg[maxit], vpt[0], 1, vpt[1], 1);                 // v[1] = v[1] - a[0] * v[0]
-            if (purpose == "iram" || purpose.find("val") != npos) {              // b[1] = || v[1] ||
-                hessenberg[1] = nrm2(dim, vpt[1], 1);
+            if (purpose == "iram" || purpose.find("val") != npos || purpose == "dnmcs") {
+                hessenberg[1] = nrm2(dim, vpt[1], 1);                            // b[1] = || v[1] ||
             } else if (purpose.find("vec") != npos) {
                 assert(std::abs(hessenberg[1] - nrm2(dim, vpt[1], 1)) < lanczos_precision);
             } else {
@@ -122,22 +121,25 @@ namespace qbasis {
                 vpt[m][l] = -hessenberg[m-1] * vpt[m-2][l];                      // v[m] = -b[m-1] * v[m-2]
             mat.MultMv2(vpt[m-1], vpt[m]);                                       // v[m] = H * v[m-1] + v[m]
             
-            if (purpose == "iram" || purpose.find("val") != npos) {              // a[m-1] = (v[m-1], v[m])
-                hessenberg[maxit+m-1] = std::real(dotc(dim, vpt[m-1], 1, vpt[m], 1));
+            if (purpose == "iram" || purpose.find("val") != npos || purpose == "dnmcs") {
+                hessenberg[maxit+m-1] = std::real(dotc(dim, vpt[m-1], 1, vpt[m], 1)); // a[m-1] = (v[m-1], v[m])
             } else if (purpose.find("vec") != npos) {
                 assert(std::abs(hessenberg[maxit+m-1] - std::real(dotc(dim, vpt[m-1], 1, vpt[m], 1))) < lanczos_precision);
             } else {
                 assert(false);
             }
             axpy(dim, -hessenberg[maxit+m-1], vpt[m-1], 1, vpt[m], 1);           // v[m] = v[m] - a[m-1] * v[m-1]
-            if (purpose == "iram" || purpose.find("val") != npos) {              // b[m] = || v[m] ||
-                hessenberg[m] = nrm2(dim, vpt[m], 1);
+            if (purpose == "iram" || purpose.find("val") != npos || purpose == "dnmcs") {
+                hessenberg[m] = nrm2(dim, vpt[m], 1);                            // b[m] = || v[m] ||
             } else if (purpose.find("vec") != npos) {
                 assert(std::abs(hessenberg[m] - nrm2(dim, vpt[m], 1)) < lanczos_precision);
             } else {
                 assert(false);
             }
             scal(dim, 1.0 / hessenberg[m], vpt[m], 1);                           // v[m] = v[m] / b[m]
+            
+            if (std::abs(hessenberg[m]) < lanczos_precision) break;
+            
             if (purpose.find("val1") != npos || purpose.find("vec1") != npos) {  // re-orthogonalization again phi0
                 auto temp = dotc(dim, phipt, 1, vpt[m], 1);
                 if (std::abs(temp) > lanczos_precision) {

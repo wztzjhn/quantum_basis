@@ -85,9 +85,9 @@ int main() {
     auto Sp0Sm1 = qbasis::opr<std::complex<double>>(0,0,false,Splus) *
                   qbasis::opr<std::complex<double>>(1,0,false,Sminus);
 
-    auto m1 = Heisenberg.measure_full(Sz0Sz1, 0, 0);
-    auto m2 = Heisenberg.measure_full(Sz0Sz2, 0, 0);
-    auto m3 = Heisenberg.measure_full(Sp0Sm1, 0, 0);
+    auto m1 = Heisenberg.measure_full_static(Sz0Sz1, 0, 0);
+    auto m2 = Heisenberg.measure_full_static(Sz0Sz2, 0, 0);
+    auto m3 = Heisenberg.measure_full_static(Sp0Sm1, 0, 0);
     std::cout << "Sz0Sz1 = " << m1 << std::endl;
     std::cout << "Sz0Sz2 = " << m2 << std::endl;
     std::cout << "Sp0Sm1 = " << m3 << std::endl;

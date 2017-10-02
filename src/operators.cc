@@ -535,6 +535,15 @@ namespace qbasis {
     }
     
     template <typename T>
+    opr_prod<T> &opr_prod<T>::dagger()
+    {
+        coeff = conjugate(coeff);
+        mat_prod.reverse();
+        for (auto it = mat_prod.begin(); it != mat_prod.end(); it++) it->dagger();
+        return *this;
+    }
+    
+    template <typename T>
     opr_prod<T> &opr_prod<T>::bubble_sort()
     {
         if (q_zero() || q_prop_identity() || len() <= 1) return *this;
@@ -836,6 +845,13 @@ namespace qbasis {
     mopr<T> &mopr<T>::negative()
     {
         for (auto &ele : mats) ele.negative();
+        return *this;
+    }
+    
+    template <typename T>
+    mopr<T> &mopr<T>::dagger()
+    {
+        for (auto &ele : mats) ele.dagger();
         return *this;
     }
     

@@ -5,7 +5,7 @@
 
 // Fermi-Hubbard model on square lattice
 int main() {
-    qbasis::initialize(true);
+    qbasis::initialize(false);
     std::cout << std::setprecision(10);
     // parameters
     double t = 1;
@@ -114,13 +114,11 @@ int main() {
     auto cupdg1cup5 = qbasis::opr<std::complex<double>>(1,0,true,c_up).dagger() *
                       qbasis::opr<std::complex<double>>(5,0,true,c_up);
 
-    auto m1 = Hubbard.measure_full(cupdg1cup5, 0, 0);
+    auto m1 = Hubbard.measure_full_static(cupdg1cup5, 0, 0);
     std::cout << "cupdg1cup5 = " << m1 << std::endl << std::endl;
     assert(std::abs(m1 - 0.3957690742) < 1e-8);
 
 
-    // to be reformated
-    /*
     // calculate dynamical structure factor Sz(q)*Sz(-q)
     std::string output_name = "L"+std::to_string(Lx)+"x"+std::to_string(Ly)+ "_chi.dat";
     std::ofstream fout(output_name, std::ios::out);
@@ -138,73 +136,55 @@ int main() {
     // along (0,0) -> (pi,0)
     for (int m = 0; m < Lx/2; m++) {
         int n = 0;
-        q_list.push_back(std::vector<int>{m,n});
+        q_list.push_back({m,n});
     }
     // along (pi,0) -> (pi,pi)
     for (int n = 0; n < Ly/2; n++) {
         int m = Lx/2;
-        q_list.push_back(std::vector<int>{m,n});
-    }
-    // along (pi,pi) -> (0,0)
-    for (int m = Lx/2; m >= 0; m--) {
-        assert(Lx == Ly);
-        int n = m;
-        q_list.push_back(std::vector<int>{m,n});
+        q_list.push_back({m,n});
     }
     // loop over all the q points
     for (auto q : q_list) {
         int m = q[0];
         int n = q[1];
-        // construct Sz(-q)
-        qbasis::mopr<std::complex<double>> Szmq;
+        std::cout << "Q\t" << m << "," << n << std::endl;
+
+        // construct Sz(q)
+        qbasis::mopr<std::complex<double>> Szq;
         for (int x = 0; x < Lx; x++) {
             for (int y = 0; y < Ly; y++) {
                 double qdotr = 2.0 * qbasis::pi * (m * x / static_cast<double>(Lx) + n * y / static_cast<double>(Ly));
-                auto coeff = 0.5 / sqrt(static_cast<double>(Lx * Ly)) * std::exp(std::complex<double>{0.0,-qdotr});
+                auto coeff = 0.5 / sqrt(static_cast<double>(Lx * Ly)) * std::exp(std::complex<double>{0.0,qdotr});
                 uint32_t site;
-                lattice.coor2site(std::vector<int>{x,y}, 0, site);
+                std::vector<int> work(lattice.dimension());
+                lattice.coor2site({x,y}, 0, site, work);
                 auto c_up_i    = qbasis::opr<std::complex<double>>(site,0,true,c_up);
                 auto c_dn_i    = qbasis::opr<std::complex<double>>(site,0,true,c_dn);
                 auto c_up_dg_i = c_up_i; c_up_dg_i.dagger();
                 auto c_dn_dg_i = c_dn_i; c_dn_dg_i.dagger();
                 auto n_up_i    = c_up_dg_i * c_up_i;
                 auto n_dn_i    = c_dn_dg_i * c_dn_i;
-                Szmq += coeff * (n_up_i - n_dn_i);
+                Szq += coeff * (n_up_i - n_dn_i);
             }
         }
-        // prepare restart state
-        std::vector<std::complex<double>> phi0(Hubbard.dimension_full()[0], 0.0);
-        Hubbard.moprXeigenvec_full(Szmq, 0, 0, 0, phi0.data());
-        // normalization of restart state
-        double phi0_nrm2 = qbasis::nrm2(Hubbard.dimension_full()[0], phi0.data(), 1);
-        double rnorm;
-        std::cout << "Q\t" << m << "," << n << std::endl;
-        std::cout << "phi_nrm2 = " << phi0_nrm2 << std::endl;
-        if (phi0_nrm2 > qbasis::lanczos_precision) {
-            qbasis::scal(Hubbard.dimension_full()[0], 1.0/phi0_nrm2, phi0.data(), 1);
-        }
+
+
+        // calculate dynamical correlation functions
+        MKL_INT step_used;
+        double norm;
+        std::vector<double> hessenberg(2*step);
+        Hubbard.measure_full_dynamic(Szq, 0, 0, step, step_used, norm, hessenberg.data());
+        std::cout << "norm = " << norm << std::endl;
         fout << "Q\t" << m << "," << n << std::endl;
-        fout << "nrm2\t" << phi0_nrm2 << std::endl;
-        // run Lanczos once again
-        std::cout << "Running continued fraction with " << step << " steps" << std::endl;
-        std::vector<std::complex<double>> v(Hubbard.dimension_full()[0] * 3);
-        std::vector<double> hessenberg(step * 2, 0.0);
-        if (phi0_nrm2 > qbasis::lanczos_precision) {
-            std::cout << "Running continued fraction with " << step << " steps" << std::endl;
-            std::vector<std::complex<double>> v(Hubbard.dimension_full()[0] * 3);
-            std::vector<double> hessenberg(step * 2, 0.0);
-            if (Hubbard.HamMat_csr_full[Hubbard.sec_mat].dimension() == Hubbard.dimension_full()[0]) {
-                qbasis::lanczos(0, step, Hubbard.dimension_full()[0], Hubbard.HamMat_csr_full[Hubbard.sec_mat], rnorm, phi0.data(), v.data(), hessenberg.data(), step, false);
-            } else {
-                qbasis::lanczos(0, step, Hubbard.dimension_full()[0], Hubbard, rnorm, phi0.data(), v.data(), hessenberg.data(), step, false);
-            }
+        fout << "nrm2\t" << norm << std::endl;
+        if (norm > qbasis::lanczos_precision) {
             fout << "b\t";
-            for (int i = 0; i < step; i++) {
+            for (MKL_INT i = 0; i < step_used; i++) {
                 fout << std::setw(30) << hessenberg[i];
             }
             fout << std::endl;
             fout << "a\t";
-            for (MKL_INT i = step; i < 2 * step; i++) {
+            for (MKL_INT i = step; i < step + step_used; i++) {
                 fout << std::setw(30) << hessenberg[i];
             }
             fout << std::endl;
@@ -214,6 +194,5 @@ int main() {
         }
         std::cout << std::endl << std::endl;
     }
-    */
-
+    fout.close();
 }

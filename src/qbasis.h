@@ -743,6 +743,9 @@ namespace qbasis {
         // invert the sign
         opr_prod& negative();
         
+        // Hermitian conjugate (not sorted after operation)
+        opr_prod& dagger();
+        
         // sort according to {site, orbital}. If exchanging fermions with odd times, invert sign.
         // replace in future, if used heavily
         opr_prod& bubble_sort();
@@ -837,6 +840,9 @@ namespace qbasis {
         
         // invert the sign
         mopr& negative();
+        
+        // Hermitian conjugate
+        mopr& dagger();
         
         mopr& transform(const std::vector<uint32_t> &plan);
         
@@ -998,7 +1004,7 @@ namespace qbasis {
     // on exit:
     //     v[0], ..., v[m] stored in v
     //
-    // if purpose == "sr_val0" (smallest eigenvalue):
+    // if purpose == "sr_val0" (smallest eigenvalue), or purpose == "dnmcs":
     // on entry:
     //     v[k-1], v[k] stored in v. If k%2==0, stored as {v[k],v[k-1]}; else stored as {v[k-1],v[k]}
     // on exit:
@@ -1331,11 +1337,28 @@ namespace qbasis {
                                 const MKL_INT &which_col, T* vec_new);
         
         // < phi | lhs | phi >
-        T measure_full(const mopr<T> &lhs, const uint32_t &sec_full, const MKL_INT &which_col);
+        T measure_full_static(const mopr<T> &lhs, const uint32_t &sec_full, const MKL_INT &which_col);
         
         // < phi |  ... * lhs2 * lhs1 * lhs0 | phi >
         // correspondingly, the sec_source has to be given for each lhs_i
-        T measure_full(const std::vector<mopr<T>> &lhs, const std::vector<uint32_t> &sec_old_list, const MKL_INT &which_col);
+        T measure_full_static(const std::vector<mopr<T>> &lhs, const std::vector<uint32_t> &sec_old_list, const MKL_INT &which_col);
+        
+        // NEED enable CKPT later!!!
+        // G_A(z) = < phi | lhs^\dagger (z-H)^{-1} lhs | phi >
+        // z      = omega + E0 + i * eta
+        // norm   = sqrt(< phi | lhs lhs^\dagger | phi >)
+        // G_A(z) =                     < phi | lhs lhs^\dagger | phi >
+        //                  ----------------------------------------------------
+        //                                             b1^2
+        //                   (z-a0) - ------------------------------------------
+        //                                                    b2^2
+        //                             (z-a1) - --------------------------------
+        //                                                         ...
+        //                                       (z-a2) - ----------------------
+        //                                                         ...
+        // on exit: a_i, b_i and norm are given
+        void measure_full_dynamic(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+                                  const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[]);
         
         // lhs | phi >
         // Requirements: after operation of lhs, the new state is still an eigenstate of translation
