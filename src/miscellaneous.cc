@@ -9,7 +9,7 @@
 namespace qbasis {
     void initialize(const bool &enable_ckpt_)
     {
-        std::cout << "----- Qbasis Version 2017/09/28 -----" << std::endl;
+        std::cout << "----- Qbasis Version 2017/10/03 -----" << std::endl;
 #if defined(_OPENMP)
         std::cout << "Recommended environment variables: OMP_PLACES=cores, OMP_PROC_BIND=spread" << std::endl;
         std::cout << "OMP version:            " << _OPENMP << std::endl;

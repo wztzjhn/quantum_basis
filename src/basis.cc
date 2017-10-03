@@ -2407,9 +2407,9 @@ namespace qbasis {
         }
         
         for (int cnt = 0; cnt < cnt_total; cnt++) {
-            if (std::abs(rhs.ele[bgn+cnt].second) > machine_prec) {
-                ele[end].second = rhs.ele[bgn+cnt].second;
-                std::memcpy(ele[end].first.mbits, rhs.ele[bgn+cnt].first.mbits, total_bytes);
+            if (std::abs(rhs.ele[rhs.bgn+cnt].second) > machine_prec) {
+                ele[end].second = rhs.ele[rhs.bgn+cnt].second;
+                std::memcpy(ele[end].first.mbits, rhs.ele[rhs.bgn+cnt].first.mbits, total_bytes);
                 end = (end + 1) % capacity;
             }
         }
@@ -2471,7 +2471,9 @@ namespace qbasis {
         // sqeeze into a single chunk
         using std::swap;
         if (bgn < end) {
-            for (int j = 0; j < size_old; j++) swap(ele[j], ele[bgn+j]);
+            if (bgn > 0) {
+                for (int j = 0; j < size_old; j++) swap(ele[j], ele[bgn+j]);
+            }
         } else {
             for (int j = bgn; j < capacity; j++) swap(ele[j], ele[end + (j - bgn)]);
         }
@@ -2494,23 +2496,23 @@ namespace qbasis {
         
         // delete zeros
         int pos_zero = bgn;
-        while (pos_zero < end && std::abs(ele[pos_zero].second) > machine_prec) pos_zero++;
+        while (pos_zero < end && std::abs(ele[pos_zero].second) > opr_precision) pos_zero++;
         while (pos_zero < end) {
             int pos_next = pos_zero + 1;
-            while (pos_next < end && std::abs(ele[pos_next].second) < machine_prec) pos_next++;
+            while (pos_next < end && std::abs(ele[pos_next].second) < opr_precision) pos_next++;
             if (pos_next < end) {
                 swap(ele[pos_zero], ele[pos_next]);
             } else {
                 break;
             }
-            while (pos_zero < end && std::abs(ele[pos_zero].second) > machine_prec) pos_zero++;
+            while (pos_zero < end && std::abs(ele[pos_zero].second) > opr_precision) pos_zero++;
         }
         end = pos_zero;
         for (int j = 0; j + 1 < end; j++) {
             assert(ele[j].first < ele[j+1].first);
-            assert(std::abs(ele[j].second) > machine_prec);
+            assert(std::abs(ele[j].second) > opr_precision);
         }
-        if (bgn < end) assert(std::abs(ele[end - 1].second) > machine_prec);
+        if (bgn < end) assert(std::abs(ele[end - 1].second) > opr_precision);
         
         return *this;
     }
@@ -2853,16 +2855,13 @@ namespace qbasis {
             int tid = omp_get_thread_num();
             
             std::list<mbasis_elem> temp;
-            auto it = basis.begin();
-            std::advance(it, j);
-            auto phi0 = *it;
+            auto it_basis = basis.begin();
+            std::advance(it_basis, j);
             
-            for (auto it = Ham.mats.begin(); it != Ham.mats.end(); it++) {
-                intermediate_states[tid].copy(phi0);
-                oprXphi(*it, props, intermediate_states[tid]);
-                for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
-                    if (intermediate_states[tid][cnt].first != phi0) temp.push_back(intermediate_states[tid][cnt].first);
-                }
+            oprXphi(Ham, props, intermediate_states[tid], *it_basis);
+            intermediate_states[tid].simplify();
+            for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                if (intermediate_states[tid][cnt].first != *it_basis) temp.push_back(intermediate_states[tid][cnt].first);
             }
             #pragma omp critical
             basis_new.splice(basis_new.end(), temp);
