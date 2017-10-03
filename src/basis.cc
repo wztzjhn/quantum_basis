@@ -2885,6 +2885,44 @@ namespace qbasis {
         std::cout << elapsed_seconds.count() << "s)" << std::endl;
     }
     
+    void rm_mbasis_dulp_trans(const lattice &latt, std::list<mbasis_elem> &basis, const std::vector<basis_prop> &props)
+    {
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        std::chrono::duration<double> elapsed_seconds;
+        start = std::chrono::system_clock::now();
+        std::cout << "Move states to translational equivalents... " << std::flush;
+        
+        std::vector<int> disp_vec;
+        for (auto it = basis.begin(); it != basis.end(); it++)
+            it->translate_to_unique_state(props, latt, disp_vec);
+        end   = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        
+        start = std::chrono::system_clock::now();
+        std::cout << "Resorting basis... ";
+        basis.sort();
+        end   = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        
+        start = std::chrono::system_clock::now();
+        std::cout << "Removing translational dulplicates... ";
+        auto it = basis.begin();
+        auto it_prev = it++;
+        while (it != basis.end()) {
+            if (*it == *it_prev) {
+                it = basis.erase(it);
+            } else {
+                it_prev = it++;
+            }
+        }
+        end   = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+        std::cout << elapsed_seconds.count() << "s." << std::endl;
+        std::cout << "After removing translational dulplicates: " << basis.size() << std::endl;
+    }
+    
     
     // Explicit instantiation
     template void enumerate_basis(const std::vector<basis_prop> &props, std::vector<qbasis::mbasis_elem> &basis,

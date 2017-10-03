@@ -273,6 +273,8 @@ namespace qbasis {
     // mopr * {a list of mbasis} -->> {a new list of mbasis}
     template <typename T> void gen_mbasis_by_mopr(const mopr<T>&, std::list<mbasis_elem>&, const std::vector<basis_prop>&);
     
+    void rm_mbasis_dulp_trans(const lattice&, std::list<mbasis_elem> &, const std::vector<basis_prop>&);
+    
     // csr matrix
     template <typename T> void swap(csr_mat<T>&, csr_mat<T>&);
     
