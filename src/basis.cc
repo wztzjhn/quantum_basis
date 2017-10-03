@@ -2757,7 +2757,7 @@ namespace qbasis {
         
         for (auto rit = lhs.mat_prod.rbegin(); rit != lhs.mat_prod.rend(); rit++) {
             oprXphi((*rit), props, res, false);
-            
+            res.simplify();
         }
         res *= lhs.coeff;
     }
