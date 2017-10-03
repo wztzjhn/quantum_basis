@@ -14,7 +14,7 @@ LIBS      = -L/usr/local/lib -larpack \
 include makefile_list/object_list.txt
 
 test: $(OBJS) $(OBJS_EXTRA)
-	$(CXX) $(OBJS) $(OBJS_EXTRA) $(OPTS) $(LIBS) -o ../bin/test.x
+	$(CXX) $(OBJS) $(OBJS_EXTRA) $(LIBS) -o ../bin/test.x
 
 libqbasis.a: $(OBJS)
 	ar rvs libqbasis.a $(OBJS)
