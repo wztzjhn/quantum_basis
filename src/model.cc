@@ -300,7 +300,7 @@ namespace qbasis {
         norm_repr[sec_repr].resize(dim_repr[sec_repr]);
         std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
         std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
-        #pragma omp parallel for schedule(dynamic,16)
+        #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT j = 0; j < dim_repr[sec_repr]; j++) {
             int tid = omp_get_thread_num();
             uint64_t state_sub1_label, state_sub2_label;
@@ -357,7 +357,7 @@ namespace qbasis {
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         lil_mat<T> matrix_lil(dim, upper_triangle);
-        #pragma omp parallel for schedule(dynamic,16)
+        #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim; i++) {
             int tid = omp_get_thread_num();
             // diagonal part:
@@ -432,7 +432,7 @@ namespace qbasis {
         start = std::chrono::system_clock::now();
         
         lil_mat<std::complex<double>> matrix_lil(dim, upper_triangle);
-        #pragma omp parallel for schedule(dynamic,16)
+        #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim; i++) {
             double nu_i = norm_repr[sec_mat][i];                                // normalization factor for repr i
             if (std::abs(nu_i) < lanczos_precision) {
@@ -577,7 +577,7 @@ namespace qbasis {
         
         std::cout << "*" << std::flush;
         if (sec_sym == 0) {
-            #pragma omp parallel for schedule(dynamic,16)
+            #pragma omp parallel for schedule(dynamic,1)
             for (MKL_INT i = 0; i < dim; i++) {
                 int tid = omp_get_thread_num();
                 
@@ -621,7 +621,7 @@ namespace qbasis {
             std::vector<mbasis_elem> state_sub_new2(num_threads);
             std::vector<mbasis_elem> ra_z_Tj_rb(num_threads);
             
-            #pragma omp parallel for schedule(dynamic,16)
+            #pragma omp parallel for schedule(dynamic,1)
             for (MKL_INT i = 0; i < dim; i++) {
                 int tid = omp_get_thread_num();
                 
@@ -1050,7 +1050,7 @@ namespace qbasis {
         std::cout << "mopr * vec (s = " << sec_old << ", t = " << sec_new << ")... " << std::endl;
         for (MKL_INT j = 0; j < dim_full[sec_new]; j++) vec_new[j] = 0.0;
         
-        #pragma omp parallel for schedule(dynamic,16)
+        #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT j = 0; j < dim_full[sec_old]; j++) {
             int tid = omp_get_thread_num();
             
@@ -1185,7 +1185,7 @@ namespace qbasis {
         std::cout << "mopr * vec (s = " << sec_old << ", t = " << sec_new << ")... " << std::endl;
         for (MKL_INT j = 0; j < dim_repr[sec_new]; j++) vec_new[j] = 0.0;
         
-        #pragma omp parallel for schedule(dynamic,16)
+        #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT j = 0; j < dim_repr[sec_old]; j++) {
             auto sj     = vec_old[j];
             double nu_j = norm_repr[sec_old][j];
@@ -1469,7 +1469,7 @@ namespace qbasis {
         start = std::chrono::system_clock::now();
         lil_mat<std::complex<double>> matrix_lil(dim_repr[sec_mat], upper_triangle);
         
-        #pragma omp parallel for schedule(dynamic,16)
+        #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim_repr[sec_mat]; i++) {
             int tid = omp_get_thread_num();
             

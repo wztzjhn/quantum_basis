@@ -2850,7 +2850,7 @@ namespace qbasis {
         start = std::chrono::system_clock::now();
         std::list<mbasis_elem> basis_new;
         
-        #pragma omp parallel for schedule(dynamic,16)
+        #pragma omp parallel for schedule(dynamic,1)
         for (decltype(basis.size()) j = 0; j < basis.size(); j++) {
             int tid = omp_get_thread_num();
             
