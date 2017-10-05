@@ -53,8 +53,8 @@ int main() {
             auto Splus_j   = qbasis::opr<std::complex<double>>(site_j,0,false,Splus);
             auto Sminus_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sminus);
             auto Sz_j      = qbasis::opr<std::complex<double>>(site_j,0,false,Sz);
-            Heisenberg.add_offdiagonal_Ham(std::complex<double>(0.5 * J,0.0) * (Splus_i * Sminus_j + Sminus_i * Splus_j));
-            Heisenberg.add_diagonal_Ham(std::complex<double>(J,0.0) * (Sz_i * Sz_j));
+            Heisenberg.add_Ham(std::complex<double>(0.5 * J,0.0) * (Splus_i * Sminus_j + Sminus_i * Splus_j));
+            Heisenberg.add_Ham(std::complex<double>(J,0.0) * (Sz_i * Sz_j));
         }
     }
 

@@ -62,10 +62,10 @@ int main() {
                 auto c_dn_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c_dn);
                 auto c_up_dg_j = c_up_j; c_up_dg_j.dagger();
                 auto c_dn_dg_j = c_dn_j; c_dn_dg_j.dagger();
-                Hubbard.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i * c_up_j ));
-                Hubbard.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_j * c_up_i ));
-                Hubbard.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i * c_dn_j ));
-                Hubbard.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_j * c_dn_i ));
+                Hubbard.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i * c_up_j ));
+                Hubbard.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_j * c_up_i ));
+                Hubbard.add_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i * c_dn_j ));
+                Hubbard.add_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_j * c_dn_i ));
             }
 
             // hopping to neighbor (x, y+1)
@@ -75,14 +75,14 @@ int main() {
                 auto c_dn_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c_dn);
                 auto c_up_dg_j = c_up_j; c_up_dg_j.dagger();
                 auto c_dn_dg_j = c_dn_j; c_dn_dg_j.dagger();
-                Hubbard.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i * c_up_j ));
-                Hubbard.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_j * c_up_i ));
-                Hubbard.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i * c_dn_j ));
-                Hubbard.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_j * c_dn_i ));
+                Hubbard.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i * c_up_j ));
+                Hubbard.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_j * c_up_i ));
+                Hubbard.add_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i * c_dn_j ));
+                Hubbard.add_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_j * c_dn_i ));
             }
 
             // Hubbard repulsion, note that this operator is a sum (over sites) of diagonal matrices
-            Hubbard.add_diagonal_Ham(std::complex<double>(U,0.0) * (n_up_i * n_dn_i));
+            Hubbard.add_Ham(std::complex<double>(U,0.0) * (n_up_i * n_dn_i));
 
             // total electron operator
             Nup   += n_up_i;

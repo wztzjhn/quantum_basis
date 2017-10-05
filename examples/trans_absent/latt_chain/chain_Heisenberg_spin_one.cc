@@ -70,8 +70,8 @@ int main() {
             auto Sx_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sx);
             auto Sy_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sy);
             auto Sz_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sz);
-            Heisenberg.add_offdiagonal_Ham(std::complex<double>(J,0.0) * (Sx_i * Sx_j + Sy_i * Sy_j));
-            Heisenberg.add_diagonal_Ham(std::complex<double>(J,0.0) * (Sz_i * Sz_j));
+            Heisenberg.add_Ham(std::complex<double>(J,0.0) * (Sx_i * Sx_j + Sy_i * Sy_j));
+            Heisenberg.add_Ham(std::complex<double>(J,0.0) * (Sz_i * Sz_j));
         }
         Sz_total += Sz_i;
     }

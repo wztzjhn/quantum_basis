@@ -1184,8 +1184,9 @@ namespace qbasis {
     public:
         bool matrix_free;
         std::vector<basis_prop> props, props_sub_a, props_sub_b;
-        mopr<T> Ham_diag;
-        mopr<T> Ham_off_diag;
+        mopr<T> Ham_diag;                                                        // diagonal part of H
+        mopr<T> Ham_off_diag;                                                    // offdiagonal part of H
+        mopr<T> Ham_vrnl;                                                        // used for generating Trugman's basis
         MKL_INT nconv;
         
         // controls which sector of basis to be active
@@ -1202,6 +1203,7 @@ namespace qbasis {
         
         std::vector<std::vector<qbasis::mbasis_elem>> basis_full;   // full basis without translation sym
         std::vector<std::vector<qbasis::mbasis_elem>> basis_repr;   // basis with translation sym
+        std::vector<std::vector<qbasis::mbasis_elem>> basis_vrnl;   // variational basis for Trugman's method
         std::vector<std::vector<double>> norm_repr;                 // 1 / <rep | P_k | rep>
         std::vector<qbasis::mbasis_elem> basis_sub_full;            // basis for half lattice, used for building Weisse Table
         std::vector<qbasis::mbasis_elem> basis_sub_repr;            // reps for half lattice
@@ -1246,17 +1248,17 @@ namespace qbasis {
         
         uint32_t local_dimension() const;
         
-        void add_diagonal_Ham(const opr<T> &rhs)      { assert(rhs.q_diagonal()); Ham_diag += rhs; }
+        void add_Ham(const opr<T> &rhs);
         
-        void add_diagonal_Ham(const opr_prod<T> &rhs) { assert(rhs.q_diagonal()); Ham_diag += rhs; }
+        void add_Ham(const opr_prod<T> &rhs);
         
-        void add_diagonal_Ham(const mopr<T> &rhs)     { assert(rhs.q_diagonal()); Ham_diag += rhs; }
+        void add_Ham(const mopr<T> &rhs);
         
-        void add_offdiagonal_Ham(const opr<T> &rhs)      { Ham_off_diag += rhs; }
+        void add_Ham_vrnl(const opr<T> &rhs);
         
-        void add_offdiagonal_Ham(const opr_prod<T> &rhs) { Ham_off_diag += rhs; }
+        void add_Ham_vrnl(const opr_prod<T> &rhs);
         
-        void add_offdiagonal_Ham(const mopr<T> &rhs)     { Ham_off_diag += rhs; }
+        void add_Ham_vrnl(const mopr<T> &rhs);
         
         void switch_sec(const uint32_t &sec_mat_);
         

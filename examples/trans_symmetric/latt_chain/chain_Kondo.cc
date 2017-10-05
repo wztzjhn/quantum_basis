@@ -82,21 +82,21 @@ int main() {
             auto c_dn_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c_dn);
             auto c_up_dg_j = c_up_j; c_up_dg_j.dagger();
             auto c_dn_dg_j = c_dn_j; c_dn_dg_j.dagger();
-            Kondo.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i * c_up_j ));
-            Kondo.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_j * c_up_i ));
-            Kondo.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i * c_dn_j ));
-            Kondo.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_j * c_dn_i ));
+            Kondo.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i * c_up_j ));
+            Kondo.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_j * c_up_i ));
+            Kondo.add_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i * c_dn_j ));
+            Kondo.add_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_j * c_dn_i ));
             // spin exchanges
             auto Splus_j   = qbasis::opr<std::complex<double>>(site_j,1,false,Splus);
             auto Sminus_j  = qbasis::opr<std::complex<double>>(site_j,1,false,Sminus);
             auto Sz_j      = qbasis::opr<std::complex<double>>(site_j,1,false,Sz);
-            Kondo.add_offdiagonal_Ham(std::complex<double>(0.5 * J_RKKY,0.0) * (Splus_i * Sminus_j + Sminus_i * Splus_j));
-            Kondo.add_diagonal_Ham(std::complex<double>(J_RKKY,0.0) * (Sz_i * Sz_j));
+            Kondo.add_Ham(std::complex<double>(0.5 * J_RKKY,0.0) * (Splus_i * Sminus_j + Sminus_i * Splus_j));
+            Kondo.add_Ham(std::complex<double>(J_RKKY,0.0) * (Sz_i * Sz_j));
         }
 
         // electron-spin interaction
-        Kondo.add_offdiagonal_Ham(std::complex<double>(0.5 * J_Kondo,0.0) * (Splus_i * sminus_i + Sminus_i * splus_i));
-        Kondo.add_diagonal_Ham(std::complex<double>(J_Kondo,0.0) * (Sz_i * sz_i));
+        Kondo.add_Ham(std::complex<double>(0.5 * J_Kondo,0.0) * (Splus_i * sminus_i + Sminus_i * splus_i));
+        Kondo.add_Ham(std::complex<double>(J_Kondo,0.0) * (Sz_i * sz_i));
 
         // total electron operator
         Nelec_total += (n_up_i + n_dn_i);

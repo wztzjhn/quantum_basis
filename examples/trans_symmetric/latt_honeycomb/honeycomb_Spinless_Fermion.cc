@@ -63,10 +63,10 @@ int main() {
                 auto c_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c);
                 auto c_dg_j = c_j; c_dg_j.dagger();
                 auto n_j    = c_dg_j * c_j;
-                spinless.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dg_i * c_j ));
-                spinless.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dg_j * c_i ));
-                spinless.add_diagonal_Ham(std::complex<double>(V1,0.0) * (n_i * n_j));
-                spinless.add_diagonal_Ham(std::complex<double>(-0.5 * V1,0.0) * (n_i + n_j));
+                spinless.add_Ham(std::complex<double>(-t,0.0) * ( c_dg_i * c_j ));
+                spinless.add_Ham(std::complex<double>(-t,0.0) * ( c_dg_j * c_i ));
+                spinless.add_Ham(std::complex<double>(V1,0.0) * (n_i * n_j));
+                spinless.add_Ham(std::complex<double>(-0.5 * V1,0.0) * (n_i + n_j));
                 constant += 0.25 * V1;
             }
 
@@ -76,10 +76,10 @@ int main() {
                 auto c_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c);
                 auto c_dg_j = c_j; c_dg_j.dagger();
                 auto n_j    = c_dg_j * c_j;
-                spinless.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dg_i * c_j ));
-                spinless.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dg_j * c_i ));
-                spinless.add_diagonal_Ham(std::complex<double>(V1,0.0) * (n_i * n_j));
-                spinless.add_diagonal_Ham(std::complex<double>(-0.5 * V1,0.0) * (n_i + n_j));
+                spinless.add_Ham(std::complex<double>(-t,0.0) * ( c_dg_i * c_j ));
+                spinless.add_Ham(std::complex<double>(-t,0.0) * ( c_dg_j * c_i ));
+                spinless.add_Ham(std::complex<double>(V1,0.0) * (n_i * n_j));
+                spinless.add_Ham(std::complex<double>(-0.5 * V1,0.0) * (n_i + n_j));
                 constant += 0.25 * V1;
             }
 
@@ -89,10 +89,10 @@ int main() {
                 auto c_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c);
                 auto c_dg_j = c_j; c_dg_j.dagger();
                 auto n_j    = c_dg_j * c_j;
-                spinless.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dg_i * c_j ));
-                spinless.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dg_j * c_i ));
-                spinless.add_diagonal_Ham(std::complex<double>(V1,0.0) * (n_i * n_j));
-                spinless.add_diagonal_Ham(std::complex<double>(-0.5 * V1,0.0) * (n_i + n_j));
+                spinless.add_Ham(std::complex<double>(-t,0.0) * ( c_dg_i * c_j ));
+                spinless.add_Ham(std::complex<double>(-t,0.0) * ( c_dg_j * c_i ));
+                spinless.add_Ham(std::complex<double>(V1,0.0) * (n_i * n_j));
+                spinless.add_Ham(std::complex<double>(-0.5 * V1,0.0) * (n_i + n_j));
                 constant += 0.25 * V1;
             }
 

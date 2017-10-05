@@ -78,13 +78,13 @@ int main() {
 
             //    1 -- 0 -> 1
             {
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i0 * c_up_i1 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i1 * c_up_i0 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i0 * c_dn_i1 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i1 * c_dn_i0 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(0.5*J,0.0) * (Splus_i0 * Sminus_i1 + Sminus_i0 * Splus_i1));
-                tJ.add_diagonal_Ham(std::complex<double>(J,0.0) * ( Sz_i0 * Sz_i1 ));
-                tJ.add_diagonal_Ham(std::complex<double>(-0.25*J,0.0) * ( N_i0 * N_i1 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i0 * c_up_i1 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i1 * c_up_i0 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i0 * c_dn_i1 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i1 * c_dn_i0 ));
+                tJ.add_Ham(std::complex<double>(0.5*J,0.0) * (Splus_i0 * Sminus_i1 + Sminus_i0 * Splus_i1));
+                tJ.add_Ham(std::complex<double>(J,0.0) * ( Sz_i0 * Sz_i1 ));
+                tJ.add_Ham(std::complex<double>(-0.25*J,0.0) * ( N_i0 * N_i1 ));
             }
 
 
@@ -100,13 +100,13 @@ int main() {
                 auto Sminus_j1  = c_dn_dg_j1 * c_up_j1;
                 auto Sz_j1      = std::complex<double>(0.5,0.0) * (c_up_dg_j1 * c_up_j1 - c_dn_dg_j1 * c_dn_j1);
                 auto N_j1       = (c_up_dg_j1 * c_up_j1 + c_dn_dg_j1 * c_dn_j1);
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i0 * c_up_j1 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_j1 * c_up_i0 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i0 * c_dn_j1 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_j1 * c_dn_i0 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(0.5*J,0.0) * (Splus_i0 * Sminus_j1 + Sminus_i0 * Splus_j1));
-                tJ.add_diagonal_Ham(std::complex<double>(J,0.0) * ( Sz_i0 * Sz_j1 ));
-                tJ.add_diagonal_Ham(std::complex<double>(-0.25*J,0.0) * ( N_i0 * N_j1 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i0 * c_up_j1 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_j1 * c_up_i0 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i0 * c_dn_j1 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_j1 * c_dn_i0 ));
+                tJ.add_Ham(std::complex<double>(0.5*J,0.0) * (Splus_i0 * Sminus_j1 + Sminus_i0 * Splus_j1));
+                tJ.add_Ham(std::complex<double>(J,0.0) * ( Sz_i0 * Sz_j1 ));
+                tJ.add_Ham(std::complex<double>(-0.25*J,0.0) * ( N_i0 * N_j1 ));
             }
 
 
@@ -118,13 +118,13 @@ int main() {
             //        \
             //         2
             {
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i1 * c_up_i2 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i2 * c_up_i1 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i1 * c_dn_i2 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i2 * c_dn_i1 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(0.5*J,0.0) * (Splus_i1 * Sminus_i2 + Sminus_i1 * Splus_i2));
-                tJ.add_diagonal_Ham(std::complex<double>(J,0.0) * ( Sz_i1 * Sz_i2 ));
-                tJ.add_diagonal_Ham(std::complex<double>(-0.25*J,0.0) * ( N_i1 * N_i2 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i1 * c_up_i2 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i2 * c_up_i1 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i1 * c_dn_i2 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i2 * c_dn_i1 ));
+                tJ.add_Ham(std::complex<double>(0.5*J,0.0) * (Splus_i1 * Sminus_i2 + Sminus_i1 * Splus_i2));
+                tJ.add_Ham(std::complex<double>(J,0.0) * ( Sz_i1 * Sz_i2 ));
+                tJ.add_Ham(std::complex<double>(-0.25*J,0.0) * ( N_i1 * N_i2 ));
             }
 
 
@@ -146,13 +146,13 @@ int main() {
                 auto Sminus_j2  = c_dn_dg_j2 * c_up_j2;
                 auto Sz_j2      = std::complex<double>(0.5,0.0) * (c_up_dg_j2 * c_up_j2 - c_dn_dg_j2 * c_dn_j2);
                 auto N_j2       = (c_up_dg_j2 * c_up_j2 + c_dn_dg_j2 * c_dn_j2);
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i1 * c_up_j2 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_j2 * c_up_i1 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i1 * c_dn_j2 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_j2 * c_dn_i1 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(0.5*J,0.0) * (Splus_i1 * Sminus_j2 + Sminus_i1 * Splus_j2));
-                tJ.add_diagonal_Ham(std::complex<double>(J,0.0) * ( Sz_i1 * Sz_j2 ));
-                tJ.add_diagonal_Ham(std::complex<double>(-0.25*J,0.0) * ( N_i1 * N_j2 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i1 * c_up_j2 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_j2 * c_up_i1 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i1 * c_dn_j2 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_j2 * c_dn_i1 ));
+                tJ.add_Ham(std::complex<double>(0.5*J,0.0) * (Splus_i1 * Sminus_j2 + Sminus_i1 * Splus_j2));
+                tJ.add_Ham(std::complex<double>(J,0.0) * ( Sz_i1 * Sz_j2 ));
+                tJ.add_Ham(std::complex<double>(-0.25*J,0.0) * ( N_i1 * N_j2 ));
             }
 
 
@@ -164,13 +164,13 @@ int main() {
             //    v
             //   0
             {
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i2 * c_up_i0 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i0 * c_up_i2 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i2 * c_dn_i0 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i0 * c_dn_i2 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(0.5*J,0.0) * (Splus_i2 * Sminus_i0 + Sminus_i2 * Splus_i0));
-                tJ.add_diagonal_Ham(std::complex<double>(J,0.0) * ( Sz_i2 * Sz_i0 ));
-                tJ.add_diagonal_Ham(std::complex<double>(-0.25*J,0.0) * ( N_i2 * N_i0 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i2 * c_up_i0 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i0 * c_up_i2 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i2 * c_dn_i0 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i0 * c_dn_i2 ));
+                tJ.add_Ham(std::complex<double>(0.5*J,0.0) * (Splus_i2 * Sminus_i0 + Sminus_i2 * Splus_i0));
+                tJ.add_Ham(std::complex<double>(J,0.0) * ( Sz_i2 * Sz_i0 ));
+                tJ.add_Ham(std::complex<double>(-0.25*J,0.0) * ( N_i2 * N_i0 ));
             }
 
 
@@ -192,13 +192,13 @@ int main() {
                 auto Sminus_j0  = c_dn_dg_j0 * c_up_j0;
                 auto Sz_j0      = std::complex<double>(0.5,0.0) * (c_up_dg_j0 * c_up_j0 - c_dn_dg_j0 * c_dn_j0);
                 auto N_j0       = (c_up_dg_j0 * c_up_j0 + c_dn_dg_j0 * c_dn_j0);
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i2 * c_up_j0 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_j0 * c_up_i2 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i2 * c_dn_j0 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_j0 * c_dn_i2 ));
-                tJ.add_offdiagonal_Ham(std::complex<double>(0.5*J,0.0) * (Splus_i2 * Sminus_j0 + Sminus_i2 * Splus_j0));
-                tJ.add_diagonal_Ham(std::complex<double>(J,0.0) * ( Sz_i2 * Sz_j0 ));
-                tJ.add_diagonal_Ham(std::complex<double>(-0.25*J,0.0) * ( N_i2 * N_j0 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i2 * c_up_j0 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_j0 * c_up_i2 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_i2 * c_dn_j0 ));
+                tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_dn_dg_j0 * c_dn_i2 ));
+                tJ.add_Ham(std::complex<double>(0.5*J,0.0) * (Splus_i2 * Sminus_j0 + Sminus_i2 * Splus_j0));
+                tJ.add_Ham(std::complex<double>(J,0.0) * ( Sz_i2 * Sz_j0 ));
+                tJ.add_Ham(std::complex<double>(-0.25*J,0.0) * ( N_i2 * N_j0 ));
             }
 
             // total Sz operator

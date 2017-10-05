@@ -58,8 +58,8 @@ int main() {
                 lattice.coor2site({x+1,y}, 0, site_j, work);
                 auto b_j    = qbasis::opr<std::complex<double>>(site_j,0,false,b);
                 auto b_dg_j = b_j; b_dg_j.dagger();
-                Hubbard.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( b_dg_i * b_j ));
-                Hubbard.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( b_dg_j * b_i ));
+                Hubbard.add_Ham(std::complex<double>(-t,0.0) * ( b_dg_i * b_j ));
+                Hubbard.add_Ham(std::complex<double>(-t,0.0) * ( b_dg_j * b_i ));
             }
 
             // hopping to neighbor (x, y+1)
@@ -67,12 +67,12 @@ int main() {
                 lattice.coor2site({x,y+1}, 0, site_j, work);
                 auto b_j    = qbasis::opr<std::complex<double>>(site_j,0,false,b);
                 auto b_dg_j = b_j; b_dg_j.dagger();
-                Hubbard.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( b_dg_i * b_j ));
-                Hubbard.add_offdiagonal_Ham(std::complex<double>(-t,0.0) * ( b_dg_j * b_i ));
+                Hubbard.add_Ham(std::complex<double>(-t,0.0) * ( b_dg_i * b_j ));
+                Hubbard.add_Ham(std::complex<double>(-t,0.0) * ( b_dg_j * b_i ));
             }
 
             // Hubbard repulsion, note that this operator is a sum (over sites) of diagonal matrices
-            Hubbard.add_diagonal_Ham(std::complex<double>(0.5*U,0.0) * (n_i * n_i - n_i));
+            Hubbard.add_Ham(std::complex<double>(0.5*U,0.0) * (n_i * n_i - n_i));
 
             // total boson operator
             Nboson += n_i;

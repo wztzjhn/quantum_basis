@@ -23,6 +23,7 @@ namespace qbasis {
         momenta.resize(num_secs);
         basis_full.resize(num_secs);
         basis_repr.resize(num_secs);
+        basis_vrnl.resize(num_secs);
         norm_repr.resize(num_secs);
         Lin_Ja_full.resize(num_secs);
         Lin_Jb_full.resize(num_secs);
@@ -41,6 +42,72 @@ namespace qbasis {
         uint32_t res = 1;
         for (decltype(props.size()) j = 0; j < props.size(); j++) res *= props[j].dim_local;
         return res;
+    }
+    
+    template <typename T>
+    void model<T>::add_Ham(const opr<T> &rhs)
+    {
+        if (rhs.q_diagonal()) {
+            Ham_diag += rhs;
+        } else {
+            Ham_off_diag += rhs;
+        }
+    }
+    
+    template <typename T>
+    void model<T>::add_Ham(const opr_prod<T> &rhs)
+    {
+        if (rhs.q_diagonal()) {
+            Ham_diag += rhs;
+        } else {
+            Ham_off_diag += rhs;
+        }
+    }
+    
+    template <typename T>
+    void model<T>::add_Ham(const mopr<T> &rhs)
+    {
+        for (uint32_t j = 0; j < rhs.size(); j++) {
+            if (rhs[j].q_diagonal()) {
+                Ham_diag += rhs[j];
+            } else {
+                Ham_off_diag += rhs[j];
+            }
+        }
+    }
+    
+    template <typename T>
+    void model<T>::add_Ham_vrnl(const opr<T> &rhs)
+    {
+        if (rhs.q_diagonal()) {
+            std::cout << "Warning: adding diagonal operators to Ham_vrnl!" << std::endl;
+        } else {
+            Ham_vrnl += rhs;
+        }
+    }
+    
+    template <typename T>
+    void model<T>::add_Ham_vrnl(const opr_prod<T> &rhs)
+    {
+        if (rhs.q_diagonal()) {
+            std::cout << "Warning: adding diagonal operators to Ham_vrnl!" << std::endl;
+        } else {
+            Ham_vrnl += rhs;
+        }
+    }
+    
+    template <typename T>
+    void model<T>::add_Ham_vrnl(const mopr<T> &rhs)
+    {
+        bool flag = false;
+        for (uint32_t j = 0; j < rhs.size(); j++) {
+            if (rhs[j].q_diagonal()) {
+                flag = true;
+            } else {
+                Ham_vrnl += rhs[j];
+            }
+        }
+        if (flag) std::cout << "Warning: adding diagonal operators to Ham_vrnl!" << std::endl;
     }
     
     template <typename T>
