@@ -2831,8 +2831,10 @@ namespace qbasis {
         }
     }
     
-    template <typename T> void gen_mbasis_by_mopr(const mopr<T> &Ham, std::list<mbasis_elem> &basis, const std::vector<basis_prop> &props)
+    template <typename T> void gen_mbasis_by_mopr(const mopr<T> &Ham, std::list<mbasis_elem> &basis, const std::vector<basis_prop> &props,
+                                                  std::vector<mopr<T>> conserve_lst, std::vector<double> val_lst)
     {
+        assert(conserve_lst.size() == val_lst.size());
         int num_threads = 1;
         #pragma omp parallel
         {
@@ -2857,7 +2859,21 @@ namespace qbasis {
             oprXphi(Ham, props, intermediate_states[tid], *it_basis);
             intermediate_states[tid].simplify();
             for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
-                if (intermediate_states[tid][cnt].first != *it_basis) temp.push_back(intermediate_states[tid][cnt].first);
+                auto &ele = intermediate_states[tid][cnt].first;
+                if (ele != *it_basis) {
+                    bool flag = true;
+                    auto it_opr = conserve_lst.begin();
+                    auto it_val = val_lst.begin();
+                    while (it_opr != conserve_lst.end()) {
+                        if (std::abs(ele.diagonal_operator(props, *it_opr) - *it_val) >= 1e-5) {
+                            flag = false;
+                            break;
+                        }
+                        it_opr++;
+                        it_val++;
+                    }
+                    if (flag) temp.push_back(ele);
+                }
             }
             #pragma omp critical
             basis_new.splice(basis_new.end(), temp);
@@ -2971,7 +2987,9 @@ namespace qbasis {
     template void oprXphi(const mopr<double>&,               const std::vector<basis_prop>&, wavefunction<double>&,               wavefunction<double>, const bool&);
     template void oprXphi(const mopr<std::complex<double>>&, const std::vector<basis_prop>&, wavefunction<std::complex<double>>&, wavefunction<std::complex<double>>, const bool&);
     
-    template void gen_mbasis_by_mopr(const mopr<double>&, std::list<mbasis_elem>&, const std::vector<basis_prop>&);
-    template void gen_mbasis_by_mopr(const mopr<std::complex<double>>&, std::list<mbasis_elem>&, const std::vector<basis_prop>&);
+    template void gen_mbasis_by_mopr(const mopr<double>&, std::list<mbasis_elem>&, const std::vector<basis_prop>&,
+                                     std::vector<mopr<double>> conserve_lst, std::vector<double> val_lst);
+    template void gen_mbasis_by_mopr(const mopr<std::complex<double>>&, std::list<mbasis_elem>&, const std::vector<basis_prop>&,
+                                     std::vector<mopr<std::complex<double>>> conserve_lst, std::vector<double> val_lst);
     
 }

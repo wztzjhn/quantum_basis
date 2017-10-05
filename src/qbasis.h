@@ -271,7 +271,9 @@ namespace qbasis {
     template <typename T> void oprXphi(const mopr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, wavefunction<T> phi0, const bool &append = false);
     
     // mopr * {a list of mbasis} -->> {a new list of mbasis}
-    template <typename T> void gen_mbasis_by_mopr(const mopr<T>&, std::list<mbasis_elem>&, const std::vector<basis_prop>&);
+    template <typename T> void gen_mbasis_by_mopr(const mopr<T>&, std::list<mbasis_elem>&, const std::vector<basis_prop>&,
+                                                  std::vector<mopr<T>> conserve_lst = {},
+                                                  std::vector<double> val_lst = {});
     
     void rm_mbasis_dulp_trans(const lattice&, std::list<mbasis_elem> &, const std::vector<basis_prop>&);
     
@@ -493,7 +495,8 @@ namespace qbasis {
         friend void oprXphi <> (const opr_prod<T>&, const std::vector<basis_prop>&, wavefunction<T>&, wavefunction<T>, const bool&);
         friend void oprXphi <> (const mopr<T>&,     const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem,     const bool&);
         friend void oprXphi <> (const mopr<T>&,     const std::vector<basis_prop>&, wavefunction<T>&, wavefunction<T>, const bool&);
-        friend void gen_mbasis_by_mopr <> (const mopr<T> &, std::list<mbasis_elem>&, const std::vector<basis_prop>&);
+        friend void gen_mbasis_by_mopr <> (const mopr<T> &, std::list<mbasis_elem>&, const std::vector<basis_prop>&,
+                                           std::vector<mopr<T>> conserve_lst, std::vector<double> val_lst);
     public:
         // constructor from props
         wavefunction(const std::vector<basis_prop> &props, const MKL_INT &capacity = 64);
@@ -800,7 +803,8 @@ namespace qbasis {
         friend mopr<T> operator* <> (const T&, const mopr<T>&);
         friend void oprXphi <> (const mopr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem, const bool&);
         friend void oprXphi <> (const mopr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, wavefunction<T>, const bool&);
-        friend void gen_mbasis_by_mopr <> (const mopr<T> &, std::list<mbasis_elem>&, const std::vector<basis_prop>&);
+        friend void gen_mbasis_by_mopr <> (const mopr<T> &, std::list<mbasis_elem>&, const std::vector<basis_prop>&,
+                                           std::vector<mopr<T>> conserve_lst, std::vector<double> val_lst);
     public:
         // default constructor
         mopr() = default;
