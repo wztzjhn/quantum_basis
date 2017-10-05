@@ -439,7 +439,7 @@ namespace qbasis {
             for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
                 intermediate_states[tid].copy(basis[i]);
                 oprXphi(*it, props, intermediate_states[tid]);
-                for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                     auto &ele_new = intermediate_states[tid][cnt];
                     if (std::abs(ele_new.second) < machine_prec) continue;
                     if (Lin_Ja_full[sec_mat].size() > 0 && Lin_Jb_full[sec_mat].size() > 0) {
@@ -502,13 +502,13 @@ namespace qbasis {
         lil_mat<std::complex<double>> matrix_lil(dim, upper_triangle);
         #pragma omp parallel for schedule(dynamic,1)
         for (MKL_INT i = 0; i < dim; i++) {
+            int tid = omp_get_thread_num();
+            
             double nu_i = norm_repr[sec_mat][i];                                // normalization factor for repr i
             if (std::abs(nu_i) < lanczos_precision) {
                 matrix_lil.add(i, i, static_cast<T>(fake_pos + static_cast<double>(i)/static_cast<double>(dim)));
                 continue;
             }
-            
-            int tid = omp_get_thread_num();
             
             // diagonal part:
             for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
@@ -526,7 +526,7 @@ namespace qbasis {
                 intermediate_states[tid].copy(basis[i]);
                 oprXphi(*it, props, intermediate_states[tid]);
                 
-                for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                     auto &ele_new = intermediate_states[tid][cnt];
                     // use Weisse Tables to find the representative |ra,rb,j>
                     ele_new.first.label_sub(props, state_sub1_label, state_sub2_label,
@@ -661,7 +661,7 @@ namespace qbasis {
                 for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
                     intermediate_states[tid].copy(basis[i]);
                     oprXphi(*it, props, intermediate_states[tid]);
-                    for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                    for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                         auto &ele_new = intermediate_states[tid][cnt];
                         if (std::abs(ele_new.second) < machine_prec) continue;
                         if (Lin_Ja_full[sec_mat].size() > 0 && Lin_Jb_full[sec_mat].size() > 0) {
@@ -714,7 +714,7 @@ namespace qbasis {
                     intermediate_states[tid].copy(basis[i]);
                     oprXphi(*it, props, intermediate_states[tid]);
                     
-                    for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                    for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                         auto &ele_new = intermediate_states[tid][cnt];
                         // use Weisse Tables to find the representative |ra,rb,j>
                         ele_new.first.label_sub(props, state_sub1_label, state_sub2_label,
@@ -1133,7 +1133,7 @@ namespace qbasis {
                 } else {
                     intermediate_states[tid].copy(basis_full[sec_old][j]);
                     oprXphi(*it, props, intermediate_states[tid]);
-                    for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                    for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                         auto &ele = intermediate_states[tid][cnt];
                         if (Lin_Ja_full[sec_new].size() > 0 && Lin_Jb_full[sec_new].size() > 0) {
                             ele.first.label_sub(props, i_a, i_b,
@@ -1275,7 +1275,7 @@ namespace qbasis {
                     int sgn;
                     mbasis_elem state_sub_new1, state_sub_new2, ra_z_Tj_rb;
                     
-                    for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                    for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                         auto &ele_new = intermediate_states[tid][cnt];
                         ele_new.first.label_sub(props, state_sub1_label, state_sub2_label,
                                                 scratch_works1[tid], scratch_works2[tid]);
@@ -1440,7 +1440,7 @@ namespace qbasis {
         }
         std::cout << ")..." << std::endl;
         
-        auto num_sub = latt_parent.num_sublattice();
+        //auto num_sub = latt_parent.num_sublattice();
         auto L = latt_parent.Linear_size();
         basis_belong_deprec[sec_repr].resize(dim_full[sec_full]);
         std::fill(basis_belong_deprec[sec_repr].begin(), basis_belong_deprec[sec_repr].end(), -1);
@@ -1555,7 +1555,7 @@ namespace qbasis {
                 intermediate_states[tid].copy(basis_full[sec_mat][repr_i]);
                 oprXphi(*it, props, intermediate_states[tid]);
                 
-                for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                     auto &ele_new = intermediate_states[tid][cnt];
                     MKL_INT state_j;
                     if (Lin_Ja_full[sec_mat].size() > 0 && Lin_Jb_full[sec_mat].size() > 0) {
