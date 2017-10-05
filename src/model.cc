@@ -1454,11 +1454,12 @@ namespace qbasis {
             basis_repr_deprec[sec_repr].push_back(i);
             basis_coeff_deprec[sec_repr][i] = std::complex<double>(1.0, 0.0);
             #pragma omp parallel for schedule(dynamic,1)
-            for (uint32_t site = num_sub; site < latt_parent.total_sites(); site += num_sub) {
+            for (uint32_t site = 0; site < latt_parent.total_sites(); site++) {
                 int tid = omp_get_thread_num();
                 std::vector<int> disp;
                 int sub, sgn;
                 latt_parent.site2coor(disp, sub, site);
+                if (sub != 0) continue;
                 bool flag = false;
                 for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                     if (!trans_sym[d] && disp[d] != 0) {
