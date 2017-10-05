@@ -2272,8 +2272,9 @@ namespace qbasis {
     }
     
     template <typename T>
-    double wavefunction<T>::amplitude()
+    double wavefunction<T>::amplitude() const
     {
+        assert(q_sorted_fully());
         if (q_empty()) return 0.0;
         int capacity = static_cast<int>(ele.size());
         double res = 0.0;

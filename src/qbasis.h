@@ -534,7 +534,7 @@ namespace qbasis {
         bool q_sorted_fully() const;
         
         // for \sum_i \alpha_i * element[i], return \sum_i |\alpha_i|^2
-        double amplitude();
+        double amplitude() const;
         
         //    ---------------- print ---------------
         void prt_bits(const std::vector<basis_prop> &props) const;
