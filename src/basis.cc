@@ -2218,7 +2218,7 @@ namespace qbasis {
     
     // ----------------- implementation of wavefunction ------------------
     template <typename T>
-    wavefunction<T>::wavefunction(const std::vector<basis_prop> &props, const int &capacity) : bgn(0), end(0)
+    wavefunction<T>::wavefunction(const std::vector<basis_prop> &props, const MKL_INT &capacity) : bgn(0), end(0)
     {
         std::pair<mbasis_elem, T> gs(mbasis_elem(props), static_cast<T>(0));
         total_bytes = static_cast<int>(gs.first.mbits[0] * 256) + static_cast<int>(gs.first.mbits[1]);
@@ -2226,7 +2226,7 @@ namespace qbasis {
     }
     
     template <typename T>
-    wavefunction<T>::wavefunction(const mbasis_elem &old, const int &capacity) : bgn(0), end(1)
+    wavefunction<T>::wavefunction(const mbasis_elem &old, const MKL_INT &capacity) : bgn(0), end(1)
     {
         std::pair<mbasis_elem, T> gs(old,static_cast<T>(1.0));
         total_bytes = static_cast<int>(old.mbits[0] * 256) + static_cast<int>(old.mbits[1]);
@@ -2234,7 +2234,7 @@ namespace qbasis {
     }
     
     template <typename T>
-    wavefunction<T>::wavefunction(mbasis_elem &&old, const int &capacity) : bgn(0), end(1)
+    wavefunction<T>::wavefunction(mbasis_elem &&old, const MKL_INT &capacity) : bgn(0), end(1)
     {
         std::pair<mbasis_elem, T> gs(old,static_cast<T>(1.0));
         total_bytes = static_cast<int>(old.mbits[0] * 256) + static_cast<int>(old.mbits[1]);
@@ -2245,9 +2245,9 @@ namespace qbasis {
     bool wavefunction<T>::q_sorted() const
     {
         if (size() == 0 || size() == 1) return true;
-        int capacity = static_cast<int>(ele.size());
+        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
         bool check = true;
-        for (int j = (bgn + 1) % capacity; j != end; j = (j + 1) % capacity) {
+        for (MKL_INT j = (bgn + 1) % capacity; j != end; j = (j + 1) % capacity) {
             if (ele[j].first < ele[(j + capacity - 1) % capacity].first) {
                 check = false;
                 break;
@@ -2260,9 +2260,9 @@ namespace qbasis {
     bool wavefunction<T>::q_sorted_fully() const
     {
         if (size() == 0 || size() == 1) return true;
-        int capacity = static_cast<int>(ele.size());
+        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
         bool check = true;
-        for (int j = (bgn + 1) % capacity; j != end; j = (j + 1) % capacity) {
+        for (MKL_INT j = (bgn + 1) % capacity; j != end; j = (j + 1) % capacity) {
             if ( !(ele[(j + capacity - 1) % capacity].first < ele[j].first) ) {
                 check = false;
                 break;
@@ -2276,9 +2276,9 @@ namespace qbasis {
     {
         assert(q_sorted_fully());
         if (q_empty()) return 0.0;
-        int capacity = static_cast<int>(ele.size());
+        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
         double res = 0.0;
-        for (int j = bgn; j != end; j = (j + 1) % capacity) {
+        for (MKL_INT j = bgn; j != end; j = (j + 1) % capacity) {
             res += std::norm(ele[j].second);
         }
         return res;
@@ -2287,8 +2287,8 @@ namespace qbasis {
     template <typename T>
     void wavefunction<T>::prt_bits(const std::vector<basis_prop> &props) const
     {
-        int capacity = static_cast<int>(ele.size());
-        for (int j = bgn; j != end; j = (j + 1) % capacity) {
+        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
+        for (MKL_INT j = bgn; j != end; j = (j + 1) % capacity) {
             std::cout << "coeff: " << ele[j].second << std::endl;
             ele[j].first.prt_bits(props);
             std::cout << std::endl;
@@ -2298,8 +2298,8 @@ namespace qbasis {
     template <typename T>
     void wavefunction<T>::prt_states(const std::vector<basis_prop> &props) const
     {
-        int capacity = static_cast<int>(ele.size());
-        for (int j = bgn; j != end; j = (j + 1) % capacity) {
+        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
+        for (MKL_INT j = bgn; j != end; j = (j + 1) % capacity) {
             std::cout << "coeff: " << ele[j].second << std::endl;
             ele[j].first.prt_states(props);
             std::cout << std::endl;
@@ -2307,27 +2307,27 @@ namespace qbasis {
     }
     
     template <typename T>
-    std::pair<mbasis_elem, T> &wavefunction<T>::operator[](int n)
+    std::pair<mbasis_elem, T> &wavefunction<T>::operator[](MKL_INT n)
     {
         assert(n >= 0 && n < size());
         assert(! q_empty());
-        return ele[(bgn + n) % static_cast<int>(ele.size())];
+        return ele[(bgn + n) % static_cast<MKL_INT>(ele.size())];
     }
     
     template <typename T>
-    const std::pair<mbasis_elem, T> &wavefunction<T>::operator[](int n) const
+    const std::pair<mbasis_elem, T> &wavefunction<T>::operator[](MKL_INT n) const
     {
         assert(n >= 0 && n < size());
         assert(! q_empty());
-        return ele[(bgn + n) % static_cast<int>(ele.size())];
+        return ele[(bgn + n) % static_cast<MKL_INT>(ele.size())];
     }
     
     
     template <typename T>
-    wavefunction<T> &wavefunction<T>::reserve(const int& capacity_new)
+    wavefunction<T> &wavefunction<T>::reserve(const MKL_INT& capacity_new)
     {
         assert(capacity_new > 0);
-        int capacity = static_cast<int>(ele.size());
+        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
         if (capacity_new <= capacity) return *this;
         
         auto gs = ele[bgn].first;
@@ -2351,7 +2351,7 @@ namespace qbasis {
     wavefunction<T> &wavefunction<T>::add(const mbasis_elem &rhs)
     {
         assert(ele[0].first.mbits[0] == rhs.mbits[0] && ele[0].first.mbits[1] == rhs.mbits[1]);
-        int capacity = static_cast<int>(ele.size());
+        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
         if (size() + 1 >= capacity) {
             capacity += capacity;
             reserve(capacity);
@@ -2375,7 +2375,7 @@ namespace qbasis {
     wavefunction<T> &wavefunction<T>::add(const std::pair<mbasis_elem, T> &rhs)
     {
         assert(ele[0].first.mbits[0] == rhs.first.mbits[0] && ele[0].first.mbits[1] == rhs.first.mbits[1]);
-        int capacity = static_cast<int>(ele.size());
+        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
         if (size() + 1 >= capacity) {
             capacity += capacity;
             reserve(capacity);
@@ -2400,14 +2400,14 @@ namespace qbasis {
     {
         if (rhs.q_empty()) return *this;
         assert(ele[0].first.mbits[0] == rhs.ele[0].first.mbits[0] && ele[0].first.mbits[1] == rhs.ele[0].first.mbits[1]);
-        int capacity = static_cast<int>(ele.size());
-        int cnt_total = rhs.size();
+        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
+        MKL_INT cnt_total = rhs.size();
         if (size() + cnt_total >= capacity) {
             capacity += capacity;
             reserve(capacity);
         }
         
-        for (int cnt = 0; cnt < cnt_total; cnt++) {
+        for (MKL_INT cnt = 0; cnt < cnt_total; cnt++) {
             if (std::abs(rhs.ele[rhs.bgn+cnt].second) > machine_prec) {
                 ele[end].second = rhs.ele[rhs.bgn+cnt].second;
                 std::memcpy(ele[end].first.mbits, rhs.ele[rhs.bgn+cnt].first.mbits, total_bytes);
@@ -2457,8 +2457,8 @@ namespace qbasis {
             end = 0;
             return *this;
         }
-        int capacity = static_cast<int>(ele.size());
-        for (int j = bgn; j != end; j = (j + 1) % capacity) ele[j].second *= rhs;
+        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
+        for (MKL_INT j = bgn; j != end; j = (j + 1) % capacity) ele[j].second *= rhs;
         return *this;
     }
     
@@ -2466,17 +2466,17 @@ namespace qbasis {
     wavefunction<T> &wavefunction<T>::simplify()
     {
         if (q_empty()) return *this;            // itself zero
-        int size_old = size();
-        int capacity = static_cast<int>(ele.size());
+        MKL_INT size_old = size();
+        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
         
         // sqeeze into a single chunk
         using std::swap;
         if (bgn < end) {
             if (bgn > 0) {
-                for (int j = 0; j < size_old; j++) swap(ele[j], ele[bgn+j]);
+                for (MKL_INT j = 0; j < size_old; j++) swap(ele[j], ele[bgn+j]);
             }
         } else {
-            for (int j = bgn; j < capacity; j++) swap(ele[j], ele[end + (j - bgn)]);
+            for (MKL_INT j = bgn; j < capacity; j++) swap(ele[j], ele[end + (j - bgn)]);
         }
         bgn = 0;
         end = size_old;
@@ -2484,11 +2484,11 @@ namespace qbasis {
         // combine terms
         std::sort(ele.begin(), ele.begin() + size_old,
                   [](const std::pair<mbasis_elem, T> &lhs, const std::pair<mbasis_elem, T> &rhs){return lhs.first < rhs.first; });
-        int pos = bgn;
+        MKL_INT pos = bgn;
         while (pos < end) {
-            int pos_next = pos + 1;
+            MKL_INT pos_next = pos + 1;
             while (pos_next < end && ele[pos].first == ele[pos_next].first) pos_next++;
-            for (int j = pos + 1; j < pos_next; j++) {
+            for (MKL_INT j = pos + 1; j < pos_next; j++) {
                 ele[pos].second += ele[j].second;
                 ele[j].second = static_cast<T>(0.0);
             }
@@ -2496,10 +2496,10 @@ namespace qbasis {
         }
         
         // delete zeros
-        int pos_zero = bgn;
+        MKL_INT pos_zero = bgn;
         while (pos_zero < end && std::abs(ele[pos_zero].second) > opr_precision) pos_zero++;
         while (pos_zero < end) {
-            int pos_next = pos_zero + 1;
+            MKL_INT pos_next = pos_zero + 1;
             while (pos_next < end && std::abs(ele[pos_next].second) < opr_precision) pos_next++;
             if (pos_next < end) {
                 swap(ele[pos_zero], ele[pos_next]);
@@ -2509,7 +2509,7 @@ namespace qbasis {
             while (pos_zero < end && std::abs(ele[pos_zero].second) > opr_precision) pos_zero++;
         }
         end = pos_zero;
-        for (int j = 0; j + 1 < end; j++) {
+        for (MKL_INT j = 0; j + 1 < end; j++) {
             assert(ele[j].first < ele[j+1].first);
             assert(std::abs(ele[j].second) > opr_precision);
         }
@@ -2579,8 +2579,8 @@ namespace qbasis {
     {
         if (res.q_empty()) return;
         
-        int capacity = static_cast<int>(res.ele.size());
-        int cnt_total = res.size();
+        MKL_INT capacity = static_cast<MKL_INT>(res.ele.size());
+        MKL_INT cnt_total = res.size();
         
         // if diagonal operator, implementation is simple
         if (lhs.diagonal) {
@@ -2589,7 +2589,7 @@ namespace qbasis {
                     capacity *= 2;
                     res.reserve(capacity);
                 }
-                for (int cnt = 0; cnt < cnt_total; cnt++) {
+                for (MKL_INT cnt = 0; cnt < cnt_total; cnt++) {
                     auto &rhs = res.ele[res.bgn + cnt];
                     if (std::abs(rhs.second) < machine_prec) continue;
                     auto coeff_new = rhs.second * rhs.first.diagonal_operator(props,lhs);
@@ -2599,7 +2599,7 @@ namespace qbasis {
                     res.end = (res.end + 1) % capacity;
                 }
             } else {
-                for (int j = res.bgn; j != res.end; j = (j+1) % capacity) {
+                for (MKL_INT j = res.bgn; j != res.end; j = (j+1) % capacity) {
                     if (std::abs(res.ele[j].second) > machine_prec)
                         res.ele[j].second *= res.ele[j].first.diagonal_operator(props, lhs);
                 }
@@ -2610,7 +2610,7 @@ namespace qbasis {
         // if operator is not diagonal
         auto dim = props[lhs.orbital].dim_local;
         assert(lhs.dim == dim);
-        for (int cnt = 0; cnt < cnt_total; cnt++) {                              // need operate on res cnt_total times
+        for (MKL_INT cnt = 0; cnt < cnt_total; cnt++) {                          // need operate on res cnt_total times
             if (res.size() + static_cast<int>(dim) >= capacity) {
                 capacity *= 2;
                 res.reserve(capacity);
@@ -2679,12 +2679,12 @@ namespace qbasis {
             res.end = 0;
         }
         assert(res.ele[0].first.mbits[0] == rhs.mbits[0] && res.ele[0].first.mbits[1] == rhs.mbits[1]);
-        int capacity = static_cast<int>(res.ele.size());
+        MKL_INT capacity = static_cast<MKL_INT>(res.ele.size());
         
         auto dim = props[lhs.orbital].dim_local;
         assert(lhs.dim == dim);
         
-        if (res.size() + static_cast<int>(dim) >= capacity) {
+        if (res.size() + static_cast<MKL_INT>(dim) >= capacity) {
             capacity *= 2;
             res.reserve(capacity);
         }
@@ -2743,8 +2743,8 @@ namespace qbasis {
         }
         if (phi0.q_empty()) return;
         
-        int capacity0 = static_cast<int>(phi0.ele.size());
-        for (int j = phi0.bgn; j != phi0.end; j = (j+1) % capacity0) {
+        MKL_INT capacity0 = static_cast<MKL_INT>(phi0.ele.size());
+        for (MKL_INT j = phi0.bgn; j != phi0.end; j = (j+1) % capacity0) {
             if (std::abs(phi0.ele[j].second) < machine_prec) continue;
             oprXphi(phi0.ele[j].second * lhs, props, res, phi0.ele[j].first, true);
         }
@@ -2797,8 +2797,6 @@ namespace qbasis {
         res.add(phi0);
     }
     
-    
-
     template <typename T>
     void oprXphi(const mopr<T> &lhs, const std::vector<basis_prop> &props, wavefunction<T> &res, mbasis_elem rhs, const bool &append)
     {
@@ -2806,7 +2804,6 @@ namespace qbasis {
             res.bgn = 0;
             res.end = 0;
         }
-        
         if (lhs.q_zero()) return;                                // zero operator
         
         wavefunction<T> temp(rhs);
@@ -2824,7 +2821,6 @@ namespace qbasis {
             res.bgn = 0;
             res.end = 0;
         }
-        
         if (lhs.q_zero() || phi0.q_empty()) return;
         
         wavefunction<T> temp(phi0);
@@ -2834,7 +2830,6 @@ namespace qbasis {
             res.add(temp);
         }
     }
-    
     
     template <typename T> void gen_mbasis_by_mopr(const mopr<T> &Ham, std::list<mbasis_elem> &basis, const std::vector<basis_prop> &props)
     {

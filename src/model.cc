@@ -1036,7 +1036,6 @@ namespace qbasis {
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         
-        
         int num_threads = 1;
         #pragma omp parallel
         {

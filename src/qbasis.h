@@ -496,11 +496,11 @@ namespace qbasis {
         friend void gen_mbasis_by_mopr <> (const mopr<T> &, std::list<mbasis_elem>&, const std::vector<basis_prop>&);
     public:
         // constructor from props
-        wavefunction(const std::vector<basis_prop> &props, const int &capacity = 64);
+        wavefunction(const std::vector<basis_prop> &props, const MKL_INT &capacity = 64);
         
         // constructor from an element
-        wavefunction(const mbasis_elem &old, const int &capacity = 64);
-        wavefunction(mbasis_elem &&old,      const int &capacity = 64);
+        wavefunction(const mbasis_elem &old, const MKL_INT &capacity = 64);
+        wavefunction(mbasis_elem &&old,      const MKL_INT &capacity = 64);
         
         // copy constructor
         wavefunction(const wavefunction<T> &old) : bgn(old.bgn), end(old.end), total_bytes(old.total_bytes), ele(old.ele) {}
@@ -519,7 +519,7 @@ namespace qbasis {
         ~wavefunction() {}
         
         //    ----------- basic inquiries ----------
-        int size() const { int capacity = static_cast<int>(ele.size()); return ( (end + capacity - bgn) % capacity ); }
+        MKL_INT size() const { MKL_INT capacity = static_cast<MKL_INT>(ele.size()); return ( (end + capacity - bgn) % capacity ); }
         
         // check if zero
         bool q_empty() const { return (size() == 0); }
@@ -542,12 +542,12 @@ namespace qbasis {
         void prt_states(const std::vector<basis_prop> &props) const;
         
         //    ----------- element access -----------
-        std::pair<mbasis_elem, T>& operator[](int n);
+        std::pair<mbasis_elem, T>& operator[](MKL_INT n);
         
-        const std::pair<mbasis_elem, T>& operator[](int n) const;
+        const std::pair<mbasis_elem, T>& operator[](MKL_INT n) const;
         
         //    ------------ arithmetics -------------
-        wavefunction& reserve(const int& capacity_new);                          // enlarge capacity
+        wavefunction& reserve(const MKL_INT& capacity_new);                      // enlarge capacity
         
         wavefunction& clear();                                                   // clear but memory not released
         
@@ -566,8 +566,8 @@ namespace qbasis {
         // store an array of basis elements, and their corresponding coefficients
         // note: there should not be any dulplicated elements
         // using cycled queue data structure (wasting 1 element to avoid end==bgn confusion: empty or full)
-        int bgn;
-        int end;
+        MKL_INT bgn;
+        MKL_INT end;
         int total_bytes;
         std::vector<std::pair<mbasis_elem, T>> ele;
         
