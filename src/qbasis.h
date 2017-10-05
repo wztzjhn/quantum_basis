@@ -1222,7 +1222,7 @@ namespace qbasis {
         // ---------------- deprecated --------------------
         
         
-        model(const double &fake_pos_ = 100.0);
+        model(const uint32_t &num_secs = 3, const double &fake_pos_ = 100.0);
         
         ~model() {}
         

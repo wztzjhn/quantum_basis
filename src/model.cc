@@ -13,25 +13,26 @@ namespace qbasis {
     void ckpt_CG_clean();
     
     template <typename T>
-    model<T>::model(const double &fake_pos_):
+    model<T>::model(const uint32_t &num_secs, const double &fake_pos_):
                     matrix_free(true), nconv(0),
                     sec_mat(0),
-                    dim_full({0,0}), dim_repr({0,0}),
+                    dim_full(std::vector<MKL_INT>(num_secs,0)),
+                    dim_repr(std::vector<MKL_INT>(num_secs,0)),
                     fake_pos(fake_pos_)
     {
-        momenta.resize(2);
-        basis_full.resize(2);
-        basis_repr.resize(2);
-        norm_repr.resize(2);
-        Lin_Ja_full.resize(2);
-        Lin_Jb_full.resize(2);
-        Lin_Ja_repr.resize(2);
-        Lin_Jb_repr.resize(2);
-        HamMat_csr_full.resize(2);
-        HamMat_csr_repr.resize(2);
-        basis_belong_deprec.resize(2);
-        basis_coeff_deprec.resize(2);
-        basis_repr_deprec.resize(2);
+        momenta.resize(num_secs);
+        basis_full.resize(num_secs);
+        basis_repr.resize(num_secs);
+        norm_repr.resize(num_secs);
+        Lin_Ja_full.resize(num_secs);
+        Lin_Jb_full.resize(num_secs);
+        Lin_Ja_repr.resize(num_secs);
+        Lin_Jb_repr.resize(num_secs);
+        HamMat_csr_full.resize(num_secs);
+        HamMat_csr_repr.resize(num_secs);
+        basis_belong_deprec.resize(num_secs);
+        basis_coeff_deprec.resize(num_secs);
+        basis_repr_deprec.resize(num_secs);
     }
     
     template <typename T>
