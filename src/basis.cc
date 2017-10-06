@@ -2848,14 +2848,14 @@ namespace qbasis {
         start = std::chrono::system_clock::now();
         std::list<mbasis_elem> basis_new;
         
-        #pragma omp parallel for schedule(dynamic,1)
+        #pragma omp parallel for schedule(dynamic,256)
         for (decltype(basis.size()) j = 0; j < basis.size(); j++) {
             int tid = omp_get_thread_num();
             
             std::list<mbasis_elem> temp;
             auto it_basis = basis.begin();
-            std::advance(it_basis, j);
-            
+            std::advance(it_basis, j);                                           // can be faster, if using stragy like in basis enumeration
+         
             oprXphi(Ham, props, intermediate_states[tid], *it_basis);
             intermediate_states[tid].simplify();
             for (int cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {

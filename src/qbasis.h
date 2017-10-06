@@ -1207,23 +1207,30 @@ namespace qbasis {
         
         std::vector<MKL_INT> dim_full;
         std::vector<MKL_INT> dim_repr;
+        std::vector<MKL_INT> dim_vrnl;
         
         std::vector<std::vector<int>> momenta;
+        std::vector<std::vector<double>> momenta_vrnl;
         
         std::vector<std::vector<qbasis::mbasis_elem>> basis_full;   // full basis without translation sym
         std::vector<std::vector<qbasis::mbasis_elem>> basis_repr;   // basis with translation sym
         std::vector<std::vector<qbasis::mbasis_elem>> basis_vrnl;   // variational basis for Trugman's method
         std::vector<std::vector<double>> norm_repr;                 // 1 / <rep | P_k | rep>
+        std::vector<double> norm_gs_vrnl;                           // 1 / <vac | P_k | vac>, for the variational vacuum state
+        std::vector<MKL_INT> pos_gs_vrnl;                           // position of the vacuum state in the variational basis
         std::vector<qbasis::mbasis_elem> basis_sub_full;            // basis for half lattice, used for building Weisse Table
         std::vector<qbasis::mbasis_elem> basis_sub_repr;            // reps for half lattice
         
         std::vector<csr_mat<T>>            HamMat_csr_full;
         std::vector<csr_mat<T>>            HamMat_csr_repr;
+        std::vector<csr_mat<T>>            HamMat_csr_vrnl;
         
         std::vector<double>                eigenvals_full;
         std::vector<T>                     eigenvecs_full;
         std::vector<double>                eigenvals_repr;
         std::vector<std::complex<double>>  eigenvecs_repr;
+        std::vector<double>                eigenvals_vrnl;
+        std::vector<std::complex<double>>  eigenvecs_vrnl;
         
         
         // ---------------- deprecated --------------------
@@ -1287,6 +1294,16 @@ namespace qbasis {
                                   std::vector<double> val_lst = {},
                                   const uint32_t &sec_repr = 0);
         
+        // build the variational basis to run Trugman's method
+        void build_basis_vrnl(const std::list<mbasis_elem> &initial_list,
+                              const mbasis_elem &gs,
+                              const std::vector<double> &momentum,
+                              const lattice &latt,
+                              const uint32_t &iteration_depth,
+                              std::vector<mopr<T>> conserve_lst = {},
+                              std::vector<double> val_lst = {},
+                              const uint32_t &sec_vrnl = 0);
+        
         // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
         void basis_init_repr_deprecated(const lattice &latt,
                                         const std::vector<int> &momentum,
@@ -1299,6 +1316,9 @@ namespace qbasis {
         // generate the Hamiltonian using basis_repr
         // a few artificial diagonal elements above 100, corresponding to zero norm states
         void generate_Ham_sparse_repr(const bool &upper_triangle = true);
+        
+        // generate the Hamiltonian using basis_vrnl
+        void generate_Ham_sparse_vrnl(const bool &upper_triangle = true);
         
         // a few artificial diagonal elements above 100, corresponding to zero norm states
         void generate_Ham_sparse_repr_deprecated(const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr
@@ -1330,6 +1350,8 @@ namespace qbasis {
         
         // there may be a few artificial eigenvalues above fake_pos (default to 100), corresponding to zero norm states
         void locate_Emax_repr(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
+        
+        void locate_E0_vrnl(const MKL_INT &nev = 10, const MKL_INT &ncv = 20, MKL_INT maxit = 0);
         
         std::vector<MKL_INT> dimension_full() { return dim_full; }
         

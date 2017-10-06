@@ -18,19 +18,24 @@ namespace qbasis {
                     sec_mat(0),
                     dim_full(std::vector<MKL_INT>(num_secs,0)),
                     dim_repr(std::vector<MKL_INT>(num_secs,0)),
+                    dim_vrnl(std::vector<MKL_INT>(num_secs,0)),
                     fake_pos(fake_pos_)
     {
         momenta.resize(num_secs);
+        momenta_vrnl.resize(num_secs);
         basis_full.resize(num_secs);
         basis_repr.resize(num_secs);
         basis_vrnl.resize(num_secs);
         norm_repr.resize(num_secs);
+        norm_gs_vrnl.resize(num_secs);
+        pos_gs_vrnl.resize(num_secs);
         Lin_Ja_full.resize(num_secs);
         Lin_Jb_full.resize(num_secs);
         Lin_Ja_repr.resize(num_secs);
         Lin_Jb_repr.resize(num_secs);
         HamMat_csr_full.resize(num_secs);
         HamMat_csr_repr.resize(num_secs);
+        HamMat_csr_vrnl.resize(num_secs);
         basis_belong_deprec.resize(num_secs);
         basis_coeff_deprec.resize(num_secs);
         basis_repr_deprec.resize(num_secs);
@@ -99,15 +104,9 @@ namespace qbasis {
     template <typename T>
     void model<T>::add_Ham_vrnl(const mopr<T> &rhs)
     {
-        bool flag = false;
         for (uint32_t j = 0; j < rhs.size(); j++) {
-            if (rhs[j].q_diagonal()) {
-                flag = true;
-            } else {
-                Ham_vrnl += rhs[j];
-            }
+            if (! rhs[j].q_diagonal()) Ham_vrnl += rhs[j];
         }
-        if (flag) std::cout << "Warning: adding diagonal operators to Ham_vrnl!" << std::endl;
     }
     
     template <typename T>
@@ -402,6 +401,123 @@ namespace qbasis {
     }
     
     template <typename T>
+    void model<T>::build_basis_vrnl(const std::list<mbasis_elem> &initial_list,
+                                    const mbasis_elem &gs,
+                                    const std::vector<double> &momentum,
+                                    const lattice &latt,
+                                    const uint32_t &iteration_depth,
+                                    std::vector<mopr<T>> conserve_lst,
+                                    std::vector<double> val_lst,
+                                    const uint32_t &sec_vrnl)
+    {
+        assert(conserve_lst.size() == val_lst.size());
+        assert(sec_vrnl < basis_vrnl.size());
+        momenta_vrnl[sec_vrnl] = momentum;
+        latt_parent = latt;
+        
+        // check if basis already generated
+        bool flag_built = true;
+        if (dim_vrnl[sec_vrnl] <= 0 || static_cast<MKL_INT>(basis_vrnl[sec_vrnl].size()) != dim_vrnl[sec_vrnl]) {
+            flag_built = false;
+        } else {
+            // check conserved quantum numbers
+            for (MKL_INT j = 0; j < dim_vrnl[sec_vrnl]; j++) {
+                bool flag_conserve = true;
+                auto it_opr = conserve_lst.begin();
+                auto it_val = val_lst.begin();
+                while (it_opr != conserve_lst.end()) {
+                    auto temp = basis_vrnl[sec_vrnl][j].diagonal_operator(props, *it_opr);
+                    if (std::abs(temp - *it_val) >= 1e-5) {
+                        flag_conserve = false;
+                        break;
+                    }
+                    it_opr++;
+                    it_val++;
+                }
+                if (! flag_conserve) {
+                    flag_built = false;
+                    break;
+                }
+            }
+        }
+        
+        if (! flag_built) {
+            std::cout << "Building variational basis with " << val_lst.size() << " conserved quantum numbers..." << std::endl;
+            std::list<mbasis_elem> basis;
+            std::cout << "-------- iteration 0 --------" << std::endl;
+            std::cout << "mbasis size: " << initial_list.size() << " -> ";
+            for (auto &ele : initial_list) {
+                bool flag = true;                                                // check symmetries
+                auto it_opr = conserve_lst.begin();
+                auto it_val = val_lst.begin();
+                while (it_opr != conserve_lst.end()) {
+                    auto temp = ele.diagonal_operator(props, *it_opr);
+                    if (std::abs(temp - *it_val) >= 1e-5) {
+                        flag = false;
+                        break;
+                    }
+                    it_opr++;
+                    it_val++;
+                }
+                if (flag) basis.push_back(ele);
+            }
+            std::cout << basis.size() << std::endl << std::endl;
+            
+            // iterate through all levels
+            for (uint32_t level = 1; level <= iteration_depth; level++) {
+                std::cout << "-------- iteration " << level << " --------" << std::endl;
+                gen_mbasis_by_mopr(Ham_vrnl, basis, props, conserve_lst, val_lst);
+                rm_mbasis_dulp_trans(latt, basis, props);
+                std::cout << std::endl;
+            }
+            
+            // move results to model
+            dim_vrnl[sec_vrnl] = static_cast<MKL_INT>(basis.size());
+            basis_vrnl[sec_vrnl].resize(basis.size());
+            MKL_INT j = 0;
+            for (auto it = basis.begin(); it != basis.end(); it++) {
+                swap(basis_vrnl[sec_vrnl][j], *it);
+                j++;
+            }
+        }
+        
+        // calculate normalization factors (actually just for the ground state)
+        pos_gs_vrnl[sec_vrnl] = binary_search<mbasis_elem, MKL_INT>(basis_vrnl[sec_vrnl], gs, 0, dim_vrnl[sec_vrnl]);
+        if (pos_gs_vrnl[sec_vrnl] >=0 && pos_gs_vrnl[sec_vrnl] < dim_vrnl[sec_vrnl]) {
+            std::vector<double> cart;
+            std::complex<double> norm_gs(0.0,0.0);
+            for (uint32_t site = 0; site < latt.total_sites(); site++) {
+                std::vector<int> disp;
+                int sub, sgn;
+                latt_parent.site2coor(disp, sub, site);
+                if (sub != 0) continue;
+                
+                std::vector<uint32_t> plan;
+                std::vector<int> scratch_work, scratch_coor;
+                latt.translation_plan(plan, disp, scratch_coor, scratch_work);
+                auto basis_temp = gs;
+                basis_temp.transform(props, plan, sgn);
+                if (basis_temp == gs) {
+                    double exp_coef = 0.0;
+                    latt.coor2cart(disp, 0, cart);
+                    for (uint32_t d = 0; d < latt.dimension(); d++) {
+                        exp_coef += momentum[d] * cart[d];
+                    }
+                    norm_gs += std::exp(std::complex<double>(0.0, exp_coef));
+                }
+            }
+            assert(std::abs(norm_gs.imag()) < lanczos_precision);
+            assert(std::abs(norm_gs.real()) < lanczos_precision || norm_gs.real() > 0.0);
+            norm_gs_vrnl[sec_vrnl] = static_cast<double>(latt.total_sites() / latt.num_sublattice()) / norm_gs.real();
+            std::cout << "GS pos       = " << pos_gs_vrnl[sec_vrnl] << std::endl;
+            std::cout << "GS norm_vrnl = " << norm_gs_vrnl[sec_vrnl] << std::endl;
+        } else {
+            norm_gs_vrnl[sec_vrnl] = 0.0;
+        }
+    }
+    
+    
+    template <typename T>
     void model<T>::generate_Ham_sparse_full(const bool &upper_triangle)
     {
         if (matrix_free) matrix_free = false;
@@ -455,7 +571,6 @@ namespace qbasis {
                         matrix_lil.add(i, j, conjugate(ele_new.second));
                     }
                 }
-                
             }
         }
         HamMat_csr_full[sec_mat] = csr_mat<T>(matrix_lil);
@@ -606,6 +721,84 @@ namespace qbasis {
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
     
+    template <typename T>
+    void model<T>::generate_Ham_sparse_vrnl(const bool &upper_triangle)
+    {
+        if (matrix_free) matrix_free = false;
+        assert(dim_vrnl[sec_mat] > 0);
+        
+        MKL_INT dim = dim_vrnl[sec_mat];
+        auto &basis = basis_vrnl[sec_mat];
+        auto &momentum = momenta_vrnl[sec_mat];
+        double norm_gs = norm_gs_vrnl[sec_mat];
+        MKL_INT pos_gs = pos_gs_vrnl[sec_mat];
+        double NsitesPsublatt = static_cast<double>(latt_parent.total_sites() / latt_parent.num_sublattice());
+        double NsitesPsublatt_sqrt = std::sqrt(NsitesPsublatt);
+        
+        int num_threads = 1;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) num_threads = omp_get_num_threads();
+        }
+        // prepare intermediates in advance
+        std::vector<wavefunction<T>> intermediate_states(num_threads, {basis[pos_gs]});
+        std::vector<std::vector<int>> scratch_disp(num_threads);
+        std::vector<std::vector<double>> scratch_cart(num_threads);
+        
+        std::cout << "Generating LIL Hamiltonian matrix (vrnl)..." << std::endl;
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        lil_mat<T> matrix_lil(dim, upper_triangle);
+        
+        #pragma omp parallel for schedule(dynamic,256)
+        for (MKL_INT i = 0; i < dim; i++) {
+            int tid = omp_get_thread_num();
+            
+            if (i == pos_gs && norm_gs < lanczos_precision) {
+                matrix_lil.add(i, i, static_cast<T>(fake_pos + static_cast<double>(i)/static_cast<double>(dim)));
+                continue;
+            }
+            
+            // diagonal part
+            for (decltype(Ham_diag.size()) cnt = 0; cnt < Ham_diag.size(); cnt++)
+                matrix_lil.add(i, i, basis[i].diagonal_operator(props,Ham_diag[cnt]));
+            
+            // non-diagonal part
+            double nrm2_i = (i == pos_gs ? std::sqrt(norm_gs) : NsitesPsublatt_sqrt);             // 1 / sqrt(<phi| P_k |phi>)
+            for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
+                intermediate_states[tid].copy(basis[i]);
+                oprXphi(*it, props, intermediate_states[tid]);
+                for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                    auto &ele_new = intermediate_states[tid][cnt];
+                    auto unique_state = ele_new.first;
+                    unique_state.translate_to_unique_state(props,latt_parent,scratch_disp[tid]);
+                    MKL_INT j = binary_search<mbasis_elem,MKL_INT>(basis, unique_state, 0, dim);   // < j | H | i >
+                    if (j < 0 || j >= dim) continue;
+                    if (upper_triangle && i > j) continue;
+                    double nrm2_j = (j == pos_gs ? std::sqrt(norm_gs) : NsitesPsublatt_sqrt);
+                    double prefactor = nrm2_i * nrm2_j / NsitesPsublatt;
+                    if (i != pos_gs && j != pos_gs) {
+                        assert(std::abs(prefactor - 1.0) < lanczos_precision);
+                    } else {
+                        std::cout << "i=" << i << ", j =" << j << ", prefactor=" << prefactor << std::endl;
+                    }
+                    latt_parent.coor2cart(scratch_disp[tid], 0, scratch_cart[tid]);
+                    double exp_coef = 0.0;
+                    for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                        exp_coef += momentum[d] * scratch_cart[tid][d];
+                    }
+                    auto coeff = prefactor * std::exp(std::complex<double>(0.0,exp_coef));
+                    matrix_lil.add(i, j, qbasis::conjugate(coeff*ele_new.second));
+                }
+            }
+        }
+        HamMat_csr_vrnl[sec_mat] = csr_mat<T>(matrix_lil);
+        std::cout << "Hamiltonian CSR matrix (vrnl) generated." << std::endl;
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+    }
     
     
     template <typename T>
@@ -983,17 +1176,18 @@ namespace qbasis {
         assert(ncv > nev + 1);
         if (maxit <= 0) maxit = nev * 100; // arpack default
         sec_sym = 0;                       // work with dim_full
+        MKL_INT dim = dim_full[sec_mat];
         
         std::cout << "Calculating ground state (full)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        std::vector<T> v0(dim_full[sec_mat], 1.0);
+        std::vector<T> v0(dim, 1.0);
         eigenvals_full.resize(nev);
-        eigenvecs_full.resize(dim_full[sec_mat] * nev);
+        eigenvecs_full.resize(dim * nev);
         if (matrix_free) {
-            iram(dim_full[sec_mat], *this, v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_full.data(), eigenvecs_full.data());
+            iram(dim, *this, v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_full.data(), eigenvecs_full.data());
         } else {
-            iram(dim_full[sec_mat], HamMat_csr_full[sec_mat], v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_full.data(), eigenvecs_full.data());
+            iram(dim, HamMat_csr_full[sec_mat], v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_full.data(), eigenvecs_full.data());
         }
         assert(nconv > 0);
         E0 = eigenvals_full[0];
@@ -1095,6 +1289,32 @@ namespace qbasis {
     }
     
     template <typename T>
+    void model<T>::locate_E0_vrnl(const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
+    {
+        assert(nev > 0);
+        assert(ncv > nev + 1);
+        if (maxit <= 0) maxit = nev * 100; // arpack default
+        sec_sym = 2;                       // work with dim_vrnl
+        MKL_INT dim = dim_vrnl[sec_mat];
+        
+        std::cout << "Calculating low energy states (vrnl)..." << std::endl;
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        std::vector<T> v0(dim, 1.0);
+        eigenvals_vrnl.resize(nev);
+        eigenvecs_vrnl.resize(dim * nev);
+        iram(dim, HamMat_csr_vrnl[sec_mat], v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_vrnl.data(), eigenvecs_vrnl.data());
+        assert(nconv > 0);
+        E0 = eigenvals_vrnl[0];
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+        std::cout << "E0   = " << E0 << std::endl;
+        if (nconv > 1) {
+            gap = eigenvals_vrnl[1] - eigenvals_vrnl[0];
+            std::cout << "Gap  = " << gap << std::endl;
+        }
+    }
     void model<T>::moprXvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
                                  const T* vec_old, T* vec_new)
     {
