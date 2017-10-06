@@ -1071,6 +1071,7 @@ namespace qbasis {
     
 //  ----------------------------- part 5: Lattices  ----------------------------
 //  ----------------------------------------------------------------------------
+//  requirement: origin has to be occupied by sublattice 0 (for the coor2cart to work correctly when doing translation)
     class lattice {
         friend lattice divide_lattice(const lattice &parent);
     public:
@@ -1090,6 +1091,10 @@ namespace qbasis {
         
         void site2coor(std::vector<int> &coor, int &sub, const uint32_t &site) const;
         void site2coor_old(std::vector<int> &coor, int &sub, const uint32_t &site) const;
+        
+        // transform to cartisian coordinates
+        // temporary just assume 1 sublattice. implement multi-sublattice later
+        void coor2cart(const std::vector<int> &coor, const int &sub, std::vector<double> &cart) const;
         
         // return a vector containing the positions of each site after translation
         //std::vector<uint32_t> translation_plan(const std::vector<int> &disp) const;

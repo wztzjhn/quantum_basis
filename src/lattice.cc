@@ -182,6 +182,20 @@ namespace qbasis {
         }
     }
     
+    void lattice::coor2cart(const std::vector<int> &coor, const int &sub, std::vector<double> &cart) const
+    {
+        // temporarily assume only 1 sublattice
+        assert(num_sub == 1);
+        assert(sub == 0);
+        if (cart.size() != dim) cart.resize(dim);
+        std::fill(cart.begin(), cart.end(), 0.0);
+        for (uint32_t d_out = 0; d_out < dim; d_out++) {                         // loop over x,y,z
+            for (uint32_t d_in = 0; d_in < dim; d_in++) {                        // loop over a0, a1,...
+                cart[d_out] += coor[d_in] * a[d_in][d_out];
+            }
+        }
+    }
+    
     std::vector<std::vector<uint32_t>> lattice::divisor_v1(const std::vector<bool> &trans_sym) const
     {
         assert(trans_sym.size() == dim);
