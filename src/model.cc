@@ -508,7 +508,11 @@ namespace qbasis {
             }
             assert(std::abs(norm_gs.imag()) < lanczos_precision);
             assert(std::abs(norm_gs.real()) < lanczos_precision || norm_gs.real() > 0.0);
-            norm_gs_vrnl[sec_vrnl] = static_cast<double>(latt.total_sites() / latt.num_sublattice()) / norm_gs.real();
+            if (std::abs(norm_gs.real()) < lanczos_precision) {
+                norm_gs_vrnl[sec_vrnl] = 0.0;
+            } else {
+                norm_gs_vrnl[sec_vrnl] = static_cast<double>(latt.total_sites() / latt.num_sublattice()) / norm_gs.real();
+            }
             std::cout << "GS pos       = " << pos_gs_vrnl[sec_vrnl] << std::endl;
             std::cout << "GS norm_vrnl = " << norm_gs_vrnl[sec_vrnl] << std::endl;
         } else {
