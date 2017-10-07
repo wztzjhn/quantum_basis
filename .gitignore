@@ -51,3 +51,4 @@ refs
 *.dat
 log*.txt
 output.txt
+*~

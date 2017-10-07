@@ -1,0 +1,115 @@
+\hypertarget{classqbasis_1_1wavefunction}{}\section{qbasis\+:\+:wavefunction$<$ T $>$ Class Template Reference}
+\label{classqbasis_1_1wavefunction}\index{qbasis\+::wavefunction$<$ T $>$@{qbasis\+::wavefunction$<$ T $>$}}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a2a78f5cf7c7225c56839c2412d8ae896}\label{classqbasis_1_1wavefunction_a2a78f5cf7c7225c56839c2412d8ae896}} 
+{\bfseries wavefunction} (const std\+::vector$<$ \hyperlink{classqbasis_1_1basis__prop}{basis\+\_\+prop} $>$ \&props, const M\+K\+L\+\_\+\+I\+NT \&capacity=64)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a0113c1761f0f0d9a7843a6b0b0f9b280}\label{classqbasis_1_1wavefunction_a0113c1761f0f0d9a7843a6b0b0f9b280}} 
+{\bfseries wavefunction} (const \hyperlink{classqbasis_1_1mbasis__elem}{mbasis\+\_\+elem} \&old, const M\+K\+L\+\_\+\+I\+NT \&capacity=64)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a37a54810fba890f9fcc22a24c81cfe6a}\label{classqbasis_1_1wavefunction_a37a54810fba890f9fcc22a24c81cfe6a}} 
+{\bfseries wavefunction} (\hyperlink{classqbasis_1_1mbasis__elem}{mbasis\+\_\+elem} \&\&old, const M\+K\+L\+\_\+\+I\+NT \&capacity=64)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_aabb6a42bb8f2c9e995ac1e4e691b5868}\label{classqbasis_1_1wavefunction_aabb6a42bb8f2c9e995ac1e4e691b5868}} 
+{\bfseries wavefunction} (const \hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$ \&old)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a9f68a1fc1653f579f9894a283a5e1644}\label{classqbasis_1_1wavefunction_a9f68a1fc1653f579f9894a283a5e1644}} 
+{\bfseries wavefunction} (\hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$ \&\&old) noexcept
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a38993f273f6a408ef755152083a87d9d}\label{classqbasis_1_1wavefunction_a38993f273f6a408ef755152083a87d9d}} 
+\hyperlink{classqbasis_1_1wavefunction}{wavefunction} \& {\bfseries operator=} (\hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$ old)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a22763386add42741550bf88a9d8c9c89}\label{classqbasis_1_1wavefunction_a22763386add42741550bf88a9d8c9c89}} 
+M\+K\+L\+\_\+\+I\+NT {\bfseries size} () const
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_ada557c5ac7a1beae6d838d3d71981afb}\label{classqbasis_1_1wavefunction_ada557c5ac7a1beae6d838d3d71981afb}} 
+bool {\bfseries q\+\_\+empty} () const
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a82d50d8129a973e70d36bd02ec6c2734}\label{classqbasis_1_1wavefunction_a82d50d8129a973e70d36bd02ec6c2734}} 
+bool {\bfseries q\+\_\+full} () const
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a3fa6683238b0ddaf790d804b44320bbb}\label{classqbasis_1_1wavefunction_a3fa6683238b0ddaf790d804b44320bbb}} 
+bool {\bfseries q\+\_\+sorted} () const
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a9ea98f830fcc9d4b3ac693e9c41cc3ec}\label{classqbasis_1_1wavefunction_a9ea98f830fcc9d4b3ac693e9c41cc3ec}} 
+bool {\bfseries q\+\_\+sorted\+\_\+fully} () const
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_ae6dc8f23e7b1c0362713612cd5f4d98e}\label{classqbasis_1_1wavefunction_ae6dc8f23e7b1c0362713612cd5f4d98e}} 
+double {\bfseries amplitude} () const
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a2eef257940208cf2f30d781833d7d9cf}\label{classqbasis_1_1wavefunction_a2eef257940208cf2f30d781833d7d9cf}} 
+void {\bfseries prt\+\_\+bits} (const std\+::vector$<$ \hyperlink{classqbasis_1_1basis__prop}{basis\+\_\+prop} $>$ \&props) const
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_aea0e028a20c7301d1e038743e7331d41}\label{classqbasis_1_1wavefunction_aea0e028a20c7301d1e038743e7331d41}} 
+void {\bfseries prt\+\_\+states} (const std\+::vector$<$ \hyperlink{classqbasis_1_1basis__prop}{basis\+\_\+prop} $>$ \&props) const
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a28bf832ddced91ce58b252f06687dfae}\label{classqbasis_1_1wavefunction_a28bf832ddced91ce58b252f06687dfae}} 
+std\+::pair$<$ \hyperlink{classqbasis_1_1mbasis__elem}{mbasis\+\_\+elem}, T $>$ \& {\bfseries operator\mbox{[}$\,$\mbox{]}} (M\+K\+L\+\_\+\+I\+NT n)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_af04190aae28ff774051702e3216da4a2}\label{classqbasis_1_1wavefunction_af04190aae28ff774051702e3216da4a2}} 
+const std\+::pair$<$ \hyperlink{classqbasis_1_1mbasis__elem}{mbasis\+\_\+elem}, T $>$ \& {\bfseries operator\mbox{[}$\,$\mbox{]}} (M\+K\+L\+\_\+\+I\+NT n) const
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a7441a7a2f5f63ad7f762a3cfef45bd6c}\label{classqbasis_1_1wavefunction_a7441a7a2f5f63ad7f762a3cfef45bd6c}} 
+\hyperlink{classqbasis_1_1wavefunction}{wavefunction} \& {\bfseries reserve} (const M\+K\+L\+\_\+\+I\+NT \&capacity\+\_\+new)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a0ee4f9839c45f321dc4fc5d1ea688a21}\label{classqbasis_1_1wavefunction_a0ee4f9839c45f321dc4fc5d1ea688a21}} 
+\hyperlink{classqbasis_1_1wavefunction}{wavefunction} \& {\bfseries clear} ()
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_ac5943f9fd1b943e35a5e86a8baae45e4}\label{classqbasis_1_1wavefunction_ac5943f9fd1b943e35a5e86a8baae45e4}} 
+\hyperlink{classqbasis_1_1wavefunction}{wavefunction} \& {\bfseries operator+=} (\hyperlink{classqbasis_1_1mbasis__elem}{mbasis\+\_\+elem} ele\+\_\+new)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a7bf946d8ba99a9c3351a20060fb4cd73}\label{classqbasis_1_1wavefunction_a7bf946d8ba99a9c3351a20060fb4cd73}} 
+\hyperlink{classqbasis_1_1wavefunction}{wavefunction} \& {\bfseries operator+=} (std\+::pair$<$ \hyperlink{classqbasis_1_1mbasis__elem}{mbasis\+\_\+elem}, T $>$ ele\+\_\+new)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a1aad70a2b9a2382ef4999595b38936b6}\label{classqbasis_1_1wavefunction_a1aad70a2b9a2382ef4999595b38936b6}} 
+\hyperlink{classqbasis_1_1wavefunction}{wavefunction} \& {\bfseries operator+=} (\hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$ rhs)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a8e4d1db7b5879ad9279d9b19bbac1c0d}\label{classqbasis_1_1wavefunction_a8e4d1db7b5879ad9279d9b19bbac1c0d}} 
+\hyperlink{classqbasis_1_1wavefunction}{wavefunction} \& {\bfseries operator$\ast$=} (const T \&rhs)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a126dd4b3f9362bc0dba6b852ca91b2bd}\label{classqbasis_1_1wavefunction_a126dd4b3f9362bc0dba6b852ca91b2bd}} 
+\hyperlink{classqbasis_1_1wavefunction}{wavefunction} \& {\bfseries simplify} ()
+\end{DoxyCompactItemize}
+\subsection*{Friends}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a4ddaa0e3eeb5f16ab585095f2dba8da1}\label{classqbasis_1_1wavefunction_a4ddaa0e3eeb5f16ab585095f2dba8da1}} 
+class {\bfseries model$<$ T $>$}
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a37fd49e775817d3d54798c902b38155e}\label{classqbasis_1_1wavefunction_a37fd49e775817d3d54798c902b38155e}} 
+void {\bfseries swap} (\hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$ \&, \hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$ \&)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a53ec891c23b2c014fcbdd6290f5cf679}\label{classqbasis_1_1wavefunction_a53ec891c23b2c014fcbdd6290f5cf679}} 
+\hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$ {\bfseries operator+} (const \hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$ \&, const \hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$ \&)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a938733638028a298418622998077db12}\label{classqbasis_1_1wavefunction_a938733638028a298418622998077db12}} 
+void {\bfseries opr\+Xphi} (const \hyperlink{classqbasis_1_1opr}{opr}$<$ T $>$ \&, const std\+::vector$<$ \hyperlink{classqbasis_1_1basis__prop}{basis\+\_\+prop} $>$ \&, \hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$ \&, const bool \&)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_ac881f7f2c19ae767ca695ec696526f3b}\label{classqbasis_1_1wavefunction_ac881f7f2c19ae767ca695ec696526f3b}} 
+void {\bfseries opr\+Xphi} (const \hyperlink{classqbasis_1_1opr}{opr}$<$ T $>$ \&, const std\+::vector$<$ \hyperlink{classqbasis_1_1basis__prop}{basis\+\_\+prop} $>$ \&, \hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$ \&, \hyperlink{classqbasis_1_1mbasis__elem}{mbasis\+\_\+elem}, const bool \&)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a453118abdd7bb3e60a43d8bf6b871562}\label{classqbasis_1_1wavefunction_a453118abdd7bb3e60a43d8bf6b871562}} 
+void {\bfseries opr\+Xphi} (const \hyperlink{classqbasis_1_1opr}{opr}$<$ T $>$ \&, const std\+::vector$<$ \hyperlink{classqbasis_1_1basis__prop}{basis\+\_\+prop} $>$ \&, \hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$ \&, \hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$, const bool \&)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a358a9009899e330604ef5cef110115f2}\label{classqbasis_1_1wavefunction_a358a9009899e330604ef5cef110115f2}} 
+void {\bfseries opr\+Xphi} (const \hyperlink{classqbasis_1_1opr__prod}{opr\+\_\+prod}$<$ T $>$ \&, const std\+::vector$<$ \hyperlink{classqbasis_1_1basis__prop}{basis\+\_\+prop} $>$ \&, \hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$ \&, \hyperlink{classqbasis_1_1mbasis__elem}{mbasis\+\_\+elem}, const bool \&)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_aaec0b4b8d0787d76e9e56aac52e4f346}\label{classqbasis_1_1wavefunction_aaec0b4b8d0787d76e9e56aac52e4f346}} 
+void {\bfseries opr\+Xphi} (const \hyperlink{classqbasis_1_1opr__prod}{opr\+\_\+prod}$<$ T $>$ \&, const std\+::vector$<$ \hyperlink{classqbasis_1_1basis__prop}{basis\+\_\+prop} $>$ \&, \hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$ \&, \hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$, const bool \&)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a3fec6e182555899e170646f231d6d759}\label{classqbasis_1_1wavefunction_a3fec6e182555899e170646f231d6d759}} 
+void {\bfseries opr\+Xphi} (const \hyperlink{classqbasis_1_1mopr}{mopr}$<$ T $>$ \&, const std\+::vector$<$ \hyperlink{classqbasis_1_1basis__prop}{basis\+\_\+prop} $>$ \&, \hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$ \&, \hyperlink{classqbasis_1_1mbasis__elem}{mbasis\+\_\+elem}, const bool \&)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a2579cd6e4389cbf1e32d3addc3733f85}\label{classqbasis_1_1wavefunction_a2579cd6e4389cbf1e32d3addc3733f85}} 
+void {\bfseries opr\+Xphi} (const \hyperlink{classqbasis_1_1mopr}{mopr}$<$ T $>$ \&, const std\+::vector$<$ \hyperlink{classqbasis_1_1basis__prop}{basis\+\_\+prop} $>$ \&, \hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$ \&, \hyperlink{classqbasis_1_1wavefunction}{wavefunction}$<$ T $>$, const bool \&)
+\item 
+\mbox{\Hypertarget{classqbasis_1_1wavefunction_a4eb4692297545b8baf275681ed69f625}\label{classqbasis_1_1wavefunction_a4eb4692297545b8baf275681ed69f625}} 
+void {\bfseries gen\+\_\+mbasis\+\_\+by\+\_\+mopr} (const \hyperlink{classqbasis_1_1mopr}{mopr}$<$ T $>$ \&, std\+::list$<$ \hyperlink{classqbasis_1_1mbasis__elem}{mbasis\+\_\+elem} $>$ \&, const std\+::vector$<$ \hyperlink{classqbasis_1_1basis__prop}{basis\+\_\+prop} $>$ \&, std\+::vector$<$ \hyperlink{classqbasis_1_1mopr}{mopr}$<$ T $>$$>$ conserve\+\_\+lst, std\+::vector$<$ double $>$ val\+\_\+lst)
+\end{DoxyCompactItemize}
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+/\+Users/ztwang/\+Documents/\+Code\+\_\+\+Projects/quantum\+\_\+basis/src/qbasis.\+h\end{DoxyCompactItemize}
