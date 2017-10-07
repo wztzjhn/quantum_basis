@@ -1,5 +1,5 @@
 # Qbasis
-Basis of condensed matter quantum lattice problems, for usage in exact diagonalization (ED). The code is designed for any general bosonic or fermionic problem (or a mix of both), as long as the user can provide the [matrix form of the elementary operators](Manual.pdf) of the Hamiltonian.
+Basis of condensed matter quantum lattice problems, for usage in exact diagonalization (ED). The code is designed for any general bosonic or fermionic problem (or a mix of both), as long as the user can provide the [matrix form of the elementary operators](docs/Manual.pdf) of the Hamiltonian.
 
 ## Examples
 To learn how to use this library to design ED code for your own models, please refer to the folder "examples":
