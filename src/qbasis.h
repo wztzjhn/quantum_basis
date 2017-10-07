@@ -295,6 +295,10 @@ namespace qbasis {
         // more items can be filled here...
     };
     
+    
+/** \brief The common properties of a given basis
+ 
+ */
     class basis_prop {
     public:
         basis_prop() = default;
@@ -325,10 +329,11 @@ namespace qbasis {
         bool dilute;                            // if dilute, bit-rep is not a good representation
     };
     
-    
-    // -------------- fundamental class for basis elements ---------------
-    // -------------- class for basis with several orbitals---------------
-    // for given number of sites, and several orbitals, store the vectors of bits
+/** \brief Bit representation of basis
+ *
+ *  Fundamental class for basis elements.
+ *  For given number of sites, and several orbitals, store the vectors of bits
+ */
     class mbasis_elem {
         friend void swap(mbasis_elem&, mbasis_elem&);
         friend bool operator<(const mbasis_elem&, const mbasis_elem&);
