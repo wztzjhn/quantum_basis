@@ -344,24 +344,30 @@ namespace qbasis {
         template <typename T> friend void oprXphi(const opr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem, const bool&);
         template <typename T> friend void oprXphi(const opr_prod<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem, const bool&);
     public:
-        mbasis_elem() : mbits(nullptr) {}                                        ///< default constructor
+        /** \brief default constructor */
+        mbasis_elem() : mbits(nullptr) {}
         
-        mbasis_elem(const std::vector<basis_prop> &props);                       ///< constructor with its properties
+        /** \brief constructor with its properties */
+        mbasis_elem(const std::vector<basis_prop> &props);
         
-        mbasis_elem(const mbasis_elem& old);                                     ///< copy constructor
+        /** \brief copy constructor */
+        mbasis_elem(const mbasis_elem& old);
         
-        mbasis_elem(mbasis_elem &&old) noexcept;                                 ///< move constructor
+        /** \brief move constructor */
+        mbasis_elem(mbasis_elem &&old) noexcept;
         
-        mbasis_elem& operator=(mbasis_elem old) { swap(*this, old); return *this; } ///< copy/move assignment constructor
+        /** \brief copy/move assignment constructor */
+        mbasis_elem& operator=(mbasis_elem old) { swap(*this, old); return *this; }
         
-        ~mbasis_elem();                                                          ///< destructor
+        /** \brief destructor */
+        ~mbasis_elem();
         
         //     ---------- status changes -----------
-        // read out a state from a given site and given orbital
+        /** \brief read out a state from a given site and given orbital */
         uint8_t siteRead(const std::vector<basis_prop> &props,
                          const uint32_t &site, const uint32_t &orbital) const;
         
-        // write to a given site and given orbital
+        /** \brief write to a given site and given orbital */
         mbasis_elem& siteWrite(const std::vector<basis_prop> &props,
                                const uint32_t &site, const uint32_t &orbital, const uint8_t &val);
         
@@ -612,19 +618,19 @@ namespace qbasis {
         friend void oprXphi <> (const opr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem, const bool&);
         friend void oprXphi <> (const opr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, wavefunction<T>, const bool&);
     public:
-        // default constructor
+         /** \brief default constructor */
         opr() : mat(nullptr) {}
         
-        // constructor from diagonal elements
+        /** \brief constructor from diagonal elements */
         opr(const uint32_t &site_, const uint32_t &orbital_, const bool &fermion_, const std::vector<T> &mat_);
         
-        // constructor from a matrix
+        /** \brief constructor from a matrix */
         opr(const uint32_t &site_, const uint32_t &orbital_, const bool &fermion_, const std::vector<std::vector<T>> &mat_);
         
-        // copy constructor
+        /** \brief copy constructor */
         opr(const opr<T> &old);
         
-        // move constructor
+        /** \brief move constructor */
         opr(opr<T> &&old) noexcept;
         
         // copy assignment constructor and move assignment constructor, using "swap and copy"
@@ -650,19 +656,22 @@ namespace qbasis {
         uint32_t pos_orb() const { return orbital; }
         
         //    ------------ arithmetics -------------
-        // \sqrt { sum_{i,j} |mat[i,j]|^2 }
+        /**
+         *  \brief \f$ \sqrt { \sum_{i,j} |M_{i,j}|^2 } \f$,
+         *  where \f$ M \f$ is the matrix representation of the operator
+         */
         double norm() const;
         
-        // simplify the structure if possible
+        /** \brief simplify the structure if possible */
         opr& simplify();
         
-        // invert the sign
+        /** \brief invert the sign */
         opr& negative();
         
-        // take Hermitian conjugate
+        /** \brief take Hermitian conjugate */
         opr& dagger();
         
-        // change site index
+        /** \brief change site index */
         opr& change_site(const uint32_t &site_);
         
         // fermions not implemented yet
@@ -1528,23 +1537,36 @@ namespace qbasis {
 //  -------------------------  interface to mkl library ------------------------
 //  ----------------------------------------------------------------------------
 namespace qbasis {
-    // blas level 1, y = a*x + y
-    inline // double
+    /** @file
+     *  \fn void axpy(const MKL_INT n, const double alpha, const double *x, const MKL_INT incx, double *y, const MKL_INT incy)
+     *  \brief blas level 1, y = a*x + y (double)
+     */
+    inline
     void axpy(const MKL_INT n, const double alpha, const double *x, const MKL_INT incx, double *y, const MKL_INT incy) {
         daxpy(&n, &alpha, x, &incx, y, &incy);
     }
-    inline // complex double
+    /** @file
+     *  \fn void axpy(const MKL_INT n, const std::complex<double> alpha, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy)
+     *  \brief blas level 1, y = a*x + y (complex double)
+     */
+    inline
     void axpy(const MKL_INT n, const std::complex<double> alpha, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy) {
         zaxpy(&n, &alpha, x, &incx, y, &incy);
     }
     
-    
-    // blas level 1, y = x
-    inline // double
+    /** @file
+     *  \fn void copy(const MKL_INT n, const double *x, const MKL_INT incx, double *y, const MKL_INT incy)
+     *  \brief blas level 1, y = x (double)
+     */
+    inline
     void copy(const MKL_INT n, const double *x, const MKL_INT incx, double *y, const MKL_INT incy) {
         dcopy(&n, x, &incx, y, &incy);
     }
-    inline // complex double
+    /** @file
+     *  \fn void copy(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy)
+     *  \brief blas level 1, y = x (complex double)
+     */
+    inline
     void copy(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy) {
         zcopy(&n, x, &incx, y, &incy);
     }
