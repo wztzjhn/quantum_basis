@@ -44,6 +44,9 @@ test
 out_Qckpt
 plots
 refs
+#temporarily keep the doxygen files private
+docs/html
+docs/latex
 
 # Other files
 *.nb

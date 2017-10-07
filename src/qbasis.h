@@ -329,7 +329,7 @@ namespace qbasis {
         bool dilute;                            // if dilute, bit-rep is not a good representation
     };
     
-/** \brief Bit representation of basis
+/** \brief Class for representing a quantum basis using bits
  *
  *  Fundamental class for basis elements.
  *  For given number of sites, and several orbitals, store the vectors of bits
@@ -344,23 +344,17 @@ namespace qbasis {
         template <typename T> friend void oprXphi(const opr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem, const bool&);
         template <typename T> friend void oprXphi(const opr_prod<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem, const bool&);
     public:
-        // default constructor
-        mbasis_elem() : mbits(nullptr) {}
+        mbasis_elem() : mbits(nullptr) {}                                        ///< default constructor
         
-        // constructor with its properties
-        mbasis_elem(const std::vector<basis_prop> &props);
+        mbasis_elem(const std::vector<basis_prop> &props);                       ///< constructor with its properties
         
-        // copy constructor
-        mbasis_elem(const mbasis_elem& old);
+        mbasis_elem(const mbasis_elem& old);                                     ///< copy constructor
         
-        // move constructor
-        mbasis_elem(mbasis_elem &&old) noexcept;
+        mbasis_elem(mbasis_elem &&old) noexcept;                                 ///< move constructor
         
-        // copy assignment constructor and move assignment constructor, using "swap and copy"
-        mbasis_elem& operator=(mbasis_elem old) { swap(*this, old); return *this; }
+        mbasis_elem& operator=(mbasis_elem old) { swap(*this, old); return *this; } ///< copy/move assignment constructor
         
-        // destructor
-        ~mbasis_elem();
+        ~mbasis_elem();                                                          ///< destructor
         
         //     ---------- status changes -----------
         // read out a state from a given site and given orbital
@@ -467,22 +461,22 @@ namespace qbasis {
         std::complex<double> diagonal_operator(const std::vector<basis_prop> &props, const mopr<std::complex<double>> &lhs) const;
         
     private:
-        // store an array of basis elements, for multi-orbital site (or unit cell)
-        // the first 2 bytes are used to store the total number of bytes used by this array
-        /*
-         in terms of bits when perfoming "<" comparison (e.g. bits_per_site = 2):
-         e.g.  0 1 0 1 0 0 0 0 1 1 0 1 0 0 0 0 1 1 1 0
-                                                   ^ ^
-                                                 /     \
-                                            bits[1]   bits[0]
-                                                 \     /
-                                                 site[0]
-         Note1: for arrangement of orbitals, they are similar:
-                ...   orb[2]    orb[1]    orb[0]
-         Note2: The wavefunction is always defined as:
-                |alpha_0, beta_1, gamma_2, ... > = alpha_0^\dagger beta_1^\dagger gamma_2^\dagger ... |GS>
-                (where alpha_i^\dagger is creation operator of state alpha on site i)
-         */
+/** store an array of basis elements, for multi-orbital site (or unit cell)
+ *  the first 2 bytes are used to store the total number of bytes used by this array
+ *
+ *  in terms of bits when perfoming "<" comparison (e.g. bits_per_site = 2):
+ *  e.g.  0 1 0 1 0 0 0 0 1 1 0 1 0 0 0 0 1 1 1 0
+ *                                            ^ ^
+ *                                          /     \
+ *                                     bits[1]   bits[0]
+ *                                          \     /
+ *                                          site[0]
+ *  Note1: for arrangement of orbitals, they are similar:
+ *          ...   orb[2]    orb[1]    orb[0]
+ *  Note2: The wavefunction is always defined as:
+ *         |alpha_0, beta_1, gamma_2, ... > = alpha_0^\dagger beta_1^\dagger gamma_2^\dagger ... |GS>
+ *         (where alpha_i^\dagger is creation operator of state alpha on site i)
+ */
         uint8_t* mbits;
     };
     
