@@ -61,22 +61,33 @@ namespace qbasis {
 
 //  -------------part 0: global variables, forward declarations ----------------
 //  ----------------------------------------------------------------------------
-    static const double pi = 3.141592653589793238462643;
-    // later let's try to combine these three as a unified name "precision"
-    static const double machine_prec = std::numeric_limits<double>::epsilon();
-    static const double opr_precision = 1e-12; // used as the threshold value in comparison
-    static const double sparse_precision = 1e-14;
-    static const double lanczos_precision = 1e-12;
+    /** @file qbasis.h
+     *  \var const double pi
+     *  \brief pi = 3.1415926...
+     */
+    extern const double pi;
+    extern const double machine_prec;
+    extern const double opr_precision; // used as the threshold value in comparison
+    extern const double sparse_precision;
+    extern const double lanczos_precision;
     
-    // use checkpoint and restart in Lanczos, for long runs
+    /** @file qbasis.h
+     *  \var bool enable_ckpt
+     *  \brief use checkpoint and restart in Lanczos, for long runs
+     */
     extern bool enable_ckpt;
     
-    // initialize global variables & print out info
+    /** @file qbasis.h
+     *  \fn void initialize(const bool &enable_ckpt_)
+     *  \brief initialize global variables & print out info
+     */
     void initialize(const bool &enable_ckpt_=false);
     
-    // Multi-dimensional array
+    
     template <typename> class multi_array;
     template <typename T> void swap(multi_array<T>&, multi_array<T>&);
+    
+    /** \brief Multi-dimensional array */
     template <typename T> class multi_array {
         friend void swap <> (multi_array<T>&, multi_array<T>&);
     public:
@@ -296,9 +307,7 @@ namespace qbasis {
     };
     
     
-/** \brief The common properties of a given basis
- 
- */
+    /** \brief The common properties of a given basis */
     class basis_prop {
     public:
         basis_prop() = default;
@@ -306,34 +315,39 @@ namespace qbasis {
                    const std::vector<uint32_t> &Nf_map = std::vector<uint32_t>(),
                    const bool &dilute_ = false);
         
-        // current choices of name s:
-        // ***   spin-1/2            ***
-        // ***   spin-1              ***
-        // ***   dimer               ***
-        // ***   electron            ***
-        // ***   tJ                  ***
-        // ***   spinless-fermion    ***
+        /** \brief constructor of basis_prop, by proving number of sites and name of basis
+         *
+         *  Implemented choices of basis name (s):
+         *    - spin-1/2
+         *    - spin-1
+         *    - dimer
+         *    - electron
+         *    - tJ
+         *    - spinless-fermion
+         */
         basis_prop(const uint32_t &n_sites, const std::string &s, const extra_info &ex = extra_info{0});
         
+        /** \brief question if corresponding to fermionic basis */
         bool q_fermion() const { return (! Nfermion_map.empty()); }
         
+        /** \brief split (site by site) into basis_prop for two basis */
         void split(basis_prop &sub1, basis_prop &sub2) const;
         
-        uint8_t dim_local;                      // local (single-site, single-orbital) dimension < 256
-        uint8_t bits_per_site;                  // <= 8
-        uint8_t bits_ignore;                    // for each orbital (with many sites), there are a few bits ignored
-        uint16_t num_bytes;                     // for multi-orbital system, sum of num_bytes < 65536
+        uint8_t dim_local;                      ///< local (single-site, single-orbital) dimension < 256
+        uint8_t bits_per_site;                  ///< <= 8
+        uint8_t bits_ignore;                    ///< for each orbital (with many sites), there are a few bits ignored
+        uint16_t num_bytes;                     ///< for multi-orbital system, sum of num_bytes < 65536
         uint32_t num_sites;
-        std::vector<uint32_t> Nfermion_map;     // Nfermion_map[i] corresponds to the number of fermions of state i
-        std::string name;                       // store the name of the basis
-        bool dilute;                            // if dilute, bit-rep is not a good representation
+        std::vector<uint32_t> Nfermion_map;     ///< Nfermion_map[i] corresponds to the number of fermions of state i
+        std::string name;                       ///< store the name of the basis
+        bool dilute;                            ///< if dilute, bit-rep is not a good representation
     };
     
-/** \brief Class for representing a quantum basis using bits
- *
- *  Fundamental class for basis elements.
- *  For given number of sites, and several orbitals, store the vectors of bits
- */
+    /** \brief Class for representing a quantum basis using bits
+     *
+     *  Fundamental class for basis elements.
+     *  For given number of sites, and several orbitals, store the vectors of bits
+     */
     class mbasis_elem {
         friend void swap(mbasis_elem&, mbasis_elem&);
         friend bool operator<(const mbasis_elem&, const mbasis_elem&);
@@ -371,34 +385,41 @@ namespace qbasis {
         mbasis_elem& siteWrite(const std::vector<basis_prop> &props,
                                const uint32_t &site, const uint32_t &orbital, const uint8_t &val);
         
-        // reset all bits to 0 for a partical orbital
+        /** \brief reset all bits to 0 for a particular orbital */
         mbasis_elem& reset(const std::vector<basis_prop> &props, const uint32_t &orbital);
         
-        // reset all bits to 0 in all orbitals
+        /** \brief reset all bits to 0 in all orbitals */
         mbasis_elem& reset();
         
-        // change mbasis_elem to the next available state, for a particular orbital
+        /** \brief change mbasis_elem to the next available state, for a particular orbital */
         mbasis_elem& increment(const std::vector<basis_prop> &props, const uint32_t &orbital);
         
-        // change mbasis_elem to the next available state
+        /** \brief change mbasis_elem to the next available state */
         mbasis_elem& increment(const std::vector<basis_prop> &props);
         
-        //    ---------------- print ---------------
-        void prt_bits(const std::vector<basis_prop> &props) const;       // print the bits
+        /** \brief print the basis in the bit representation */
+        void prt_bits(const std::vector<basis_prop> &props) const;
         
+        /** \brief print the basis in numbers, each corresponding to a state on one site (vacuum not printed) */
         void prt_states(const std::vector<basis_prop> &props) const;     // print non-vacuum states
         
         //    ----------- basic inquiries ----------
+        /** \brief question if the vacuum state on a particular orbital */
         bool q_zero(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
         
+        /** \brief question if the vacuum state */
         bool q_zero() const;
         
+        /** \brief question if every site occupied by the highest state, for a given orbital */
         bool q_maximized(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
         
+        /** \brief question if every site occupied by the highest state */
         bool q_maximized(const std::vector<basis_prop> &props) const;
         
+        /** \brief question if every site occupied by the same state, for a given orbital */
         bool q_same_state_all_site(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
         
+        /** \brief question if every site occupied by the same state */
         bool q_same_state_all_site(const std::vector<basis_prop> &props) const;
         
         // get a label
@@ -467,22 +488,22 @@ namespace qbasis {
         std::complex<double> diagonal_operator(const std::vector<basis_prop> &props, const mopr<std::complex<double>> &lhs) const;
         
     private:
-/** store an array of basis elements, for multi-orbital site (or unit cell)
- *  the first 2 bytes are used to store the total number of bytes used by this array
- *
- *  in terms of bits when perfoming "<" comparison (e.g. bits_per_site = 2):
- *  e.g.  0 1 0 1 0 0 0 0 1 1 0 1 0 0 0 0 1 1 1 0
- *                                            ^ ^
- *                                          /     \
- *                                     bits[1]   bits[0]
- *                                          \     /
- *                                          site[0]
- *  Note1: for arrangement of orbitals, they are similar:
- *          ...   orb[2]    orb[1]    orb[0]
- *  Note2: The wavefunction is always defined as:
- *         |alpha_0, beta_1, gamma_2, ... > = alpha_0^\dagger beta_1^\dagger gamma_2^\dagger ... |GS>
- *         (where alpha_i^\dagger is creation operator of state alpha on site i)
- */
+        /** store an array of basis elements, for multi-orbital site (or unit cell)
+         *  the first 2 bytes are used to store the total number of bytes used by this array
+         *
+         *  in terms of bits when perfoming "<" comparison (e.g. bits_per_site = 2):
+         *  e.g.  0 1 0 1 0 0 0 0 1 1 0 1 0 0 0 0 1 1 1 0
+         *                                            ^ ^
+         *                                          /     \
+         *                                     bits[1]   bits[0]
+         *                                          \     /
+         *                                          site[0]
+         *  Note1: for arrangement of orbitals, they are similar:
+         *          ...   orb[2]    orb[1]    orb[0]
+         *  Note2: The wavefunction is always defined as:
+         *         |alpha_0, beta_1, gamma_2, ... > = alpha_0^\dagger beta_1^\dagger gamma_2^\dagger ... |GS>
+         *         (where alpha_i^\dagger is creation operator of state alpha on site i)
+         */
         uint8_t* mbits;
     };
     
@@ -598,11 +619,12 @@ namespace qbasis {
     
     
     
-//  -----------------------  part 2: basis of the operators --------------------
+//  ------------------------------  part 2: operators --------------------------
 //  ----------------------------------------------------------------------------
     
-    // ---------------- fundamental class for operators ------------------
-    // an operator on a given site and orbital
+    /** \brief An operator on a given site and orbital
+     *  (fundamental class for operators)
+     */
     template <typename T> class opr {
         friend void swap <> (opr<T>&, opr<T>&);
         friend bool operator== <> (const opr<T>&, const opr<T>&);
@@ -633,26 +655,29 @@ namespace qbasis {
         /** \brief move constructor */
         opr(opr<T> &&old) noexcept;
         
-        // copy assignment constructor and move assignment constructor, using "swap and copy"
+        /** \brief copy/move assignment constructor */
         opr& operator=(opr<T> old) { swap(*this, old); return *this; }
         
-        // destructor
+        /** \brief destructor */
         ~opr();
         
+        /** \brief print details of opr */
         void prt() const;
         
         //    ----------- basic inquiries ----------
-        // question if it is zero operator
+        /** \brief question if it is zero operator */
         bool q_zero() const;
         
-        // question if it is identity operator
+        /** \brief question if it is identity operator */
         bool q_diagonal() const { return diagonal; }
         
-        // question if it is identity operator
+        /** \brief question if it is identity operator */
         bool q_identity() const;
         
+        /** \brief return site index */
         uint32_t pos_site() const { return site; }
         
+        /** \brief return orbital index */
         uint32_t pos_orb() const { return orbital; }
         
         //    ------------ arithmetics -------------
@@ -674,16 +699,23 @@ namespace qbasis {
         /** \brief change site index */
         opr& change_site(const uint32_t &site_);
         
-        // fermions not implemented yet
+        /** \brief change the site index of operator
+         *
+         *  Say plan[i]=j, it means site i becomes site j after the transformation.
+         *  If opr has site index i, then after transformation, the site index becomes j.
+         */
         opr& transform(const std::vector<uint32_t> &plan);
         
-        // compound assignment operators
+        /** \brief opr = opr + rhs */
         opr& operator+=(const opr<T> &rhs);
         
+        /** \brief opr = opr - rhs */
         opr& operator-=(const opr<T> &rhs);
         
+        /** \brief opr = opr * rhs */
         opr& operator*=(const opr<T> &rhs);
         
+        /** \brief opr = opr * rhs */
         opr& operator*=(const T &rhs);
 
     private:

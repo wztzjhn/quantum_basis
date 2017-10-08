@@ -7,6 +7,13 @@
 #include "graph.h"
 
 namespace qbasis {
+    const double pi = 3.141592653589793238462643;
+    // later let's try to combine these three as a unified name "precision"
+    const double machine_prec = std::numeric_limits<double>::epsilon();
+    const double opr_precision = 1e-12;
+    const double sparse_precision = 1e-14;
+    const double lanczos_precision = 1e-12;
+    
     void initialize(const bool &enable_ckpt_)
     {
         std::cout << "----- Qbasis Version 2017/10/06 -----" << std::endl;
