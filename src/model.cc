@@ -1318,6 +1318,8 @@ namespace qbasis {
             std::cout << "Gap  = " << gap << std::endl;
         }
     }
+
+    template <typename T>
     void model<T>::moprXvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
                                  const T* vec_old, T* vec_new)
     {
