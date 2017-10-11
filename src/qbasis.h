@@ -66,8 +66,13 @@ namespace qbasis {
      *  \brief pi = 3.1415926...
      */
     extern const double pi;
+    /** @file qbasis.h
+     *  \var const double machine_prec
+     *  \brief machine precision
+     */
     extern const double machine_prec;
-    extern const double opr_precision; // used as the threshold value in comparison
+    
+    extern const double opr_precision;
     extern const double sparse_precision;
     extern const double lanczos_precision;
     
@@ -82,7 +87,6 @@ namespace qbasis {
      *  \brief initialize global variables & print out info
      */
     void initialize(const bool &enable_ckpt_=false);
-    
     
     template <typename> class multi_array;
     template <typename T> void swap(multi_array<T>&, multi_array<T>&);
@@ -161,9 +165,16 @@ namespace qbasis {
                          std::vector<mopr<T>> conserve_lst = {},
                          std::vector<double> val_lst = {});
     
-    // sort basis with a simple "<" comparison
+    /** @file qbasis.h
+     *  \fn void sort_basis_normal_order(std::vector<qbasis::mbasis_elem> &basis)
+     *  \brief sort basis with a simple "<" comparison
+     */
     void sort_basis_normal_order(std::vector<qbasis::mbasis_elem> &basis);
-    // sort basis according to Lin Table convention (Ib, then Ia)
+    
+    /** @file qbasis.h
+     *  \fn void sort_basis_Lin_order(const std::vector<basis_prop> &props, std::vector<qbasis::mbasis_elem> &basis)
+     *  \brief sort basis according to Lin Table convention (Ib, then Ia)
+     */
     void sort_basis_Lin_order(const std::vector<basis_prop> &props, std::vector<qbasis::mbasis_elem> &basis);
     
     // generate Lin Tables for a given basis
@@ -1252,14 +1263,23 @@ namespace qbasis {
         std::vector<std::vector<int>> momenta;
         std::vector<std::vector<double>> momenta_vrnl;
         
-        std::vector<std::vector<qbasis::mbasis_elem>> basis_full;   // full basis without translation sym
-        std::vector<std::vector<qbasis::mbasis_elem>> basis_repr;   // basis with translation sym
-        std::vector<std::vector<qbasis::mbasis_elem>> basis_vrnl;   // variational basis for Trugman's method
-        std::vector<std::vector<double>> norm_repr;                 // 1 / <rep | P_k | rep>
-        std::vector<double> norm_gs_vrnl;                           // 1 / <vac | P_k | vac>, for the variational vacuum state
+        /** \brief full basis without translation sym */
+        std::vector<std::vector<qbasis::mbasis_elem>> basis_full;
+        /** \brief basis with translation sym */
+        std::vector<std::vector<qbasis::mbasis_elem>> basis_repr;
+        /** \brief variational basis for Trugman's method */
+        std::vector<std::vector<qbasis::mbasis_elem>> basis_vrnl;
+        /** \brief basis for half lattice, used for building Weisse Table */
+        std::vector<qbasis::mbasis_elem> basis_sub_full;
+        /** \brief reps for half lattice */
+        std::vector<qbasis::mbasis_elem> basis_sub_repr;
+        
+        /** \brief 1 / <rep | P_k | rep> */
+        std::vector<std::vector<double>> norm_repr;
+        /** \brief 1 / <vac | P_k | vac>, for the variational vacuum state */
+        std::vector<double> norm_gs_vrnl;
         std::vector<MKL_INT> pos_gs_vrnl;                           // position of the vacuum state in the variational basis
-        std::vector<qbasis::mbasis_elem> basis_sub_full;            // basis for half lattice, used for building Weisse Table
-        std::vector<qbasis::mbasis_elem> basis_sub_repr;            // reps for half lattice
+        
         
         std::vector<csr_mat<T>>            HamMat_csr_full;
         std::vector<csr_mat<T>>            HamMat_csr_repr;
@@ -1446,7 +1466,10 @@ namespace qbasis {
                                 const MKL_INT &which_col, T* vec_new);
         
         // < phi | lhs | phi >
-        T measure_repr(const mopr<T> &lhs, const uint32_t &sec_repr, const MKL_INT &which_col);
+        T measure_repr_static(const mopr<T> &lhs, const uint32_t &sec_repr, const MKL_INT &which_col);
+        
+        void measure_repr_dynamic(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+                                  const T* vec_old, T* vec_new);
         
         // later add conserved quantum operators and corresponding quantum numbers?
     private:

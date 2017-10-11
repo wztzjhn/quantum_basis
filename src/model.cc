@@ -1589,7 +1589,7 @@ namespace qbasis {
     
     
     template <typename T>
-    T model<T>::measure_repr(const mopr<T> &lhs, const uint32_t &sec_repr, const MKL_INT &which_col)
+    T model<T>::measure_repr_static(const mopr<T> &lhs, const uint32_t &sec_repr, const MKL_INT &which_col)
     {
         double denominator = 1.0;
         auto L = latt_parent.Linear_size();

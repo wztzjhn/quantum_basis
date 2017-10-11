@@ -88,7 +88,6 @@ int main() {
         // constructing the Hilbert space basis
         tJ.enumerate_basis_repr({momentum}, {Sz_total, N_total}, {Sz_total_val, N_total_val});
 
-        // optional in future, will use more memory and give higher speed
         // generating matrix of the Hamiltonian in the full Hilbert space
         tJ.generate_Ham_sparse_repr();
         std::cout << std::endl;
