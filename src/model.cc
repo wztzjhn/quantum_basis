@@ -1010,9 +1010,9 @@ namespace qbasis {
     {
         std::cout << "Locating E0 with Lanczos (sec_sym = " << sec_sym_ << ")..." << std::endl;
         assert(nev > 0 && nev <= 2 && ncv >= nev - 1 && ncv <= nev);
-        assert(sec_sym < 2);
         uint32_t seed   = 1;
         sec_sym         = sec_sym_;
+        assert(sec_sym < 2);
         MKL_INT dim     = sec_sym == 0 ? dim_full[sec_mat] :
                          (sec_sym == 1 ? dim_repr[sec_mat] : dim_vrnl[sec_mat]);
         auto &HamMat    = sec_sym == 0 ? HamMat_csr_full[sec_mat] :
