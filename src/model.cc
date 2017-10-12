@@ -1707,10 +1707,22 @@ namespace qbasis {
     
     
     template <typename T>
-    void model<T>::generate_Ham_sparse_repr_deprecated(const bool &upper_triangle)
+    void model<T>::generate_Ham_sparse_repr_deprecated(const uint32_t &sec_full,
+                                                       const uint32_t &sec_repr,
+                                                       const bool &upper_triangle)
     {
         if (matrix_free) matrix_free = false;
-        assert(dim_repr[sec_mat] > 0);
+        MKL_INT dim_full_depre  = dim_full[sec_full];
+        MKL_INT dim_repr_depre  = dim_repr[sec_repr];
+        auto &basis_full_depre  = basis_full[sec_full];
+        auto &basis_repr_depre  = basis_repr_deprec[sec_repr];
+        auto &basis_belong      = basis_belong_deprec[sec_full];
+        auto &basis_coeff       = basis_coeff_deprec[sec_full];
+        auto &Lin_Ja_full_depre = Lin_Ja_full[sec_full];
+        auto &Lin_Jb_full_depre = Lin_Jb_full[sec_full];
+        auto &HamMat_csr        = HamMat_csr_repr[sec_repr];
+        assert(dim_full_depre > 0 && dim_repr_depre > 0);
+        
         int num_threads = 1;
         #pragma omp parallel
         {
@@ -1725,46 +1737,44 @@ namespace qbasis {
         std::cout << "Generating LIL Hamiltonian Matrix (repr) (deprecated)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        lil_mat<std::complex<double>> matrix_lil(dim_repr[sec_mat], upper_triangle);
+        lil_mat<std::complex<double>> matrix_lil(dim_repr_depre, upper_triangle);
         
         #pragma omp parallel for schedule(dynamic,1)
-        for (MKL_INT i = 0; i < dim_repr[sec_mat]; i++) {
+        for (MKL_INT i = 0; i < dim_repr_depre; i++) {
             int tid = omp_get_thread_num();
             
-            auto repr_i = basis_repr_deprec[sec_mat][i];
-            if (std::abs(basis_coeff_deprec[sec_mat][repr_i]) < lanczos_precision) {
-                matrix_lil.add(i, i, static_cast<T>(fake_pos + static_cast<double>(i)/static_cast<double>(dim_repr[sec_mat])));
+            auto repr_i = basis_repr_depre[i];
+            if (std::abs(basis_coeff[repr_i]) < lanczos_precision) {
+                matrix_lil.add(i, i, static_cast<T>(fake_pos + static_cast<double>(i)/static_cast<double>(dim_repr_depre)));
                 continue;
             }
             // diagonal part:
             for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
-                matrix_lil.add(i, i, basis_full[sec_mat][repr_i].diagonal_operator(props,Ham_diag[cnt]));
+                matrix_lil.add(i, i, basis_full_depre[repr_i].diagonal_operator(props,Ham_diag[cnt]));
             
             // non-diagonal part:
             for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
-                intermediate_states[tid].copy(basis_full[sec_mat][repr_i]);
+                intermediate_states[tid].copy(basis_full_depre[repr_i]);
                 oprXphi(*it, props, intermediate_states[tid]);
                 
                 for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                     auto &ele_new = intermediate_states[tid][cnt];
                     MKL_INT state_j;
-                    if (Lin_Ja_full[sec_mat].size() > 0 && Lin_Jb_full[sec_mat].size() > 0) {
+                    if (Lin_Ja_full_depre.size() > 0 && Lin_Jb_full_depre.size() > 0) {
                         uint64_t i_a, i_b;
                         ele_new.first.label_sub(props, i_a, i_b,
                                                 scratch_works1[tid], scratch_works2[tid]);
-                        state_j = Lin_Ja_full[sec_mat][i_a] + Lin_Jb_full[sec_mat][i_b];
+                        state_j = Lin_Ja_full_depre[i_a] + Lin_Jb_full_depre[i_b];
                     } else {
-                        state_j = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_mat], ele_new.first, 0, dim_full[sec_mat]);
+                        state_j = binary_search<mbasis_elem,MKL_INT>(basis_full_depre, ele_new.first, 0, dim_full_depre);
                     }
-                    if (state_j < 0 || state_j >= dim_full[sec_mat]) continue;
-                    assert(state_j >= 0 && state_j < dim_full[sec_mat]);
-                    auto repr_j = basis_belong_deprec[sec_mat][state_j];
-                    if (std::abs(basis_coeff_deprec[sec_mat][repr_j]) < lanczos_precision) continue;
+                    if (state_j < 0 || state_j >= dim_full_depre) continue;
+                    assert(state_j >= 0 && state_j < dim_full_depre);
+                    auto repr_j = basis_belong[state_j];
+                    if (std::abs(basis_coeff[repr_j]) < lanczos_precision) continue;
                     
-                    //MKL_INT j = Lin_Ja_repr[sec_repr][i_a] + Lin_Jb_repr[sec_repr][i_b];
-                    auto j = binary_search<MKL_INT,MKL_INT>(basis_repr_deprec[sec_mat], repr_j, 0, dim_repr[sec_mat]);  // < j |P'_k H | i > obtained
-                    //if (j < 0 || j >= dim_repr[sec_repr] ) continue;
-                    auto coeff = basis_coeff_deprec[sec_mat][state_j]/std::sqrt(std::real(basis_coeff_deprec[sec_mat][repr_i] * basis_coeff_deprec[sec_mat][repr_j]));
+                    auto j = binary_search<MKL_INT,MKL_INT>(basis_repr_depre, repr_j, 0, dim_repr_depre);  // < j |P'_k H | i > obtained
+                    auto coeff = basis_coeff[state_j]/std::sqrt(std::real(basis_coeff[repr_i] * basis_coeff[repr_j]));
                     
                     if (upper_triangle) {
                         if (i <= j) matrix_lil.add(i, j, conjugate(ele_new.second) * coeff);
@@ -1774,7 +1784,7 @@ namespace qbasis {
                 }
             }
         }
-        HamMat_csr_repr[sec_mat] = csr_mat<std::complex<double>>(matrix_lil);
+        HamMat_csr = csr_mat<std::complex<double>>(matrix_lil);
         std::cout << "Hamiltonian generated." << std::endl;
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
