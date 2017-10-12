@@ -2133,6 +2133,7 @@ namespace qbasis {
         auto momentum2 = momentum;
         for (uint32_t d = 0; d < dim; d++) {
             while (momentum2[d] < 0) momentum2[d] += static_cast<int>(L[d]);
+            momentum2[d] %= static_cast<int>(L[d]);
         }
         
         bool bosonic = q_bosonic(props);

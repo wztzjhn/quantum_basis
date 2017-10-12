@@ -125,7 +125,7 @@ int main() {
 
             E0_list.push_back(spinless.eigenvals_repr[0]);
 
-            spinless.locate_Emax_repr(4,10);
+            spinless.locate_Emax_iram(1,4,10);
             std::cout << std::endl;
         }
     }
@@ -156,7 +156,7 @@ int main() {
             std::cout << std::endl;
 
             // obtaining the lowest eigenvals of the matrix
-            spinless.locate_E0_repr(3,10);
+            spinless.locate_E0_iram(1,3,10);
             std::cout << std::endl;
             E0_check_list.push_back(spinless.eigenvals_repr[0]);
         }

@@ -115,7 +115,7 @@ int main() {
             E0_list.push_back(Hubbard.eigenvals_repr[0]);
 
             if (m == 0 && n == 0) {
-                m1 = Hubbard.measure_repr(cupdg1cup5, 0, 0);
+                m1 = Hubbard.measure_repr_static(cupdg1cup5, 0, 0);
             }
         }
     }
@@ -148,7 +148,7 @@ int main() {
             std::cout << std::endl;
 
             // obtaining the lowest eigenvals of the matrix
-            Hubbard.locate_E0_repr(2,10);
+            Hubbard.locate_E0_iram(1,2,10);
             std::cout << std::endl;
             E0_check_list.push_back(Hubbard.eigenvals_repr[0]);
         }

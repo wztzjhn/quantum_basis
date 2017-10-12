@@ -122,9 +122,9 @@ int main() {
             E0_list.push_back(Heisenberg.eigenvals_repr[0]);
 
             if (m == 0 && n == 0) {
-                m1 = Heisenberg.measure_repr(Sz0Sz1, 0, 0);
-                m2 = Heisenberg.measure_repr(Sz0Sz2, 0, 0);
-                m3 = Heisenberg.measure_repr(Sp0Sm1, 0, 0);
+                m1 = Heisenberg.measure_repr_static(Sz0Sz1, 0, 0);
+                m2 = Heisenberg.measure_repr_static(Sz0Sz2, 0, 0);
+                m3 = Heisenberg.measure_repr_static(Sp0Sm1, 0, 0);
             }
         }
     }

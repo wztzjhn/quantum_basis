@@ -110,7 +110,7 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::switch_sec(const uint32_t &sec_mat_)
+    void model<T>::switch_sec_mat(const uint32_t &sec_mat_)
     {
         sec_mat = sec_mat_;
     }
@@ -521,13 +521,16 @@ namespace qbasis {
     
     
     template <typename T>
-    void model<T>::generate_Ham_sparse_full(const bool &upper_triangle)
+    void model<T>::generate_Ham_sparse_full(const uint32_t &sec_full,
+                                            const bool &upper_triangle)
     {
         if (matrix_free) matrix_free = false;
-        assert(dim_full[sec_mat] > 0);
-        
-        MKL_INT dim = dim_full[sec_mat];
-        auto &basis = basis_full[sec_mat];
+        MKL_INT dim      = dim_full[sec_full];
+        auto &basis      = basis_full[sec_full];
+        auto &Lin_Ja     = Lin_Ja_full[sec_full];
+        auto &Lin_Jb     = Lin_Jb_full[sec_full];
+        auto &HamMat_csr = HamMat_csr_full[sec_full];
+        assert(dim > 0);
         
         int num_threads = 1;
         #pragma omp parallel
@@ -561,9 +564,9 @@ namespace qbasis {
                 for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                     auto &ele_new = intermediate_states[tid][cnt];
                     if (std::abs(ele_new.second) < machine_prec) continue;
-                    if (Lin_Ja_full[sec_mat].size() > 0 && Lin_Jb_full[sec_mat].size() > 0) {
+                    if (Lin_Ja.size() > 0 && Lin_Jb.size() > 0) {
                         ele_new.first.label_sub(props, i_a, i_b, scratch_works1[tid], scratch_works2[tid]);
-                        j = Lin_Ja_full[sec_mat][i_a] + Lin_Jb_full[sec_mat][i_b];
+                        j = Lin_Ja[i_a] + Lin_Jb[i_b];
                     } else {
                         j = binary_search<mbasis_elem,MKL_INT>(basis, ele_new.first, 0, dim);
                     }
@@ -576,7 +579,7 @@ namespace qbasis {
                 }
             }
         }
-        HamMat_csr_full[sec_mat] = csr_mat<T>(matrix_lil);
+        HamMat_csr = csr_mat<T>(matrix_lil);
         std::cout << "Hamiltonian CSR matrix (full) generated." << std::endl;
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
@@ -584,12 +587,19 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::generate_Ham_sparse_repr(const bool &upper_triangle)
+    void model<T>::generate_Ham_sparse_repr(const uint32_t &sec_repr,
+                                            const bool &upper_triangle)
     {
         if (matrix_free) matrix_free = false;
-        MKL_INT dim = dim_repr[sec_mat];
-        auto &basis = basis_repr[sec_mat];
+        MKL_INT dim      = dim_repr[sec_repr];
+        auto &basis      = basis_repr[sec_repr];
+        auto &norm       = norm_repr[sec_repr];
+        auto &Lin_Ja     = Lin_Ja_repr[sec_repr];
+        auto &Lin_Jb     = Lin_Jb_repr[sec_repr];
+        auto &momentum   = momenta[sec_repr];
+        auto &HamMat_csr = HamMat_csr_repr[sec_repr];
         assert(dim > 0);
+        
         if (dim_spec_involved) {
             assert(Weisse_w_gt.size() == 0);
         } else {
@@ -622,7 +632,7 @@ namespace qbasis {
         for (MKL_INT i = 0; i < dim; i++) {
             int tid = omp_get_thread_num();
             
-            double nu_i = norm_repr[sec_mat][i];                                // normalization factor for repr i
+            double nu_i = norm[i];                                               // normalization factor for repr i
             if (std::abs(nu_i) < lanczos_precision) {
                 matrix_lil.add(i, i, static_cast<T>(fake_pos + static_cast<double>(i)/static_cast<double>(dim)));
                 continue;
@@ -682,22 +692,22 @@ namespace qbasis {
                     state_sub_new2.transform(props_sub_b, plans_sub[tid], sgn);    // T_j |rb>
                     zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
                     
-                    if (Lin_Ja_repr[sec_mat].size() > 0 && Lin_Jb_repr[sec_mat].size() > 0) {
+                    if (Lin_Ja.size() > 0 && Lin_Jb.size() > 0) {
                         i_a = state_sub_new1.label(props_sub_a, scratch_works1[tid], scratch_works2[tid]);    // use Lin Tables
                         i_b = state_sub_new2.label(props_sub_b, scratch_works1[tid], scratch_works2[tid]);
-                        j = Lin_Ja_repr[sec_mat][i_a] + Lin_Jb_repr[sec_mat][i_b];
+                        j = Lin_Ja[i_a] + Lin_Jb[i_b];
                     } else {
                         j = binary_search<mbasis_elem,MKL_INT>(basis, ra_z_Tj_rb, 0, dim);
                     }
                     if (j < 0 || j >= dim) continue;
                     assert(ra_z_Tj_rb == basis[j]);
-                    double nu_j = norm_repr[sec_mat][j];
+                    double nu_j = norm[j];
                     if (std::abs(nu_j) < lanczos_precision) continue;
                     
                     double exp_coef = 0.0;
                     for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                         if (trans_sym[d]) {
-                            exp_coef += momenta[sec_mat][d] * disp_i_int[d] / static_cast<double>(L[d]);
+                            exp_coef += momentum[d] * disp_i_int[d] / static_cast<double>(L[d]);
                         }
                     }
                     auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
@@ -717,7 +727,7 @@ namespace qbasis {
             }
         }
         
-        HamMat_csr_repr[sec_mat] = csr_mat<std::complex<double>>(matrix_lil);
+        HamMat_csr = csr_mat<std::complex<double>>(matrix_lil);
         std::cout << "Hamiltonian CSR matrix (repr) generated." << std::endl;
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
@@ -725,16 +735,18 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::generate_Ham_sparse_vrnl(const bool &upper_triangle)
+    void model<T>::generate_Ham_sparse_vrnl(const uint32_t &sec_vrnl,
+                                            const bool &upper_triangle)
     {
         if (matrix_free) matrix_free = false;
-        assert(dim_vrnl[sec_mat] > 0);
+        MKL_INT dim      = dim_vrnl[sec_vrnl];
+        auto &basis      = basis_vrnl[sec_vrnl];
+        auto &momentum   = momenta_vrnl[sec_vrnl];
+        auto &HamMat_csr = HamMat_csr_vrnl[sec_vrnl];
+        double norm_gs   = norm_gs_vrnl[sec_vrnl];
+        MKL_INT pos_gs   = pos_gs_vrnl[sec_vrnl];
+        assert(dim > 0);
         
-        MKL_INT dim = dim_vrnl[sec_mat];
-        auto &basis = basis_vrnl[sec_mat];
-        auto &momentum = momenta_vrnl[sec_mat];
-        double norm_gs = norm_gs_vrnl[sec_mat];
-        MKL_INT pos_gs = pos_gs_vrnl[sec_mat];
         double NsitesPsublatt = static_cast<double>(latt_parent.total_sites() / latt_parent.num_sublattice());
         double NsitesPsublatt_sqrt = std::sqrt(NsitesPsublatt);
         
@@ -796,7 +808,7 @@ namespace qbasis {
                 }
             }
         }
-        HamMat_csr_vrnl[sec_mat] = csr_mat<T>(matrix_lil);
+        HamMat_csr = csr_mat<T>(matrix_lil);
         std::cout << "Hamiltonian CSR matrix (vrnl) generated." << std::endl;
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
@@ -805,15 +817,15 @@ namespace qbasis {
     
     
     template <typename T>
-    std::vector<std::complex<double>> model<T>::to_dense()
+    std::vector<std::complex<double>> model<T>::to_dense(const uint32_t &sec_mat_)
     {
         std::cout << "Fall back to generate matrix explicitly!" << std::endl;
         if (sec_sym == 0) {
-            generate_Ham_sparse_full();
-            return HamMat_csr_full[sec_mat].to_dense();
+            generate_Ham_sparse_full(sec_mat_);
+            return HamMat_csr_full[sec_mat_].to_dense();
         } else {
-            generate_Ham_sparse_repr();
-            return HamMat_csr_full[sec_mat].to_dense();
+            generate_Ham_sparse_repr(sec_mat_);
+            return HamMat_csr_full[sec_mat_].to_dense();
         }
     }
     
@@ -998,13 +1010,17 @@ namespace qbasis {
     {
         std::cout << "Locating E0 with Lanczos (sec_sym = " << sec_sym_ << ")..." << std::endl;
         assert(nev > 0 && nev <= 2 && ncv >= nev - 1 && ncv <= nev);
+        assert(sec_sym < 2);
         uint32_t seed   = 1;
         sec_sym         = sec_sym_;
-        MKL_INT dim     = (sec_sym == 0) ? dim_full[sec_mat] : dim_repr[sec_mat];
-        auto &HamMat    = (sec_sym == 0) ? HamMat_csr_full[sec_mat] : HamMat_csr_repr[sec_mat];
-        auto &eigenvals = (sec_sym == 0) ? eigenvals_full : eigenvals_repr;
-        auto &eigenvecs = (sec_sym == 0) ? eigenvecs_full : eigenvecs_repr;
-        assert(sec_sym < 2);
+        MKL_INT dim     = sec_sym == 0 ? dim_full[sec_mat] :
+                         (sec_sym == 1 ? dim_repr[sec_mat] : dim_vrnl[sec_mat]);
+        auto &HamMat    = sec_sym == 0 ? HamMat_csr_full[sec_mat] :
+                         (sec_sym == 1 ? HamMat_csr_repr[sec_mat] : HamMat_csr_vrnl[sec_mat]);
+        auto &eigenvals = sec_sym == 0 ? eigenvals_full :
+                         (sec_sym == 1 ? eigenvals_repr : eigenvals_vrnl);
+        auto &eigenvecs = sec_sym == 0 ? eigenvecs_full :
+                         (sec_sym == 1 ? eigenvecs_repr : eigenvecs_vrnl);
         assert(dim > 0);
         
         using std::swap;
@@ -1173,152 +1189,99 @@ namespace qbasis {
     
     
     template <typename T>
-    void model<T>::locate_E0_full(const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
+    void model<T>::locate_E0_iram(const uint32_t &sec_sym_, const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
     {
+        std::cout << "Locating lowest states with IRAM (sec_sym = " << sec_sym_ << ")..." << std::endl;
         assert(nev > 0);
         assert(ncv > nev + 1);
+        assert(sec_sym_ < 3);
         if (maxit <= 0) maxit = nev * 100; // arpack default
-        sec_sym = 0;                       // work with dim_full
-        MKL_INT dim = dim_full[sec_mat];
+        sec_sym = sec_sym_;
+        MKL_INT dim     = sec_sym == 0 ? dim_full[sec_mat] :
+                         (sec_sym == 1 ? dim_repr[sec_mat] : dim_vrnl[sec_mat]);
+        auto &HamMat    = sec_sym == 0 ? HamMat_csr_full[sec_mat] :
+                         (sec_sym == 1 ? HamMat_csr_repr[sec_mat] : HamMat_csr_vrnl[sec_mat]);
+        auto &eigenvals = sec_sym == 0 ? eigenvals_full :
+                         (sec_sym == 1 ? eigenvals_repr : eigenvals_vrnl);
+        auto &eigenvecs = sec_sym == 0 ? eigenvecs_full :
+                         (sec_sym == 1 ? eigenvecs_repr : eigenvecs_vrnl);
         
-        std::cout << "Calculating ground state (full)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         std::vector<T> v0(dim, 1.0);
-        eigenvals_full.resize(nev);
-        eigenvecs_full.resize(dim * nev);
+        eigenvals.resize(nev);
+        eigenvecs.resize(dim * nev);
         if (matrix_free) {
-            iram(dim, *this, v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_full.data(), eigenvecs_full.data());
+            iram(dim, *this,  v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals.data(), eigenvecs.data());
         } else {
-            iram(dim, HamMat_csr_full[sec_mat], v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_full.data(), eigenvecs_full.data());
+            iram(dim, HamMat, v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals.data(), eigenvecs.data());
         }
         assert(nconv > 0);
-        E0 = eigenvals_full[0];
+        E0 = eigenvals[0];
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
-        std::cout << "E0   = " << E0 << std::endl;
-        if (nconv > 1) {
-            gap = eigenvals_full[1] - eigenvals_full[0];
-            std::cout << "Gap  = " << gap << std::endl;
-        }
+        if (nconv > 1) gap = eigenvals[1] - eigenvals[0];
     }
     
-    template <typename T>
-    void model<T>::locate_Emax_full(const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
-    {
-        assert(ncv > nev + 1);
-        if (maxit <= 0) maxit = nev * 100; // arpack default
-        sec_sym = 0;                       // work with dim_full
-        std::cout << "Calculating highest energy state (full)..." << std::endl;
-        
-        std::chrono::time_point<std::chrono::system_clock> start, end;
-        start = std::chrono::system_clock::now();
-        std::vector<T> v0(HamMat_csr_full[sec_mat].dimension(), 1.0);
-        eigenvals_full.resize(nev);
-        eigenvecs_full.resize(HamMat_csr_full[sec_mat].dimension() * nev);
-        if (matrix_free) {
-            iram(dim_full[sec_mat], *this, v0.data(), nev, ncv, maxit, "lr", nconv, eigenvals_full.data(), eigenvecs_full.data());
-        } else {
-            iram(dim_full[sec_mat], HamMat_csr_full[sec_mat], v0.data(), nev, ncv, maxit, "lr", nconv, eigenvals_full.data(), eigenvecs_full.data());
-        }
-        assert(nconv > 0);
-        Emax = eigenvals_full[0];
-        end = std::chrono::system_clock::now();
-        std::chrono::duration<double> elapsed_seconds = end - start;
-        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
-        std::cout << "Emax = " << Emax << std::endl;
-    }
     
     template <typename T>
-    void model<T>::locate_E0_repr(const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
+    void model<T>::locate_Emax_iram(const uint32_t &sec_sym_, const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
     {
-        assert(ncv > nev + 1);
-        assert(dim_repr[sec_mat] > 0);
-        if (maxit <= 0) maxit = nev * 100; // arpack default
-        sec_sym = 1;                       // work with dim_repr
-        std::cout << "Calculating ground state (repr)..." << std::endl;
-        
-        std::chrono::time_point<std::chrono::system_clock> start, end;
-        start = std::chrono::system_clock::now();
-        
-        std::vector<std::complex<double>> v0(dim_repr[sec_mat], 1.0);
-        eigenvals_repr.resize(nev);
-        eigenvecs_repr.resize(dim_repr[sec_mat] * nev);
-        
-        if (matrix_free) {
-            iram(dim_repr[sec_mat], *this, v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_repr.data(), eigenvecs_repr.data());
-        } else {
-            iram(dim_repr[sec_mat], HamMat_csr_repr[sec_mat], v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_repr.data(), eigenvecs_repr.data());
-        }
-        
-        assert(nconv > 1);
-        E0 = eigenvals_repr[0];
-        gap = eigenvals_repr[1] - eigenvals_repr[0];
-        end = std::chrono::system_clock::now();
-        std::chrono::duration<double> elapsed_seconds = end - start;
-        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
-        std::cout << "E0   = " << E0 << std::endl;
-        std::cout << "Gap  = " << gap << std::endl;
-    }
-    
-    template <typename T>
-    void model<T>::locate_Emax_repr(const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
-    {
-        assert(ncv > nev + 1);
-        assert(dim_repr[sec_mat] > 0);
-        if (maxit <= 0) maxit = nev * 100; // arpack default
-        sec_sym = 1;                       // work with dim_repr
-        std::cout << "Calculating highest energy state (repr)..." << std::endl;
-        
-        std::chrono::time_point<std::chrono::system_clock> start, end;
-        start = std::chrono::system_clock::now();
-        std::vector<std::complex<double>> v0(dim_repr[sec_mat], 1.0);
-        eigenvals_repr.resize(nev);
-        eigenvecs_repr.resize(dim_repr[sec_mat] * nev);
-        
-        if (matrix_free) {
-            iram(dim_repr[sec_mat], *this, v0.data(), nev, ncv, maxit, "lr", nconv, eigenvals_repr.data(), eigenvecs_repr.data());
-        } else {
-            iram(dim_repr[sec_mat], HamMat_csr_repr[sec_mat], v0.data(), nev, ncv, maxit, "lr", nconv, eigenvals_repr.data(), eigenvecs_repr.data());
-        }
-        
-        assert(nconv > 1);
-        end = std::chrono::system_clock::now();
-        std::chrono::duration<double> elapsed_seconds = end - start;
-        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
-        std::cout << "Emax(maybe fake) = " << eigenvals_repr[0] << std::endl;
-        Emax = eigenvals_repr[0];  // if we use a parameter extra in normalization calculation, we can know how many faked
-    }
-    
-    template <typename T>
-    void model<T>::locate_E0_vrnl(const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
-    {
+        std::cout << "Locating highest states with IRAM (sec_sym = " << sec_sym_ << ")..." << std::endl;
+        if (sec_sym_ > 0)
+            std::cout << "Warning: there may be a few artificial states above " << fake_pos << std::endl;
         assert(nev > 0);
         assert(ncv > nev + 1);
+        assert(sec_sym_ < 3);
         if (maxit <= 0) maxit = nev * 100; // arpack default
-        sec_sym = 2;                       // work with dim_vrnl
-        MKL_INT dim = dim_vrnl[sec_mat];
+        sec_sym = sec_sym_;
+        MKL_INT dim     = sec_sym == 0 ? dim_full[sec_mat] :
+                         (sec_sym == 1 ? dim_repr[sec_mat] : dim_vrnl[sec_mat]);
+        auto &HamMat    = sec_sym == 0 ? HamMat_csr_full[sec_mat] :
+                         (sec_sym == 1 ? HamMat_csr_repr[sec_mat] : HamMat_csr_vrnl[sec_mat]);
+        auto &eigenvals = sec_sym == 0 ? eigenvals_full :
+                         (sec_sym == 1 ? eigenvals_repr : eigenvals_vrnl);
+        auto &eigenvecs = sec_sym == 0 ? eigenvecs_full :
+                         (sec_sym == 1 ? eigenvecs_repr : eigenvecs_vrnl);
         
-        std::cout << "Calculating low energy states (vrnl)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         std::vector<T> v0(dim, 1.0);
-        eigenvals_vrnl.resize(nev);
-        eigenvecs_vrnl.resize(dim * nev);
-        iram(dim, HamMat_csr_vrnl[sec_mat], v0.data(), nev, ncv, maxit, "sr", nconv, eigenvals_vrnl.data(), eigenvecs_vrnl.data());
+        eigenvals.resize(nev);
+        eigenvecs.resize(dim * nev);
+        if (matrix_free) {
+            iram(dim, *this,  v0.data(), nev, ncv, maxit, "lr", nconv, eigenvals.data(), eigenvecs.data());
+        } else {
+            iram(dim, HamMat, v0.data(), nev, ncv, maxit, "lr", nconv, eigenvals.data(), eigenvecs.data());
+        }
         assert(nconv > 0);
-        E0 = eigenvals_vrnl[0];
+        Emax = eigenvals[0];
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
-        std::cout << "E0   = " << E0 << std::endl;
-        if (nconv > 1) {
-            gap = eigenvals_vrnl[1] - eigenvals_vrnl[0];
-            std::cout << "Gap  = " << gap << std::endl;
+        for (MKL_INT j = 0; j < nconv; j++) {
+            if (eigenvals[j] < fake_pos) {
+                Emax = eigenvals[j];
+                break;
+            }
         }
     }
+    
+    
 
+    
+    template <typename T>
+    void model<T>::transform_eigenvec_full(const lattice &latt, const std::vector<uint32_t> &plan,
+                                           const uint32_t &sec_full, const MKL_INT &which_col,
+                                           std::vector<T> &vec_new)
+    {
+        MKL_INT dim = dim_full[sec_full];
+        
+        
+    }
+    
+    
     template <typename T>
     void model<T>::moprXvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
                                  const T* vec_old, T* vec_new)
@@ -1432,17 +1395,19 @@ namespace qbasis {
     void model<T>::measure_full_dynamic(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
                                         const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[])
     {
-        std::vector<T> vec_new(2*dim_full[sec_new]);
+        MKL_INT dim_new = dim_full[sec_new];
+        auto &HamMat    = HamMat_csr_full[sec_new];
+        std::vector<T> vec_new(2*dim_new);
         auto lhs_dg = lhs;
         lhs_dg.dagger();
         moprXeigenvec_full(lhs_dg, sec_old, sec_new, 0, vec_new.data());         // vec_new = lhs^\dagger * |phi>
-        norm = nrm2(dim_full[sec_new], vec_new.data(), 1);                       // norm = sqrt(<phi| lhs * lhs^\dagger |phi>)
+        norm = nrm2(dim_new, vec_new.data(), 1);                                 // norm = sqrt(<phi| lhs * lhs^\dagger |phi>)
         if (std::abs(norm) < lanczos_precision) return;
-        scal(dim_full[sec_new], 1.0 / norm, vec_new.data(), 1);                  // normalize vec_new
+        scal(dim_new, 1.0 / norm, vec_new.data(), 1);                            // normalize vec_new
         if (matrix_free) {
-            lanczos(0, maxit-1, maxit, m, dim_full[sec_new], *this, vec_new.data(), hessenberg, "dnmcs");
+            lanczos(0, maxit-1, maxit, m, dim_new, *this,  vec_new.data(), hessenberg, "dnmcs");
         } else {
-            lanczos(0, maxit-1, maxit, m, dim_full[sec_new], HamMat_csr_full[sec_mat], vec_new.data(), hessenberg, "dnmcs");
+            lanczos(0, maxit-1, maxit, m, dim_new, HamMat, vec_new.data(), hessenberg, "dnmcs");
         }
     }
     

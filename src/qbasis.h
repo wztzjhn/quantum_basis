@@ -1242,19 +1242,19 @@ namespace qbasis {
     
     template <typename T> class model {
     public:
-        bool matrix_free;
+        bool matrix_free;                                                        ///< if generating matrix on the fly
         std::vector<basis_prop> props, props_sub_a, props_sub_b;
-        mopr<T> Ham_diag;                                                        // diagonal part of H
-        mopr<T> Ham_off_diag;                                                    // offdiagonal part of H
-        mopr<T> Ham_vrnl;                                                        // used for generating Trugman's basis
+        mopr<T> Ham_diag;                                                        ///< diagonal part of H
+        mopr<T> Ham_off_diag;                                                    ///< offdiagonal part of H
+        mopr<T> Ham_vrnl;                                                        ///< used for generating Trugman's basis
         MKL_INT nconv;
         
         // controls which sector of basis to be active
         // by default sec_full = 0 (e.g. Sz=0 ground state sector of Heisenberg model);
         // when needed, sec_full will be switched to 1 to activate another sector (e.g. Sz=1 sector),
         // such setting can avoid messing up the code when calculating correlation functions
-        uint32_t sec_sym;  // 0: work in dim_full; 1: work in dim_repr
-        uint32_t sec_mat;  // which sector the matrix is relevant.
+        uint32_t sec_sym;  ///< 0: work in dim_full; 1: work in dim_repr
+        uint32_t sec_mat;  ///< which sector the matrix is relevant.
         
         std::vector<MKL_INT> dim_full;
         std::vector<MKL_INT> dim_repr;
@@ -1273,6 +1273,12 @@ namespace qbasis {
         std::vector<qbasis::mbasis_elem> basis_sub_full;
         /** \brief reps for half lattice */
         std::vector<qbasis::mbasis_elem> basis_sub_repr;
+        
+        // Lin tables, for both full basis and translation basis
+        std::vector<std::vector<MKL_INT>> Lin_Ja_full;
+        std::vector<std::vector<MKL_INT>> Lin_Jb_full;
+        std::vector<std::vector<MKL_INT>> Lin_Ja_repr;
+        std::vector<std::vector<MKL_INT>> Lin_Jb_repr;
         
         /** \brief 1 / <rep | P_k | rep> */
         std::vector<std::vector<double>> norm_repr;
@@ -1336,7 +1342,7 @@ namespace qbasis {
         
         void add_Ham_vrnl(const mopr<T> &rhs);
         
-        void switch_sec(const uint32_t &sec_mat_);
+        void switch_sec_mat(const uint32_t &sec_mat_);
         
         void fill_Weisse_table(const lattice &latt);
         
@@ -1371,25 +1377,29 @@ namespace qbasis {
                                         const uint32_t &sec_repr = 0);
         
         // generate the Hamiltonian using basis_full
-        void generate_Ham_sparse_full(const bool &upper_triangle = true);
+        void generate_Ham_sparse_full(const uint32_t &sec_full = 0,
+                                      const bool &upper_triangle = true);
         
         // generate the Hamiltonian using basis_repr
         // a few artificial diagonal elements above 100, corresponding to zero norm states
-        void generate_Ham_sparse_repr(const bool &upper_triangle = true);
+        void generate_Ham_sparse_repr(const uint32_t &sec_repr = 0,
+                                      const bool &upper_triangle = true);
         
         // generate the Hamiltonian using basis_vrnl
-        void generate_Ham_sparse_vrnl(const bool &upper_triangle = true);
+        void generate_Ham_sparse_vrnl(const uint32_t &sec_vrnl = 0,
+                                      const bool &upper_triangle = true);
         
         // a few artificial diagonal elements above 100, corresponding to zero norm states
-        void generate_Ham_sparse_repr_deprecated(const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr
+        void generate_Ham_sparse_repr_deprecated(const uint32_t &sec_full = 0,
+                                                 const uint32_t &sec_repr = 0,
+                                                 const bool &upper_triangle = true); // generate the Hamiltonian using basis_repr
         
         // generate a dense matrix of the Hamiltonian
-        std::vector<std::complex<double>> to_dense();
+        std::vector<std::complex<double>> to_dense(const uint32_t &sec_mat_ = 0);
         
-        // generate matrix on the fly
-        // y = H * x + y
+        /** \brief y = H * x + y (matrix generated on the fly) */
         void MultMv2(const T *x, T *y) const;
-        // y = H * x
+        /** \brief y = H * x (matrix generated on the fly) */
         void MultMv(T *x, T *y);              // non-const, to be compatible with arpack++
         
         // Note: in this function, (nev, ncv, maxit) have different meanings comparing to IRAM!
@@ -1401,26 +1411,32 @@ namespace qbasis {
         // sec_sym_=0: without translation; sec_sym_=1, with translation symmetry
         void locate_E0_lanczos(const uint32_t &sec_sym_, const MKL_INT &nev = 1, const MKL_INT &ncv = 1, MKL_INT maxit = 1000);
         
-        // Note: nev, ncv, maxit following ARPACK definition
-        void locate_E0_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
+        /** \brief calculate the lowest eigenstates using IRAM
+         *  nev, ncv, maxit following ARPACK definition
+         *  sec_sym_ : 0 (full), 1 (repr), 2 (vrnl)
+         */
+        void locate_E0_iram(const uint32_t &sec_sym_, const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
         
-        void locate_Emax_full(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
+        /** \brief calculate the highest eigenstates using IRAM
+         *  nev, ncv, maxit following ARPACK definition.
+         * sec_sym_ : 0 (full), 1 (repr), 2 (vrnl).
+         * for repr and vrnl, there may be a few artificial eigenvalues above fake_pos (default to 100), corresponding to zero norm states.
+         */
+        void locate_Emax_iram(const uint32_t &sec_sym_, const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
         
-        void locate_E0_repr(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
-        
-        // there may be a few artificial eigenvalues above fake_pos (default to 100), corresponding to zero norm states
-        void locate_Emax_repr(const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
-        
-        void locate_E0_vrnl(const MKL_INT &nev = 10, const MKL_INT &ncv = 20, MKL_INT maxit = 0);
-        
+        /** \brief return dim_full */
         std::vector<MKL_INT> dimension_full() { return dim_full; }
         
+        /** \brief return dim_repr */
         std::vector<MKL_INT> dimension_repr() { return dim_repr; }
         
+        /** \brief return E0 */
         double energy_min() { return E0; }
         
+        /** \brief return Emax */
         double energy_max() { return Emax; }
         
+        /** \brief return gap */
         double energy_gap() { return gap; }
         
         // lhs | phi >, where | phi > is an input state
@@ -1469,7 +1485,7 @@ namespace qbasis {
         T measure_repr_static(const mopr<T> &lhs, const uint32_t &sec_repr, const MKL_INT &which_col);
         
         void measure_repr_dynamic(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
-                                  const T* vec_old, T* vec_new);
+                                  const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[]);
         
         // later add conserved quantum operators and corresponding quantum numbers?
     private:
@@ -1485,11 +1501,7 @@ namespace qbasis {
         std::vector<bool> trans_sym;                               // if translation allowed in each dimension
         bool dim_spec_involved;                                    // if translation allowed in partitioned direction
         
-        // Lin tables, for both full basis and translation basis
-        std::vector<std::vector<MKL_INT>> Lin_Ja_full;
-        std::vector<std::vector<MKL_INT>> Lin_Jb_full;
-        std::vector<std::vector<MKL_INT>> Lin_Ja_repr;
-        std::vector<std::vector<MKL_INT>> Lin_Jb_repr;
+        
         
         // Weisse Tables for translation symmetry
         // Note: different from Weisse's paper, here we use Weisse_w to store the (parent) group label, instead of omega_g

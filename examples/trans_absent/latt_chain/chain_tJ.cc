@@ -91,7 +91,7 @@ int main() {
 
 
     // obtaining the eigenvals of the matrix
-    tJ.locate_E0_full(4,8);
+    tJ.locate_E0_iram(0,4,8);
     std::cout << std::endl;
 
 

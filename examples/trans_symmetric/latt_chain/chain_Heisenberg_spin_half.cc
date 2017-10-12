@@ -93,9 +93,9 @@ int main() {
         E0_list.push_back(Heisenberg.eigenvals_repr[0]);
 
         if (momentum == 0) {
-            m1 = Heisenberg.measure_repr(Sz0Sz1, 0, 0);
-            m2 = Heisenberg.measure_repr(Sz0Sz2, 0, 0);
-            m3 = Heisenberg.measure_repr(Sp0Sm1, 0, 0);
+            m1 = Heisenberg.measure_repr_static(Sz0Sz1, 0, 0);
+            m2 = Heisenberg.measure_repr_static(Sz0Sz2, 0, 0);
+            m3 = Heisenberg.measure_repr_static(Sp0Sm1, 0, 0);
         }
     }
     assert(std::abs(E0_list[0]  + 7.142296361) < 1e-8);
@@ -129,7 +129,7 @@ int main() {
         std::cout << std::endl;
 
         // obtaining the eigenvals of the matrix
-        Heisenberg.locate_E0_repr(10,20);
+        Heisenberg.locate_E0_iram(1,10,20);
         std::cout << std::endl;
 
         E0_check_list.push_back(Heisenberg.eigenvals_repr[0]);
