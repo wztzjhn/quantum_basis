@@ -1644,7 +1644,7 @@ namespace qbasis {
             basis_repr_deprec[sec_repr].push_back(i);
             basis_coeff_deprec[sec_repr][i] = std::complex<double>(1.0, 0.0);
             #pragma omp parallel for schedule(dynamic,1)
-            for (uint32_t site = 0; site < latt_parent.total_sites(); site++) {
+            for (uint32_t site = 1; site < latt_parent.total_sites(); site++) {
                 int tid = omp_get_thread_num();
                 std::vector<int> disp;
                 int sub, sgn;
