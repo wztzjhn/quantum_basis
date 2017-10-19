@@ -1347,16 +1347,111 @@ namespace qbasis {
     void model<T>::transform_vec_full(const std::vector<uint32_t> &plan, const uint32_t &sec_full,
                                       const T* vec_old, T* vec_new)
     {
-        MKL_INT dim = dim_full[sec_full];
+        MKL_INT dim  = dim_full[sec_full];
+        auto &basis  = basis_full[sec_full];
+        auto &Lin_Ja = Lin_Ja_full[sec_full];
+        auto &Lin_Jb = Lin_Jb_full[sec_full];
         
+        int num_threads = 1;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) num_threads = omp_get_num_threads();
+        }
+        // prepare intermediates in advance
+        std::vector<mbasis_elem> intermediate_basis(num_threads, {props});
+        std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
+        std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
         
+        for (MKL_INT i = 0; i < dim; i++) vec_new[i] = 0.0;
+        #pragma omp parallel for schedule(dynamic,256)
+        for (MKL_INT i = 0; i < dim; i++) {
+            if (std::abs(vec_old[i]) < machine_prec) continue;
+            int tid = omp_get_thread_num();
+            auto basis_temp = basis[i];
+            int sgn;
+            MKL_INT j;
+            uint64_t i_a, i_b;
+            basis_temp.transform(props, plan, sgn);
+            if (Lin_Ja.size() > 0 && Lin_Jb.size() > 0) {
+                basis_temp.label_sub(props, i_a, i_b, scratch_works1[tid], scratch_works2[tid]);
+                j = Lin_Ja[i_a] + Lin_Jb[i_b];
+            } else {
+                j = binary_search<mbasis_elem,MKL_INT>(basis, basis_temp, 0, dim);
+            }
+            assert(j >= 0 && j < dim);
+            vec_new[j] = (sgn % 2 == 0) ? vec_old[i] : (-vec_old[i]);
+        }
     }
     
+    template <typename T>
+    void model<T>::transform_vec_full(const std::vector<uint32_t> &plan, const uint32_t &sec_full,
+                                      const int &which_col, T *vec_new)
+    {
+        assert(which_col >= 0 && which_col < nconv);
+        T* vec_old = eigenvecs_full.data() + dim_full[sec_full] * which_col;
+        transform_vec_full(plan, sec_full, vec_old, vec_new);
+    }
     
     template <typename T>
-    void model<T>::projectQ_full(const std::vector<int> &momentum, const uint32_t &sec_full, T *vec_old, T *vec_new)
+    void model<T>::projectQ_full(const std::vector<int> &momentum, const uint32_t &sec_full,
+                                 const T *vec_old, T *vec_new)
     {
+        MKL_INT dim = dim_full[sec_full];
+        auto L = latt_parent.Linear_size();
+        for (MKL_INT j = 0; j < dim; j++) vec_new[j] = static_cast<T>(0.0);
         
+        std::vector<T> vec_temp(dim);
+        std::vector<int> disp;
+        std::vector<uint32_t> plan;
+        std::vector<int> scratch_coor, scratch_work;
+        int sub;
+        for (uint32_t site = 0; site < latt_parent.total_sites(); site++) {
+            latt_parent.site2coor(disp, sub, site);
+            if (sub != 0) continue;
+            double exp_coef = 0.0;
+            for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                exp_coef += momentum[d] * disp[d] / static_cast<double>(L[d]);
+            }
+            auto coef = std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
+            
+            latt_parent.translation_plan(plan, disp, scratch_coor, scratch_work);
+            transform_vec_full(plan, sec_full, vec_old, vec_temp.data());
+            axpy(dim, coef, vec_temp.data(), 1, vec_new, 1);
+        }
+        
+        // normalize
+        double nrm = nrm2(dim, vec_new, 1);
+        if (nrm < lanczos_precision) return;                                     // the state has no projection in this momentum sector
+        scal(dim, 1.0/nrm, vec_new, 1);
+        
+        // double check momentum
+        for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+            for (uint32_t j = 0; j < latt_parent.dimension(); j++) {
+                if (j == d) {
+                    disp[d] = 1;
+                } else {
+                    disp[d] = 0;
+                }
+            }
+            latt_parent.translation_plan(plan, disp, scratch_coor, scratch_work);
+            transform_vec_full(plan, sec_full, vec_new, vec_temp.data());          // vec_temp = T(R) vec_new
+            double exp_coef = momentum[d] * disp[d] / static_cast<double>(L[d]);
+            auto coef = std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
+            scal(dim, coef, vec_temp.data(), 1);                                   // vec_temp = vec_temp * e^{iKR}
+            axpy(dim, std::complex<double>(-1.0), vec_new, 1, vec_temp.data(), 1); // vec_temp - vec_new
+            double nrm = nrm2(dim, vec_temp.data(), 1);
+            assert(nrm < lanczos_precision);
+        }
+    }
+    
+    template <typename T>
+    void model<T>::projectQ_full(const std::vector<int> &momentum, const uint32_t &sec_full,
+                                 const int &which_col, T *vec_new)
+    {
+        assert(which_col >= 0 && which_col < nconv);
+        T* vec_old = eigenvecs_full.data() + dim_full[sec_full] * which_col;
+        projectQ_full(momentum, sec_full, vec_old, vec_new);
     }
     
     
@@ -1544,8 +1639,8 @@ namespace qbasis {
     
     
     template <typename T>
-    void model<T>::moprXeigenvec_repr(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
-                                      const MKL_INT &which_col, T* vec_new)
+    void model<T>::moprXvec_repr(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+                                 const MKL_INT &which_col, T* vec_new)
     {
         assert(which_col >= 0 && which_col < nconv);
         T* vec_old = eigenvecs_repr.data() + dim_repr[sec_old] * which_col;
@@ -1585,7 +1680,7 @@ namespace qbasis {
         opr_trans.simplify();
         
         std::vector<T> vec_new(dim_repr[sec_repr]);
-        moprXeigenvec_repr(opr_trans, sec_repr, sec_repr, which_col, vec_new.data());
+        moprXvec_repr(opr_trans, sec_repr, sec_repr, which_col, vec_new.data());
         return dotc(dim_repr[sec_repr], eigenvecs_repr.data() + dim_repr[sec_repr] * which_col, 1, vec_new.data(), 1);
     }
     

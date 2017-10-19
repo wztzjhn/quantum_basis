@@ -1453,12 +1453,9 @@ namespace qbasis {
         void transform_vec_full(const std::vector<uint32_t> &plan, const uint32_t &sec_full,
                                 const MKL_INT &which_col, T* vec_new);
         
-        void transform_vec_repr(const std::vector<uint32_t> &plan, const uint32_t &sec_full,
-                                const MKL_INT &which_col, std::vector<T> &vec_new);
-        
         /** \brief project a state into a given momentum sector */
         void projectQ_full(const std::vector<int> &momentum, const uint32_t &sec_full,
-                           T* vec_old, T* vec_new);
+                           const T* vec_old, T* vec_new);
         
         /** \brief project an eigenstate into a given momentum sector */
         void projectQ_full(const std::vector<int> &momentum, const uint32_t &sec_full,
@@ -1500,8 +1497,13 @@ namespace qbasis {
                            const T* vec_old, T* vec_new);
         
         /** \brief \f$ A_q | \phi \rangle  \f$, where \f$ | \phi \rangle \f$ is an eigenstate  */
-        void moprXeigenvec_repr(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
-                                const MKL_INT &which_col, T* vec_new);
+        void moprXvec_repr(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+                           const MKL_INT &which_col, T* vec_new);
+        
+        
+        void transform_vec_repr(const std::vector<uint32_t> &plan, const uint32_t &sec_full,
+                                const MKL_INT &which_col, std::vector<T> &vec_new);
+        
         
         // < phi | lhs | phi >
         T measure_repr_static(const mopr<T> &lhs, const uint32_t &sec_repr, const MKL_INT &which_col);
