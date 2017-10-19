@@ -13,13 +13,15 @@ namespace qbasis {
     void ckpt_CG_clean();
     
     template <typename T>
-    model<T>::model(const uint32_t &num_secs, const double &fake_pos_):
-                    matrix_free(true), nconv(0),
+    model<T>::model(const lattice &latt, const uint32_t &num_secs, const double &fake_pos_):
+                    matrix_free(true),
+                    nconv(0),
                     sec_mat(0),
                     dim_full(std::vector<MKL_INT>(num_secs,0)),
                     dim_repr(std::vector<MKL_INT>(num_secs,0)),
                     dim_vrnl(std::vector<MKL_INT>(num_secs,0)),
-                    fake_pos(fake_pos_)
+                    fake_pos(fake_pos_),
+                    latt_parent(latt)
     {
         momenta.resize(num_secs);
         momenta_vrnl.resize(num_secs);
@@ -141,9 +143,8 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::fill_Weisse_table(const lattice &latt)
+    void model<T>::fill_Weisse_table()
     {
-        latt_parent = latt;
         latt_sub = divide_lattice(latt_parent);
         
         check_translation();
@@ -153,7 +154,7 @@ namespace qbasis {
         auto props_sub = props_sub_a;
         
         groups_sub    = latt_sub.trans_subgroups(trans_sym);
-        groups_parent = latt.trans_subgroups(trans_sym);
+        groups_parent = latt_parent.trans_subgroups(trans_sym);
         
         std::cout << "------------------------------------" << std::endl;
         std::cout << "Generating sublattice full basis... " << std::endl;
@@ -179,7 +180,7 @@ namespace qbasis {
         assert(check_dim_sub_full == static_cast<uint64_t>(basis_sub_full.size()));
         
         std::cout << "Generating maps (ga,gb,ja,jb) -> (i,j) and (ga,gb,j) -> (w) ... " << std::flush;
-        classify_Weisse_tables(props, props_sub, basis_sub_repr, latt, trans_sym,
+        classify_Weisse_tables(props, props_sub, basis_sub_repr, latt_parent, trans_sym,
                                belong2rep_sub, dist2rep_sub, belong2group_sub, groups_parent, groups_sub,
                                Weisse_e_lt, Weisse_e_eq, Weisse_e_gt, Weisse_w_lt, Weisse_w_eq, Weisse_w_gt);
         end = std::chrono::system_clock::now();
@@ -404,7 +405,6 @@ namespace qbasis {
     void model<T>::build_basis_vrnl(const std::list<mbasis_elem> &initial_list,
                                     const mbasis_elem &gs,
                                     const std::vector<double> &momentum,
-                                    const lattice &latt,
                                     const uint32_t &iteration_depth,
                                     std::vector<mopr<T>> conserve_lst,
                                     std::vector<double> val_lst,
@@ -413,7 +413,6 @@ namespace qbasis {
         assert(conserve_lst.size() == val_lst.size());
         assert(sec_vrnl < basis_vrnl.size());
         momenta_vrnl[sec_vrnl] = momentum;
-        latt_parent = latt;
         
         // check if basis already generated
         bool flag_built = true;
@@ -467,7 +466,7 @@ namespace qbasis {
             for (uint32_t level = 1; level <= iteration_depth; level++) {
                 std::cout << "-------- iteration " << level << " --------" << std::endl;
                 gen_mbasis_by_mopr(Ham_vrnl, basis, props, conserve_lst, val_lst);
-                rm_mbasis_dulp_trans(latt, basis, props);
+                rm_mbasis_dulp_trans(latt_parent, basis, props);
                 std::cout << std::endl;
             }
             
@@ -486,7 +485,7 @@ namespace qbasis {
         if (pos_gs_vrnl[sec_vrnl] >=0 && pos_gs_vrnl[sec_vrnl] < dim_vrnl[sec_vrnl]) {
             std::vector<double> cart;
             std::complex<double> norm_gs(0.0,0.0);
-            for (uint32_t site = 0; site < latt.total_sites(); site++) {
+            for (uint32_t site = 0; site < latt_parent.total_sites(); site++) {
                 std::vector<int> disp;
                 int sub, sgn;
                 latt_parent.site2coor(disp, sub, site);
@@ -494,13 +493,13 @@ namespace qbasis {
                 
                 std::vector<uint32_t> plan;
                 std::vector<int> scratch_work, scratch_coor;
-                latt.translation_plan(plan, disp, scratch_coor, scratch_work);
+                latt_parent.translation_plan(plan, disp, scratch_coor, scratch_work);
                 auto basis_temp = gs;
                 basis_temp.transform(props, plan, sgn);
                 if (basis_temp == gs) {
                     double exp_coef = 0.0;
-                    latt.coor2cart(disp, 0, cart);
-                    for (uint32_t d = 0; d < latt.dimension(); d++) {
+                    latt_parent.coor2cart(disp, 0, cart);
+                    for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                         exp_coef += momentum[d] * cart[d];
                     }
                     norm_gs += std::exp(std::complex<double>(0.0, exp_coef));
@@ -510,7 +509,7 @@ namespace qbasis {
                 norm_gs_vrnl[sec_vrnl] = 0.0;
             } else {
                 assert(norm_gs.real() > 0.0);
-                norm_gs_vrnl[sec_vrnl] = static_cast<double>(latt.total_sites() / latt.num_sublattice()) / norm_gs.real();
+                norm_gs_vrnl[sec_vrnl] = static_cast<double>(latt_parent.total_sites() / latt_parent.num_sublattice()) / norm_gs.real();
             }
             std::cout << "GS pos       = " << pos_gs_vrnl[sec_vrnl] << std::endl;
             std::cout << "GS norm_vrnl = " << norm_gs_vrnl[sec_vrnl] << std::endl;
@@ -780,7 +779,7 @@ namespace qbasis {
                 matrix_lil.add(i, i, basis[i].diagonal_operator(props,Ham_diag[cnt]));
             
             // non-diagonal part
-            double nrm2_i = (i == pos_gs ? std::sqrt(norm_gs) : NsitesPsublatt_sqrt);             // 1 / sqrt(<phi| P_k |phi>)
+            double nrm2_i = (i == pos_gs ? std::sqrt(norm_gs)/NsitesPsublatt_sqrt : 1.0); // \gamma_i = 1 / sqrt(N <phi| P_k |phi>)
             for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
                 intermediate_states[tid].copy(basis[i]);
                 oprXphi(*it, props, intermediate_states[tid]);
@@ -791,8 +790,8 @@ namespace qbasis {
                     MKL_INT j = binary_search<mbasis_elem,MKL_INT>(basis, unique_state, 0, dim);   // < j | H | i >
                     if (j < 0 || j >= dim) continue;
                     if (upper_triangle && i > j) continue;
-                    double nrm2_j = (j == pos_gs ? std::sqrt(norm_gs) : NsitesPsublatt_sqrt);
-                    double prefactor = nrm2_i * nrm2_j / NsitesPsublatt;
+                    double nrm2_j = (j == pos_gs ? std::sqrt(norm_gs)/NsitesPsublatt_sqrt : 1.0); // \gamma_j
+                    double prefactor = nrm2_i * nrm2_j;
                     if (i != pos_gs && j != pos_gs) {
                         assert(std::abs(prefactor - 1.0) < lanczos_precision);
                     } else {
@@ -1269,19 +1268,6 @@ namespace qbasis {
     }
     
     
-
-    
-    template <typename T>
-    void model<T>::transform_eigenvec_full(const lattice &latt, const std::vector<uint32_t> &plan,
-                                           const uint32_t &sec_full, const MKL_INT &which_col,
-                                           std::vector<T> &vec_new)
-    {
-        MKL_INT dim = dim_full[sec_full];
-        
-        
-    }
-    
-    
     template <typename T>
     void model<T>::moprXvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
                                  const T* vec_old, T* vec_new)
@@ -1349,12 +1335,28 @@ namespace qbasis {
     
     
     template <typename T>
-    void model<T>::moprXeigenvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
-                                      const MKL_INT &which_col, T* vec_new)
+    void model<T>::moprXvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+                                 const MKL_INT &which_col, T* vec_new)
     {
         assert(which_col >= 0 && which_col < nconv);
         T* vec_old = eigenvecs_full.data() + dim_full[sec_old] * which_col;
         moprXvec_full(lhs, sec_old, sec_new, vec_old, vec_new);
+    }
+    
+    template <typename T>
+    void model<T>::transform_vec_full(const std::vector<uint32_t> &plan, const uint32_t &sec_full,
+                                      const T* vec_old, T* vec_new)
+    {
+        MKL_INT dim = dim_full[sec_full];
+        
+        
+    }
+    
+    
+    template <typename T>
+    void model<T>::projectQ_full(const std::vector<int> &momentum, const uint32_t &sec_full, T *vec_old, T *vec_new)
+    {
+        
     }
     
     
@@ -1364,7 +1366,7 @@ namespace qbasis {
         assert(which_col >= 0 && which_col < nconv);
         MKL_INT base = dim_full[sec_full] * which_col;
         std::vector<T> vec_new(dim_full[sec_full]);
-        moprXeigenvec_full(lhs, sec_full, sec_full, which_col, vec_new.data());
+        moprXvec_full(lhs, sec_full, sec_full, which_col, vec_new.data());
         return dotc(dim_full[sec_full], eigenvecs_full.data() + base, 1, vec_new.data(), 1);
     }
     
@@ -1381,7 +1383,7 @@ namespace qbasis {
         sec_new_list.back() = sec_old_list.front();
         
         std::vector<T> vec_new(dim_full[sec_new_list[0]]);
-        moprXeigenvec_full(lhs[0], sec_old_list[0], sec_new_list[0], which_col, vec_new.data());
+        moprXvec_full(lhs[0], sec_old_list[0], sec_new_list[0], which_col, vec_new.data());
         std::vector<T> vec_temp;
         for (decltype(lhs.size()) j = 1; j < lhs.size(); j++) {
             vec_temp.resize(dim_full[sec_new_list[j]]);
@@ -1392,16 +1394,14 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::measure_full_dynamic(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+    void model<T>::measure_full_dynamic(const mopr<T> &Aq, const uint32_t &sec_old, const uint32_t &sec_new,
                                         const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[])
     {
         MKL_INT dim_new = dim_full[sec_new];
         auto &HamMat    = HamMat_csr_full[sec_new];
         std::vector<T> vec_new(2*dim_new);
-        auto lhs_dg = lhs;
-        lhs_dg.dagger();
-        moprXeigenvec_full(lhs_dg, sec_old, sec_new, 0, vec_new.data());         // vec_new = lhs^\dagger * |phi>
-        norm = nrm2(dim_new, vec_new.data(), 1);                                 // norm = sqrt(<phi| lhs * lhs^\dagger |phi>)
+        moprXvec_full(Aq, sec_old, sec_new, 0, vec_new.data());                  // vec_new = Aq |phi>
+        norm = nrm2(dim_new, vec_new.data(), 1);                                 // norm = sqrt(<phi| Aq^\dagger * Aq |phi>)
         if (std::abs(norm) < lanczos_precision) return;
         scal(dim_new, 1.0 / norm, vec_new.data(), 1);                            // normalize vec_new
         if (matrix_free) {
@@ -1594,10 +1594,9 @@ namespace qbasis {
 //     ---------------------------- deprecated ---------------------------------
     
     template <typename T>
-    void model<T>::basis_init_repr_deprecated(const lattice &latt, const std::vector<int> &momentum,
+    void model<T>::basis_init_repr_deprecated(const std::vector<int> &momentum,
                                               const uint32_t &sec_full, const uint32_t &sec_repr)
     {
-        latt_parent = latt;
         assert(latt_parent.dimension() == static_cast<uint32_t>(momentum.size()));
         assert(dim_full[sec_full] > 0 && dim_full[sec_full] == static_cast<MKL_INT>(basis_full[sec_full].size()));
         

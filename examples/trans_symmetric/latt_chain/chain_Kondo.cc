@@ -49,7 +49,7 @@ int main() {
 
     // constructing the Hamiltonian in operator representation
     // electrons on orbital 0, local spins on orbital 1
-    qbasis::model<std::complex<double>> Kondo;
+    qbasis::model<std::complex<double>> Kondo(lattice);
     Kondo.add_orbital(lattice.total_sites(), "electron");
     Kondo.add_orbital(lattice.total_sites(), "spin-1/2");
     qbasis::mopr<std::complex<double>> Nelec_total;   // operators representating total electron number
@@ -107,7 +107,7 @@ int main() {
 
 
     // to use translational symmetry, we first fill the Weisse tables
-    Kondo.fill_Weisse_table(lattice);
+    Kondo.fill_Weisse_table();
 
     std::vector<double> E0_list;
     for (int momentum = 0; momentum < L; momentum++) {

@@ -32,7 +32,7 @@ int main() {
 
 
     // initialize the Hamiltonian
-    qbasis::model<std::complex<double>> spinless;
+    qbasis::model<std::complex<double>> spinless(lattice);
     spinless.add_orbital(lattice.total_sites(), "spinless-fermion");
     double constant = 0.0; // the constant energy correction from \sum_{\langle i,j \rangle} V1/4
 

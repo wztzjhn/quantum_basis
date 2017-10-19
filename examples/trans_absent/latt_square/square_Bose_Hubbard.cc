@@ -37,7 +37,7 @@ int main() {
 
 
     // initialize the Hamiltonian
-    qbasis::model<std::complex<double>> Hubbard;
+    qbasis::model<std::complex<double>> Hubbard(lattice);
     Hubbard.add_orbital(lattice.total_sites(), "boson", boson_limit);
 
     qbasis::mopr<std::complex<double>> Nboson;   // operators representating total boson number

@@ -32,7 +32,7 @@ int main() {
 
 
     // initialize the Hamiltonian
-    qbasis::model<std::complex<double>> spinless;
+    qbasis::model<std::complex<double>> spinless(lattice);
     spinless.add_orbital(lattice.total_sites(), "spinless-fermion");
     double constant = 0.0; // the constant energy correction from \sum_{\langle i,j \rangle} V1/4
 
@@ -107,7 +107,7 @@ int main() {
 
 
     // to use translational symmetry, we first fill the Weisse tables
-    spinless.fill_Weisse_table(lattice);
+    spinless.fill_Weisse_table();
 
     std::vector<double> E0_list;
     for (int m = 0; m < Lx; m++) {
@@ -149,7 +149,7 @@ int main() {
     for (int i = 0; i < Lx; i++) {
         for (int j = 0; j < Ly; j++) {
             // constructing the subspace basis
-            spinless.basis_init_repr_deprecated(lattice, {i,j});
+            spinless.basis_init_repr_deprecated({i,j});
 
             // generating matrix of the Hamiltonian in the subspace
             spinless.generate_Ham_sparse_repr_deprecated();

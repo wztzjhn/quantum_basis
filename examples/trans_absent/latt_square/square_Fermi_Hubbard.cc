@@ -38,7 +38,7 @@ int main() {
 
 
     // constructing the Hamiltonian in operator representation
-    qbasis::model<std::complex<double>> Hubbard;
+    qbasis::model<std::complex<double>> Hubbard(lattice);
     Hubbard.add_orbital(lattice.total_sites(), "electron");
     qbasis::mopr<std::complex<double>> Nup;   // operators representating total electron number
     qbasis::mopr<std::complex<double>> Ndown;

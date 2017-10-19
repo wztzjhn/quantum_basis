@@ -36,7 +36,7 @@ int main() {
 
 
     // constructing the Hamiltonian in operator representation
-    qbasis::model<std::complex<double>> tJ;
+    qbasis::model<std::complex<double>> tJ(lattice);
     tJ.add_orbital(lattice.total_sites(), "tJ");
     qbasis::mopr<std::complex<double>> Sz_total;   // operators representating total Sz
     qbasis::mopr<std::complex<double>> N_total;    // operators representating total N

@@ -35,7 +35,7 @@ int main() {
     Sz[1]        = -0.5;
 
     // constructing the Hamiltonian in operator representation
-    qbasis::model<std::complex<double>> Heisenberg;
+    qbasis::model<std::complex<double>> Heisenberg(lattice);
     qbasis::mopr<std::complex<double>> Sz_total;
     Heisenberg.add_orbital(lattice.total_sites(), "spin-1/2");
     for (int x = 0; x < L; x++) {
@@ -64,7 +64,7 @@ int main() {
 
 
     // to use translational symmetry, we first fill the Weisse tables
-    Heisenberg.fill_Weisse_table(lattice);
+    Heisenberg.fill_Weisse_table();
 
 
     // measurement opeartors
@@ -121,7 +121,7 @@ int main() {
     Heisenberg.enumerate_basis_full({Sz_total}, {Sz_total_val});
     for (int momentum = 0; momentum < L; momentum++) {
         // generate the translational symmetric basis
-        Heisenberg.basis_init_repr_deprecated(lattice, {momentum});
+        Heisenberg.basis_init_repr_deprecated({momentum});
 
         // optional in future, will use more memory and give higher speed
         // generating matrix of the Hamiltonian in the full Hilbert space

@@ -36,7 +36,7 @@ int main() {
 
 
     // constructing the Hamiltonian in operator representation
-    qbasis::model<std::complex<double>> Hubbard;
+    qbasis::model<std::complex<double>> Hubbard(lattice);
     Hubbard.add_orbital(lattice.total_sites(), "electron");
     qbasis::mopr<std::complex<double>> Nup;   // an operator representating total electron number
     qbasis::mopr<std::complex<double>> Ndown;
@@ -90,7 +90,7 @@ int main() {
 
 
     // to use translational symmetry, we first fill the Weisse tables
-    Hubbard.fill_Weisse_table(lattice);
+    Hubbard.fill_Weisse_table();
 
 
     // measure operators
@@ -141,7 +141,7 @@ int main() {
     for (int i = 0; i < Lx; i++) {
         for (int j = 0; j < Ly; j++) {
             // constructing the subspace basis
-            Hubbard.basis_init_repr_deprecated(lattice, {i,j});
+            Hubbard.basis_init_repr_deprecated({i,j});
 
             // generating matrix of the Hamiltonian in the subspace
             Hubbard.generate_Ham_sparse_repr_deprecated();

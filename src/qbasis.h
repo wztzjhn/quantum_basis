@@ -1306,7 +1306,7 @@ namespace qbasis {
         // ---------------- deprecated --------------------
         
         
-        model(const uint32_t &num_secs = 3, const double &fake_pos_ = 100.0);
+        model(const lattice &latt, const uint32_t &num_secs = 3, const double &fake_pos_ = 100.0);
         
         ~model() {}
         
@@ -1344,7 +1344,7 @@ namespace qbasis {
         
         void switch_sec_mat(const uint32_t &sec_mat_);
         
-        void fill_Weisse_table(const lattice &latt);
+        void fill_Weisse_table();
         
         // check if translational symmetry satisfied
         void check_translation();
@@ -1364,15 +1364,13 @@ namespace qbasis {
         void build_basis_vrnl(const std::list<mbasis_elem> &initial_list,
                               const mbasis_elem &gs,
                               const std::vector<double> &momentum,
-                              const lattice &latt,
                               const uint32_t &iteration_depth,
                               std::vector<mopr<T>> conserve_lst = {},
                               std::vector<double> val_lst = {},
                               const uint32_t &sec_vrnl = 0);
         
         // momentum has to be in format {m,n,...} corresponding to (m/L1) b_1 + (n/L2) b_2 + ...
-        void basis_init_repr_deprecated(const lattice &latt,
-                                        const std::vector<int> &momentum,
+        void basis_init_repr_deprecated(const std::vector<int> &momentum,
                                         const uint32_t &sec_full = 0,
                                         const uint32_t &sec_repr = 0);
         
@@ -1419,8 +1417,8 @@ namespace qbasis {
         
         /** \brief calculate the highest eigenstates using IRAM
          *  nev, ncv, maxit following ARPACK definition.
-         * sec_sym_ : 0 (full), 1 (repr), 2 (vrnl).
-         * for repr and vrnl, there may be a few artificial eigenvalues above fake_pos (default to 100), corresponding to zero norm states.
+         *  sec_sym_ : 0 (full), 1 (repr), 2 (vrnl).
+         *  for repr and vrnl, there may be a few artificial eigenvalues above fake_pos (default to 100), corresponding to zero norm states.
          */
         void locate_Emax_iram(const uint32_t &sec_sym_, const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
         
@@ -1439,13 +1437,32 @@ namespace qbasis {
         /** \brief return gap */
         double energy_gap() { return gap; }
         
-        // lhs | phi >, where | phi > is an input state
+        /** \brief lhs | phi >, where | phi > is an input state */
         void moprXvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
                            const T* vec_old, T* vec_new);
         
-        // lhs | phi >, where | phi > is an eigenstate
-        void moprXeigenvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+        /** \brief lhs | phi >, where | phi > is an eigenstate */
+        void moprXvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+                           const MKL_INT &which_col, T* vec_new);
+        
+        /** transform a vector in the full space according to the plan */
+        void transform_vec_full(const std::vector<uint32_t> &plan, const uint32_t &sec_full,
+                                const T* vec_old, T* vec_new);
+        
+        /** transform an eigenvector in the full space according to the plan */
+        void transform_vec_full(const std::vector<uint32_t> &plan, const uint32_t &sec_full,
                                 const MKL_INT &which_col, T* vec_new);
+        
+        void transform_vec_repr(const std::vector<uint32_t> &plan, const uint32_t &sec_full,
+                                const MKL_INT &which_col, std::vector<T> &vec_new);
+        
+        /** \brief project a state into a given momentum sector */
+        void projectQ_full(const std::vector<int> &momentum, const uint32_t &sec_full,
+                           T* vec_old, T* vec_new);
+        
+        /** \brief project an eigenstate into a given momentum sector */
+        void projectQ_full(const std::vector<int> &momentum, const uint32_t &sec_full,
+                           const MKL_INT &which_col, T* vec_new);
         
         // < phi | lhs | phi >
         T measure_full_static(const mopr<T> &lhs, const uint32_t &sec_full, const MKL_INT &which_col);
@@ -1454,30 +1471,35 @@ namespace qbasis {
         // correspondingly, the sec_source has to be given for each lhs_i
         T measure_full_static(const std::vector<mopr<T>> &lhs, const std::vector<uint32_t> &sec_old_list, const MKL_INT &which_col);
         
-        // NEED enable CKPT later!!!
-        // G_A(z) = < phi | lhs^\dagger (z-H)^{-1} lhs | phi >
-        // z      = omega + E0 + i * eta
-        // norm   = sqrt(< phi | lhs lhs^\dagger | phi >)
-        // G_A(z) =                     < phi | lhs lhs^\dagger | phi >
-        //                  ----------------------------------------------------
-        //                                             b1^2
-        //                   (z-a0) - ------------------------------------------
-        //                                                    b2^2
-        //                             (z-a1) - --------------------------------
-        //                                                         ...
-        //                                       (z-a2) - ----------------------
-        //                                                         ...
-        // on exit: a_i, b_i and norm are given
-        void measure_full_dynamic(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+        /** \brief calculate dynamical structure factors
+         *
+         * \f[
+         *  G_A(z) = \langle \phi | A_q^\dagger (z-H)^{-1} A_q | \phi \rangle,
+         * \f]
+         *  where \f$ z = \omega + E_0 + i \eta \f$, and
+         *  norm   = \f$ \sqrt{\langle \phi | A_q^\dagger A_q | \phi \rangle} \f$.
+         * \f[
+         *  G_A(z) = \frac{\langle \phi | A_q^\dagger A_q | \phi \rangle}{z-a_0 -
+         *           \frac{b_1^2}{z-a_1 -
+         *           \frac{b_2^2}{z-a_2 - \cdots}}}
+         * \f]
+         *
+         *  on exit: \f$ a_i \f$, \f$ b_i \f$ and norm are given.
+         *  NEED enable CKPT later!!!
+         */
+        void measure_full_dynamic(const mopr<T> &Aq, const uint32_t &sec_old, const uint32_t &sec_new,
                                   const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[]);
         
-        // lhs | phi >
-        // Requirements: after operation of lhs, the new state is still an eigenstate of translation
-        // e.g. A_q = \frac{1}{\sqrt{N}} \sum_r e^{i q \cdot r} A_r,
-        // the old state has momentum k, the new state has momentum k+q
-        void moprXvec_repr(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+        /** \brief \f$ A_q | \phi \rangle \f$
+         *
+         *  Requirements: after operation of Aq, the new state is still an eigenstate of translation operator.
+         *  e.g. \f$ A_q = \frac{1}{\sqrt{N}} \sum_r e^{i q \cdot r} A_r \f$,
+         *  the old state has momentum k, the new state has momentum k+q
+         */
+        void moprXvec_repr(const mopr<T> &Aq, const uint32_t &sec_old, const uint32_t &sec_new,
                            const T* vec_old, T* vec_new);
         
+        /** \brief \f$ A_q | \phi \rangle  \f$, where \f$ | \phi \rangle \f$ is an eigenstate  */
         void moprXeigenvec_repr(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
                                 const MKL_INT &which_col, T* vec_new);
         
@@ -1500,8 +1522,6 @@ namespace qbasis {
         lattice latt_sub;
         std::vector<bool> trans_sym;                               // if translation allowed in each dimension
         bool dim_spec_involved;                                    // if translation allowed in partitioned direction
-        
-        
         
         // Weisse Tables for translation symmetry
         // Note: different from Weisse's paper, here we use Weisse_w to store the (parent) group label, instead of omega_g
