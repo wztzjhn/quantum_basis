@@ -3,7 +3,7 @@ CPPFLAGS  = -O2 -std=c++11 -Wall -Wextra -m64 -fopenmp \
             -isystem ${MKLROOT}/include \
             -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig \
             -isystem ${HOME}/installs/include
-LIBS      = -L/usr/local/lib -larpack \
+LIBS      = -larpack \
             -L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl \
             -fopenmp \
             ${HOME}/installs/lib/libboost_filesystem.a ${HOME}/installs/lib/libboost_system.a

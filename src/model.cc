@@ -1685,6 +1685,25 @@ namespace qbasis {
     }
     
     
+    template <typename T>
+    void model<T>::measure_repr_dynamic(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+                                        const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[])
+    {
+        MKL_INT dim_new = dim_repr[sec_new];
+        auto &HamMat    = HamMat_csr_repr[sec_new];
+        std::vector<T> vec_new(2*dim_new);
+        moprXvec_repr(lhs, sec_old, sec_new, 0, vec_new.data());              // vec_new = lhs^\dagger * |phi>
+        norm = nrm2(dim_new, vec_new.data(), 1);                                 // norm = sqrt(<phi| lhs * lhs^\dagger |phi>)
+        if (std::abs(norm) < lanczos_precision) return;
+        scal(dim_new, 1.0 / norm, vec_new.data(), 1);                            // normalize vec_new
+        if (matrix_free) {
+            lanczos(0, maxit-1, maxit, m, dim_new, *this,  vec_new.data(), hessenberg, "dnmcs");
+        } else {
+            lanczos(0, maxit-1, maxit, m, dim_new, HamMat, vec_new.data(), hessenberg, "dnmcs");
+        }
+    }
+    
+    
 //     ---------------------------- deprecated ---------------------------------
 //     ---------------------------- deprecated ---------------------------------
     

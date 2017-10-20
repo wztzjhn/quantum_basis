@@ -1461,11 +1461,10 @@ namespace qbasis {
         void projectQ_full(const std::vector<int> &momentum, const uint32_t &sec_full,
                            const MKL_INT &which_col, T* vec_new);
         
-        // < phi | lhs | phi >
+        /** \brief < phi | lhs | phi > */
         T measure_full_static(const mopr<T> &lhs, const uint32_t &sec_full, const MKL_INT &which_col);
         
-        // < phi |  ... * lhs2 * lhs1 * lhs0 | phi >
-        // correspondingly, the sec_source has to be given for each lhs_i
+        /** \brief < phi |  ... * lhs2 * lhs1 * lhs0 | phi >, where sec_old has to be given for each lhs_i */
         T measure_full_static(const std::vector<mopr<T>> &lhs, const std::vector<uint32_t> &sec_old_list, const MKL_INT &which_col);
         
         /** \brief calculate dynamical structure factors
@@ -1505,10 +1504,13 @@ namespace qbasis {
                                 const MKL_INT &which_col, std::vector<T> &vec_new);
         
         
-        // < phi | lhs | phi >
+        /** \brief < phi | lhs | phi > */
         T measure_repr_static(const mopr<T> &lhs, const uint32_t &sec_repr, const MKL_INT &which_col);
         
-        void measure_repr_dynamic(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+        /** \brief Calculate dynamical structure factors (in translational symmetric basis).
+         *  For details, see measure_full_dynamic.
+         */
+        void measure_repr_dynamic(const mopr<T> &Aq, const uint32_t &sec_old, const uint32_t &sec_new,
                                   const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[]);
         
         // later add conserved quantum operators and corresponding quantum numbers?

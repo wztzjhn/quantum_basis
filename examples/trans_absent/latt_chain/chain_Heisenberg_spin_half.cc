@@ -34,7 +34,7 @@ int main() {
     Sz[1]        = -0.5;
 
     // constructing the Hamiltonian in operator representation
-    qbasis::model<std::complex<double>> Heisenberg;
+    qbasis::model<std::complex<double>> Heisenberg(lattice);
     Heisenberg.add_orbital(lattice.total_sites(), "spin-1/2");
     for (int x = 0; x < L; x++) {
         uint32_t site_i, site_j;
