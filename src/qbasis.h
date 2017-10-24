@@ -1264,11 +1264,13 @@ namespace qbasis {
         std::vector<std::vector<double>> momenta_vrnl;
         
         /** \brief full basis without translation sym */
-        std::vector<std::vector<qbasis::mbasis_elem>> basis_full;
+        std::vector<std::vector<mbasis_elem>> basis_full;
         /** \brief basis with translation sym */
-        std::vector<std::vector<qbasis::mbasis_elem>> basis_repr;
+        std::vector<std::vector<mbasis_elem>> basis_repr;
         /** \brief variational basis for Trugman's method */
-        std::vector<std::vector<qbasis::mbasis_elem>> basis_vrnl;
+        std::vector<std::vector<mbasis_elem>> basis_vrnl;
+        /** \brief ground state representative for Trugman's method */
+        mbasis_elem gs_vrnl;
         /** \brief basis for half lattice, used for building Weisse Table */
         std::vector<qbasis::mbasis_elem> basis_sub_full;
         /** \brief reps for half lattice */

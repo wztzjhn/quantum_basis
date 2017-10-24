@@ -355,8 +355,6 @@ namespace qbasis {
                 sort_basis_normal_order(basis_repr[sec_repr]);
                 assert(is_sorted_norepeat(basis_repr[sec_repr]));
             }
-            
-            nconv = 0;
         }
         
         // calculate normalization factors
@@ -1537,7 +1535,7 @@ namespace qbasis {
         std::cout << "mopr * vec (s = " << sec_old << ", t = " << sec_new << ")... " << std::endl;
         for (MKL_INT j = 0; j < dim_repr[sec_new]; j++) vec_new[j] = 0.0;
         
-        #pragma omp parallel for schedule(dynamic,1)
+        #pragma omp parallel for schedule(dynamic,256)
         for (MKL_INT j = 0; j < dim_repr[sec_old]; j++) {
             auto sj     = vec_old[j];
             double nu_j = norm_repr[sec_old][j];
@@ -1547,7 +1545,7 @@ namespace qbasis {
             
             std::vector<std::pair<MKL_INT, T>> values;
             for (auto it = lhs.mats.begin(); it != lhs.mats.end(); it++) {
-                if (it->q_diagonal()) {                                                    // only momentum changes
+                if (it->q_diagonal()) {                                          // only momentum changes
                     double nu_i = norm_repr[sec_new][j];
                     if (std::abs(nu_i) > lanczos_precision)
                         values.push_back(std::pair<MKL_INT, T>(j, std::sqrt(nu_j/nu_i) * sj * basis_repr[sec_old][j].diagonal_operator(props,*it)));
