@@ -988,6 +988,10 @@ namespace qbasis {
                          std::vector<double> val_lst)
     {
         std::cout << "Enumerating basis with " << val_lst.size() << " conserved quantum numbers..." << std::endl;
+        std::cout << "Quantum #s: ";
+        for (decltype(val_lst.size()) cnt = 0; cnt < val_lst.size(); cnt++)
+            std::cout << val_lst[cnt] << "\t";
+        std::cout << std::endl;
         uint32_t n_sites = props[0].num_sites;
         assert(conserve_lst.size() == val_lst.size());
         

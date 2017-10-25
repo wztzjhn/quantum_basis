@@ -256,6 +256,10 @@ namespace qbasis {
         // now start enumerating representatives, if not generated before (or generated but already destroyed)
         if (dim_repr[sec_repr] <= 0 || static_cast<MKL_INT>(basis_repr[sec_repr].size()) != dim_repr[sec_repr]) {
             std::cout << "Enumerating basis_repr with " << val_lst.size() << " conserved quantum numbers..." << std::endl;
+            std::cout << "Quantum #s: ";
+            for (decltype(val_lst.size()) cnt = 0; cnt < val_lst.size(); cnt++)
+                std::cout << val_lst[cnt] << "\t";
+            std::cout << std::endl;
             basis_repr[sec_repr].clear();
             std::list<std::vector<mbasis_elem>> basis_temp;
             dim_repr[sec_repr] = 0;
@@ -439,7 +443,12 @@ namespace qbasis {
         }
         
         if (! flag_built) {
-            std::cout << "Building variational basis with " << val_lst.size() << " conserved quantum numbers..." << std::endl;
+            std::cout << "Building variational basis with " << val_lst.size()
+                      << " conserved quantum numbers..." << std::endl;
+            std::cout << "Quantum #s: ";
+            for (decltype(val_lst.size()) cnt = 0; cnt < val_lst.size(); cnt++)
+                std::cout << val_lst[cnt] << "\t";
+            std::cout << std::endl;
             std::list<mbasis_elem> basis;
             std::cout << "-------- iteration 0 --------" << std::endl;
             std::cout << "mbasis size: " << initial_list.size() << " -> ";
@@ -1493,7 +1502,7 @@ namespace qbasis {
         MKL_INT dim_new = dim_full[sec_new];
         auto &HamMat    = HamMat_csr_full[sec_new];
         std::vector<T> vec_new(2*dim_new);
-        moprXvec_full(Aq, sec_old, sec_new, 0, vec_new.data());                  // vec_new = Aq |phi>
+        moprXvec_full(Aq, sec_old, sec_new, static_cast<MKL_INT>(0), vec_new.data()); // vec_new = Aq |phi>
         norm = nrm2(dim_new, vec_new.data(), 1);                                 // norm = sqrt(<phi| Aq^\dagger * Aq |phi>)
         if (std::abs(norm) < lanczos_precision) return;
         scal(dim_new, 1.0 / norm, vec_new.data(), 1);                            // normalize vec_new
@@ -1690,7 +1699,7 @@ namespace qbasis {
         MKL_INT dim_new = dim_repr[sec_new];
         auto &HamMat    = HamMat_csr_repr[sec_new];
         std::vector<T> vec_new(2*dim_new);
-        moprXvec_repr(lhs, sec_old, sec_new, 0, vec_new.data());              // vec_new = lhs^\dagger * |phi>
+        moprXvec_repr(lhs, sec_old, sec_new, static_cast<MKL_INT>(0), vec_new.data()); // vec_new = lhs^\dagger * |phi>
         norm = nrm2(dim_new, vec_new.data(), 1);                                 // norm = sqrt(<phi| lhs * lhs^\dagger |phi>)
         if (std::abs(norm) < lanczos_precision) return;
         scal(dim_new, 1.0 / norm, vec_new.data(), 1);                            // normalize vec_new

@@ -480,8 +480,8 @@ namespace qbasis {
         mbasis_elem& translate(const std::vector<basis_prop> &props,
                                const lattice &latt, const std::vector<int> &disp, int &sgn);
         */
-        // change to a basis element which is the unique (fully determined by the lattice and its state) among its translational equivalents
-        // Translation(disp_vec) * old state = new state
+        
+        /** \brief Translation(disp_vec) * old state = unique state */
         mbasis_elem& translate_to_unique_state(const std::vector<basis_prop> &props,
                                                const lattice &latt, std::vector<int> &disp_vec);
         
@@ -1284,7 +1284,7 @@ namespace qbasis {
         
         /** \brief 1 / <rep | P_k | rep> */
         std::vector<std::vector<double>> norm_repr;
-        /** \brief 1 / <vac | P_k | vac>, for the variational vacuum state */
+        /** \brief 1 / <vac | P_k | vac> = omega_g, for the variational vacuum state */
         std::vector<double> norm_gs_vrnl;
         std::vector<MKL_INT> pos_gs_vrnl;                           // position of the vacuum state in the variational basis
         
@@ -1514,6 +1514,21 @@ namespace qbasis {
          */
         void measure_repr_dynamic(const mopr<T> &Aq, const uint32_t &sec_old, const uint32_t &sec_new,
                                   const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[]);
+        
+        /** \f[
+         *     A_q | G(Q_0) \rangle = \sum_i \frac{p_i}{N} | \varphi_i (Q_0 + q) \rangle,
+         *  \f]
+         *  where \f$ | G(Q_0) \rangle \f$ is the variational ground state.
+         *
+         *  Note: in this input, will use
+         *  \f[
+         *     B_q \equiv \sqrt{N} A_q = \sum_i A_{r_i} e^{i q \cdot r_i},
+         *  \f]
+         *  since we cannot directly work with \f$ N \rightarrow \infty \f$.
+         *
+         *  Also, we output \f$ p_i \f$ instead of \f$ p_i/N \f$ for the same reason.
+         */
+        void moprXgs_vrnl(const mopr<T> &Bq, const uint32_t &sec_vrnl, T* vec_new);
         
         // later add conserved quantum operators and corresponding quantum numbers?
     private:
