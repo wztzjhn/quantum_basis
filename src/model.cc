@@ -1393,7 +1393,7 @@ namespace qbasis {
     
     template <typename T>
     void model<T>::transform_vec_full(const std::vector<uint32_t> &plan, const uint32_t &sec_full,
-                                      const int &which_col, T *vec_new)
+                                      const MKL_INT &which_col, T *vec_new)
     {
         assert(which_col >= 0 && which_col < nconv);
         T* vec_old = eigenvecs_full.data() + dim_full[sec_full] * which_col;
@@ -1454,7 +1454,7 @@ namespace qbasis {
     
     template <typename T>
     void model<T>::projectQ_full(const std::vector<int> &momentum, const uint32_t &sec_full,
-                                 const int &which_col, T *vec_new)
+                                 const MKL_INT &which_col, T *vec_new)
     {
         assert(which_col >= 0 && which_col < nconv);
         T* vec_old = eigenvecs_full.data() + dim_full[sec_full] * which_col;
