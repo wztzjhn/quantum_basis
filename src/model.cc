@@ -20,6 +20,7 @@ namespace qbasis {
                     dim_full(std::vector<MKL_INT>(num_secs,0)),
                     dim_repr(std::vector<MKL_INT>(num_secs,0)),
                     dim_vrnl(std::vector<MKL_INT>(num_secs,0)),
+                    gs_E0_vrnl(100.0),
                     fake_pos(fake_pos_),
                     latt_parent(latt)
     {
@@ -29,8 +30,7 @@ namespace qbasis {
         basis_repr.resize(num_secs);
         basis_vrnl.resize(num_secs);
         norm_repr.resize(num_secs);
-        norm_gs_vrnl.resize(num_secs);
-        pos_gs_vrnl.resize(num_secs);
+        gs_norm_vrnl.resize(num_secs);
         Lin_Ja_full.resize(num_secs);
         Lin_Jb_full.resize(num_secs);
         Lin_Ja_repr.resize(num_secs);
@@ -270,7 +270,7 @@ namespace qbasis {
             std::vector<std::vector<int>> scratch_works(num_threads);
             std::vector<std::vector<int>> scratch_coors(num_threads);
             
-            #pragma omp parallel for schedule(dynamic,1)
+            #pragma omp parallel for schedule(dynamic,256)
             for (decltype(basis_sub_repr.size()) ra = 0; ra < basis_sub_repr.size(); ra++) {
                 int tid = omp_get_thread_num();
                 if (ra > 0 && ra % report == 0) {
@@ -406,6 +406,7 @@ namespace qbasis {
     template <typename T>
     void model<T>::build_basis_vrnl(const std::list<mbasis_elem> &initial_list,
                                     const mbasis_elem &gs,
+                                    const std::vector<double> &momentum_gs,
                                     const std::vector<double> &momentum,
                                     const uint32_t &iteration_depth,
                                     std::vector<mopr<T>> conserve_lst,
@@ -415,6 +416,11 @@ namespace qbasis {
         assert(conserve_lst.size() == val_lst.size());
         assert(sec_vrnl < basis_vrnl.size());
         momenta_vrnl[sec_vrnl] = momentum;
+        gs_momentum_vrnl = momentum_gs;
+        
+        gs_vrnl = gs;
+        std::vector<int> disp_vec;
+        gs_vrnl.translate_to_unique_state(props, latt_parent, disp_vec);
         
         // check if basis already generated
         bool flag_built = true;
@@ -444,7 +450,7 @@ namespace qbasis {
         
         if (! flag_built) {
             std::cout << "Building variational basis with " << val_lst.size()
-                      << " conserved quantum numbers..." << std::endl;
+            << " conserved quantum numbers..." << std::endl;
             std::cout << "Quantum #s: ";
             for (decltype(val_lst.size()) cnt = 0; cnt < val_lst.size(); cnt++)
                 std::cout << val_lst[cnt] << "\t";
@@ -477,6 +483,9 @@ namespace qbasis {
                 std::cout << std::endl;
             }
             
+            // remove ground state from list
+            basis.remove(gs_vrnl);
+            
             // move results to model
             dim_vrnl[sec_vrnl] = static_cast<MKL_INT>(basis.size());
             basis_vrnl[sec_vrnl].resize(basis.size());
@@ -487,42 +496,45 @@ namespace qbasis {
             }
         }
         
-        // calculate normalization factors (actually just for the ground state)
-        pos_gs_vrnl[sec_vrnl] = binary_search<mbasis_elem, MKL_INT>(basis_vrnl[sec_vrnl], gs, 0, dim_vrnl[sec_vrnl]);
-        if (pos_gs_vrnl[sec_vrnl] >=0 && pos_gs_vrnl[sec_vrnl] < dim_vrnl[sec_vrnl]) {
-            std::vector<double> cart;
-            std::complex<double> norm_gs(0.0,0.0);
-            for (uint32_t site = 0; site < latt_parent.total_sites(); site++) {
-                std::vector<int> disp;
-                int sub, sgn;
-                latt_parent.site2coor(disp, sub, site);
-                if (sub != 0) continue;
-                
-                std::vector<uint32_t> plan;
-                std::vector<int> scratch_work, scratch_coor;
-                latt_parent.translation_plan(plan, disp, scratch_coor, scratch_work);
-                auto basis_temp = gs;
-                basis_temp.transform(props, plan, sgn);
-                if (basis_temp == gs) {
-                    double exp_coef = 0.0;
-                    latt_parent.coor2cart(disp, 0, cart);
-                    for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
-                        exp_coef += momentum[d] * cart[d];
-                    }
-                    norm_gs += std::exp(std::complex<double>(0.0, exp_coef));
+        // calculate normalization factors (for the ground state)
+        std::vector<double> cart;
+        std::complex<double> norm_gs(0.0,0.0);
+        uint32_t cnt_total  = latt_parent.total_sites() / latt_parent.num_sublattice();
+        uint32_t cnt_repeat = 0;
+        for (uint32_t site = 0; site < latt_parent.total_sites(); site++) {
+            std::vector<int> disp;
+            int sub, sgn;
+            latt_parent.site2coor(disp, sub, site);
+            if (sub != 0) continue;
+            
+            std::vector<uint32_t> plan;
+            std::vector<int> scratch_work, scratch_coor;
+            latt_parent.translation_plan(plan, disp, scratch_coor, scratch_work);
+            auto basis_temp = gs_vrnl;
+            basis_temp.transform(props, plan, sgn);
+            if (basis_temp == gs_vrnl) {
+                cnt_repeat++;
+                double exp_coef = 0.0;
+                latt_parent.coor2cart(disp, 0, cart);
+                for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                    exp_coef += momentum[d] * cart[d];
                 }
+                norm_gs += std::exp(std::complex<double>(0.0, exp_coef));
             }
-            if (std::abs(norm_gs.imag()) > lanczos_precision || std::abs(norm_gs.real()) < lanczos_precision) {
-                norm_gs_vrnl[sec_vrnl] = 0.0;
-            } else {
-                assert(norm_gs.real() > 0.0);
-                norm_gs_vrnl[sec_vrnl] = static_cast<double>(latt_parent.total_sites() / latt_parent.num_sublattice()) / norm_gs.real();
-            }
-            std::cout << "GS pos       = " << pos_gs_vrnl[sec_vrnl] << std::endl;
-            std::cout << "GS norm_vrnl = " << norm_gs_vrnl[sec_vrnl] << std::endl;
-        } else {
-            norm_gs_vrnl[sec_vrnl] = 0.0;
         }
+        if (std::abs(norm_gs.imag()) > lanczos_precision || std::abs(norm_gs.real()) < lanczos_precision) {
+            gs_norm_vrnl[sec_vrnl] = 0.0;
+        } else {
+            assert(norm_gs.real() > 0.0);
+            gs_norm_vrnl[sec_vrnl] = static_cast<double>(latt_parent.total_sites() / latt_parent.num_sublattice()) / norm_gs.real();
+        }
+        gs_omegaG_vrnl = cnt_total / cnt_repeat;
+        std::cout << "omega_g(GS) = " << gs_omegaG_vrnl << std::endl;
+        std::cout << "norm_GS(Q=";
+        for (uint32_t d = 0; d < latt_parent.dimension() - 1; d++) std::cout << momentum[d] << ",";
+        std::cout << momentum[latt_parent.dimension()-1] << ") = " << gs_norm_vrnl[sec_vrnl] << std::endl;
+        assert(gs_norm_vrnl[sec_vrnl] < lanczos_precision ||
+               std::abs(gs_norm_vrnl[sec_vrnl] - gs_omegaG_vrnl) < lanczos_precision);
     }
     
     
@@ -749,12 +761,7 @@ namespace qbasis {
         auto &basis      = basis_vrnl[sec_vrnl];
         auto &momentum   = momenta_vrnl[sec_vrnl];
         auto &HamMat_csr = HamMat_csr_vrnl[sec_vrnl];
-        double norm_gs   = norm_gs_vrnl[sec_vrnl];
-        MKL_INT pos_gs   = pos_gs_vrnl[sec_vrnl];
         assert(dim > 0);
-        
-        double NsitesPsublatt = static_cast<double>(latt_parent.total_sites() / latt_parent.num_sublattice());
-        double NsitesPsublatt_sqrt = std::sqrt(NsitesPsublatt);
         
         int num_threads = 1;
         #pragma omp parallel
@@ -763,7 +770,7 @@ namespace qbasis {
             if (tid == 0) num_threads = omp_get_num_threads();
         }
         // prepare intermediates in advance
-        std::vector<wavefunction<T>> intermediate_states(num_threads, {basis[pos_gs]});
+        std::vector<wavefunction<T>> intermediate_states(num_threads, {gs_vrnl});
         std::vector<std::vector<int>> scratch_disp(num_threads);
         std::vector<std::vector<double>> scratch_cart(num_threads);
         
@@ -772,21 +779,40 @@ namespace qbasis {
         start = std::chrono::system_clock::now();
         lil_mat<T> matrix_lil(dim, upper_triangle);
         
+        // ground state energy
+        if (std::abs(gs_E0_vrnl - 100.0) < lanczos_precision) {
+            double NsitesPsublatt = static_cast<double>(latt_parent.total_sites() / latt_parent.num_sublattice());
+            gs_E0_vrnl = 0.0;
+            for (decltype(Ham_diag.size()) cnt = 0; cnt < Ham_diag.size(); cnt++)
+                gs_E0_vrnl += gs_vrnl.diagonal_operator(props, Ham_diag[cnt]).real();
+            for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
+                intermediate_states[0].copy(gs_vrnl);
+                oprXphi(*it, props, intermediate_states[0]);
+                for (MKL_INT cnt = 0; cnt < intermediate_states[0].size(); cnt++) {
+                    auto &ele_new = intermediate_states[0][cnt];
+                    auto unique_state = ele_new.first;
+                    unique_state.translate_to_unique_state(props,latt_parent,scratch_disp[0]);
+                    if (unique_state != gs_vrnl) continue;
+                    latt_parent.coor2cart(scratch_disp[0], 0, scratch_cart[0]);
+                    double exp_coef = 0.0;
+                    for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                        exp_coef += gs_momentum_vrnl[d] * scratch_cart[0][d];
+                    }
+                    auto coeff = static_cast<double>(gs_omegaG_vrnl) / NsitesPsublatt * std::exp(std::complex<double>(0.0,exp_coef));
+                    gs_E0_vrnl += coeff.real();
+                }
+            }
+        }
+        
         #pragma omp parallel for schedule(dynamic,256)
         for (MKL_INT i = 0; i < dim; i++) {
             int tid = omp_get_thread_num();
-            
-            if (i == pos_gs && norm_gs < lanczos_precision) {
-                matrix_lil.add(i, i, static_cast<T>(fake_pos + static_cast<double>(i)/static_cast<double>(dim)));
-                continue;
-            }
             
             // diagonal part
             for (decltype(Ham_diag.size()) cnt = 0; cnt < Ham_diag.size(); cnt++)
                 matrix_lil.add(i, i, basis[i].diagonal_operator(props,Ham_diag[cnt]));
             
             // non-diagonal part
-            double nrm2_i = (i == pos_gs ? std::sqrt(norm_gs)/NsitesPsublatt_sqrt : 1.0); // \gamma_i = 1 / sqrt(N <phi| P_k |phi>)
             for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
                 intermediate_states[tid].copy(basis[i]);
                 oprXphi(*it, props, intermediate_states[tid]);
@@ -797,20 +823,13 @@ namespace qbasis {
                     MKL_INT j = binary_search<mbasis_elem,MKL_INT>(basis, unique_state, 0, dim);   // < j | H | i >
                     if (j < 0 || j >= dim) continue;
                     if (upper_triangle && i > j) continue;
-                    double nrm2_j = (j == pos_gs ? std::sqrt(norm_gs)/NsitesPsublatt_sqrt : 1.0); // \gamma_j
-                    double prefactor = nrm2_i * nrm2_j;
-                    if (i != pos_gs && j != pos_gs) {
-                        assert(std::abs(prefactor - 1.0) < lanczos_precision);
-                    } else {
-                        std::cout << "i=" << i << ", j =" << j << ", prefactor=" << prefactor << std::endl;
-                    }
                     latt_parent.coor2cart(scratch_disp[tid], 0, scratch_cart[tid]);
                     double exp_coef = 0.0;
                     for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                         exp_coef += momentum[d] * scratch_cart[tid][d];
                     }
-                    auto coeff = prefactor * std::exp(std::complex<double>(0.0,exp_coef));
-                    matrix_lil.add(i, j, qbasis::conjugate(coeff*ele_new.second));
+                    auto coeff = std::exp(std::complex<double>(0.0,exp_coef));
+                    matrix_lil.add(i, j, conjugate(coeff*ele_new.second));
                 }
             }
         }
@@ -859,7 +878,7 @@ namespace qbasis {
         
         std::cout << "*" << std::flush;
         if (sec_sym == 0) {
-            #pragma omp parallel for schedule(dynamic,1)
+            #pragma omp parallel for schedule(dynamic,256)
             for (MKL_INT i = 0; i < dim; i++) {
                 int tid = omp_get_thread_num();
                 
@@ -903,7 +922,7 @@ namespace qbasis {
             std::vector<mbasis_elem> state_sub_new2(num_threads);
             std::vector<mbasis_elem> ra_z_Tj_rb(num_threads);
             
-            #pragma omp parallel for schedule(dynamic,1)
+            #pragma omp parallel for schedule(dynamic,256)
             for (MKL_INT i = 0; i < dim; i++) {
                 int tid = omp_get_thread_num();
                 
@@ -1693,14 +1712,14 @@ namespace qbasis {
     
     
     template <typename T>
-    void model<T>::measure_repr_dynamic(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
+    void model<T>::measure_repr_dynamic(const mopr<T> &Aq, const uint32_t &sec_old, const uint32_t &sec_new,
                                         const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[])
     {
         MKL_INT dim_new = dim_repr[sec_new];
         auto &HamMat    = HamMat_csr_repr[sec_new];
         std::vector<T> vec_new(2*dim_new);
-        moprXvec_repr(lhs, sec_old, sec_new, static_cast<MKL_INT>(0), vec_new.data()); // vec_new = lhs^\dagger * |phi>
-        norm = nrm2(dim_new, vec_new.data(), 1);                                 // norm = sqrt(<phi| lhs * lhs^\dagger |phi>)
+        moprXvec_repr(Aq, sec_old, sec_new, static_cast<MKL_INT>(0), vec_new.data()); // vec_new = Aq * |phi>
+        norm = nrm2(dim_new, vec_new.data(), 1);                      // norm = sqrt(<phi| Aq^\dagger * Aq |phi>)
         if (std::abs(norm) < lanczos_precision) return;
         scal(dim_new, 1.0 / norm, vec_new.data(), 1);                            // normalize vec_new
         if (matrix_free) {

@@ -181,7 +181,9 @@ namespace qbasis {
     void fill_Lin_table(const std::vector<basis_prop> &props, const std::vector<qbasis::mbasis_elem> &basis,
                         std::vector<MKL_INT> &Lin_Ja, std::vector<MKL_INT> &Lin_Jb);
     
-    // (sublattice) for a given list of full basis, find the reps according to translational symmetry
+    /** \brief (sublattice) for a given list of full basis, find the reps according to translational symmetry.
+     *  Note: any state = T(disp2rep) * |rep>
+     */
     void classify_trans_full2rep(const std::vector<basis_prop> &props,
                                  const std::vector<mbasis_elem> &basis_all,
                                  const lattice &latt,
@@ -481,7 +483,7 @@ namespace qbasis {
                                const lattice &latt, const std::vector<int> &disp, int &sgn);
         */
         
-        /** \brief Translation(disp_vec) * old state = unique state */
+        /** \brief old state = T(-disp_vec) * unique state */
         mbasis_elem& translate_to_unique_state(const std::vector<basis_prop> &props,
                                                const lattice &latt, std::vector<int> &disp_vec);
         
@@ -1284,10 +1286,15 @@ namespace qbasis {
         
         /** \brief 1 / <rep | P_k | rep> */
         std::vector<std::vector<double>> norm_repr;
-        /** \brief 1 / <vac | P_k | vac> = omega_g, for the variational vacuum state */
-        std::vector<double> norm_gs_vrnl;
-        std::vector<MKL_INT> pos_gs_vrnl;                           // position of the vacuum state in the variational basis
         
+        /** \brief 1 / <vac | P_k | vac> = omega_g, for the variational vacuum state */
+        std::vector<double> gs_norm_vrnl;
+        /** \brief omega_g, orbital size of the variational vacuum state */
+        uint32_t gs_omegaG_vrnl;
+        /** \brief ground state energy of the variational vacuum state */
+        double   gs_E0_vrnl;
+        /** \brief ground state momentum */
+        std::vector<double> gs_momentum_vrnl;
         
         std::vector<csr_mat<T>>            HamMat_csr_full;
         std::vector<csr_mat<T>>            HamMat_csr_repr;
@@ -1365,6 +1372,7 @@ namespace qbasis {
         // build the variational basis to run Trugman's method
         void build_basis_vrnl(const std::list<mbasis_elem> &initial_list,
                               const mbasis_elem &gs,
+                              const std::vector<double> &momentum_gs,
                               const std::vector<double> &momentum,
                               const uint32_t &iteration_depth,
                               std::vector<mopr<T>> conserve_lst = {},
@@ -1429,6 +1437,9 @@ namespace qbasis {
         
         /** \brief return dim_repr */
         std::vector<MKL_INT> dimension_repr() { return dim_repr; }
+        
+        /** \brief return dim_vrnl */
+        std::vector<MKL_INT> dimension_vrnl() { return dim_vrnl; }
         
         /** \brief return E0 */
         double energy_min() { return E0; }
@@ -1525,10 +1536,42 @@ namespace qbasis {
          *     B_q \equiv \sqrt{N} A_q = \sum_i A_{r_i} e^{i q \cdot r_i},
          *  \f]
          *  since we cannot directly work with \f$ N \rightarrow \infty \f$.
+         *  (summation only over the box)
          *
          *  Also, we output \f$ p_i \f$ instead of \f$ p_i/N \f$ for the same reason.
          */
         void moprXgs_vrnl(const mopr<T> &Bq, const uint32_t &sec_vrnl, T* vec_new);
+        
+        
+        /** \f[
+         *     A_q | vec \rangle = \sum_i \frac{p_i}{\sqrt{N}} | \varphi_i (k+q) \rangle + p_G | G(k+q) \rangle,
+         *  \f]
+         *  where \f$ | \varphi_k \rangle \f$ is a state with momentum k
+         *
+         *  Note: in this input, will use
+         *  \f[
+         *     B_q \equiv \sqrt{N} A_q = \sum_i A_{r_i} e^{i q \cdot r_i},
+         *  \f]
+         *  since we cannot directly work with \f$ N \rightarrow \infty \f$.
+         *  (summation only over the box)
+         *
+         *  Also, we output \f$ p_i \f$ instead of \f$ p_i/\sqrt{N} \f$ for the same reason.
+         */
+        void moprXvec_vrnl(const mopr<T> &Bq, const uint32_t &sec_old, const uint32_t &sec_new,
+                           const T* vec_old, T* vec_new, T &pG);
+        
+        void moprXvec_vrnl(const mopr<T> &Bq, const uint32_t &sec_old, const uint32_t &sec_new,
+                           const MKL_INT &which_col, T* vec_new, T &pG);
+        
+        /** \brief < phi | lhs | phi >, where lhs is translational invariant */
+        T measure_vrnl_static_trans_invariant(const mopr<T> &lhs, const uint32_t &sec_vrnl, const MKL_INT &which_col);
+        
+        /** Calculate dynamical structure factors (in Trugman basis).
+         *  For details, see measure_full_dynamic.
+         *  Note: the input \f$ B_q = \sqrt{N} A_q  \f$ (summation only over the box)
+         */
+        void measure_vrnl_dynamic(const mopr<T> &Bq, const uint32_t &sec_vrnl,
+                                  const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[]);
         
         // later add conserved quantum operators and corresponding quantum numbers?
     private:
