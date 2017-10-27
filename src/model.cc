@@ -1730,6 +1730,236 @@ namespace qbasis {
     }
     
     
+    template <typename T>
+    void model<T>::moprXgs_vrnl(const mopr<T> &Bq, const uint32_t &sec_vrnl, T *vec_new)
+    {
+        MKL_INT dim   = dim_vrnl[sec_vrnl];
+        auto &basis   = basis_vrnl[sec_vrnl];
+        auto &momentum   = momenta_vrnl[sec_vrnl];
+        auto Bq_dg    = Bq;
+        Bq_dg.dagger();
+        auto L        = latt_parent.Linear_size();
+        double sqrt_omega_g = std::sqrt(static_cast<double>(gs_omegaG_vrnl));
+        assert(dim > 0);
+        
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        
+        int num_threads = 1;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) num_threads = omp_get_num_threads();
+        }
+        // prepare intermediates in advance
+        std::vector<wavefunction<T>> intermediate_states(num_threads, {props});
+        std::vector<std::vector<int>> scratch_disp(num_threads,std::vector<int>(L.size()));
+        std::vector<std::vector<double>> scratch_cart(num_threads);
+        
+        std::cout << "mopr * gs (t = " << sec_vrnl << ")... " << std::endl;
+        for (MKL_INT j = 0; j < dim; j++) vec_new[j] = 0.0;
+        
+        #pragma omp parallel for schedule(dynamic,256)
+        for (MKL_INT j = 0; j < dim; j++) {
+            //basis[j].prt_states(props);
+            
+            int tid = omp_get_thread_num();
+            
+            for (auto it = Bq_dg.mats.begin(); it != Bq_dg.mats.end(); it++) {
+                if (it->q_diagonal()) continue;
+                
+                intermediate_states[tid].copy(basis[j]);
+                oprXphi(*it, props, intermediate_states[tid]);
+                
+                for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                    //it->prt();
+                    //std::cout << std::endl;
+                    
+                    //intermediate_states[tid][cnt].first.prt_states(props);
+                    
+                    
+                    auto &ele_new = intermediate_states[tid][cnt];
+                    if (gs_omegaG_vrnl == 1) {
+                        if (ele_new.first != gs_vrnl) continue;
+                        for (uint32_t d = 0; d < scratch_disp[tid].size(); d++)
+                            scratch_disp[tid][d] = 0;
+                    } else {
+                        auto unique_state = ele_new.first;
+                        unique_state.translate_to_unique_state(props,latt_parent,scratch_disp[tid]);
+                        if (unique_state != gs_vrnl) continue;
+                    }
+                    latt_parent.coor2cart(scratch_disp[tid], 0, scratch_cart[tid]);
+                    double exp_coef = 0.0;
+                    for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                        exp_coef += momentum[d] * scratch_cart[tid][d];
+                    }
+                    auto coeff = std::exp(std::complex<double>(0.0,exp_coef));
+                    vec_new[j] += sqrt_omega_g * conjugate(coeff*ele_new.second);
+                }
+            }
+        }
+    }
+    
+    
+    template <typename T>
+    void model<T>::moprXvec_vrnl(const mopr<T> &Bq, const uint32_t &sec_old, const uint32_t &sec_new,
+                                 const T* vec_old, T* vec_new, T &pG)
+    {
+        // note: vec_new has size dim_repr[sec_target]
+        auto &momentum   = momenta_vrnl[sec_new];                                // k + q
+        auto L           = latt_parent.Linear_size();
+        double sqrt_omega_g = std::sqrt(static_cast<double>(gs_omegaG_vrnl));
+        assert(dim_vrnl[sec_old] > 0 && dim_vrnl[sec_new] > 0);
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        
+        int num_threads = 1;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) num_threads = omp_get_num_threads();
+        }
+        // prepare intermediates in advance
+        std::vector<wavefunction<T>> intermediate_states(num_threads, {props});
+        std::vector<std::vector<int>> scratch_disp(num_threads);
+        std::vector<std::vector<double>> scratch_cart(num_threads);
+        
+        std::cout << "mopr * vec (s = " << sec_old << ", t = " << sec_new << ")... " << std::endl;
+        for (MKL_INT j = 0; j < dim_vrnl[sec_new]; j++) vec_new[j] = 0.0;
+        pG = static_cast<T>(0.0);
+        
+        #pragma omp parallel for schedule(dynamic,256)
+        for (MKL_INT j = 0; j < dim_vrnl[sec_old]; j++) {
+            auto sj = vec_old[j];
+            if (std::abs(sj) < lanczos_precision) continue;
+            
+            int tid = omp_get_thread_num();
+            
+            std::vector<std::pair<MKL_INT, T>> values;
+            T value_gs = static_cast<T>(0.0);
+            for (auto it = Bq.mats.begin(); it != Bq.mats.end(); it++) {
+                if (Bq.q_diagonal()) {                                           // only momentum changes
+                    values.push_back(std::pair<MKL_INT, T>(j, sj * basis_vrnl[sec_old][j].diagonal_operator(props,*it)));
+                } else {
+                    intermediate_states[tid].copy(basis_vrnl[sec_old][j]);
+                    oprXphi(*it, props, intermediate_states[tid]);
+                    for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                        auto &ele_new = intermediate_states[tid][cnt];
+                        auto unique_state = ele_new.first;
+                        unique_state.translate_to_unique_state(props,latt_parent,scratch_disp[tid]);
+                        if (unique_state == gs_vrnl && gs_norm_vrnl[sec_new] > lanczos_precision) {
+                            latt_parent.coor2cart(scratch_disp[tid], 0, scratch_cart[tid]);
+                            double exp_coef = 0.0;
+                            for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                                exp_coef += momentum[d] * scratch_cart[tid][d];
+                            }
+                            value_gs +=  sj * ele_new.second / sqrt_omega_g
+                                       * std::exp(std::complex<double>(0.0,exp_coef)) ;
+                        } else {
+                            MKL_INT i = binary_search<mbasis_elem,MKL_INT>(basis_vrnl[sec_new], unique_state, 0, dim_vrnl[sec_new]);
+                            if (i < 0 || i >= dim_vrnl[sec_new]) continue;
+                            latt_parent.coor2cart(scratch_disp[tid], 0, scratch_cart[tid]);
+                            double exp_coef = 0.0;
+                            for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                                exp_coef += momentum[d] * scratch_cart[tid][d];
+                            }
+                            auto coef = sj * ele_new.second * std::exp(std::complex<double>(0.0,exp_coef));
+                            values.push_back(std::pair<MKL_INT, T>(i, coef));
+                        }
+                    }
+                }
+            }
+            #pragma omp critical
+            {
+                pG += value_gs;
+                for (decltype(values.size()) cnt = 0; cnt < values.size(); cnt++)
+                    vec_new[values[cnt].first] += values[cnt].second;
+            }
+        }
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+    }
+    
+    
+    template <typename T>
+    void model<T>::moprXvec_vrnl(const mopr<T> &Bq, const uint32_t &sec_old, const uint32_t &sec_new,
+                                 const MKL_INT &which_col, T *vec_new, T &pG)
+    {
+        assert(which_col >= 0 && which_col < nconv);
+        T* vec_old = eigenvecs_vrnl.data() + dim_vrnl[sec_old] * which_col;
+        moprXvec_vrnl(Bq, sec_old, sec_new, vec_old, vec_new, pG);
+    }
+    
+    
+    template <typename T>
+    T model<T>::measure_vrnl_static_trans_invariant(const mopr<T> &lhs, const uint32_t &sec_vrnl, const MKL_INT &which_col)
+    {
+        MKL_INT dim   = dim_vrnl[sec_vrnl];
+        auto &basis   = basis_vrnl[sec_vrnl];
+        auto momentum = momenta[sec_vrnl];
+        auto eigenvec = eigenvecs_vrnl.data() + dim * which_col;
+        
+        T result = static_cast<T>(0.0);
+        int num_threads = 1;
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) num_threads = omp_get_num_threads();
+        }
+        // prepare intermediates in advance
+        std::vector<qbasis::wavefunction<T>> intermediate_states(num_threads, {props});
+        
+        #pragma omp parallel for schedule(dynamic,1)
+        for (MKL_INT n = 0; n < dim; n++) {
+            int tid = omp_get_thread_num();
+            
+            if (std::abs(eigenvec[n]) < qbasis::lanczos_precision) continue;
+            T values = static_cast<T>(0.0);
+            for (decltype(lhs.size()) cnt_opr = 0; cnt_opr < lhs.size(); cnt_opr++) {
+                auto &A = lhs[cnt_opr];
+                auto temp = eigenvec[n];
+                if (A.q_diagonal()) {
+                    values += temp * qbasis::conjugate(temp) * basis[n].diagonal_operator(props, A);
+                } else {
+                    qbasis::oprXphi(A, props, intermediate_states[tid], basis[n]);
+                    for (decltype(intermediate_states[tid].size()) cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
+                        auto &ele = intermediate_states[tid][cnt];
+                        auto unique_state = ele.first;
+                        std::vector<int> disp_vec;
+                        unique_state.translate_to_unique_state(props, latt_parent, disp_vec);
+                        auto m = qbasis::binary_search<qbasis::mbasis_elem,MKL_INT>(basis, unique_state, 0, dim);
+                        if (m < dim) {
+                            values += qbasis::conjugate(eigenvec[m]) * temp * ele.second
+                            * std::exp(std::complex<double>(0.0,momentum[0]*disp_vec[0]+momentum[1]*disp_vec[1]));
+                        }
+                    }
+                }
+            }
+            #pragma omp critical
+            {
+                result += values;
+            }
+        }
+        return result;
+        
+    }
+    
+    template <typename T>
+    void model<T>::measure_vrnl_dynamic(const mopr<T> &Bq, const uint32_t &sec_vrnl,
+                                        const MKL_INT &maxit, MKL_INT &m, double &norm, double *hessenberg)
+    {
+        MKL_INT dim  = dim_vrnl[sec_vrnl];
+        auto &HamMat = HamMat_csr_vrnl[sec_vrnl];
+        std::vector<T> vec_new(2*dim);
+        moprXgs_vrnl(Bq, sec_vrnl, vec_new.data());                   // vec_new = N * Aq * |phi>
+        norm = nrm2(dim, vec_new.data(), 1);                          // norm = sqrt(<phi| Aq^\dagger * Aq |phi>)
+        if (std::abs(norm) < lanczos_precision) return;
+        scal(dim, 1.0 / norm, vec_new.data(), 1);                     // normalize vec_new
+        lanczos(0, maxit-1, maxit, m, dim, HamMat, vec_new.data(), hessenberg, "dnmcs");
+    }
+    
+    
 //     ---------------------------- deprecated ---------------------------------
 //     ---------------------------- deprecated ---------------------------------
     
