@@ -253,8 +253,31 @@ namespace qbasis {
             if (tid == 0) num_threads = omp_get_num_threads();
         }
         
+        bool flag_built = (dim_repr[sec_repr] <= 0 || static_cast<MKL_INT>(basis_repr[sec_repr].size()) != dim_repr[sec_repr]) ? false : true;
+        // double check quantum numbers
+        if (flag_built) {
+            for (MKL_INT j = 0; j < dim_repr[sec_repr]; j++) {
+                bool flag = true;
+                auto it_opr = conserve_lst.begin();
+                auto it_val = val_lst.begin();
+                while (it_opr != conserve_lst.end()) {
+                    auto temp = basis_repr[sec_repr][j].diagonal_operator(props, *it_opr);
+                    if (std::abs(temp - *it_val) >= 1e-5) {
+                        flag = false;
+                        break;
+                    }
+                    it_opr++;
+                    it_val++;
+                }
+                if (flag == false) {
+                    flag_built = false;
+                    break;
+                }
+            }
+        }
+        
         // now start enumerating representatives, if not generated before (or generated but already destroyed)
-        if (dim_repr[sec_repr] <= 0 || static_cast<MKL_INT>(basis_repr[sec_repr].size()) != dim_repr[sec_repr]) {
+        if (! flag_built) {
             std::cout << "Enumerating basis_repr with " << val_lst.size() << " conserved quantum numbers..." << std::endl;
             std::cout << "Quantum #s: ";
             for (decltype(val_lst.size()) cnt = 0; cnt < val_lst.size(); cnt++)
