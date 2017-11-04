@@ -1606,7 +1606,14 @@ namespace qbasis {
     
 
     
-
+//  ---------------------------  Kernel polynomial  ----------------------------
+//  ----------------------------------------------------------------------------
+    
+    /** \brief use Lanczos to determine the upper and lower bound of the eigenvalues of the matrix. */
+    template <typename T, typename MAT>
+    void energy_scale(const MKL_INT &dim, const MAT &mat, T v[], double &lo, double &hi,
+                      const double &extend = 0.1, const MKL_INT &iters = 128);
+    
     
 //  --------------------------- Miscellaneous stuff ----------------------------
 //  ----------------------------------------------------------------------------
