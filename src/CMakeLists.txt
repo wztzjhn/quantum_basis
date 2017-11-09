@@ -1,6 +1,7 @@
 set(QBASIS_SRC
   basis.cc
   ckpt.cc
+  kpm.cc
   lanczos.cc
   lattice.cc
   miscellaneous.cc

@@ -49,7 +49,13 @@ namespace qbasis {
         hi += slack;
         std::cout << "[lo, hi]: [" << lo << ", " << hi << "] (extented by " << extend << ")." << std::endl;
     }
+    template void energy_scale(const MKL_INT &dim, const csr_mat<double> &mat,
+                               double v[], double &lo, double &hi,
+                               const double &extend, const MKL_INT &iters);
     template void energy_scale(const MKL_INT &dim, const csr_mat<std::complex<double>> &mat,
+                               std::complex<double> v[], double &lo, double &hi,
+                               const double &extend, const MKL_INT &iters);
+    template void energy_scale(const MKL_INT &dim, const model<std::complex<double>> &mat,
                                std::complex<double> v[], double &lo, double &hi,
                                const double &extend, const MKL_INT &iters);
     
