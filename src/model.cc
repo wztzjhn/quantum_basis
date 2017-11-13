@@ -1920,7 +1920,7 @@ namespace qbasis {
     {
         MKL_INT dim   = dim_vrnl[sec_vrnl];
         auto &basis   = basis_vrnl[sec_vrnl];
-        auto momentum = momenta[sec_vrnl];
+        auto momentum = momenta_vrnl[sec_vrnl];
         auto eigenvec = eigenvecs_vrnl.data() + dim * which_col;
         
         T result = static_cast<T>(0.0);
@@ -1933,7 +1933,7 @@ namespace qbasis {
         // prepare intermediates in advance
         std::vector<qbasis::wavefunction<T>> intermediate_states(num_threads, {props});
         
-        #pragma omp parallel for schedule(dynamic,1)
+        #pragma omp parallel for schedule(dynamic,256)
         for (MKL_INT n = 0; n < dim; n++) {
             int tid = omp_get_thread_num();
             
