@@ -496,6 +496,7 @@ namespace qbasis {
                 }
                 if (flag) basis.push_back(ele);
             }
+            rm_mbasis_dulp_trans(latt_parent, basis, props);
             std::cout << basis.size() << std::endl << std::endl;
             
             // iterate through all levels

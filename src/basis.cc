@@ -2907,7 +2907,7 @@ namespace qbasis {
         std::chrono::time_point<std::chrono::system_clock> start, end;
         std::chrono::duration<double> elapsed_seconds;
         start = std::chrono::system_clock::now();
-        std::cout << "Move states to translational equivalents... " << std::flush;
+        std::cout << "Moving states to translational equivalents... " << std::flush;
         
         std::vector<int> disp_vec;
         for (auto it = basis.begin(); it != basis.end(); it++)
