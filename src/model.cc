@@ -536,29 +536,18 @@ namespace qbasis {
             latt_parent.translation_plan(plan, disp, scratch_coor, scratch_work);
             auto basis_temp = gs_vrnl;
             basis_temp.transform(props, plan, sgn);
-            if (basis_temp == gs_vrnl) {
-                cnt_repeat++;
-                double exp_coef = 0.0;
-                latt_parent.coor2cart(disp, 0, cart);
-                for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
-                    exp_coef += momentum[d] * cart[d];
-                }
-                norm_gs += std::exp(std::complex<double>(0.0, exp_coef));
-            }
-        }
-        if (std::abs(norm_gs.imag()) > lanczos_precision || std::abs(norm_gs.real()) < lanczos_precision) {
-            gs_norm_vrnl[sec_vrnl] = 0.0;
-        } else {
-            assert(norm_gs.real() > 0.0);
-            gs_norm_vrnl[sec_vrnl] = static_cast<double>(latt_parent.total_sites() / latt_parent.num_sublattice()) / norm_gs.real();
+            if (basis_temp == gs_vrnl) cnt_repeat++;
         }
         gs_omegaG_vrnl = cnt_total / cnt_repeat;
         std::cout << "omega_g(GS) = " << gs_omegaG_vrnl << std::endl;
+        
+        auto dis_gs = momentum;
+        for (decltype(dis_gs.size()) d = 0; d < dis_gs.size(); d++) dis_gs[d] -= momentum_gs[d];
+        auto dis_gs_nrm2 = nrm2(static_cast<MKL_INT>(dis_gs.size()), dis_gs.data(), 1);
+        gs_norm_vrnl[sec_vrnl] = dis_gs_nrm2 > lanczos_precision ? 0 : gs_omegaG_vrnl;
         std::cout << "norm_GS(Q=";
         for (uint32_t d = 0; d < latt_parent.dimension() - 1; d++) std::cout << momentum[d] << ",";
         std::cout << momentum[latt_parent.dimension()-1] << ") = " << gs_norm_vrnl[sec_vrnl] << std::endl;
-        assert(gs_norm_vrnl[sec_vrnl] < lanczos_precision ||
-               std::abs(gs_norm_vrnl[sec_vrnl] - gs_omegaG_vrnl) < lanczos_precision);
     }
     
     
