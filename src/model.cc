@@ -518,28 +518,27 @@ namespace qbasis {
                 swap(basis_vrnl[sec_vrnl][j], *it);
                 j++;
             }
-        }
-        
-        // calculate normalization factors (for the ground state)
-        std::vector<double> cart;
-        std::complex<double> norm_gs(0.0,0.0);
-        uint32_t cnt_total  = latt_parent.total_sites() / latt_parent.num_sublattice();
-        uint32_t cnt_repeat = 0;
-        for (uint32_t site = 0; site < latt_parent.total_sites(); site++) {
-            std::vector<int> disp;
-            int sub, sgn;
-            latt_parent.site2coor(disp, sub, site);
-            if (sub != 0) continue;
             
-            std::vector<uint32_t> plan;
-            std::vector<int> scratch_work, scratch_coor;
-            latt_parent.translation_plan(plan, disp, scratch_coor, scratch_work);
-            auto basis_temp = gs_vrnl;
-            basis_temp.transform(props, plan, sgn);
-            if (basis_temp == gs_vrnl) cnt_repeat++;
+            // calculate normalization factors (for the ground state)
+            std::vector<double> cart;
+            uint32_t cnt_total  = latt_parent.total_sites() / latt_parent.num_sublattice();
+            uint32_t cnt_repeat = 0;
+            for (uint32_t site = 0; site < latt_parent.total_sites(); site++) {
+                std::vector<int> disp;
+                int sub, sgn;
+                latt_parent.site2coor(disp, sub, site);
+                if (sub != 0) continue;
+                
+                std::vector<uint32_t> plan;
+                std::vector<int> scratch_work, scratch_coor;
+                latt_parent.translation_plan(plan, disp, scratch_coor, scratch_work);
+                auto basis_temp = gs_vrnl;
+                basis_temp.transform(props, plan, sgn);
+                if (basis_temp == gs_vrnl) cnt_repeat++;
+            }
+            gs_omegaG_vrnl = cnt_total / cnt_repeat;
+            std::cout << "omega_g(GS) = " << gs_omegaG_vrnl << std::endl;
         }
-        gs_omegaG_vrnl = cnt_total / cnt_repeat;
-        std::cout << "omega_g(GS) = " << gs_omegaG_vrnl << std::endl;
         
         auto dis_gs = momentum;
         for (decltype(dis_gs.size()) d = 0; d < dis_gs.size(); d++) dis_gs[d] -= momentum_gs[d];
@@ -1309,7 +1308,7 @@ namespace qbasis {
     
     template <typename T>
     void model<T>::moprXvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
-                                 const T* vec_old, T* vec_new)
+                                 const T* vec_old, T* vec_new) const
     {
         // note: vec_new has size dim_full[sec_target]
         assert(dim_full[sec_old] > 0 && dim_full[sec_new] > 0);
@@ -1375,16 +1374,16 @@ namespace qbasis {
     
     template <typename T>
     void model<T>::moprXvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
-                                 const MKL_INT &which_col, T* vec_new)
+                                 const MKL_INT &which_col, T* vec_new) const
     {
         assert(which_col >= 0 && which_col < nconv);
-        T* vec_old = eigenvecs_full.data() + dim_full[sec_old] * which_col;
+        const T* vec_old = eigenvecs_full.data() + dim_full[sec_old] * which_col;
         moprXvec_full(lhs, sec_old, sec_new, vec_old, vec_new);
     }
     
     template <typename T>
     void model<T>::transform_vec_full(const std::vector<uint32_t> &plan, const uint32_t &sec_full,
-                                      const T* vec_old, T* vec_new)
+                                      const T* vec_old, T* vec_new) const
     {
         MKL_INT dim  = dim_full[sec_full];
         auto &basis  = basis_full[sec_full];
@@ -1425,16 +1424,16 @@ namespace qbasis {
     
     template <typename T>
     void model<T>::transform_vec_full(const std::vector<uint32_t> &plan, const uint32_t &sec_full,
-                                      const MKL_INT &which_col, T *vec_new)
+                                      const MKL_INT &which_col, T *vec_new) const
     {
         assert(which_col >= 0 && which_col < nconv);
-        T* vec_old = eigenvecs_full.data() + dim_full[sec_full] * which_col;
+        const T* vec_old = eigenvecs_full.data() + dim_full[sec_full] * which_col;
         transform_vec_full(plan, sec_full, vec_old, vec_new);
     }
     
     template <typename T>
     void model<T>::projectQ_full(const std::vector<int> &momentum, const uint32_t &sec_full,
-                                 const T *vec_old, T *vec_new)
+                                 const T *vec_old, T *vec_new) const
     {
         MKL_INT dim = dim_full[sec_full];
         auto L = latt_parent.Linear_size();
@@ -1486,16 +1485,16 @@ namespace qbasis {
     
     template <typename T>
     void model<T>::projectQ_full(const std::vector<int> &momentum, const uint32_t &sec_full,
-                                 const MKL_INT &which_col, T *vec_new)
+                                 const MKL_INT &which_col, T *vec_new) const
     {
         assert(which_col >= 0 && which_col < nconv);
-        T* vec_old = eigenvecs_full.data() + dim_full[sec_full] * which_col;
+        const T* vec_old = eigenvecs_full.data() + dim_full[sec_full] * which_col;
         projectQ_full(momentum, sec_full, vec_old, vec_new);
     }
     
     
     template <typename T>
-    T model<T>::measure_full_static(const mopr<T> &lhs, const uint32_t &sec_full, const MKL_INT &which_col)
+    T model<T>::measure_full_static(const mopr<T> &lhs, const uint32_t &sec_full, const MKL_INT &which_col) const
     {
         assert(which_col >= 0 && which_col < nconv);
         MKL_INT base = dim_full[sec_full] * which_col;
@@ -1506,7 +1505,7 @@ namespace qbasis {
     
     
     template <typename T>
-    T model<T>::measure_full_static(const std::vector<mopr<T>> &lhs, const std::vector<uint32_t> &sec_old_list, const MKL_INT &which_col)
+    T model<T>::measure_full_static(const std::vector<mopr<T>> &lhs, const std::vector<uint32_t> &sec_old_list, const MKL_INT &which_col) const
     {
         assert(which_col >= 0 && which_col < nconv);
         assert(sec_old_list.size() > 0 && sec_old_list.size() == lhs.size());
@@ -1529,7 +1528,7 @@ namespace qbasis {
     
     template <typename T>
     void model<T>::measure_full_dynamic(const mopr<T> &Aq, const uint32_t &sec_old, const uint32_t &sec_new,
-                                        const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[])
+                                        const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[]) const
     {
         MKL_INT dim_new = dim_full[sec_new];
         auto &HamMat    = HamMat_csr_full[sec_new];
@@ -1548,7 +1547,7 @@ namespace qbasis {
     
     template <typename T>
     void model<T>::moprXvec_repr(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
-                                 const T* vec_old, T* vec_new)
+                                 const T* vec_old, T* vec_new) const
     {
         // note: vec_new has size dim_repr[sec_target]
         auto dim_latt = latt_parent.dimension();
@@ -1679,16 +1678,16 @@ namespace qbasis {
     
     template <typename T>
     void model<T>::moprXvec_repr(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
-                                 const MKL_INT &which_col, T* vec_new)
+                                 const MKL_INT &which_col, T* vec_new) const
     {
         assert(which_col >= 0 && which_col < nconv);
-        T* vec_old = eigenvecs_repr.data() + dim_repr[sec_old] * which_col;
+        const T* vec_old = eigenvecs_repr.data() + dim_repr[sec_old] * which_col;
         moprXvec_repr(lhs, sec_old, sec_new, vec_old, vec_new);
     }
     
     
     template <typename T>
-    T model<T>::measure_repr_static(const mopr<T> &lhs, const uint32_t &sec_repr, const MKL_INT &which_col)
+    T model<T>::measure_repr_static(const mopr<T> &lhs, const uint32_t &sec_repr, const MKL_INT &which_col) const
     {
         double denominator = 1.0;
         auto L = latt_parent.Linear_size();
@@ -1726,7 +1725,7 @@ namespace qbasis {
     
     template <typename T>
     void model<T>::measure_repr_dynamic(const mopr<T> &Aq, const uint32_t &sec_old, const uint32_t &sec_new,
-                                        const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[])
+                                        const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[]) const
     {
         MKL_INT dim_new = dim_repr[sec_new];
         auto &HamMat    = HamMat_csr_repr[sec_new];
@@ -1744,7 +1743,7 @@ namespace qbasis {
     
     
     template <typename T>
-    void model<T>::moprXgs_vrnl(const mopr<T> &Bq, const uint32_t &sec_vrnl, T *vec_new)
+    void model<T>::moprXgs_vrnl(const mopr<T> &Bq, const uint32_t &sec_vrnl, T *vec_new) const
     {
         MKL_INT dim   = dim_vrnl[sec_vrnl];
         auto &basis   = basis_vrnl[sec_vrnl];
@@ -1816,7 +1815,7 @@ namespace qbasis {
     
     template <typename T>
     void model<T>::moprXvec_vrnl(const mopr<T> &Bq, const uint32_t &sec_old, const uint32_t &sec_new,
-                                 const T* vec_old, T* vec_new, T &pG)
+                                 const T* vec_old, T* vec_new, T &pG) const
     {
         // note: vec_new has size dim_repr[sec_target]
         auto &momentum   = momenta_vrnl[sec_new];                                // k + q
@@ -1897,16 +1896,16 @@ namespace qbasis {
     
     template <typename T>
     void model<T>::moprXvec_vrnl(const mopr<T> &Bq, const uint32_t &sec_old, const uint32_t &sec_new,
-                                 const MKL_INT &which_col, T *vec_new, T &pG)
+                                 const MKL_INT &which_col, T *vec_new, T &pG) const
     {
         assert(which_col >= 0 && which_col < nconv);
-        T* vec_old = eigenvecs_vrnl.data() + dim_vrnl[sec_old] * which_col;
+        const T* vec_old = eigenvecs_vrnl.data() + dim_vrnl[sec_old] * which_col;
         moprXvec_vrnl(Bq, sec_old, sec_new, vec_old, vec_new, pG);
     }
     
     
     template <typename T>
-    T model<T>::measure_vrnl_static_trans_invariant(const mopr<T> &lhs, const uint32_t &sec_vrnl, const MKL_INT &which_col)
+    T model<T>::measure_vrnl_static_trans_invariant(const mopr<T> &lhs, const uint32_t &sec_vrnl, const MKL_INT &which_col) const
     {
         MKL_INT dim   = dim_vrnl[sec_vrnl];
         auto &basis   = basis_vrnl[sec_vrnl];
@@ -1960,7 +1959,7 @@ namespace qbasis {
     
     template <typename T>
     void model<T>::measure_vrnl_dynamic(const mopr<T> &Bq, const uint32_t &sec_vrnl,
-                                        const MKL_INT &maxit, MKL_INT &m, double &norm, double *hessenberg)
+                                        const MKL_INT &maxit, MKL_INT &m, double &norm, double *hessenberg) const
     {
         MKL_INT dim  = dim_vrnl[sec_vrnl];
         auto &HamMat = HamMat_csr_vrnl[sec_vrnl];

@@ -30,6 +30,7 @@
 #include <cstdint>
 #include <complex>
 #include <forward_list>
+#include <functional>
 #include <initializer_list>
 #include <list>
 #include <map>
@@ -1433,52 +1434,52 @@ namespace qbasis {
         void locate_Emax_iram(const uint32_t &sec_sym_, const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
         
         /** \brief return dim_full */
-        std::vector<MKL_INT> dimension_full() { return dim_full; }
+        std::vector<MKL_INT> dimension_full() const { return dim_full; }
         
         /** \brief return dim_repr */
-        std::vector<MKL_INT> dimension_repr() { return dim_repr; }
+        std::vector<MKL_INT> dimension_repr() const { return dim_repr; }
         
         /** \brief return dim_vrnl */
-        std::vector<MKL_INT> dimension_vrnl() { return dim_vrnl; }
+        std::vector<MKL_INT> dimension_vrnl() const { return dim_vrnl; }
         
         /** \brief return E0 */
-        double energy_min() { return E0; }
+        double energy_min() const { return E0; }
         
         /** \brief return Emax */
-        double energy_max() { return Emax; }
+        double energy_max() const { return Emax; }
         
         /** \brief return gap */
-        double energy_gap() { return gap; }
+        double energy_gap() const { return gap; }
         
         /** \brief lhs | phi >, where | phi > is an input state */
         void moprXvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
-                           const T* vec_old, T* vec_new);
+                           const T* vec_old, T* vec_new) const;
         
         /** \brief lhs | phi >, where | phi > is an eigenstate */
         void moprXvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
-                           const MKL_INT &which_col, T* vec_new);
+                           const MKL_INT &which_col, T* vec_new) const;
         
         /** transform a vector in the full space according to the plan */
         void transform_vec_full(const std::vector<uint32_t> &plan, const uint32_t &sec_full,
-                                const T* vec_old, T* vec_new);
+                                const T* vec_old, T* vec_new) const;
         
         /** transform an eigenvector in the full space according to the plan */
         void transform_vec_full(const std::vector<uint32_t> &plan, const uint32_t &sec_full,
-                                const MKL_INT &which_col, T* vec_new);
+                                const MKL_INT &which_col, T* vec_new) const;
         
         /** \brief project a state into a given momentum sector */
         void projectQ_full(const std::vector<int> &momentum, const uint32_t &sec_full,
-                           const T* vec_old, T* vec_new);
+                           const T* vec_old, T* vec_new) const;
         
         /** \brief project an eigenstate into a given momentum sector */
         void projectQ_full(const std::vector<int> &momentum, const uint32_t &sec_full,
-                           const MKL_INT &which_col, T* vec_new);
+                           const MKL_INT &which_col, T* vec_new) const;
         
         /** \brief < phi | lhs | phi > */
-        T measure_full_static(const mopr<T> &lhs, const uint32_t &sec_full, const MKL_INT &which_col);
+        T measure_full_static(const mopr<T> &lhs, const uint32_t &sec_full, const MKL_INT &which_col) const;
         
         /** \brief < phi |  ... * lhs2 * lhs1 * lhs0 | phi >, where sec_old has to be given for each lhs_i */
-        T measure_full_static(const std::vector<mopr<T>> &lhs, const std::vector<uint32_t> &sec_old_list, const MKL_INT &which_col);
+        T measure_full_static(const std::vector<mopr<T>> &lhs, const std::vector<uint32_t> &sec_old_list, const MKL_INT &which_col) const;
         
         /** \brief calculate dynamical structure factors
          *
@@ -1497,7 +1498,7 @@ namespace qbasis {
          *  NEED enable CKPT later!!!
          */
         void measure_full_dynamic(const mopr<T> &Aq, const uint32_t &sec_old, const uint32_t &sec_new,
-                                  const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[]);
+                                  const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[]) const;
         
         /** \brief \f$ A_q | \phi \rangle \f$
          *
@@ -1506,25 +1507,25 @@ namespace qbasis {
          *  the old state has momentum k, the new state has momentum k+q
          */
         void moprXvec_repr(const mopr<T> &Aq, const uint32_t &sec_old, const uint32_t &sec_new,
-                           const T* vec_old, T* vec_new);
+                           const T* vec_old, T* vec_new) const;
         
         /** \brief \f$ A_q | \phi \rangle  \f$, where \f$ | \phi \rangle \f$ is an eigenstate  */
         void moprXvec_repr(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
-                           const MKL_INT &which_col, T* vec_new);
+                           const MKL_INT &which_col, T* vec_new) const;
         
         
         void transform_vec_repr(const std::vector<uint32_t> &plan, const uint32_t &sec_full,
-                                const MKL_INT &which_col, std::vector<T> &vec_new);
+                                const MKL_INT &which_col, std::vector<T> &vec_new) const;
         
         
         /** \brief < phi | lhs | phi > */
-        T measure_repr_static(const mopr<T> &lhs, const uint32_t &sec_repr, const MKL_INT &which_col);
+        T measure_repr_static(const mopr<T> &lhs, const uint32_t &sec_repr, const MKL_INT &which_col) const;
         
         /** \brief Calculate dynamical structure factors (in translational symmetric basis).
          *  For details, see measure_full_dynamic.
          */
         void measure_repr_dynamic(const mopr<T> &Aq, const uint32_t &sec_old, const uint32_t &sec_new,
-                                  const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[]);
+                                  const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[]) const;
         
         /** \f[
          *     A_q | G(Q_0) \rangle = \sum_i \frac{p_i}{N} | \varphi_i (Q_0 + q) \rangle,
@@ -1540,7 +1541,7 @@ namespace qbasis {
          *
          *  Also, we output \f$ p_i \f$ instead of \f$ p_i/N \f$ for the same reason.
          */
-        void moprXgs_vrnl(const mopr<T> &Bq, const uint32_t &sec_vrnl, T* vec_new);
+        void moprXgs_vrnl(const mopr<T> &Bq, const uint32_t &sec_vrnl, T* vec_new) const;
         
         
         /** \f[
@@ -1558,20 +1559,20 @@ namespace qbasis {
          *  Also, we output \f$ p_i \f$ instead of \f$ p_i/\sqrt{N} \f$ for the same reason.
          */
         void moprXvec_vrnl(const mopr<T> &Bq, const uint32_t &sec_old, const uint32_t &sec_new,
-                           const T* vec_old, T* vec_new, T &pG);
+                           const T* vec_old, T* vec_new, T &pG) const;
         
         void moprXvec_vrnl(const mopr<T> &Bq, const uint32_t &sec_old, const uint32_t &sec_new,
-                           const MKL_INT &which_col, T* vec_new, T &pG);
+                           const MKL_INT &which_col, T* vec_new, T &pG) const;
         
         /** \brief < phi | lhs | phi >, where lhs is translational invariant */
-        T measure_vrnl_static_trans_invariant(const mopr<T> &lhs, const uint32_t &sec_vrnl, const MKL_INT &which_col);
+        T measure_vrnl_static_trans_invariant(const mopr<T> &lhs, const uint32_t &sec_vrnl, const MKL_INT &which_col) const;
         
         /** Calculate dynamical structure factors (in Trugman basis).
          *  For details, see measure_full_dynamic.
          *  Note: the input \f$ B_q = \sqrt{N} A_q  \f$ (summation only over the box)
          */
         void measure_vrnl_dynamic(const mopr<T> &Bq, const uint32_t &sec_vrnl,
-                                  const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[]);
+                                  const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[]) const;
         
         // later add conserved quantum operators and corresponding quantum numbers?
     private:
@@ -1677,8 +1678,13 @@ namespace qbasis {
     template <typename T>
     void vec_swap(const MKL_INT &n, T *x, T *y);
     
-    // fill x with Lehmer 16807 random numbers
-    // seed == 0 reserved for filling 1/n to each element
+    /** \beief fill x with zeros */
+    template <typename T>
+    void vec_zeros(const MKL_INT &n, T *x);
+    
+    /** \brief fill x with Lehmer 16807 random numbers,
+     *  where seed == 0 reserved for filling 1/n to each element
+     */
     template <typename T>
     void vec_randomize(const MKL_INT &n, T *x, const uint32_t &seed = 1);
     

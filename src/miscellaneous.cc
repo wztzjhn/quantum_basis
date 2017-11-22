@@ -303,6 +303,16 @@ namespace qbasis {
     template void vec_swap(const MKL_INT &n, double *x, double *y);
     template void vec_swap(const MKL_INT &n, std::complex<double> *x, std::complex<double> *y);
     
+    
+    template <typename T>
+    void vec_zeros(const MKL_INT &n, T *x)
+    {
+        T ele = static_cast<T>(0.0);
+        for (MKL_INT j = 0; j < n; j++) x[j] = ele;
+    }
+    template void vec_zeros(const MKL_INT &n, double *x);
+    template void vec_zeros(const MKL_INT &n, std::complex<double> *x);
+    
     template <typename T>
     void vec_randomize(const MKL_INT &n, T *x, const uint32_t &seed)
     {
