@@ -1574,6 +1574,28 @@ namespace qbasis {
         void measure_vrnl_dynamic(const mopr<T> &Bq, const uint32_t &sec_vrnl,
                                   const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[]) const;
         
+        /** Build the matrix for calculating the observables in the Wannier state
+         *
+         *  \f[
+         *     \mu_{k_1 k_2} = \langle \phi(k_1) | B_{k_1 - k_2} | \phi(k_2) \rangle ,
+         *  \f]
+         *  where
+         *  \f[
+         *     B_q = \sqrt{N} A_q =  \sum_i e^{i q \cdot r_i} A_{r_i}.
+         *  \f]
+         *  Note: \f$ \phi(k_1) \f$ and \f$ \phi(k_2) \f$ should be in the same band (same quantum numbers and well-defined dispersion).
+         *  Thus, this function ONLY works if you really have a well defined band.
+         *
+         *  Currently, we pose strong assumptions: sec_vrnl with given {Sz}, sec_vrnl+1 with {Sz+1}
+         */
+        
+        //const std::vector<mopr<T>> &Bq_list,
+        void WannierMat_vrnl(
+                             const uint32_t &sec_vrnl,
+                             const std::vector<std::vector<double>> &momenta_list,
+                             std::vector<std::vector<std::complex<double>>> &matrix_mu_list,
+                             const std::function<MKL_INT(const model<T>&, const uint32_t&)> &locate_state);
+        
         // later add conserved quantum operators and corresponding quantum numbers?
     private:
         double Emax;

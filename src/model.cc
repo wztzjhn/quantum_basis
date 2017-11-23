@@ -1971,6 +1971,71 @@ namespace qbasis {
         lanczos(0, maxit-1, maxit, m, dim, HamMat, vec_new.data(), hessenberg, "dnmcs");
     }
     
+    //const std::vector<mopr<T>> &Bq_list,
+    template <typename T>
+    void model<T>::WannierMat_vrnl(
+                                   const uint32_t &sec_vrnl,
+                                   const std::vector<std::vector<double>> &momenta_list,
+                                   std::vector<std::vector<std::complex<double>>> &matrix_mu_list,
+                                   const std::function<MKL_INT(const model<T>&, const uint32_t&)> &locate_state)
+    {
+        assert(sec_vrnl < basis_vrnl.size());
+        
+        MKL_INT dim   = dim_vrnl[sec_vrnl];
+        auto &basis   = basis_vrnl[sec_vrnl];
+        assert(static_cast<MKL_INT>(basis.size()) == dim);
+        uint32_t num_k    = momenta_list.size();
+//        uint32_t num_oprs = Bq_list.size();
+        uint32_t num_oprs = 1;
+        
+        
+        matrix_mu_list.resize(num_oprs);
+        for (uint32_t j = 0; j < num_oprs; j++) matrix_mu_list[j].resize(num_k * num_k);
+        
+        // for dumping temporary files
+        fs::path outdir("out_Wannier");
+        if (fs::exists(outdir)) fs::remove_all(outdir);
+        fs::create_directory(outdir);
+        
+        // diagonalize H for all the momenta
+        MKL_INT warning_cnt = 0;
+        for (uint32_t k_idx = 0; k_idx < num_k; k_idx++) {
+            std::cout << "k_idx = " << k_idx << std::endl;
+            std::string vec_filename = "out_Wannier/eigvec_" + std::to_string(k_idx) + ".dat";
+            
+            // change the system momentum
+            auto &momentum = momenta_list[k_idx];
+            momenta_vrnl[sec_vrnl] = momentum;
+            
+            // re-calculate the GS normalization factor
+            auto momentum_dis = momentum;
+            axpy(static_cast<MKL_INT>(momentum.size()), -1.0, gs_momentum_vrnl.data(), 1, momentum_dis.data(), 1);
+            auto dis_gs_nrm2 = nrm2(static_cast<MKL_INT>(momentum_dis.size()), momentum_dis.data(), 1);
+            gs_norm_vrnl[sec_vrnl] = dis_gs_nrm2 > lanczos_precision ? 0 : gs_omegaG_vrnl;
+            
+            generate_Ham_sparse_vrnl(sec_vrnl);
+            
+            locate_E0_iram(2,30,40,10000);
+            
+            // now locate the state and store it on disk
+            MKL_INT level = locate_state(*this, sec_vrnl);
+            std::vector<std::complex<double>> eigvec_k(dim);
+            if (level >=0 && level < nconv) {
+                copy(dim, eigenvecs_vrnl.data() + level * dim, 1, eigvec_k.data(), 1);
+            } else {
+                std::cout << "Warning#" << ++warning_cnt << ": state not located!" << std::endl;
+                vec_zeros(dim, eigvec_k.data());
+            }
+            vec_disk_write(vec_filename, dim, eigvec_k.data());
+            std::cout << std::endl;
+        }
+        
+
+        
+        
+        
+    }
+    
     
 //     ---------------------------- deprecated ---------------------------------
 //     ---------------------------- deprecated ---------------------------------
