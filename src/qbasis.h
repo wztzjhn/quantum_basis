@@ -1586,14 +1586,13 @@ namespace qbasis {
          *  Note: \f$ \phi(k_1) \f$ and \f$ \phi(k_2) \f$ should be in the same band (same quantum numbers and well-defined dispersion).
          *  Thus, this function ONLY works if you really have a well defined band.
          *
-         *  Currently, we pose strong assumptions: sec_vrnl with given {Sz}, sec_vrnl+1 with {Sz+1}
+         *  Each pair denotes the position \f$ r_i \f$ (in cartesin coordinates) and the operator \f$ A_{r_i} \f$.
          */
-        
-        //const std::vector<mopr<T>> &Bq_list,
+        // const std::vector<std::pair<std::vector<double>,mopr<T>>> Ar_list,
         void WannierMat_vrnl(
                              const uint32_t &sec_vrnl,
                              const std::vector<std::vector<double>> &momenta_list,
-                             std::vector<std::vector<std::complex<double>>> &matrix_mu_list,
+                             std::vector<std::complex<double>> &matrix_mu_list,
                              const std::function<MKL_INT(const model<T>&, const uint32_t&)> &locate_state);
         
         // later add conserved quantum operators and corresponding quantum numbers?

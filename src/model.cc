@@ -1971,66 +1971,109 @@ namespace qbasis {
         lanczos(0, maxit-1, maxit, m, dim, HamMat, vec_new.data(), hessenberg, "dnmcs");
     }
     
-    //const std::vector<mopr<T>> &Bq_list,
+    //const std::vector<std::pair<std::vector<double>,mopr<T>>> Ar_list,
     template <typename T>
     void model<T>::WannierMat_vrnl(
                                    const uint32_t &sec_vrnl,
                                    const std::vector<std::vector<double>> &momenta_list,
-                                   std::vector<std::vector<std::complex<double>>> &matrix_mu_list,
+                                   std::vector<std::complex<double>> &matrix_mu_list,
                                    const std::function<MKL_INT(const model<T>&, const uint32_t&)> &locate_state)
     {
         assert(sec_vrnl < basis_vrnl.size());
         
-        MKL_INT dim   = dim_vrnl[sec_vrnl];
-        auto &basis   = basis_vrnl[sec_vrnl];
+        MKL_INT dim    = dim_vrnl[sec_vrnl];
+        auto &basis    = basis_vrnl[sec_vrnl];
         assert(static_cast<MKL_INT>(basis.size()) == dim);
-        uint32_t num_k    = momenta_list.size();
-//        uint32_t num_oprs = Bq_list.size();
-        uint32_t num_oprs = 1;
+        uint32_t num_k = momenta_list.size();
+        matrix_mu_list.resize(num_k * num_k);
         
-        
-        matrix_mu_list.resize(num_oprs);
-        for (uint32_t j = 0; j < num_oprs; j++) matrix_mu_list[j].resize(num_k * num_k);
-        
-        // for dumping temporary files
+        // first check if eigenstates already built
+        bool states_built;
         fs::path outdir("out_Wannier");
-        if (fs::exists(outdir)) fs::remove_all(outdir);
-        fs::create_directory(outdir);
-        
-        // diagonalize H for all the momenta
-        MKL_INT warning_cnt = 0;
-        for (uint32_t k_idx = 0; k_idx < num_k; k_idx++) {
-            std::cout << "k_idx = " << k_idx << std::endl;
-            std::string vec_filename = "out_Wannier/eigvec_" + std::to_string(k_idx) + ".dat";
-            
-            // change the system momentum
-            auto &momentum = momenta_list[k_idx];
-            momenta_vrnl[sec_vrnl] = momentum;
-            
-            // re-calculate the GS normalization factor
-            auto momentum_dis = momentum;
-            axpy(static_cast<MKL_INT>(momentum.size()), -1.0, gs_momentum_vrnl.data(), 1, momentum_dis.data(), 1);
-            auto dis_gs_nrm2 = nrm2(static_cast<MKL_INT>(momentum_dis.size()), momentum_dis.data(), 1);
-            gs_norm_vrnl[sec_vrnl] = dis_gs_nrm2 > lanczos_precision ? 0 : gs_omegaG_vrnl;
-            
-            generate_Ham_sparse_vrnl(sec_vrnl);
-            
-            locate_E0_iram(2,30,40,10000);
-            
-            // now locate the state and store it on disk
-            MKL_INT level = locate_state(*this, sec_vrnl);
-            std::vector<std::complex<double>> eigvec_k(dim);
-            if (level >=0 && level < nconv) {
-                copy(dim, eigenvecs_vrnl.data() + level * dim, 1, eigvec_k.data(), 1);
+        if (fs::exists(outdir)) {
+            std::cout << "Folder out_Wannier already exists." << std::endl;
+            uint32_t num_files = 0;
+            for (auto &p : fs::directory_iterator("out_Wannier"))
+                if (std::regex_match(p.path().filename().string(), std::regex("eigvec_[[:digit:]]+\\.dat"))) num_files++;
+            std::cout << "Total number of eigvc_xxx.dat files in out_Wannier: " << num_files << std::endl;
+            if (num_files == num_k) {
+                std::cout << "(same number as k points we need)" << std::endl;
+                // check the first and last files
+                std::vector<T> temp_vec(dim);
+                int info1 = vec_disk_read("out_Wannier/eigvec_0.dat", dim, temp_vec.data());
+                int info2 = vec_disk_read("out_Wannier/eigvec_" + std::to_string(num_k-1) + ".dat", dim, temp_vec.data());
+                std::cout << "Integrity check for 1st and last file (0 is good): " << info1 << ", " << info2 << std::endl;
+                states_built = (info1 == 0 && info2 == 0);
             } else {
-                std::cout << "Warning#" << ++warning_cnt << ": state not located!" << std::endl;
-                vec_zeros(dim, eigvec_k.data());
+                std::cout << "(different from the number as k points we need)" << std::endl;
+                states_built = false;
             }
-            vec_disk_write(vec_filename, dim, eigvec_k.data());
-            std::cout << std::endl;
+            std::cout << "states_built? " << states_built << std::endl;
+            if (! states_built) fs::remove_all(outdir);
+        } else {
+            states_built = false;
         }
         
-
+        
+        if (! states_built) {
+            fs::create_directory(outdir);
+            
+            // diagonalize H for all the momenta
+            MKL_INT warning_cnt = 0;
+            for (uint32_t k_idx = 0; k_idx < num_k; k_idx++) {
+                std::cout << "k_idx = " << k_idx << std::endl;
+                std::string vec_filename = "out_Wannier/eigvec_" + std::to_string(k_idx) + ".dat";
+                
+                // change the system momentum
+                auto &momentum = momenta_list[k_idx];
+                momenta_vrnl[sec_vrnl] = momentum;
+                
+                // re-calculate the GS normalization factor
+                auto momentum_dis = momentum;
+                axpy(static_cast<MKL_INT>(momentum.size()), -1.0, gs_momentum_vrnl.data(), 1, momentum_dis.data(), 1);
+                auto dis_gs_nrm2 = nrm2(static_cast<MKL_INT>(momentum_dis.size()), momentum_dis.data(), 1);
+                gs_norm_vrnl[sec_vrnl] = dis_gs_nrm2 > lanczos_precision ? 0 : gs_omegaG_vrnl;
+                
+                generate_Ham_sparse_vrnl(sec_vrnl);
+                
+                locate_E0_iram(2,30,40,10000);
+                
+                // now locate the state and store it on disk
+                MKL_INT level = locate_state(*this, sec_vrnl);
+                std::vector<std::complex<double>> eigvec_k(dim);
+                if (level >=0 && level < nconv) {
+                    copy(dim, eigenvecs_vrnl.data() + level * dim, 1, eigvec_k.data(), 1);
+                } else {
+                    std::cout << "Warning#" << ++warning_cnt << ": state not located!" << std::endl;
+                    vec_zeros(dim, eigvec_k.data());
+                }
+                std::cout << "Writing " << vec_filename << " to disk..." << std::endl;
+                vec_disk_write(vec_filename, dim, eigvec_k.data());
+                std::cout << std::endl;
+            }
+        }
+        
+        std::vector<std::complex<double>> eigvec_k1(dim);
+        std::vector<std::complex<double>> eigvec_k2(dim);
+        for (uint32_t k2_idx = 0; k2_idx < num_k; k2_idx++) {
+            // read out phi(k2)
+            std::string vec_filek2 = "out_Wannier/eigvec_" + std::to_string(k2_idx) + ".dat";
+            int info2 = vec_disk_read(vec_filek2, dim, eigvec_k2.data());
+            assert(info2 == 0);
+            
+            for (uint32_t k1_idx = 0; k1_idx <= k2_idx; k1_idx++) {
+                // read out phi(k1)
+                std::string vec_filek1 = "out_Wannier/eigvec_" + std::to_string(k1_idx) + ".dat";
+                int info1 = vec_disk_read(vec_filek1, dim, eigvec_k1.data());
+                assert(info1 == 0);
+                
+                // now need contruct B_{k1-k2}
+                
+                
+                
+            }
+            
+        }
         
         
         
