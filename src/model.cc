@@ -1971,21 +1971,22 @@ namespace qbasis {
         lanczos(0, maxit-1, maxit, m, dim, HamMat, vec_new.data(), hessenberg, "dnmcs");
     }
     
-    //const std::vector<std::pair<std::vector<double>,mopr<T>>> Ar_list,
     template <typename T>
-    void model<T>::WannierMat_vrnl(
+    void model<T>::WannierMat_vrnl(const std::vector<std::pair<std::vector<double>,mopr<T>>> &Ar_list,
                                    const uint32_t &sec_vrnl,
                                    const std::vector<std::vector<double>> &momenta_list,
-                                   std::vector<std::complex<double>> &matrix_mu_list,
+                                   std::vector<std::complex<double>> &matrix_mu,
                                    const std::function<MKL_INT(const model<T>&, const uint32_t&)> &locate_state)
     {
-        assert(sec_vrnl < basis_vrnl.size());
+        assert(sec_vrnl < basis_vrnl.size() - 1);
         
         MKL_INT dim    = dim_vrnl[sec_vrnl];
         auto &basis    = basis_vrnl[sec_vrnl];
         assert(static_cast<MKL_INT>(basis.size()) == dim);
         uint32_t num_k = momenta_list.size();
-        matrix_mu_list.resize(num_k * num_k);
+        matrix_mu.resize(num_k * num_k);
+        
+        std::cout << "Building Wannier Matrix..." << std::endl;
         
         // first check if eigenstates already built
         bool states_built;
@@ -2053,13 +2054,45 @@ namespace qbasis {
             }
         }
         
+        // return Bq
+        auto FourierTR = [](const std::vector<std::pair<std::vector<double>,mopr<T>>> &Ar_list,
+                            const std::vector<double> &q)
+        {
+            mopr<T> Bq;
+            assert(q.size() == Ar_list[0].first.size());
+            for (decltype(Ar_list.size()) j = 0; j < Ar_list.size(); j++) {
+                double expcoef = 0.0;
+                for (uint32_t d = 0; d < q.size(); d++) expcoef += Ar_list[j].first[d] * q[d];
+                std::complex<double> temp = std::exp(std::complex<double>(0.0,expcoef));
+                Bq += temp * Ar_list[j].second;
+            }
+            return Bq;
+        };
+        
+        
+        // temporarily use the last sector
+        uint32_t sec_new = dim_vrnl.size() - 1;
+        dim_vrnl[sec_new] = dim_vrnl[sec_vrnl];
+        basis_vrnl[sec_new] = basis_vrnl[sec_vrnl];
+        
+        
+        // build the matrix
         std::vector<std::complex<double>> eigvec_k1(dim);
         std::vector<std::complex<double>> eigvec_k2(dim);
+        std::vector<std::complex<double>> vec_new(dim);
+        T pG;
         for (uint32_t k2_idx = 0; k2_idx < num_k; k2_idx++) {
             // read out phi(k2)
             std::string vec_filek2 = "out_Wannier/eigvec_" + std::to_string(k2_idx) + ".dat";
             int info2 = vec_disk_read(vec_filek2, dim, eigvec_k2.data());
             assert(info2 == 0);
+            
+            // re-calculate the GS normalization factor for k2_idx
+            momenta_vrnl[sec_vrnl] = momenta_list[k2_idx];
+            auto momentum_dis_k2 = momenta_vrnl[sec_vrnl];
+            for (uint32_t d = 0; d < momentum_dis_k2.size(); d++) momentum_dis_k2[d] -= gs_momentum_vrnl[d];
+            auto dis_gs_nrm2_k2 = nrm2(static_cast<MKL_INT>(momentum_dis_k2.size()), momentum_dis_k2.data(), 1);
+            gs_norm_vrnl[sec_vrnl] = dis_gs_nrm2_k2 > lanczos_precision ? 0 : gs_omegaG_vrnl;
             
             for (uint32_t k1_idx = 0; k1_idx <= k2_idx; k1_idx++) {
                 // read out phi(k1)
@@ -2067,16 +2100,42 @@ namespace qbasis {
                 int info1 = vec_disk_read(vec_filek1, dim, eigvec_k1.data());
                 assert(info1 == 0);
                 
+                // q = k1-k2
+                auto q_transfer = momenta_list[k1_idx];
+                for (uint32_t d = 0; d < q_transfer.size(); d++) q_transfer[d] -= momenta_list[k2_idx][d];
+                
                 // now need contruct B_{k1-k2}
+                auto Bq = FourierTR(Ar_list, q_transfer);
                 
+                std::cout << " --------- progress --------" << std::endl;
+                std::cout << " k2: " << k2_idx << " / " << num_k << std::endl;
+                std::cout << " k1: " << k1_idx << " / " << num_k << std::endl;
                 
+                // re-calculate the GS normalization factor for k1_idx
+                momenta_vrnl[sec_new] = momenta_list[k1_idx];
+                auto momentum_dis_k1 = momenta_vrnl[sec_new];
+                for (uint32_t d = 0; d < momentum_dis_k1.size(); d++) momentum_dis_k1[d] -= gs_momentum_vrnl[d];
+                auto dis_gs_nrm2_k1 = nrm2(static_cast<MKL_INT>(momentum_dis_k1.size()), momentum_dis_k1.data(), 1);
+                gs_norm_vrnl[sec_new] = dis_gs_nrm2_k1 > lanczos_precision ? 0 : gs_omegaG_vrnl;
                 
+                moprXvec_vrnl(Bq, sec_vrnl, sec_new, eigvec_k2.data(), vec_new.data(), pG);
+                
+                // temporarily neglect contributions from pG
+                matrix_mu[k1_idx + k2_idx * num_k] = dotc(dim, eigvec_k1.data(), 1, vec_new.data(), 1);
             }
-            
         }
         
+        // get the hermitian conjugate
+        for (uint32_t k2_idx = 0; k2_idx < num_k; k2_idx++) {
+            assert(std::abs(matrix_mu[k2_idx + k2_idx * num_k].imag()) < lanczos_precision);
+            for (uint32_t k1_idx = k2_idx+1; k1_idx < num_k; k1_idx++) {
+                matrix_mu[k1_idx + k2_idx * num_k] = conjugate(matrix_mu[k2_idx + k1_idx * num_k]);
+            }
+        }
         
-        
+        // release memory
+        basis_vrnl[sec_new].clear();
+        basis_vrnl[sec_new].shrink_to_fit();
     }
     
     

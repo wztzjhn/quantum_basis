@@ -1316,7 +1316,7 @@ namespace qbasis {
         // ---------------- deprecated --------------------
         
         
-        model(const lattice &latt, const uint32_t &num_secs = 3, const double &fake_pos_ = 100.0);
+        model(const lattice &latt, const uint32_t &num_secs = 5, const double &fake_pos_ = 100.0);
         
         ~model() {}
         
@@ -1588,11 +1588,10 @@ namespace qbasis {
          *
          *  Each pair denotes the position \f$ r_i \f$ (in cartesin coordinates) and the operator \f$ A_{r_i} \f$.
          */
-        // const std::vector<std::pair<std::vector<double>,mopr<T>>> Ar_list,
-        void WannierMat_vrnl(
+        void WannierMat_vrnl(const std::vector<std::pair<std::vector<double>,mopr<T>>> &Ar_list,
                              const uint32_t &sec_vrnl,
                              const std::vector<std::vector<double>> &momenta_list,
-                             std::vector<std::complex<double>> &matrix_mu_list,
+                             std::vector<std::complex<double>> &matrix_mu,
                              const std::function<MKL_INT(const model<T>&, const uint32_t&)> &locate_state);
         
         // later add conserved quantum operators and corresponding quantum numbers?
