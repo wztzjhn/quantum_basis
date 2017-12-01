@@ -1850,7 +1850,7 @@ namespace qbasis {
             std::vector<std::pair<MKL_INT, T>> values;
             T value_gs = static_cast<T>(0.0);
             for (auto it = Bq.mats.begin(); it != Bq.mats.end(); it++) {
-                if (Bq.q_diagonal()) {                                           // only momentum changes
+                if (it->q_diagonal()) {                                           // only momentum changes
                     values.push_back(std::pair<MKL_INT, T>(j, sj * basis_vrnl[sec_old][j].diagonal_operator(props,*it)));
                 } else {
                     intermediate_states[tid].copy(basis_vrnl[sec_old][j]);
