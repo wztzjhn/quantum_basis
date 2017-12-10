@@ -308,7 +308,8 @@ namespace qbasis {
     // divide into two identical sublattices, if Nsites even. To be used in the divide and conquer method
     lattice divide_lattice(const lattice &parent);
     
-    
+    int basis_disk_read(const std::string &filename, std::vector<mbasis_elem> &basis);
+    int basis_disk_write(const std::string &filename, const std::vector<mbasis_elem> &basis);
     
 
 
@@ -371,6 +372,8 @@ namespace qbasis {
         template <typename T> friend void oprXphi(const opr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, const bool&);
         template <typename T> friend void oprXphi(const opr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem, const bool&);
         template <typename T> friend void oprXphi(const opr_prod<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem, const bool&);
+        friend int basis_disk_read(const std::string&, std::vector<mbasis_elem>&);
+        friend int basis_disk_write(const std::string&, const std::vector<mbasis_elem>&);
     public:
         /** \brief default constructor */
         mbasis_elem() : mbits(nullptr) {}
@@ -1713,6 +1716,10 @@ namespace qbasis {
     
     template <typename T>
     int vec_disk_write(const std::string &filename, MKL_INT n, T *x);
+    
+    int basis_disk_read(const std::string &filename, std::vector<mbasis_elem> &basis);
+    
+    int basis_disk_write(const std::string &filename, const std::vector<mbasis_elem> &basis);
     
 }
 

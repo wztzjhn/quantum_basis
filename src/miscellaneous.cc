@@ -416,6 +416,82 @@ namespace qbasis {
     template int vec_disk_write(const std::string &filename, MKL_INT n, std::complex<double> *x);
     
     
+    int basis_disk_read(const std::string &filename, std::vector<mbasis_elem> &basis)
+    {
+        if (! fs::exists(fs::path(filename))) return 1;
+        boost::crc_32_type res_crc;
+        
+        std::ifstream fin(filename, std::ios::in | std::ios::binary);
+        MKL_INT n;
+        fin.read(reinterpret_cast<char*>(&n), sizeof(MKL_INT));
+        if (n < 1) {
+            fin.close();
+            return 1;
+        }
+        res_crc.process_bytes(&n, sizeof(MKL_INT));
+        basis.resize(n);
+        
+        uint16_t total_bytes;
+        fin.read(reinterpret_cast<char*>(&total_bytes), 2);
+        if (total_bytes < 3) {
+            fin.close();
+            return 1;
+        }
+        res_crc.process_bytes(&total_bytes, 2);
+        
+        uint64_t filesize_ideal = sizeof(MKL_INT) + 2 + total_bytes * n + sizeof(decltype(res_crc.checksum()));
+        if (fs::file_size(fs::path(filename)) != filesize_ideal) {
+            fin.close();
+            return 1;
+        }
+        
+        for (MKL_INT j = 0; j < n; j++) {
+            if (basis[j].mbits != nullptr) free(basis[j].mbits);
+            basis[j].mbits = static_cast<uint8_t*>(malloc(total_bytes * sizeof(uint8_t)));
+            char* pos = reinterpret_cast<char*>(basis[j].mbits);
+            fin.read(pos, total_bytes);
+            res_crc.process_bytes(pos, total_bytes);
+        }
+        
+        auto checksum = res_crc.checksum();
+        decltype(checksum) checksum_check;
+        fin.read(reinterpret_cast<char*>(&checksum_check), sizeof(decltype(checksum_check)));
+        fin.close();
+        
+        if (checksum == checksum_check) {
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+    
+    int basis_disk_write(const std::string &filename, const std::vector<mbasis_elem> &basis)
+    {
+        std::ofstream fout(filename, std::ios::out | std::ios::binary);
+        MKL_INT n = basis.size();
+        assert(n > 0 && basis[0].mbits != nullptr);
+        uint16_t total_bytes = static_cast<uint16_t>(basis[0].mbits[0] * 256) + static_cast<uint16_t>(basis[0].mbits[1]);
+        boost::crc_32_type res_crc;
+        
+        fout.write(reinterpret_cast<char*>(&n), sizeof(MKL_INT));
+        res_crc.process_bytes(&n, sizeof(MKL_INT));
+        fout.write(reinterpret_cast<char*>(&total_bytes), 2);
+        res_crc.process_bytes(&total_bytes, 2);
+        
+        for (MKL_INT j = 0; j < n; j++) {
+            char* pos = reinterpret_cast<char*>(basis[j].mbits);
+            assert(pos != nullptr);
+            fout.write(pos, total_bytes);
+            res_crc.process_bytes(pos, total_bytes);
+        }
+        
+        auto checksum = res_crc.checksum();
+        fout.write(reinterpret_cast<char*>(&checksum), sizeof(decltype(checksum)));
+        fout.close();
+        return 0;
+    }
+    
+    
     //  -------------- Multi-dimensional array data structure ------------------
     template <typename T>
     multi_array<T>::multi_array(const std::vector<uint64_t> &linear_size_input):
