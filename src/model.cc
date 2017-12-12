@@ -541,7 +541,12 @@ namespace qbasis {
         }
         
         auto dis_gs = momentum;
-        for (decltype(dis_gs.size()) d = 0; d < dis_gs.size(); d++) dis_gs[d] -= momentum_gs[d];
+        for (decltype(dis_gs.size()) d = 0; d < dis_gs.size(); d++) {
+            dis_gs[d] -= momentum_gs[d];
+            dis_gs[d] += 0.001*lanczos_precision;
+            while (dis_gs[d] < 0) dis_gs[d] += 2.0*pi;
+            while (dis_gs[d] > 2.0 * pi) dis_gs[d] -= 2.0*pi;
+        }
         auto dis_gs_nrm2 = nrm2(static_cast<MKL_INT>(dis_gs.size()), dis_gs.data(), 1);
         gs_norm_vrnl[sec_vrnl] = dis_gs_nrm2 > lanczos_precision ? 0 : gs_omegaG_vrnl;
         std::cout << "norm_GS(Q=";
