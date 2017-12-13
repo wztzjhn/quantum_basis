@@ -518,37 +518,39 @@ namespace qbasis {
                 swap(basis_vrnl[sec_vrnl][j], *it);
                 j++;
             }
-            
-            // calculate normalization factors (for the ground state)
-            std::vector<double> cart;
-            uint32_t cnt_total  = latt_parent.total_sites() / latt_parent.num_sublattice();
-            uint32_t cnt_repeat = 0;
-            for (uint32_t site = 0; site < latt_parent.total_sites(); site++) {
-                std::vector<int> disp;
-                int sub, sgn;
-                latt_parent.site2coor(disp, sub, site);
-                if (sub != 0) continue;
-                
-                std::vector<uint32_t> plan;
-                std::vector<int> scratch_work, scratch_coor;
-                latt_parent.translation_plan(plan, disp, scratch_coor, scratch_work);
-                auto basis_temp = gs_vrnl;
-                basis_temp.transform(props, plan, sgn);
-                if (basis_temp == gs_vrnl) cnt_repeat++;
-            }
-            gs_omegaG_vrnl = cnt_total / cnt_repeat;
-            std::cout << "omega_g(GS) = " << gs_omegaG_vrnl << std::endl;
         }
+        // calculate normalization factors (for the ground state)
+        std::vector<double> cart;
+        uint32_t cnt_total  = latt_parent.total_sites() / latt_parent.num_sublattice();
+        uint32_t cnt_repeat = 0;
+        for (uint32_t site = 0; site < latt_parent.total_sites(); site++) {
+            std::vector<int> disp;
+            int sub, sgn;
+            latt_parent.site2coor(disp, sub, site);
+            if (sub != 0) continue;
+            
+            std::vector<uint32_t> plan;
+            std::vector<int> scratch_work, scratch_coor;
+            latt_parent.translation_plan(plan, disp, scratch_coor, scratch_work);
+            auto basis_temp = gs_vrnl;
+            basis_temp.transform(props, plan, sgn);
+            if (basis_temp == gs_vrnl) cnt_repeat++;
+        }
+        gs_omegaG_vrnl = cnt_total / cnt_repeat;
+        std::cout << "omega_g(GS) = " << gs_omegaG_vrnl << std::endl;
+        assert(gs_omegaG_vrnl > 0 && gs_omegaG_vrnl < 50);
         
         auto dis_gs = momentum;
         for (decltype(dis_gs.size()) d = 0; d < dis_gs.size(); d++) {
             dis_gs[d] -= momentum_gs[d];
-            dis_gs[d] += 0.001*lanczos_precision;
+            dis_gs[d] += 10.0*machine_prec;
             while (dis_gs[d] < 0) dis_gs[d] += 2.0*pi;
             while (dis_gs[d] > 2.0 * pi) dis_gs[d] -= 2.0*pi;
         }
         auto dis_gs_nrm2 = nrm2(static_cast<MKL_INT>(dis_gs.size()), dis_gs.data(), 1);
+        std::cout << "dis_gs_nrm2 = " << dis_gs_nrm2 << std::endl;
         gs_norm_vrnl[sec_vrnl] = dis_gs_nrm2 > lanczos_precision ? 0 : gs_omegaG_vrnl;
+        assert(std::abs(gs_norm_vrnl[sec_vrnl]) < 50.0);
         std::cout << "norm_GS(Q=";
         for (uint32_t d = 0; d < latt_parent.dimension() - 1; d++) std::cout << momentum[d] << ",";
         std::cout << momentum[latt_parent.dimension()-1] << ") = " << gs_norm_vrnl[sec_vrnl] << std::endl;

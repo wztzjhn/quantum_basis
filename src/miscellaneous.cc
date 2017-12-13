@@ -16,7 +16,7 @@ namespace qbasis {
     
     void initialize(const bool &enable_ckpt_)
     {
-        std::cout << "----- Qbasis Version 2017/12/12 -----" << std::endl;
+        std::cout << "----- Qbasis Version 2017/12/13 -----" << std::endl;
         std::cout << "Time Now:               " << date_and_time() << std::endl << std::endl;
         
 #if defined(_OPENMP)
