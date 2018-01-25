@@ -209,7 +209,6 @@ namespace qbasis {
             sort_basis_normal_order(basis_full[sec_full]);
         }
         
-        nconv = 0;
     }
     
     
