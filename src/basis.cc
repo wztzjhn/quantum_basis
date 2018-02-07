@@ -39,6 +39,10 @@ namespace qbasis {
             dim_local = 3;
             Nfermion_map = std::vector<uint32_t>();
             dilute = false;
+        } else if (s == "spin-3/2") {                 // { |3/2>, |1/2>, |-1/2>, |-3/2> }
+            dim_local = 4;
+            Nfermion_map = std::vector<uint32_t>();
+            dilute = false;
         } else if (s == "dimer") {                    // { |s>, |t+>, |t->, |t0> } or { |s>, |tx>, |ty>, |tz> }
             dim_local = 4;
             Nfermion_map = std::vector<uint32_t>();
