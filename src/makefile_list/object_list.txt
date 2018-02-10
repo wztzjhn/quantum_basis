@@ -6,8 +6,3 @@ OBJS = basis.o \
        model.o \
        operators.o \
        sparse.o
-OBJS_EXTRA = extra/test.o \
-             extra/test_basis.o \
-             extra/test_lanczos.o \
-             extra/test_lattice.o \
-             extra/test_operator.o

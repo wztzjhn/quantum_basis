@@ -8,13 +8,10 @@ LIBS      = -larpack \
             -fopenmp \
             ${HOME}/installs/lib/libboost_filesystem.a ${HOME}/installs/lib/libboost_system.a
 
-#comment: The default boost libs on mac are typically built with clang, incompatible with g++. 
+#comment: The default boost libs on mac are typically built with clang, incompatible with g++.
 #         To resolve, we built a separate boost with g++, in folder ${HOME}/installs
 
 include makefile_list/object_list.txt
-
-test: $(OBJS) $(OBJS_EXTRA)
-	$(CXX) $(OBJS) $(OBJS_EXTRA) $(LIBS) -o ../bin/test.x
 
 libqbasis.a: $(OBJS)
 	ar rvs libqbasis.a $(OBJS)
@@ -26,4 +23,4 @@ install: libqbasis.a
 	$(CXX) $(CPPFLAGS)  -c -o $@ $<
 
 clean:
-	$(RM) *.o *.a extra/*.o
+	$(RM) *.o *.a
