@@ -1,5 +1,6 @@
 #include <iostream>
 #include "qbasis.h"
+#include "cpptoml.h"
 
 namespace qbasis {
     // ----------------- implementation of lattice ------------------
