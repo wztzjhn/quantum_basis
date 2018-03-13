@@ -60,20 +60,24 @@ plt.plot(carts[0][:,0],carts[0][:,1],"ro")
 plt.plot(carts[1][:,0],carts[1][:,1],"bs")
 
 plt.plot(carts[0][:,0]+(R[0][0]*a[0]+R[0][1]*a[1])[0],
-         carts[0][:,1]+(R[0][0]*a[0]+R[0][1]*a[1])[1],'o',color='grey')
+         carts[0][:,1]+(R[0][0]*a[0]+R[0][1]*a[1])[1],'o',color='orange')
 plt.plot(carts[1][:,0]+(R[0][0]*a[0]+R[0][1]*a[1])[0],
-         carts[1][:,1]+(R[0][0]*a[0]+R[0][1]*a[1])[1],"s",color='grey')
+         carts[1][:,1]+(R[0][0]*a[0]+R[0][1]*a[1])[1],"s",color='orange')
 plt.plot(carts[0][:,0]+(R[1][0]*a[0]+R[1][1]*a[1])[0],
-         carts[0][:,1]+(R[1][0]*a[0]+R[1][1]*a[1])[1],'o',color='orange')
+         carts[0][:,1]+(R[1][0]*a[0]+R[1][1]*a[1])[1],'o',color='grey')
 plt.plot(carts[1][:,0]+(R[1][0]*a[0]+R[1][1]*a[1])[0],
-         carts[1][:,1]+(R[1][0]*a[0]+R[1][1]*a[1])[1],"s",color='orange')
+         carts[1][:,1]+(R[1][0]*a[0]+R[1][1]*a[1])[1],"s",color='grey')
 
 #plt.xlim(math.floor(xmin-0.7),math.ceil(xmax+0.7))
 #plt.ylim(math.floor(ymin-0.7),math.ceil(ymax+0.7))
 plt.axes().set_aspect('equal')
 
+plt.arrow(0,0,a[0][0],a[0][1],color='magenta')
+plt.arrow(0,0,a[1][0],a[1][1],color='green')
+plt.arrow(a[0][0],a[0][1],a[1][0],a[1][1],color='green')
+plt.arrow(a[1][0],a[1][1],a[0][0],a[0][1],color='magenta')
 
-plt.arrow(0,0,(R[0][0]*a[0]+R[0][1]*a[1])[0],(R[0][0]*a[0]+R[0][1]*a[1])[1])
-plt.arrow(0,0,(R[1][0]*a[0]+R[1][1]*a[1])[0],(R[1][0]*a[0]+R[1][1]*a[1])[1])
+plt.arrow(0,0,(R[0][0]*a[0]+R[0][1]*a[1])[0],(R[0][0]*a[0]+R[0][1]*a[1])[1],color='orange')
+plt.arrow(0,0,(R[1][0]*a[0]+R[1][1]*a[1])[0],(R[1][0]*a[0]+R[1][1]*a[1])[1],color='grey')
 
 plt.show()
