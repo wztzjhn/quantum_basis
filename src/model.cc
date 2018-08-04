@@ -1361,6 +1361,11 @@ namespace qbasis {
                             i = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_new], ele.first, 0, dim_full[sec_new]);
                         }
                         if (i < 0 || i >= dim_full[sec_new]) continue;
+                        // when there are new states like ( |phi> - |phi> ), and |phi> lives outside the symmetry sector,
+                        // this assertion can fail, but not a true problem.
+                        // If you see assertion failing here, most likely you need to simplify the "lhs" operator,
+                        // such that these canceling terms are not generated.
+                        // This is something to double check and improve in the future.
                         assert(basis_full[sec_new][i] == ele.first);
                         values.push_back(std::pair<MKL_INT, T>(i, sj * ele.second));
                     }
