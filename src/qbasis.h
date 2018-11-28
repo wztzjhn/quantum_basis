@@ -1839,7 +1839,7 @@ namespace qbasis {
     }
     */
     
-    // general function to perform matrix vector product in mkl
+    // general function to perform matrix vector product in mkl, deprecated since MKL 2018.3
     inline // double
     void mkl_csrmv(const char transa, const MKL_INT m, const MKL_INT k, const double alpha, const char *matdescra,
                    const double *val, const MKL_INT *indx, const MKL_INT *pntrb, const MKL_INT *pntre,

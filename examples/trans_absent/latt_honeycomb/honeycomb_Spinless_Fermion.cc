@@ -111,7 +111,7 @@ int main() {
 
     // optional, will use more memory and give higher speed
     // generating matrix of the Hamiltonian in the full Hilbert space
-    spinless.generate_Ham_sparse_full(false);
+    spinless.generate_Ham_sparse_full(0,false);
     std::cout << std::endl;
 
 

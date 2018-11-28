@@ -1,4 +1,4 @@
-CXX       = g++-7
+CXX       = g++-8
 CPPFLAGS  = -O2 -std=c++11 -Wall -Wextra -m64 -fopenmp \
             -isystem ${MKLROOT}/include \
             -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig \

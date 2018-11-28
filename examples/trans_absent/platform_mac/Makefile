@@ -1,4 +1,4 @@
-CXX       = g++-7
+CXX       = g++-8
 CPPFLAGS  = -O2 -std=c++11 -m64 \
             -I ${HOME}/installs/include \
             -isystem ${MKLROOT}/include \
