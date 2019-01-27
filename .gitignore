@@ -44,6 +44,9 @@ test
 out_Qckpt
 plots
 refs
+cmake-build-debug
+.idea
+
 #temporarily keep the doxygen files private
 docs/html
 docs/latex
