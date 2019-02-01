@@ -57,6 +57,16 @@ namespace qbasis {
             b[1][0] = 0.0;      b[1][1] = 2.0 * pi; b[1][2] = 0.0;
             b[2][0] = 0.0;      b[2][1] = 0.0;      b[2][2] = 2.0 * pi;
             Nsites = L[0] * L[1] * L[2] * num_sub;
+        } else if (name == "triangular-stacked" || name == "Triangular-Stacked" || name == "TRIANGULAR-STACKED") {
+            assert(L.size() == 3);
+            num_sub = 1;
+            a[0][0] = 1.0;      a[0][1] = 0.0;                   a[0][2] = 0.0;
+            a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);       a[1][2] = 0.0;
+            a[2][0] = 0.0;      a[2][1] = 0.0;                   a[2][2] = 1.0;
+            b[0][0] = 2.0 * pi; b[0][1] = -2.0 * pi / sqrt(3.0); b[0][2] = 0.0;
+            b[1][0] = 0.0;      b[1][1] = 4.0 * pi / sqrt(3.0);  b[1][2] = 0.0;
+            b[2][0] = 0.0;      b[2][1] = 0.0;                   b[2][2] = 2.0 * pi;
+            Nsites = L[0] * L[1] * L[2] * num_sub;
         } else {
             std::cout << "Lattice not recognized! " << std::endl;
             assert(false);
