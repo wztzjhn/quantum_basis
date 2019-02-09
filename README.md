@@ -1,6 +1,31 @@
 # Qbasis
 Basis of condensed matter quantum lattice problems, for usage in exact diagonalization (ED). The code is designed for any general bosonic or fermionic problem (or a mix of both), as long as the user can provide the [matrix form of the elementary operators](docs/Manual.pdf) of the Hamiltonian.
 
+## Human-friendly usage (Heisenberg model as *example*)
+*Note: the grammars below may differ slightly from the acutal code, please refer to the folder "example" for exact usage.*
+- Writing a two-site spin-1/2 Heisenberg model can be as easy as:
+```
+auto Heisenberg = Sx1 * Sx2 + Sy1 * Sy2 + Sz1 * Sz2;
+```
+- Add a site 3?
+```
+Heisenberg += Sx2 * Sx3 + Sy2 * Sy3 + Sz2 * Sz3;
+```
+- Add more exotic interactions?
+```
+Heisenberg += (Sx1 * Sx2 + Sy1 * Sy2 + Sz1 * Sz2) * (Sx1 * Sx2 + Sy1 * Sy2 + Sz1 * Sz2);
+```
+- Eigen problem?
+```
+Heisenberg.locate_E0_lanczos();
+```
+- Measurement?
+```
+Heisenberg.measure(Sx1*Sx2);
+```
+- More featuers (good quantum numbers, translation symmetry, dynamical response)? Explore the folder "examples"!
+- Need design very different Hamiltonians? Explore the folder "examples" for ideas!
+
 ## Examples
 To learn how to use this library to design ED code for your own models, please refer to the folder "examples":
 - Chain
