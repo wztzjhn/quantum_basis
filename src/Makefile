@@ -20,7 +20,7 @@ install: libqbasis.a
 	$(RM) ${HOME}/installs/lib/libqbasis.*; cp libqbasis.a ${HOME}/installs/lib; cp qbasis.h ${HOME}/installs/include
 
 %.o: %.cc
-	$(CXX) $(CPPFLAGS)  -c -o $@ $<
+	$(CXX) $(CPPFLAGS) -c -o $@ $<
 
 clean:
 	$(RM) *.o *.a
