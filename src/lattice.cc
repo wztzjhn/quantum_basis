@@ -4,18 +4,40 @@
 
 namespace qbasis {
     // ----------------- implementation of lattice ------------------
-    lattice::lattice(const std::string &name, const std::vector<uint32_t> &L_, const std::vector<std::string> &bc_) : L(L_), bc(bc_)
+    lattice::lattice(const std::string &name,
+                     const std::vector<uint32_t> &L_,
+                     const std::vector<std::string> &bc_) : manual(false), bc(bc_), L(L_)
     {
         assert(L.size() == bc.size());
         dim = static_cast<uint32_t>(L.size());
         a = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
         b = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
+        
+        // for the moment, only allow R to be parallel to a; change in future versions
+        R.resize(dim);
+        for (decltype(dim) d = 0; d < dim; d++) {
+            R[d].resize(dim);
+            R[d].assign(dim, 0);
+            R[d][d] = L[d];
+        }
+        
+        tilted.resize(dim);
+        for (decltype(dim) d = 0; d < dim; d++) {
+            tilted[d] = false;
+            for (decltype(dim) j = 0; j < dim; j++) {
+                if (j != d) tilted[d] = (tilted[d] || (R[d][j] != 0));
+            }
+            assert(tilted[d] == false);
+        }
+        
         if (name == "chain" || name == "Chain" || name == "CHAIN") {
             assert(L.size() == 1);
             num_sub = 1;
             a[0][0] = 1.0;
             b[0][0] = 2.0 * pi;
             Nsites = L[0] * num_sub;
+            pos_sub.resize(num_sub);
+            pos_sub[0] = std::vector<double>{0.0};
         } else if (name == "square" || name == "Square" || name == "SQUARE") {
             assert(L.size() == 2);
             num_sub = 1;
@@ -24,6 +46,8 @@ namespace qbasis {
             b[0][0] = 2.0 * pi; b[0][1] = 0.0;
             b[1][0] = 0.0;      b[1][1] = 2.0 * pi;
             Nsites = L[0] * L[1] * num_sub;
+            pos_sub.resize(num_sub);
+            pos_sub[0] = std::vector<double>{0.0, 0.0};
         } else if (name == "triangular" || name == "Triangular" || name == "TRIANGULAR") {
             assert(L.size() == 2);
             num_sub = 1;
@@ -32,6 +56,8 @@ namespace qbasis {
             b[0][0] = 2.0 * pi; b[0][1] = -2.0 * pi / sqrt(3.0);
             b[1][0] = 0.0;      b[1][1] = 4.0 * pi / sqrt(3.0);
             Nsites = L[0] * L[1] * num_sub;
+            pos_sub.resize(num_sub);
+            pos_sub[0] = std::vector<double>{0.0, 0.0};
         } else if (name == "kagome" || name == "Kagome" || name == "KAGOME") {
             assert(L.size() == 2);
             num_sub = 3;
@@ -40,6 +66,10 @@ namespace qbasis {
             b[0][0] = 2.0 * pi; b[0][1] = -2.0 * pi / sqrt(3.0);
             b[1][0] = 0.0;      b[1][1] = 4.0 * pi / sqrt(3.0);
             Nsites = L[0] * L[1] * num_sub;
+            pos_sub.resize(num_sub);
+            pos_sub[0] = std::vector<double>{0.0, 0.0};
+            pos_sub[0] = std::vector<double>{0.5, 0.0};
+            pos_sub[0] = std::vector<double>{0.0, 0.5};
         } else if (name == "honeycomb" || name == "Honeycomb" || name == "HONEYCOMB") {
             assert(L.size() == 2);
             num_sub = 2;
@@ -48,6 +78,9 @@ namespace qbasis {
             b[0][0] = 2.0 * pi; b[0][1] = -2.0 * pi / sqrt(3.0);
             b[1][0] = 0.0;      b[1][1] = 4.0 * pi / sqrt(3.0);
             Nsites = L[0] * L[1] * num_sub;
+            pos_sub.resize(num_sub);
+            pos_sub[0] = std::vector<double>{0.0, 0.0};
+            pos_sub[0] = std::vector<double>{1.0/3.0, 1.0/3.0};
         } else if (name == "cubic" || name == "Cubic" || name == "CUBIC") {
             assert(L.size() == 3);
             num_sub = 1;
@@ -58,6 +91,8 @@ namespace qbasis {
             b[1][0] = 0.0;      b[1][1] = 2.0 * pi; b[1][2] = 0.0;
             b[2][0] = 0.0;      b[2][1] = 0.0;      b[2][2] = 2.0 * pi;
             Nsites = L[0] * L[1] * L[2] * num_sub;
+            pos_sub.resize(num_sub);
+            pos_sub[0] = std::vector<double>{0.0, 0.0, 0.0};
         } else if (name == "triangular-stacked" || name == "Triangular-Stacked" || name == "TRIANGULAR-STACKED") {
             assert(L.size() == 3);
             num_sub = 1;
@@ -68,6 +103,8 @@ namespace qbasis {
             b[1][0] = 0.0;      b[1][1] = 4.0 * pi / sqrt(3.0);  b[1][2] = 0.0;
             b[2][0] = 0.0;      b[2][1] = 0.0;                   b[2][2] = 2.0 * pi;
             Nsites = L[0] * L[1] * L[2] * num_sub;
+            pos_sub.resize(num_sub);
+            pos_sub[0] = std::vector<double>{0.0, 0.0, 0.0};
         } else {
             std::cout << "Lattice not recognized! " << std::endl;
             assert(false);
@@ -97,6 +134,11 @@ namespace qbasis {
             site2coor_map[j].second = sub;
             coor2site_map[sub][coor] = j;
         }
+        
+    }
+    
+    lattice::lattice(const std::string &filename) : manual(true)
+    {
         
     }
     

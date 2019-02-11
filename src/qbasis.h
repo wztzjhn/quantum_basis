@@ -1134,8 +1134,11 @@ namespace qbasis {
     public:
         lattice() = default;
         
-        // constructor from particular requirements. e.g. square, triangular...
+        /** \brief constructor from particular requirements. e.g. square, triangular... */
         lattice(const std::string &name, const std::vector<uint32_t> &L_, const std::vector<std::string> &bc_);
+        
+        /** \brief constructor from manually designed lattices, specified from input files */
+        lattice(const std::string &filename);
         
         // coordinates <-> site indices
         // first find a direction (dim_spec) which has even size, if not successful, use the following:
@@ -1226,16 +1229,22 @@ namespace qbasis {
         std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> trans_subgroups(const std::vector<bool> &trans_sym) const;
         
     private:
-        std::vector<uint32_t> L;             // linear size in each dimension
-        std::vector<std::string> bc;         // boundary condition
+        bool manual;                         // sites labelled by hand (from input toml file)
         std::vector<std::vector<double>> a;  // real space basis
         std::vector<std::vector<double>> b;  // momentum space basis
+        std::vector<std::vector<int>> R;     // superlattice basis, in units of a
+        std::vector<bool> tilted;            // true if {R1,R2,...} unparallel to {a1,a2,...}
+        std::vector<std::string> bc;         // boundary condition, only valid if not from manual input
         // one more variable here, denoting the divide and conquer partition
         // if empty(false), then force to store the matrix when working with translational symmetry
         uint32_t dim;
         uint32_t num_sub;
         uint32_t Nsites;
-        uint32_t dim_spec;                   // the code starts labeling sites from a dimension which has even # of sites
+        uint32_t dim_spec;                         // the code starts labeling sites from a dimension which has even # of sites
+        std::vector<std::vector<double>> pos_sub;  // position shift of each sublattice, in units of a
+        std::vector<uint32_t> L;                   // linear size in each dimension, DEPRECATED
+        
+//        std::vector<double> center_of_mass;        // in units of a
         
         std::vector<std::pair<std::vector<int>,int>> site2coor_map;
         std::vector<std::map<std::vector<int>,uint32_t>> coor2site_map;
