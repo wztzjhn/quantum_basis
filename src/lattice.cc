@@ -31,6 +31,7 @@ namespace qbasis {
         }
         
         if (name == "chain" || name == "Chain" || name == "CHAIN") {
+            std::cout << "Chain lattice built."<< std::endl;
             assert(L.size() == 1);
             num_sub = 1;
             a[0][0] = 1.0;
@@ -39,6 +40,7 @@ namespace qbasis {
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0};
         } else if (name == "square" || name == "Square" || name == "SQUARE") {
+            std::cout << "Square lattice built."<< std::endl;
             assert(L.size() == 2);
             num_sub = 1;
             a[0][0] = 1.0;      a[0][1] = 0.0;
@@ -49,6 +51,7 @@ namespace qbasis {
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0};
         } else if (name == "triangular" || name == "Triangular" || name == "TRIANGULAR") {
+            std::cout << "Triangular lattice built."<< std::endl;
             assert(L.size() == 2);
             num_sub = 1;
             a[0][0] = 1.0;      a[0][1] = 0.0;
@@ -59,6 +62,7 @@ namespace qbasis {
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0};
         } else if (name == "kagome" || name == "Kagome" || name == "KAGOME") {
+            std::cout << "Kagome lattice built."<< std::endl;
             assert(L.size() == 2);
             num_sub = 3;
             a[0][0] = 1.0;      a[0][1] = 0.0;
@@ -71,6 +75,7 @@ namespace qbasis {
             pos_sub[0] = std::vector<double>{0.5, 0.0};
             pos_sub[0] = std::vector<double>{0.0, 0.5};
         } else if (name == "honeycomb" || name == "Honeycomb" || name == "HONEYCOMB") {
+            std::cout << "Honeycomb lattice built."<< std::endl;
             assert(L.size() == 2);
             num_sub = 2;
             a[0][0] = 1.0;      a[0][1] = 0.0;
@@ -82,6 +87,7 @@ namespace qbasis {
             pos_sub[0] = std::vector<double>{0.0, 0.0};
             pos_sub[0] = std::vector<double>{1.0/3.0, 1.0/3.0};
         } else if (name == "cubic" || name == "Cubic" || name == "CUBIC") {
+            std::cout << "Cubic lattice built."<< std::endl;
             assert(L.size() == 3);
             num_sub = 1;
             a[0][0] = 1.0;      a[0][1] = 0.0;      a[0][2] = 0.0;
@@ -94,6 +100,7 @@ namespace qbasis {
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0, 0.0};
         } else if (name == "triangular-stacked" || name == "Triangular-Stacked" || name == "TRIANGULAR-STACKED") {
+            std::cout << "Stacked triangular lattice built."<< std::endl;
             assert(L.size() == 3);
             num_sub = 1;
             a[0][0] = 1.0;      a[0][1] = 0.0;                   a[0][2] = 0.0;
@@ -110,6 +117,34 @@ namespace qbasis {
             assert(false);
         }
         
+        std::cout << "dim     = " << dim << std::endl;
+        std::cout << "num_sub = " << num_sub << std::endl;
+        std::cout << "Real space basis: " << std::endl;
+        for (uint32_t d = 0; d < dim; d++) {
+            std::cout << "a[" << d << "] = ";
+            for (uint32_t j = 0; j < dim; j++) std::cout << a[d][j] << ",\t";
+            std::cout << std::endl;
+        }
+        std::cout << "Reciprocal space basis: " << std::endl;
+        for (uint32_t d = 0; d < dim; d++) {
+            std::cout << "b[" << d << "] = ";
+            for (uint32_t j = 0; j < dim; j++) std::cout << b[d][j]/pi << "*pi,\t";
+            std::cout << std::endl;
+        }
+        std::cout << "Superlattice basis: " << std::endl;
+        for (uint32_t d = 0; d < dim; d++) {
+            std::cout << "R[" << d << "] = ";
+            for (uint32_t j = 0; j < dim; j++) std::cout << R[d][j] << "*a[" << j << "],\t";
+            std::cout << "tilted: " << (tilted[d]?"true":"false") << std::endl;
+        }
+        std::cout << "Sublattice positions: " << std::endl;
+        for (uint32_t sub_idx = 0; sub_idx < num_sub; sub_idx++) {
+            std::cout << "sub[" << sub_idx << "] = ";
+            for (uint32_t j = 0; j < dim; j++) std::cout << pos_sub[sub_idx][j] << "*a[" << j << "],\t";
+            std::cout << std::endl;
+        }
+        std::cout << "Nsites: " << Nsites << std::endl;
+        
         dim_spec = dim;
         if (num_sub % 2 != 0) {
             for (uint32_t d = 0; d < dim; d++) {
@@ -119,6 +154,7 @@ namespace qbasis {
                 }
             }
         }
+        std::cout << "dim_spec = " << dim_spec << std::endl;
         
         for (uint32_t j = 0; j < dim; j++) {
             assert(bc[j] == "pbc" || bc[j] == "PBC" || bc[j] == "obc" || bc[j] == "OBC");
@@ -134,12 +170,103 @@ namespace qbasis {
             site2coor_map[j].second = sub;
             coor2site_map[sub][coor] = j;
         }
-        
     }
     
     lattice::lattice(const std::string &filename) : manual(true)
     {
+        std::cout << "Reading lattice information from " << filename << std::endl;
+        auto config = cpptoml::parse_file(filename);
         
+        dim     = static_cast<uint32_t>(*config->get_as<int>("dim"));
+        num_sub = static_cast<uint32_t>(*config->get_as<int>("num_sub"));
+        std::cout << "dim     = " << dim << std::endl;
+        std::cout << "num_sub = " << num_sub << std::endl;
+        
+        a = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
+        b = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
+        R = std::vector<std::vector<int>>(dim, std::vector<int>(dim, 0));
+        for (uint32_t d = 0; d < dim; d++) {
+            a[d] = *config->get_array_of<double>(std::string("a")+std::to_string(d));
+            b[d] = *config->get_array_of<double>(std::string("b")+std::to_string(d));
+            auto Rtemp = *config->get_array_of<int64_t>(std::string("R")+std::to_string(d));
+            for (uint32_t d_in = 0; d_in < dim; d_in++) R[d][d_in] = static_cast<int>(Rtemp[d_in]);
+        }
+        tilted.resize(dim);
+        for (decltype(dim) d = 0; d < dim; d++) {
+            tilted[d] = false;
+            for (decltype(dim) j = 0; j < dim; j++) {
+                if (j != d) tilted[d] = (tilted[d] || (R[d][j] != 0));
+            }
+        }
+        pos_sub.resize(num_sub);
+        for (uint32_t sub_idx = 0; sub_idx < num_sub; sub_idx++) {
+            pos_sub[sub_idx] = *config->get_array_of<double>(std::string("pos_sub")+std::to_string(sub_idx));
+        }
+
+        std::cout << "Real space basis: " << std::endl;
+        for (uint32_t d = 0; d < dim; d++) {
+            std::cout << "a[" << d << "] = ";
+            for (uint32_t j = 0; j < dim; j++) std::cout << a[d][j] << ",\t";
+            std::cout << std::endl;
+        }
+        std::cout << "Reciprocal space basis: " << std::endl;
+        for (uint32_t d = 0; d < dim; d++) {
+            std::cout << "b[" << d << "] = ";
+            for (uint32_t j = 0; j < dim; j++) std::cout << b[d][j]/pi << "*pi,\t";
+            std::cout << std::endl;
+        }
+        std::cout << "Superlattice basis: " << std::endl;
+        for (uint32_t d = 0; d < dim; d++) {
+            std::cout << "R[" << d << "] = ";
+            for (uint32_t j = 0; j < dim; j++) std::cout << R[d][j] << "*a[" << j << "],\t";
+            std::cout << "tilted: " << (tilted[d]?"true":"false") << std::endl;
+        }
+        std::cout << "Sublattice positions: " << std::endl;
+        for (uint32_t sub_idx = 0; sub_idx < num_sub; sub_idx++) {
+            std::cout << "sub[" << sub_idx << "] = ";
+            for (uint32_t j = 0; j < dim; j++) std::cout << pos_sub[sub_idx][j] << "*a[" << j << "],\t";
+            std::cout << std::endl;
+        }
+        
+        switch (dim) {
+            case 1:
+                Nsites = abs(R[0][0]);
+                break;
+            case 2:
+                Nsites = abs(R[0][0] * R[1][1] - R[0][1] * R[1][0]);
+                break;
+            case 3:
+                Nsites = abs(  R[0][0] * (R[1][1] * R[2][2] - R[2][1] * R[1][2])
+                             - R[0][1] * (R[1][0] * R[2][2] - R[2][0] * R[1][2])
+                             + R[0][2] * (R[1][0] * R[2][1] - R[2][0] * R[1][1]) );
+                break;
+            default:
+                assert(false);
+                break;
+        }
+        Nsites *= num_sub;
+        std::cout << "Nsites: " << Nsites << std::endl;
+
+        dim_spec = dim;
+        std::cout << "dim_spec = " << dim_spec << std::endl;
+        
+        site2coor_map.resize(Nsites);
+        coor2site_map.resize(num_sub);
+        int site = 0;
+        for (uint32_t sub_idx = 0; sub_idx < num_sub; sub_idx++) {
+            auto tarr = config->get_table_array("sub"+std::to_string(sub_idx));
+            for (const auto& table : *tarr) {
+                auto coor = *table->get_array_of<int64_t>("site");
+                site2coor_map[site].first.resize(dim);
+                for (uint32_t d = 0; d < dim; d++) {
+                    site2coor_map[site].first[d] = static_cast<int>(coor[d]);
+                }
+                site2coor_map[site].second = static_cast<int>(sub_idx);
+                coor2site_map[sub_idx][site2coor_map[site].first] = site;
+                site++;
+            }
+        }
+        assert(site == Nsites);
     }
     
     bool lattice::q_dividable() const {
