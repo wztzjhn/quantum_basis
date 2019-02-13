@@ -6,25 +6,23 @@ namespace qbasis {
     // ----------------- implementation of lattice ------------------
     lattice::lattice(const std::string &name,
                      const std::vector<uint32_t> &L_,
-                     const std::vector<std::string> &bc_) : manual(false), bc(bc_), L(L_)
+                     const std::vector<std::string> &bc_) : bc(bc_), L(L_)
     {
         assert(L.size() == bc.size());
         dim = static_cast<uint32_t>(L.size());
         a = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
         b = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
-        
-        // for the moment, only allow R to be parallel to a; change in future versions
-        R.resize(dim);
-        for (decltype(dim) d = 0; d < dim; d++) {
-            R[d].resize(dim);
-            R[d].assign(dim, 0);
+        R = std::vector<std::vector<int>>(dim, std::vector<int>(dim, 0));  // for the moment, only allow R to be parallel to a
+        Rmat = std::vector<double>(dim*dim,0.0);
+        for (uint32_t d = 0; d < dim; d++) {
             R[d][d] = L[d];
+            for (uint32_t i = 0; i < dim; i++) Rmat[i+dim*d] = static_cast<double>(R[d][i]);
         }
         
         tilted.resize(dim);
-        for (decltype(dim) d = 0; d < dim; d++) {
+        for (uint32_t d = 0; d < dim; d++) {
             tilted[d] = false;
-            for (decltype(dim) j = 0; j < dim; j++) {
+            for (uint32_t j = 0; j < dim; j++) {
                 if (j != d) tilted[d] = (tilted[d] || (R[d][j] != 0));
             }
             assert(tilted[d] == false);
@@ -162,17 +160,36 @@ namespace qbasis {
         
         site2coor_map.resize(Nsites);
         coor2site_map.resize(num_sub);
-        for (uint32_t j = 0; j < Nsites; j++) {
+        if (q_tilted()) {
+            site2super_map.resize(Nsites);
+        } else {
+            site2super_map.clear();
+            site2super_map.shrink_to_fit();
+        }
+        std::vector<std::vector<int>> coor0_list(Nsites,std::vector<int>(dim));
+        for (uint32_t site = 0; site < Nsites; site++) {
             std::vector<int> coor;
             int sub;
-            site2coor_old(coor, sub, j);
-            site2coor_map[j].first  = coor;
-            site2coor_map[j].second = sub;
-            coor2site_map[sub][coor] = j;
+            site2coor_old(coor, sub, site);
+            site2coor_map[site].first  = coor;
+            site2coor_map[site].second = sub;
+            
+            if (q_tilted()) {
+                site2super_map[site].resize(dim);
+                coor2supercell0(site2coor_map[site].first.data(), coor0_list[site].data(), site2super_map[site].data());
+                coor2site_map[sub][coor0_list[site]] = site;
+            } else {
+                coor0_list[site] = site2coor_map[site].first;
+                coor2site_map[sub][coor] = site;
+            }
+        }
+        std::sort(coor0_list.begin(), coor0_list.end());
+        for (uint32_t site = 1; site < Nsites; site++) {
+            assert(coor0_list[site-1] < coor0_list[site]);
         }
     }
     
-    lattice::lattice(const std::string &filename) : manual(true)
+    lattice::lattice(const std::string &filename)
     {
         std::cout << "Reading lattice information from " << filename << std::endl;
         auto config = cpptoml::parse_file(filename);
@@ -185,11 +202,15 @@ namespace qbasis {
         a = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
         b = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
         R = std::vector<std::vector<int>>(dim, std::vector<int>(dim, 0));
+        Rmat = std::vector<double>(dim*dim,0.0);
         for (uint32_t d = 0; d < dim; d++) {
             a[d] = *config->get_array_of<double>(std::string("a")+std::to_string(d));
             b[d] = *config->get_array_of<double>(std::string("b")+std::to_string(d));
             auto Rtemp = *config->get_array_of<int64_t>(std::string("R")+std::to_string(d));
-            for (uint32_t d_in = 0; d_in < dim; d_in++) R[d][d_in] = static_cast<int>(Rtemp[d_in]);
+            for (uint32_t i = 0; i < dim; i++) {
+                R[d][i] = static_cast<int>(Rtemp[i]);
+                Rmat[i+dim*d] = static_cast<double>(R[d][i]);
+            }
         }
         tilted.resize(dim);
         for (decltype(dim) d = 0; d < dim; d++) {
@@ -202,6 +223,7 @@ namespace qbasis {
         for (uint32_t sub_idx = 0; sub_idx < num_sub; sub_idx++) {
             pos_sub[sub_idx] = *config->get_array_of<double>(std::string("pos_sub")+std::to_string(sub_idx));
         }
+        bc = std::vector<std::string>{};
 
         std::cout << "Real space basis: " << std::endl;
         for (uint32_t d = 0; d < dim; d++) {
@@ -248,10 +270,29 @@ namespace qbasis {
         std::cout << "Nsites: " << Nsites << std::endl;
 
         dim_spec = dim;
+        if (! q_tilted()) {
+            L.resize(dim);
+            for (uint32_t d = 0; d < dim; d++) L[d] = abs(R[d][d]);
+            if (num_sub % 2 != 0) {
+                for (uint32_t d = 0; d < dim; d++) {
+                    if (L[d] % 2 == 0) {
+                        dim_spec = d;
+                        break;
+                    }
+                }
+            }
+        }
         std::cout << "dim_spec = " << dim_spec << std::endl;
         
         site2coor_map.resize(Nsites);
         coor2site_map.resize(num_sub);
+        if (q_tilted()) {
+            site2super_map.resize(Nsites);
+        } else {
+            site2super_map.clear();
+            site2super_map.shrink_to_fit();
+        }
+        std::vector<std::vector<int>> coor0_list(Nsites,std::vector<int>(dim));
         int site = 0;
         for (uint32_t sub_idx = 0; sub_idx < num_sub; sub_idx++) {
             auto tarr = config->get_table_array("sub"+std::to_string(sub_idx));
@@ -262,14 +303,58 @@ namespace qbasis {
                     site2coor_map[site].first[d] = static_cast<int>(coor[d]);
                 }
                 site2coor_map[site].second = static_cast<int>(sub_idx);
-                coor2site_map[sub_idx][site2coor_map[site].first] = site;
+                if (q_tilted()) {
+                    site2super_map[site].resize(dim);
+                    coor2supercell0(site2coor_map[site].first.data(), coor0_list[site].data(), site2super_map[site].data());
+                    coor2site_map[sub_idx][coor0_list[site]] = site;
+                } else {
+                    coor0_list[site] = site2coor_map[site].first;
+                    coor2site_map[sub_idx][site2coor_map[site].first] = site;
+                }
                 site++;
             }
         }
         assert(site == Nsites);
+        std::sort(coor0_list.begin(), coor0_list.end());
+        for (uint32_t site = 1; site < Nsites; site++) {
+            assert(coor0_list[site-1] < coor0_list[site]);
+        }
     }
     
-    bool lattice::q_dividable() const {
+    void lattice::coor2supercell0(const int *coor, int *coor0, int *M)
+    {
+        assert(dim <= 4);
+        double alpha[4];
+        lapack_int ipiv[4];
+        double Rmat_copy[16];
+        for (uint32_t i = 0; i < dim; i++) alpha[i] = static_cast<double>(coor[i]);
+        std::copy(Rmat.begin(), Rmat.end(), Rmat_copy);
+        
+        lapack_int d = static_cast<lapack_int>(dim);
+        auto info = gesv(LAPACK_COL_MAJOR, d, 1, Rmat_copy, d, ipiv, alpha, d);
+        assert(info == 0);
+        for (uint32_t i = 0; i < dim; i++) {
+            M[i] = static_cast<int>(floor(alpha[i] + 1e-14));
+            alpha[i] = alpha[i] - M[i];
+            assert(alpha[i] > -1e-15 && alpha[i] < 1.0);
+        }
+        for (uint32_t i = 0; i < dim; i++) {
+            int shift = 0;
+            for (uint32_t j = 0; j < dim; j++) shift += R[j][i] * M[j];
+            coor0[i] = coor[i] - shift;
+        }
+    }
+    
+    bool lattice::q_tilted() const
+    {
+        for (uint32_t d = 0; d < dim; d++) {
+            if (tilted[d]) return true;
+        }
+        return false;
+    }
+    
+    bool lattice::q_dividable() const
+    {
         if (total_sites() % 2 != 0) return false;
         if (dim_spec == dim && num_sub % 2 != 0) return false;
         return true;

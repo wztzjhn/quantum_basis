@@ -1128,7 +1128,22 @@ namespace qbasis {
     
 //  ----------------------------- part 5: Lattices  ----------------------------
 //  ----------------------------------------------------------------------------
-//  requirement: origin has to be occupied by sublattice 0 (for the coor2cart to work correctly when doing translation)
+   /** In general, the position of any site can be represented as:
+    *  \f[
+    *   \vec{r} = \sum_{i=1}^{D} m_i^0 \vec{a}_i + \sum_{i=1}^D M_i \vec{R}_i + \vec{d}_s
+    *           = \sum_{i=1}^{D} m_i \vec{a}_i + \vec{d}_s,
+    *  \f]
+    *  where \f$ m_i^0 \f$, \f$ m_i \f$, and \f$ M_i \f$ are integers,
+    *  and \f$ \vec{d}_s \f$ are the position shift of sublattices.
+    *  Note: \f$ m_i^0 \f$ is located in the 1st supercell defined by
+    *  \f[
+    *   \sum_{i=1}^D m_i^0 \vec{a}_i = \sum_{i=1}^D x_i \vec{R}_i,
+    *  \f]
+    *  where \f$ 0 \le x_i < 1 \f$.
+    *  In other words, any site has two coordinate labels, one within the supercell,
+    *  another as the supercell coordinate.
+    *  Most of time, the supercell coordinate is set at origin; but they can be effective in some other cases.
+    */
     class lattice {
         friend lattice divide_lattice(const lattice &parent);
     public:
@@ -1140,16 +1155,22 @@ namespace qbasis {
         /** \brief constructor from manually designed lattices, specified from input files */
         lattice(const std::string &filename);
         
+        /** \brief for given \f$ m_i \f$, return its corresponding \f$ m_i^0 \f$ in the 1st supercell, and the supercell index \f$ M_i \f$ */
+        void coor2supercell0(const int *coor, int *coor0, int *M);
+        
         // coordinates <-> site indices
         // first find a direction (dim_spec) which has even size, if not successful, use the following:
         // 1D: site = i * num_sub + sub
         // 2D: site = (i + j * L[0]) * num_sub + sub
         // 3D: site = (i + j * L[0] + k * L[0] * L[1]) * num_sub + sub
         // otherwise, the dim_spec should be counted first
+        /** \brief with given \f$ m_i \f$, output the site index */
         void coor2site(const std::vector<int> &coor, const int &sub, uint32_t &site, std::vector<int> &work) const;
         void coor2site_old(const std::vector<int> &coor, const int &sub, uint32_t &site) const;
         
+        /** \brief for any site, output the coordinate \f$ m_i \f$ (NOT \f$ m_i^0 \f$). */
         void site2coor(std::vector<int> &coor, int &sub, const uint32_t &site) const;
+        
         void site2coor_old(std::vector<int> &coor, int &sub, const uint32_t &site) const;
         
         // transform to cartisian coordinates
@@ -1199,6 +1220,9 @@ namespace qbasis {
         
         std::vector<uint32_t> Linear_size() const { return L; }
         
+        /** \brief if all directions untilted, return true */
+        bool q_tilted() const;
+        
         bool q_dividable() const;
         
         uint32_t Lx() const { return L[0]; }
@@ -1229,26 +1253,55 @@ namespace qbasis {
         std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> trans_subgroups(const std::vector<bool> &trans_sym) const;
         
     private:
-        bool manual;                         // sites labelled by hand (from input toml file)
-        std::vector<std::vector<double>> a;  // real space basis
+        /** \brief real space basis \f$ \vec{a}_i \f$ */
+        std::vector<std::vector<double>> a;
+        
+        /** \brief reciprocal space basis \f$ \vec{b}_i \f$ */
         std::vector<std::vector<double>> b;  // momentum space basis
-        std::vector<std::vector<int>> R;     // superlattice basis, in units of a
-        std::vector<bool> tilted;            // true if {R1,R2,...} unparallel to {a1,a2,...}
-        std::vector<std::string> bc;         // boundary condition, only valid if not from manual input
+        
+        /** \brief superlattice basis, in units of \f$ \vec{a}_i \f$ */
+        std::vector<std::vector<int>> R;
+        
+        /** \brief superlattice basis in matrix format (column i -> R_i) */
+        std::vector<double> Rmat;
+        
+        /** \brief position shift \f$ \vec{d}_s \f$ of each sublattice, in units of \f$ \vec{a}_i \f$ */
+        std::vector<std::vector<double>> pos_sub;
+        
+        /** \brief true if {R1,R2,...} unparallel to {a1,a2,...} */
+        std::vector<bool> tilted;
+        
+        /** \brief boundary condition. Only explicitly used when all in 1st supercell, otherwise too complicated */
+        std::vector<std::string> bc;
+        
+        /** \brief dimension of lattice */
+        uint32_t dim;
+        
+        /** \brief number of sublattices */
+        uint32_t num_sub;
+        
+        /** \brief total number of sites in the 1st supercell */
+        uint32_t Nsites;
+        
+        /** \brief the code starts labeling sites from a dimension which has even # of sites (if applicable) */
+        uint32_t dim_spec;
+        
+        /** \brief DEPRECATED! linear size in each dimension */
+        std::vector<uint32_t> L;
+        
+        /** \brief store the coordinate \f$ m_i \f$ (NOT \f$ m_i^0 \f$), and sublattice index for each site */
+        std::vector<std::pair<std::vector<int>,int>> site2coor_map;
+        
+        /** \brief store the supercell index \f$ M_i \f$ for each site (empty vector if all in 1st supercell) */
+        std::vector<std::vector<int>> site2super_map;
+        
+        /** \brief for given \f$ m_i^0 \f$ (in the 1st supercell) and sublattice index, return the site label */
+        std::vector<std::map<std::vector<int>,uint32_t>> coor2site_map;
+        
         // one more variable here, denoting the divide and conquer partition
         // if empty(false), then force to store the matrix when working with translational symmetry
-        uint32_t dim;
-        uint32_t num_sub;
-        uint32_t Nsites;
-        uint32_t dim_spec;                         // the code starts labeling sites from a dimension which has even # of sites
-        std::vector<std::vector<double>> pos_sub;  // position shift of each sublattice, in units of a
-        std::vector<uint32_t> L;                   // linear size in each dimension, DEPRECATED
         
-//        std::vector<double> center_of_mass;        // in units of a
-        
-        std::vector<std::pair<std::vector<int>,int>> site2coor_map;
-        std::vector<std::map<std::vector<int>,uint32_t>> coor2site_map;
-        //std::map<std::pair<std::vector<int>,int>,uint32_t> coor2site_map;
+        // std::vector<double> center_of_mass;        // in units of a
     };
     
     
@@ -1887,7 +1940,7 @@ namespace qbasis {
         mkl_zcsrcsc(job, &n, Acsr, AJ0, AI0, Acsc, AJ1, AI1, info);
     }
     
-    // lapack expert routine, Computes the solution to the system of linear equations with a square coefficient matrix A and multiple right-hand sides.
+    // lapack driver routine, Computes the solution to the system of linear equations with a square coefficient matrix A and multiple right-hand sides.
     inline // double
     lapack_int gesv(const int &matrix_layout, const lapack_int &n, const lapack_int &nrhs, double *a, const lapack_int &lda, lapack_int *ipiv, double *b, const lapack_int &ldb) {
         return LAPACKE_dgesv(matrix_layout, n, nrhs, a, lda, ipiv, b, ldb);
