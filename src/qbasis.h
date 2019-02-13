@@ -1155,8 +1155,16 @@ namespace qbasis {
         /** \brief constructor from manually designed lattices, specified from input files */
         lattice(const std::string &filename);
         
+        /** \brief if all directions untilted, return true */
+        bool q_tilted() const;
+        
+        bool q_dividable() const;
+        
         /** \brief for given \f$ m_i \f$, return its corresponding \f$ m_i^0 \f$ in the 1st supercell, and the supercell index \f$ M_i \f$ */
-        void coor2supercell0(const int *coor, int *coor0, int *M);
+        void coor2supercell0(const int *coor, int *coor0, int *M) const;
+        
+        /** \brief with given \f$ m_i \f$, output the site index */
+        void coor2site(const std::vector<int> &coor, const int &sub, uint32_t &site, std::vector<int> &work) const;
         
         // coordinates <-> site indices
         // first find a direction (dim_spec) which has even size, if not successful, use the following:
@@ -1164,8 +1172,6 @@ namespace qbasis {
         // 2D: site = (i + j * L[0]) * num_sub + sub
         // 3D: site = (i + j * L[0] + k * L[0] * L[1]) * num_sub + sub
         // otherwise, the dim_spec should be counted first
-        /** \brief with given \f$ m_i \f$, output the site index */
-        void coor2site(const std::vector<int> &coor, const int &sub, uint32_t &site, std::vector<int> &work) const;
         void coor2site_old(const std::vector<int> &coor, const int &sub, uint32_t &site) const;
         
         /** \brief for any site, output the coordinate \f$ m_i \f$ (NOT \f$ m_i^0 \f$). */
@@ -1218,12 +1224,17 @@ namespace qbasis {
             return Nsites;
         }
         
+        /** \brief return real space basis \f$ a_i \f$*/
+        std::vector<std::vector<double>> basis_a() const {
+            return a;
+        }
+        
+        /** \brief return superlattice basis \f$ R_i \f$*/
+        std::vector<std::vector<int>> basis_R() const {
+            return R;
+        }
+        
         std::vector<uint32_t> Linear_size() const { return L; }
-        
-        /** \brief if all directions untilted, return true */
-        bool q_tilted() const;
-        
-        bool q_dividable() const;
         
         uint32_t Lx() const { return L[0]; }
         uint32_t Ly() const { assert(L.size() > 1); return L[1]; }

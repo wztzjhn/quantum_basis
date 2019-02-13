@@ -321,7 +321,22 @@ namespace qbasis {
         }
     }
     
-    void lattice::coor2supercell0(const int *coor, int *coor0, int *M)
+    bool lattice::q_tilted() const
+    {
+        for (uint32_t d = 0; d < dim; d++) {
+            if (tilted[d]) return true;
+        }
+        return false;
+    }
+    
+    bool lattice::q_dividable() const
+    {
+        if (total_sites() % 2 != 0) return false;
+        if (dim_spec == dim && num_sub % 2 != 0) return false;
+        return true;
+    }
+    
+    void lattice::coor2supercell0(const int *coor, int *coor0, int *M) const
     {
         assert(dim <= 4);
         double alpha[4];
@@ -345,21 +360,6 @@ namespace qbasis {
         }
     }
     
-    bool lattice::q_tilted() const
-    {
-        for (uint32_t d = 0; d < dim; d++) {
-            if (tilted[d]) return true;
-        }
-        return false;
-    }
-    
-    bool lattice::q_dividable() const
-    {
-        if (total_sites() % 2 != 0) return false;
-        if (dim_spec == dim && num_sub % 2 != 0) return false;
-        return true;
-    }
-    
     void lattice::coor2site(const std::vector<int> &coor, const int &sub, uint32_t &site, std::vector<int> &work) const
     {
         assert(coor.size() == dim);
@@ -367,11 +367,8 @@ namespace qbasis {
         int sub_temp = sub;
         if (sub_temp < 0 || sub_temp >= static_cast<int>(num_sub)) sub_temp = sub % static_cast<int>(num_sub);
         if (sub_temp < 0) sub_temp += static_cast<int>(num_sub);
-        for (uint32_t d = 0; d < dim; d++) {
-            work[d] = coor[d];
-            if (work[d] < 0 || work[d] >= static_cast<int>(L[d])) work[d] = coor[d] % static_cast<int>(L[d]);
-            if (work[d] < 0) work[d] += static_cast<int>(L[d]);
-        }
+        int M[4];
+        coor2supercell0(coor.data(), work.data(), M);
         site = coor2site_map[sub_temp].at(work);
     }
     
