@@ -70,8 +70,8 @@ namespace qbasis {
             Nsites = L[0] * L[1] * num_sub;
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0};
-            pos_sub[0] = std::vector<double>{0.5, 0.0};
-            pos_sub[0] = std::vector<double>{0.0, 0.5};
+            pos_sub[1] = std::vector<double>{0.5, 0.0};
+            pos_sub[2] = std::vector<double>{0.0, 0.5};
         } else if (name == "honeycomb" || name == "Honeycomb" || name == "HONEYCOMB") {
             std::cout << "Honeycomb lattice built."<< std::endl;
             assert(L.size() == 2);
@@ -83,7 +83,7 @@ namespace qbasis {
             Nsites = L[0] * L[1] * num_sub;
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0};
-            pos_sub[0] = std::vector<double>{1.0/3.0, 1.0/3.0};
+            pos_sub[1] = std::vector<double>{1.0/3.0, 1.0/3.0};
         } else if (name == "cubic" || name == "Cubic" || name == "CUBIC") {
             std::cout << "Cubic lattice built."<< std::endl;
             assert(L.size() == 3);
@@ -152,7 +152,7 @@ namespace qbasis {
                 }
             }
         }
-        std::cout << "dim_spec = " << dim_spec << std::endl;
+        std::cout << "dim_spec = " << dim_spec << std::endl << std::endl;
         
         for (uint32_t j = 0; j < dim; j++) {
             assert(bc[j] == "pbc" || bc[j] == "PBC" || bc[j] == "obc" || bc[j] == "OBC");
@@ -184,8 +184,8 @@ namespace qbasis {
             }
         }
         std::sort(coor0_list.begin(), coor0_list.end());
-        for (uint32_t site = 1; site < Nsites; site++) {
-            assert(coor0_list[site-1] < coor0_list[site]);
+        for (uint32_t j = num_sub; j < Nsites; j+=num_sub) {
+            assert(coor0_list[j-1] < coor0_list[j]);
         }
     }
     
@@ -282,7 +282,7 @@ namespace qbasis {
                 }
             }
         }
-        std::cout << "dim_spec = " << dim_spec << std::endl;
+        std::cout << "dim_spec = " << dim_spec << std::endl << std::endl;
         
         site2coor_map.resize(Nsites);
         coor2site_map.resize(num_sub);
@@ -293,7 +293,7 @@ namespace qbasis {
             site2super_map.shrink_to_fit();
         }
         std::vector<std::vector<int>> coor0_list(Nsites,std::vector<int>(dim));
-        int site = 0;
+        uint32_t site = 0;
         for (uint32_t sub_idx = 0; sub_idx < num_sub; sub_idx++) {
             auto tarr = config->get_table_array("sub"+std::to_string(sub_idx));
             for (const auto& table : *tarr) {
@@ -316,8 +316,8 @@ namespace qbasis {
         }
         assert(site == Nsites);
         std::sort(coor0_list.begin(), coor0_list.end());
-        for (uint32_t site = 1; site < Nsites; site++) {
-            assert(coor0_list[site-1] < coor0_list[site]);
+        for (uint32_t j = num_sub; j < Nsites; j+=num_sub) {
+            assert(coor0_list[j-1] < coor0_list[j]);
         }
     }
     

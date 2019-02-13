@@ -1926,31 +1926,6 @@ namespace qbasis {
         mkl_zcsrmv(&transa, &m, &k, &alpha, matdescra, val, indx, pntrb, pntre, x, &beta, y);
     }
     
-    inline // double
-    void mkl_csrmm(const char transa, const MKL_INT m, const MKL_INT n, const MKL_INT k, const double alpha, const char *matdescra,
-                   const double *val, const MKL_INT *indx, const MKL_INT *pntrb, const MKL_INT *pntre,
-                   const double *b, const MKL_INT ldb, const double beta, double *c, const MKL_INT ldc) {
-        mkl_dcsrmm(&transa, &m, &n, &k, &alpha, matdescra, val, indx, pntrb, pntre, b, &ldb, &beta, c, &ldc);
-    }
-    inline // complex double
-    void mkl_csrmm(const char transa, const MKL_INT m, const MKL_INT n, const MKL_INT k, const std::complex<double> alpha, const char *matdescra,
-                   const std::complex<double> *val, const MKL_INT *indx, const MKL_INT *pntrb, const MKL_INT *pntre,
-                   const std::complex<double> *b, const MKL_INT ldb, const std::complex<double> beta, std::complex<double> *c, const MKL_INT ldc) {
-        mkl_zcsrmm(&transa, &m, &n, &k, &alpha, matdescra, val, indx, pntrb, pntre, b, &ldb, &beta, c, &ldc);
-    }
-    
-    // sparse blas, convert csr to csc
-    inline // double
-    void mkl_csrcsc(const MKL_INT *job, const MKL_INT n, double *Acsr, MKL_INT *AJ0, MKL_INT *AI0,
-                    double *Acsc, MKL_INT *AJ1, MKL_INT *AI1, MKL_INT *info) {
-        mkl_dcsrcsc(job, &n, Acsr, AJ0, AI0, Acsc, AJ1, AI1, info);
-    }
-    inline // complex double
-    void mkl_csrcsc(const MKL_INT *job, const MKL_INT n, std::complex<double> *Acsr, MKL_INT *AJ0, MKL_INT *AI0,
-                    std::complex<double> *Acsc, MKL_INT *AJ1, MKL_INT *AI1, MKL_INT *info) {
-        mkl_zcsrcsc(job, &n, Acsr, AJ0, AI0, Acsc, AJ1, AI1, info);
-    }
-    
     // lapack driver routine, Computes the solution to the system of linear equations with a square coefficient matrix A and multiple right-hand sides.
     inline // double
     lapack_int gesv(const int &matrix_layout, const lapack_int &n, const lapack_int &nrhs, double *a, const lapack_int &lda, lapack_int *ipiv, double *b, const lapack_int &ldb) {
