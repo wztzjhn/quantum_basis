@@ -888,6 +888,8 @@ namespace qbasis {
             
     lattice divide_lattice(const lattice &parent)
     {
+        assert(parent.q_dividable());
+        assert(! parent.q_tilted());
         lattice child(parent);
         auto dim_spec = parent.dim_spec;
         auto dim = parent.dim;
@@ -895,27 +897,32 @@ namespace qbasis {
         if (dim_spec == dim) {
             assert(parent.num_sub % 2 == 0);
             child.num_sub /= 2;
+            for (int j = parent.num_sub-1; j >= 1; j-=2) {
+                child.pos_sub.erase(child.pos_sub.begin()+j);
+            }
         } else {
             child.L[dim_spec] /= 2;
+            child.R[dim_spec][dim_spec] /= 2;
+            for (uint32_t i = 0; i < dim; i++) child.Rmat[i+dim*dim_spec] = static_cast<double>(child.R[dim_spec][i]);
             for (uint32_t d = 0; d < dim; d++) {
                 child.a[dim_spec][d] *= 2;
                 child.b[dim_spec][d] /= 2;
             }
+            
         }
         child.Nsites /= 2;
-        
         
         child.site2coor_map.clear();
         child.coor2site_map.clear();
         child.site2coor_map.resize(child.Nsites);
         child.coor2site_map.resize(child.num_sub);
-        for (uint32_t j = 0; j < child.Nsites; j++) {
+        for (uint32_t site = 0; site < child.Nsites; site++) {
             std::vector<int> coor;
             int sub;
-            child.site2coor_old(coor, sub, j);
-            child.site2coor_map[j].first  = coor;
-            child.site2coor_map[j].second = sub;
-            child.coor2site_map[sub][coor] = j;
+            child.site2coor_old(coor, sub, site);
+            child.site2coor_map[site].first  = coor;
+            child.site2coor_map[site].second = sub;
+            child.coor2site_map[sub][coor] = site;
         }
         
         return child;
