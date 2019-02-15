@@ -1179,8 +1179,7 @@ namespace qbasis {
         
         void site2coor_old(std::vector<int> &coor, int &sub, const uint32_t &site) const;
         
-        // transform to cartisian coordinates
-        // temporary just assume 1 sublattice. implement multi-sublattice later
+        /** \brief with given \f$ m_i \f$ and sublattice index, output cartisian coordinates */
         void coor2cart(const std::vector<int> &coor, const int &sub, std::vector<double> &cart) const;
         
         // return a vector containing the positions of each site after translation
