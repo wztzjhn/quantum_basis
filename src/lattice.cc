@@ -366,7 +366,7 @@ namespace qbasis {
         auto info = gesv(LAPACK_COL_MAJOR, d, 1, Rmat_copy, d, ipiv, alpha, d);
         assert(info == 0);
         for (uint32_t i = 0; i < dim; i++) {
-            M[i] = static_cast<int>(floor(alpha[i] + 1e-14));
+            M[i] = round2int(floor(alpha[i] + 1e-14));
             alpha[i] = alpha[i] - M[i];
             assert(alpha[i] > -1e-15 && alpha[i] < 1.0);
         }
