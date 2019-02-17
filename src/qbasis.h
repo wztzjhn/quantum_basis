@@ -1730,6 +1730,8 @@ namespace qbasis {
     
     std::string date_and_time();
     
+    inline int round2int(const double &x) { return static_cast<int>(x < 0.0 ? x - 0.5 : x + 0.5); }
+    
     inline double conjugate(const double &rhs) { return rhs; }
     inline std::complex<double> conjugate(const std::complex<double> &rhs) { return std::conj(rhs); }
     
