@@ -4,7 +4,7 @@
 
 // Bose-Hubbard model on square lattice
 int main() {
-    qbasis::initialize(true);
+    qbasis::initialize();
     std::cout << std::setprecision(10);
     // parameters
     double t = 1;

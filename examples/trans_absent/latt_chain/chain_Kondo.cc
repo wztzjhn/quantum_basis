@@ -4,7 +4,7 @@
 
 // Kondo Lattice model on a chain
 int main() {
-    qbasis::initialize(true);
+    qbasis::initialize();
     std::cout << std::setprecision(10);
     // parameters
     double t = 1;

@@ -4,7 +4,7 @@
 
 // Heisenberg model on a chain
 int main() {
-    qbasis::initialize(true);
+    qbasis::initialize();
     std::cout << std::setprecision(10);
     // parameters
     double J = 1.0;

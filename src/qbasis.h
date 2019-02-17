@@ -1368,7 +1368,7 @@ namespace qbasis {
         /** \brief omega_g, orbital size of the variational vacuum state */
         uint32_t gs_omegaG_vrnl;
         /** \brief ground state energy of the variational vacuum state */
-        double   gs_E0_vrnl;
+        double gs_E0_vrnl;
         /** \brief ground state momentum */
         std::vector<double> gs_momentum_vrnl;
         

@@ -4,7 +4,7 @@
 
 // Heisenberg model on triangular lattice
 int main() {
-    qbasis::initialize(true);
+    qbasis::initialize();
     std::cout << std::setprecision(10);
     // parameters
     double J1 = 1.0;
