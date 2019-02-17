@@ -152,7 +152,7 @@ namespace qbasis {
                 }
             }
         }
-        std::cout << "dim_spec = " << dim_spec << std::endl << std::endl;
+        std::cout << "dim_spec = " << dim_spec << std::endl;
         
         for (uint32_t j = 0; j < dim; j++) {
             assert(bc[j] == "pbc" || bc[j] == "PBC" || bc[j] == "obc" || bc[j] == "OBC");
@@ -166,6 +166,7 @@ namespace qbasis {
             site2super_map.clear();
             site2super_map.shrink_to_fit();
         }
+        center.assign(dim,0.0);
         std::vector<std::vector<int>> coor0_list(Nsites,std::vector<int>(dim));
         for (uint32_t site = 0; site < Nsites; site++) {
             std::vector<int> coor;
@@ -182,7 +183,14 @@ namespace qbasis {
                 coor0_list[site] = site2coor_map[site].first;
                 coor2site_map[sub][coor] = site;
             }
+            for (uint32_t d = 0; d < dim; d++) center[d] += coor[d] + pos_sub[sub][d];
         }
+        std::cout << "Center: " << std::endl;
+        for (uint32_t d = 0; d < dim; d++) {
+            center[d] /= static_cast<double>(Nsites);
+            std::cout << center[d] << "*a[" << d << "],\t";
+        }
+        std::cout << std::endl << std::endl;
         std::sort(coor0_list.begin(), coor0_list.end());
         for (uint32_t j = num_sub; j < Nsites; j+=num_sub) {
             assert(coor0_list[j-1] < coor0_list[j]);
@@ -282,7 +290,7 @@ namespace qbasis {
                 }
             }
         }
-        std::cout << "dim_spec = " << dim_spec << std::endl << std::endl;
+        std::cout << "dim_spec = " << dim_spec << std::endl;
         
         site2coor_map.resize(Nsites);
         coor2site_map.resize(num_sub);
@@ -292,6 +300,7 @@ namespace qbasis {
             site2super_map.clear();
             site2super_map.shrink_to_fit();
         }
+        center.assign(dim,0.0);
         std::vector<std::vector<int>> coor0_list(Nsites,std::vector<int>(dim));
         uint32_t site = 0;
         for (uint32_t sub_idx = 0; sub_idx < num_sub; sub_idx++) {
@@ -303,6 +312,7 @@ namespace qbasis {
                     site2coor_map[site].first[d] = static_cast<int>(coor[d]);
                 }
                 site2coor_map[site].second = static_cast<int>(sub_idx);
+                
                 if (q_tilted()) {
                     site2super_map[site].resize(dim);
                     coor2supercell0(site2coor_map[site].first.data(), coor0_list[site].data(), site2super_map[site].data());
@@ -311,10 +321,17 @@ namespace qbasis {
                     coor0_list[site] = site2coor_map[site].first;
                     coor2site_map[sub_idx][site2coor_map[site].first] = site;
                 }
+                for (uint32_t d = 0; d < dim; d++) center[d] += coor[d] + pos_sub[sub_idx][d];
                 site++;
             }
         }
         assert(site == Nsites);
+        std::cout << "Center: " << std::endl;
+        for (uint32_t d = 0; d < dim; d++) {
+            center[d] /= static_cast<double>(Nsites);
+            std::cout << center[d] << "*a[" << d << "],\t";
+        }
+        std::cout << std::endl << std::endl;
         std::sort(coor0_list.begin(), coor0_list.end());
         for (uint32_t j = num_sub; j < Nsites; j+=num_sub) {
             assert(coor0_list[j-1] < coor0_list[j]);

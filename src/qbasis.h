@@ -1308,10 +1308,11 @@ namespace qbasis {
         /** \brief for given \f$ m_i^0 \f$ (in the 1st supercell) and sublattice index, return the site label */
         std::vector<std::map<std::vector<int>,uint32_t>> coor2site_map;
         
+        /** \brief center of mass of the lattice, in units of \f$ \vec{a}_i \f$ */
+        std::vector<double> center;
+        
         // one more variable here, denoting the divide and conquer partition
         // if empty(false), then force to store the matrix when working with translational symmetry
-        
-        // std::vector<double> center_of_mass;        // in units of a
     };
     
     
