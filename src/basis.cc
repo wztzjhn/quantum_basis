@@ -650,6 +650,51 @@ namespace qbasis {
         return *this;
     }
     
+    mbasis_elem &mbasis_elem::translate2center_OBC(const std::vector<basis_prop> &props,
+                                                   const lattice &latt, std::vector<int> &disp_vec)
+    {
+        uint32_t total_sites    = props[0].num_sites;
+        assert(latt.total_sites() == total_sites);
+        if (q_same_state_all_site(props)) return *this;
+        
+        std::vector<double> center0 = latt.center_pos();                        // center of lattice
+        std::vector<double> center1 = center_pos(props, latt);                  // center of basis
+        
+        disp_vec.resize(latt.dimension());
+        for (uint32_t d = 0; d < latt.dimension(); d++) {
+            disp_vec[d] = round2int(std::floor(center0[d] - center1[d] + 1e-12));
+        }
+        
+        std::vector<uint32_t> scratch_plan;
+        std::vector<int> scratch_coor, scratch_work;
+        int sgn;
+        latt.translation_plan(scratch_plan, disp_vec, scratch_coor, scratch_work);
+        this->transform(props, scratch_plan, sgn);
+        
+        // check doing once more does not change state, delete later
+        uint32_t dim = latt.dimension();
+        center1 = center_pos(props, latt);
+        for (uint32_t d = 0; d < dim; d++) {
+            assert(round2int(std::floor(center0[d] - center1[d] + 1e-12)) == 0);
+        }
+        
+        // check none of the nonvacuum state crosses boundary, delete later
+        std::vector<int> scratch_coor2;
+        int sub, sub2;
+        for (uint32_t site = 0; site < total_sites; site++) {
+            if (! q_zero_site(props, scratch_plan[site])) {
+                latt.site2coor(scratch_coor, sub, site);
+                latt.site2coor(scratch_coor2, sub2, scratch_plan[site]);
+                assert(sub == sub2);
+                for (uint32_t d = 0; d < dim; d++) {
+                    assert(scratch_coor2[d] == scratch_coor[d] + disp_vec[d]);
+                }
+            }
+        }
+        
+        return *this;
+    }
+    
     // need re-write this function to more general cases (pbc mixing obc in different dimensions)
     mbasis_elem &mbasis_elem::translate_to_unique_state(const std::vector<basis_prop> &props,
                                                         const qbasis::lattice &latt, std::vector<int> &disp_vec) {
@@ -2974,7 +3019,7 @@ namespace qbasis {
         
         std::vector<int> disp_vec;
         for (auto it = basis.begin(); it != basis.end(); it++)
-            it->translate_to_unique_state(props, latt, disp_vec);
+            it->translate2center_OBC(props, latt, disp_vec);
         end   = std::chrono::system_clock::now();
         elapsed_seconds = end - start;
         std::cout << elapsed_seconds.count() << "s." << std::endl;

@@ -497,7 +497,11 @@ namespace qbasis {
                                const lattice &latt, const std::vector<int> &disp, int &sgn);
         */
         
-        /** \brief old state = T(-disp_vec) * unique state */
+        /** \brief (OBC assumed; state 0 assumed to be vacuum) old state = T(-disp_vec) * centralized state */
+        mbasis_elem& translate2center_OBC(const std::vector<basis_prop> &props,
+                                          const lattice &latt, std::vector<int> &disp_vec);
+        
+        /** \brief DEPRECATED. old state = T(-disp_vec) * unique state */
         mbasis_elem& translate_to_unique_state(const std::vector<basis_prop> &props,
                                                const lattice &latt, std::vector<int> &disp_vec);
         

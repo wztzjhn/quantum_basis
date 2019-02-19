@@ -442,7 +442,7 @@ namespace qbasis {
         
         gs_vrnl = gs;
         std::vector<int> disp_vec;
-        gs_vrnl.translate_to_unique_state(props, latt_parent, disp_vec);
+        gs_vrnl.translate2center_OBC(props, latt_parent, disp_vec);
         
         // check if basis already generated
         bool flag_built = true;
@@ -495,7 +495,7 @@ namespace qbasis {
                 if (flag) basis.push_back(ele);
             }
             rm_mbasis_dulp_trans(latt_parent, basis, props);
-            std::cout << basis.size() << std::endl << std::endl;
+            std::cout << std::endl;
             
             // iterate through all levels
             for (uint32_t level = 1; level <= iteration_depth; level++) {
