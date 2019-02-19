@@ -418,7 +418,11 @@ namespace qbasis {
         void prt_bits(const std::vector<basis_prop> &props) const;
         
         /** \brief print the basis in numbers, each corresponding to a state on one site (vacuum not printed) */
-        void prt_states(const std::vector<basis_prop> &props) const;     // print non-vacuum states
+        void prt_states(const std::vector<basis_prop> &props) const;
+        
+        /** \brief generate a file to plot the basis on a lattice */
+        void plot_states(const std::vector<basis_prop> &props, const lattice &latt,
+                         const std::string &filename) const;
         
         //    ----------- basic inquiries ----------
         /** \brief question if the vacuum state on a particular orbital */

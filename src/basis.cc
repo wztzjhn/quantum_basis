@@ -3,6 +3,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 #include "qbasis.h"
 #include "graph.h"
 
@@ -518,6 +519,31 @@ namespace qbasis {
                 }
             }
         }
+    }
+    
+    void mbasis_elem::plot_states(const std::vector<basis_prop> &props, const lattice &latt,
+                                  const std::string &filename) const
+    {
+        uint32_t dim = latt.dimension();
+        std::ofstream fout(filename, std::ios::out);
+        fout << "#(1)\t(2)\t(3)\t(4)\t(5)\t(6)" << std::endl;
+        fout << "site\torb\tx\ty\tz\tbasis" << std::endl;
+        fout << std::setprecision(10);
+        
+        std::vector<int> coor;
+        int sub;
+        std::vector<double> cart;
+        for (uint32_t site = 0; site < latt.total_sites(); site++) {
+            latt.site2coor(coor, sub, site);
+            latt.coor2cart(coor, sub, cart);
+            for (uint32_t orb = 0; orb < props.size(); orb++) {
+                fout << site << "\t" << orb << "\t";
+                for (uint32_t d = 0; d < dim; d++) fout << cart[d] << "\t";
+                for (uint32_t d = dim; d < 3; d++) fout << "NA" << "\t";
+                fout << siteRead(props, site, orb) << std::endl;
+            }
+        }
+        fout.close();
     }
     
     std::vector<double> mbasis_elem::center_pos(const std::vector<basis_prop> &props, const lattice &latt) const
