@@ -472,14 +472,13 @@ namespace qbasis {
         
         if (! flag_built) {
             std::cout << "Building variational basis with " << val_lst.size()
-            << " conserved quantum numbers..." << std::endl;
+                      << " conserved quantum numbers..." << std::endl;
             std::cout << "Quantum #s: ";
             for (decltype(val_lst.size()) cnt = 0; cnt < val_lst.size(); cnt++)
                 std::cout << val_lst[cnt] << "\t";
             std::cout << std::endl;
             std::list<mbasis_elem> basis;
             std::cout << "-------- iteration 0 --------" << std::endl;
-            std::cout << "mbasis size: " << initial_list.size() << " -> ";
             for (auto &ele : initial_list) {
                 bool flag = true;                                                // check symmetries
                 auto it_opr = conserve_lst.begin();

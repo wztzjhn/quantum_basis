@@ -425,8 +425,11 @@ namespace qbasis {
                          const std::string &filename) const;
         
         //    ----------- basic inquiries ----------
+        /** \brief question if the vacuum state on a particular site */
+        bool q_zero_site(const std::vector<basis_prop> &props, const uint32_t &site) const;
+        
         /** \brief question if the vacuum state on a particular orbital */
-        bool q_zero(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
+        bool q_zero_orbital(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
         
         /** \brief question if the vacuum state */
         bool q_zero() const;

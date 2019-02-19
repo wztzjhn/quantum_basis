@@ -292,7 +292,15 @@ namespace qbasis {
         return *this;
     }
     
-    bool mbasis_elem::q_zero(const std::vector<basis_prop> &props, const uint32_t &orbital) const
+    bool mbasis_elem::q_zero_site(const std::vector<basis_prop> &props, const uint32_t &site) const
+    {
+        for (uint32_t orb = 0; orb < props.size(); orb++) {
+            if (siteRead(props, site, orb) != 0) return false;
+        }
+        return true;
+    }
+    
+    bool mbasis_elem::q_zero_orbital(const std::vector<basis_prop> &props, const uint32_t &orbital) const
     {
         assert(orbital < props.size());
         uint16_t byte_pos_bgn = 2;
@@ -540,7 +548,7 @@ namespace qbasis {
                 fout << site << "\t" << orb << "\t";
                 for (uint32_t d = 0; d < dim; d++) fout << cart[d] << "\t";
                 for (uint32_t d = dim; d < 3; d++) fout << "NA" << "\t";
-                fout << siteRead(props, site, orb) << std::endl;
+                fout << static_cast<int>(siteRead(props, site, orb)) << std::endl;
             }
         }
         fout.close();
@@ -549,21 +557,13 @@ namespace qbasis {
     std::vector<double> mbasis_elem::center_pos(const std::vector<basis_prop> &props, const lattice &latt) const
     {
         uint32_t total_sites    = props[0].num_sites;
-        uint32_t total_orbitals = props.size();
         uint32_t total_dim      = latt.dimension();
         assert(latt.total_sites() == total_sites);
         if (q_same_state_all_site(props)) return latt.center_pos();
         
         std::vector<uint32_t> site_list = {};
         for (uint32_t site = 0; site < total_sites; site++) {
-            bool nonvacuum = false;
-            for (uint32_t orb = 0; orb < total_orbitals; orb++) {
-                if (siteRead(props, site, orb) != 0) {
-                    nonvacuum = true;
-                    break;
-                }
-            }
-            if (nonvacuum) site_list.push_back(site);
+            if (! q_zero_site(props, site)) site_list.push_back(site);
         }
         assert(site_list.size() > 0);
         
