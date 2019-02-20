@@ -538,6 +538,7 @@ namespace qbasis {
         std::cout << "omega_g(GS) = " << gs_omegaG_vrnl << std::endl;
         assert(gs_omegaG_vrnl > 0 && gs_omegaG_vrnl < 50);
         
+        std::cout << "^^^^^^^^^^^ to be updated here! ^^^^^^^^^^^" << std::endl;
         auto dis_gs = momentum;
         for (decltype(dis_gs.size()) d = 0; d < dis_gs.size(); d++) {
             dis_gs[d] -= momentum_gs[d];
@@ -552,6 +553,7 @@ namespace qbasis {
         std::cout << "norm_GS(Q=";
         for (uint32_t d = 0; d < latt_parent.dimension() - 1; d++) std::cout << momentum[d] << ",";
         std::cout << momentum[latt_parent.dimension()-1] << ") = " << gs_norm_vrnl[sec_vrnl] << std::endl;
+        std::cout << "vvvvvvvvvvv to be updated here! vvvvvvvvvvv" << std::endl;
     }
     
     
@@ -808,7 +810,7 @@ namespace qbasis {
                 for (MKL_INT cnt = 0; cnt < intermediate_states[0].size(); cnt++) {
                     auto &ele_new = intermediate_states[0][cnt];
                     auto unique_state = ele_new.first;
-                    unique_state.translate_to_unique_state(props,latt_parent,scratch_disp[0]);
+                    unique_state.translate2center_OBC(props,latt_parent,scratch_disp[0]);
                     if (unique_state != gs_vrnl) continue;
                     latt_parent.coor2cart(scratch_disp[0], 0, scratch_cart[0]);
                     double exp_coef = 0.0;
@@ -836,7 +838,7 @@ namespace qbasis {
                 for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                     auto &ele_new = intermediate_states[tid][cnt];
                     auto unique_state = ele_new.first;
-                    unique_state.translate_to_unique_state(props,latt_parent,scratch_disp[tid]);
+                    unique_state.translate2center_OBC(props,latt_parent,scratch_disp[tid]);
                     MKL_INT j = binary_search<mbasis_elem,MKL_INT>(basis, unique_state, 0, dim);   // < j | H | i >
                     if (j < 0 || j >= dim) continue;
                     if (upper_triangle && i > j) continue;
@@ -1807,7 +1809,7 @@ namespace qbasis {
                             scratch_disp[tid][d] = 0;
                     } else {
                         auto unique_state = ele_new.first;
-                        unique_state.translate_to_unique_state(props,latt_parent,scratch_disp[tid]);
+                        unique_state.translate2center_OBC(props,latt_parent,scratch_disp[tid]);
                         if (unique_state != gs_vrnl) continue;
                     }
                     latt_parent.coor2cart(scratch_disp[tid], 0, scratch_cart[tid]);
@@ -1868,7 +1870,7 @@ namespace qbasis {
                     for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                         auto &ele_new = intermediate_states[tid][cnt];
                         auto unique_state = ele_new.first;
-                        unique_state.translate_to_unique_state(props,latt_parent,scratch_disp[tid]);
+                        unique_state.translate2center_OBC(props,latt_parent,scratch_disp[tid]);
                         if (unique_state == gs_vrnl && gs_norm_vrnl[sec_new] > lanczos_precision) {
                             latt_parent.coor2cart(scratch_disp[tid], 0, scratch_cart[tid]);
                             double exp_coef = 0.0;
@@ -1949,7 +1951,7 @@ namespace qbasis {
                         auto &ele = intermediate_states[tid][cnt];
                         auto unique_state = ele.first;
                         std::vector<int> disp_vec;
-                        unique_state.translate_to_unique_state(props, latt_parent, disp_vec);
+                        unique_state.translate2center_OBC(props, latt_parent, disp_vec);
                         auto m = qbasis::binary_search<qbasis::mbasis_elem,MKL_INT>(basis, unique_state, 0, dim);
                         if (m < dim) {
                             values += qbasis::conjugate(eigenvec[m]) * temp * ele.second

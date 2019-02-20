@@ -148,6 +148,7 @@ namespace qbasis {
     bool operator<(const mbasis_elem&, const mbasis_elem&);
     bool operator==(const mbasis_elem&, const mbasis_elem&);
     bool operator!=(const mbasis_elem&, const mbasis_elem&);
+    /** \brief DEPRECATED! */
     bool trans_equiv(const mbasis_elem&, const mbasis_elem&, const std::vector<basis_prop> &props, const lattice&);   // computational heavy, use with caution
     
     void zipper_basis(const std::vector<basis_prop> &props_parent,              // defined in Weisse's PRE 87, 043305 (2013)
@@ -500,10 +501,6 @@ namespace qbasis {
         /** \brief (OBC assumed; state 0 assumed to be vacuum) old state = T(-disp_vec) * centralized state */
         mbasis_elem& translate2center_OBC(const std::vector<basis_prop> &props,
                                           const lattice &latt, std::vector<int> &disp_vec);
-        
-        /** \brief DEPRECATED. old state = T(-disp_vec) * unique state */
-        mbasis_elem& translate_to_unique_state(const std::vector<basis_prop> &props,
-                                               const lattice &latt, std::vector<int> &disp_vec);
         
         //    ------------ measurements ------------
         double diagonal_operator(const std::vector<basis_prop> &props, const opr<double> &lhs) const;

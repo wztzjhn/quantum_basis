@@ -463,7 +463,7 @@ namespace qbasis {
     
     void lattice::coor2cart(const std::vector<int> &coor, const int &sub, std::vector<double> &cart) const
     {
-        assert(sub >= 0 && sub < num_sub);
+        assert(sub >= 0 && sub < static_cast<int>(num_sub));
         if (cart.size() != dim) cart.resize(dim);
         std::fill(cart.begin(), cart.end(), 0.0);
         for (uint32_t d_out = 0; d_out < dim; d_out++) {                         // loop over x,y,z

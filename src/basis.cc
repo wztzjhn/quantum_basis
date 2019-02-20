@@ -695,109 +695,6 @@ namespace qbasis {
         return *this;
     }
     
-    // need re-write this function to more general cases (pbc mixing obc in different dimensions)
-    mbasis_elem &mbasis_elem::translate_to_unique_state(const std::vector<basis_prop> &props,
-                                                        const qbasis::lattice &latt, std::vector<int> &disp_vec) {
-        for (decltype(latt.dimension()) j = 1; j < latt.dimension(); j++) {
-            assert(latt.boundary()[j-1] == latt.boundary()[j]); // relax in future
-        }
-        std::vector<uint32_t> scratch_plan;
-        std::vector<int> scratch_coor, scratch_work;
-        uint32_t total_sites    = props[0].num_sites;
-        uint32_t total_orbitals = props.size();
-        assert(latt.total_sites() == total_sites);
-        uint32_t orb_smart = 0;
-        while (orb_smart < total_orbitals && q_same_state_all_site(props, orb_smart)) orb_smart++;
-        if (orb_smart == total_orbitals) { // if every site in the same state
-            disp_vec = std::vector<int>(latt.dimension(),0.0);
-            return *this;
-        }
-        
-        auto statis = statistics(props, orb_smart);
-        uint8_t state_smart = 0;
-        
-        std::vector<std::string> pbc(latt.dimension(),"pbc");
-        std::vector<std::string> obc(latt.dimension(),"obc");
-        std::vector<std::string> PBC(latt.dimension(),"PBC");
-        std::vector<std::string> OBC(latt.dimension(),"OBC");
-        
-        if (latt.boundary() == pbc || latt.boundary() == PBC) {
-            state_smart = 0;
-        } else if (latt.boundary() == obc || latt.boundary() == OBC) {
-            state_smart = 1;
-        }
-        while (statis[state_smart] == 0) state_smart++;
-        assert(state_smart < props[orb_smart].dim_local);
-        
-        // following nomenclature of trans_equiv()
-        uint32_t num_sites_smart = statis[state_smart];
-        std::vector<uint32_t> sites_smart;
-        for (uint32_t site = 0; site < total_sites; site++) {                // search for sites_smart
-            if (siteRead(props, site, orb_smart) == state_smart) sites_smart.push_back(site);
-            if (static_cast<uint32_t>(sites_smart.size()) >= num_sites_smart) break;
-        }
-        
-        if (latt.boundary() == pbc || latt.boundary() == PBC) {
-            // now we want to translate site_smart to the highest site, to minimize the state in < comparison
-            std::vector<int> coor_smart(latt.dimension());
-            int sub_smart;
-            auto state_min = *this;
-            auto linear_size = latt.Linear_size();
-            std::vector<int> disp(latt.dimension(),0);
-            disp_vec = disp;
-            for (uint32_t cnt = 0; cnt < num_sites_smart; cnt++) {
-                latt.site2coor(coor_smart, sub_smart, sites_smart[cnt]);
-                for (uint32_t j = 0; j < latt.dimension(); j++)
-                    disp[j] = static_cast<int>(linear_size[j]) - 1 - coor_smart[j];
-                auto state_new = *this;
-                int sgn;
-                latt.translation_plan(scratch_plan, disp, scratch_coor, scratch_work);
-                state_new.transform(props, scratch_plan, sgn);
-                if(state_new < state_min) {
-                    state_min = state_new;
-                    disp_vec = disp;
-                }
-            }
-            swap(state_min, *this);
-        } else if (latt.boundary() == obc || latt.boundary() == OBC) {
-            std::vector<int> lowest_coors(latt.dimension());
-            int sub0;
-            latt.site2coor(lowest_coors, sub0, sites_smart[0]);
-            //this->prt(); std::cout << std::endl;
-            std::vector<int> highest_coors = lowest_coors;
-            
-            for (uint32_t site = 0; site < latt.total_sites(); site++) {
-                std::vector<int> coor(latt.dimension());
-                int sub;
-                latt.site2coor(coor, sub, site);
-                std::vector<uint8_t> temp(total_orbitals);
-                for (uint32_t orb = 0; orb < total_orbitals; orb++) temp[orb] = siteRead(props, site, orb);
-                if (std::any_of(temp.begin(), temp.end(), [](uint8_t a){return a != 0; })) {
-                    for (uint32_t dim = 0; dim < latt.dimension(); dim++) {
-                        if (coor[dim] < lowest_coors[dim]) lowest_coors[dim] = coor[dim];
-                        if (coor[dim] > highest_coors[dim]) highest_coors[dim] = coor[dim];
-                    }
-                }
-            }
-            
-            disp_vec.resize(latt.dimension());
-            int sgn;
-            for (uint32_t dim = 0; dim < latt.dimension(); dim++) {
-                assert(lowest_coors[dim] >= 0 && lowest_coors[dim] < static_cast<int>(latt.Linear_size()[dim]));
-                assert(highest_coors[dim] >= 0 && highest_coors[dim] < static_cast<int>(latt.Linear_size()[dim]));
-                assert(lowest_coors[dim] <= highest_coors[dim]);
-                disp_vec[dim] = static_cast<int>((latt.Linear_size()[dim]) - 1 - highest_coors[dim] - lowest_coors[dim])/2;
-                if (lowest_coors[dim] + disp_vec[dim]
-                    > static_cast<int>(latt.Linear_size()[dim]) - 1 - (highest_coors[dim] + disp_vec[dim])) {
-                    disp_vec[dim]--;
-                }
-            }
-            latt.translation_plan(scratch_plan, disp_vec, scratch_coor, scratch_work);
-            this->transform(props, scratch_plan, sgn);
-        }
-        return *this;
-    }
-    
     double mbasis_elem::diagonal_operator(const std::vector<basis_prop> &props, const opr<double>& lhs) const
     {
         assert((! lhs.fermion) && lhs.dim == props[lhs.orbital].dim_local);
@@ -902,6 +799,7 @@ namespace qbasis {
     bool trans_equiv(const mbasis_elem &lhs, const mbasis_elem &rhs,
                      const std::vector<basis_prop> &props, const lattice &latt)
     {
+        assert(false);
         for (decltype(latt.dimension()) j = 1; j < latt.dimension(); j++) {
             assert(latt.boundary()[j-1] == latt.boundary()[j]); // relax in future
         }
@@ -2944,7 +2842,8 @@ namespace qbasis {
         }
     }
     
-    template <typename T> void gen_mbasis_by_mopr(const mopr<T> &Ham, std::list<mbasis_elem> &basis, const std::vector<basis_prop> &props,
+    template <typename T> void gen_mbasis_by_mopr(const mopr<T> &Ham, std::list<mbasis_elem> &basis,
+                                                  const std::vector<basis_prop> &props,
                                                   std::vector<mopr<T>> conserve_lst, std::vector<double> val_lst)
     {
         assert(conserve_lst.size() == val_lst.size());
