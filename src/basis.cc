@@ -543,7 +543,7 @@ namespace qbasis {
         std::vector<double> cart;
         for (uint32_t site = 0; site < latt.total_sites(); site++) {
             latt.site2coor(coor, sub, site);
-            latt.coor2cart(coor, sub, cart);
+            latt.coor2cart(coor, cart, sub);
             for (uint32_t orb = 0; orb < props.size(); orb++) {
                 fout << site << "\t" << orb << "\t";
                 for (uint32_t d = 0; d < dim; d++) fout << cart[d] << "\t";

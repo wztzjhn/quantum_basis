@@ -1190,12 +1190,15 @@ namespace qbasis {
         
         void site2coor_old(std::vector<int> &coor, int &sub, const uint32_t &site) const;
         
+        /** \brief with given \f$ m_i \f$, output cartisian coordinates */
+        void coor2cart(const std::vector<int> &coor, std::vector<double> &cart) const;
+        
         /** \brief with given \f$ m_i \f$ and sublattice index, output cartisian coordinates */
-        void coor2cart(const std::vector<int> &coor, const int &sub, std::vector<double> &cart) const;
+        void coor2cart(const std::vector<int> &coor, std::vector<double> &cart, const int &sub) const;
         
-        // return a vector containing the positions of each site after translation
-        //std::vector<uint32_t> translation_plan(const std::vector<int> &disp) const;
         
+        
+        /** \brief on return, the vector "plan" contains the positions of each site after translation T(disp) */
         void translation_plan(std::vector<uint32_t> &plan, const std::vector<int> &disp,
                               std::vector<int> &scratch_coor, std::vector<int> &scratch_work) const;
         

@@ -812,7 +812,7 @@ namespace qbasis {
                     auto unique_state = ele_new.first;
                     unique_state.translate2center_OBC(props,latt_parent,scratch_disp[0]);
                     if (unique_state != gs_vrnl) continue;
-                    latt_parent.coor2cart(scratch_disp[0], 0, scratch_cart[0]);
+                    latt_parent.coor2cart(scratch_disp[0], scratch_cart[0]);
                     double exp_coef = 0.0;
                     for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                         exp_coef += gs_momentum_vrnl[d] * scratch_cart[0][d];
@@ -842,7 +842,7 @@ namespace qbasis {
                     MKL_INT j = binary_search<mbasis_elem,MKL_INT>(basis, unique_state, 0, dim);   // < j | H | i >
                     if (j < 0 || j >= dim) continue;
                     if (upper_triangle && i > j) continue;
-                    latt_parent.coor2cart(scratch_disp[tid], 0, scratch_cart[tid]);
+                    latt_parent.coor2cart(scratch_disp[tid], scratch_cart[tid]);
                     double exp_coef = 0.0;
                     for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                         exp_coef += momentum[d] * scratch_cart[tid][d];
@@ -1812,7 +1812,7 @@ namespace qbasis {
                         unique_state.translate2center_OBC(props,latt_parent,scratch_disp[tid]);
                         if (unique_state != gs_vrnl) continue;
                     }
-                    latt_parent.coor2cart(scratch_disp[tid], 0, scratch_cart[tid]);
+                    latt_parent.coor2cart(scratch_disp[tid], scratch_cart[tid]);
                     double exp_coef = 0.0;
                     for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                         exp_coef += momentum[d] * scratch_cart[tid][d];
@@ -1872,7 +1872,7 @@ namespace qbasis {
                         auto unique_state = ele_new.first;
                         unique_state.translate2center_OBC(props,latt_parent,scratch_disp[tid]);
                         if (unique_state == gs_vrnl && gs_norm_vrnl[sec_new] > lanczos_precision) {
-                            latt_parent.coor2cart(scratch_disp[tid], 0, scratch_cart[tid]);
+                            latt_parent.coor2cart(scratch_disp[tid], scratch_cart[tid]);
                             double exp_coef = 0.0;
                             for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                                 exp_coef += momentum[d] * scratch_cart[tid][d];
@@ -1882,7 +1882,7 @@ namespace qbasis {
                         } else {
                             MKL_INT i = binary_search<mbasis_elem,MKL_INT>(basis_vrnl[sec_new], unique_state, 0, dim_vrnl[sec_new]);
                             if (i < 0 || i >= dim_vrnl[sec_new]) continue;
-                            latt_parent.coor2cart(scratch_disp[tid], 0, scratch_cart[tid]);
+                            latt_parent.coor2cart(scratch_disp[tid], scratch_cart[tid]);
                             double exp_coef = 0.0;
                             for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                                 exp_coef += momentum[d] * scratch_cart[tid][d];
