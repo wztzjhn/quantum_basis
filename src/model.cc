@@ -518,7 +518,6 @@ namespace qbasis {
             }
         }
         // calculate normalization factors (for the ground state)
-        std::vector<double> cart;
         uint32_t cnt_total  = latt_parent.total_sites() / latt_parent.num_sublattice();
         uint32_t cnt_repeat = 0;
         for (uint32_t site = 0; site < latt_parent.total_sites(); site++) {
@@ -791,7 +790,6 @@ namespace qbasis {
         // prepare intermediates in advance
         std::vector<wavefunction<T>> intermediate_states(num_threads, {gs_vrnl});
         std::vector<std::vector<int>> scratch_disp(num_threads);
-        std::vector<std::vector<double>> scratch_cart(num_threads);
         
         std::cout << "Generating LIL Hamiltonian matrix (vrnl)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
@@ -812,12 +810,12 @@ namespace qbasis {
                     auto unique_state = ele_new.first;
                     unique_state.translate2center_OBC(props,latt_parent,scratch_disp[0]);
                     if (unique_state != gs_vrnl) continue;
-                    latt_parent.coor2cart(scratch_disp[0], scratch_cart[0]);
                     double exp_coef = 0.0;
                     for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
-                        exp_coef += gs_momentum_vrnl[d] * scratch_cart[0][d];
+                        exp_coef += gs_momentum_vrnl[d] * scratch_disp[0][d];
                     }
-                    auto coeff = static_cast<double>(gs_omegaG_vrnl) / NsitesPsublatt * std::exp(std::complex<double>(0.0,exp_coef));
+                    auto coeff = static_cast<double>(gs_omegaG_vrnl) / NsitesPsublatt
+                               * std::exp(std::complex<double>(0.0,2.0*pi*exp_coef));
                     gs_E0_vrnl += coeff.real();
                 }
             }
@@ -842,12 +840,11 @@ namespace qbasis {
                     MKL_INT j = binary_search<mbasis_elem,MKL_INT>(basis, unique_state, 0, dim);   // < j | H | i >
                     if (j < 0 || j >= dim) continue;
                     if (upper_triangle && i > j) continue;
-                    latt_parent.coor2cart(scratch_disp[tid], scratch_cart[tid]);
                     double exp_coef = 0.0;
                     for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
-                        exp_coef += momentum[d] * scratch_cart[tid][d];
+                        exp_coef += momentum[d] * scratch_disp[tid][d];
                     }
-                    auto coeff = std::exp(std::complex<double>(0.0,exp_coef));
+                    auto coeff = std::exp(std::complex<double>(0.0,2.0*pi*exp_coef));
                     matrix_lil.add(i, j, conjugate(coeff*ele_new.second));
                 }
             }
@@ -1778,7 +1775,6 @@ namespace qbasis {
         // prepare intermediates in advance
         std::vector<wavefunction<T>> intermediate_states(num_threads, {props});
         std::vector<std::vector<int>> scratch_disp(num_threads,std::vector<int>(L.size()));
-        std::vector<std::vector<double>> scratch_cart(num_threads);
         
         std::cout << "mopr * gs (t = " << sec_vrnl << ")... " << std::endl;
         for (MKL_INT j = 0; j < dim; j++) vec_new[j] = 0.0;
@@ -1812,12 +1808,11 @@ namespace qbasis {
                         unique_state.translate2center_OBC(props,latt_parent,scratch_disp[tid]);
                         if (unique_state != gs_vrnl) continue;
                     }
-                    latt_parent.coor2cart(scratch_disp[tid], scratch_cart[tid]);
                     double exp_coef = 0.0;
                     for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
-                        exp_coef += momentum[d] * scratch_cart[tid][d];
+                        exp_coef += momentum[d] * scratch_disp[tid][d];
                     }
-                    auto coeff = std::exp(std::complex<double>(0.0,exp_coef));
+                    auto coeff = std::exp(std::complex<double>(0.0,2.0*pi*exp_coef));
                     vec_new[j] += sqrt_omega_g * conjugate(coeff*ele_new.second);
                 }
             }
@@ -1846,7 +1841,6 @@ namespace qbasis {
         // prepare intermediates in advance
         std::vector<wavefunction<T>> intermediate_states(num_threads, {props});
         std::vector<std::vector<int>> scratch_disp(num_threads);
-        std::vector<std::vector<double>> scratch_cart(num_threads);
         
         std::cout << "mopr * vec (s = " << sec_old << ", t = " << sec_new << ")... " << std::endl;
         for (MKL_INT j = 0; j < dim_vrnl[sec_new]; j++) vec_new[j] = 0.0;
@@ -1872,22 +1866,20 @@ namespace qbasis {
                         auto unique_state = ele_new.first;
                         unique_state.translate2center_OBC(props,latt_parent,scratch_disp[tid]);
                         if (unique_state == gs_vrnl && gs_norm_vrnl[sec_new] > lanczos_precision) {
-                            latt_parent.coor2cart(scratch_disp[tid], scratch_cart[tid]);
                             double exp_coef = 0.0;
                             for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
-                                exp_coef += momentum[d] * scratch_cart[tid][d];
+                                exp_coef += momentum[d] * scratch_disp[tid][d];
                             }
                             value_gs +=  sj * ele_new.second / sqrt_omega_g
-                                       * std::exp(std::complex<double>(0.0,exp_coef)) ;
+                                       * std::exp(std::complex<double>(0.0,2.0*pi*exp_coef)) ;
                         } else {
                             MKL_INT i = binary_search<mbasis_elem,MKL_INT>(basis_vrnl[sec_new], unique_state, 0, dim_vrnl[sec_new]);
                             if (i < 0 || i >= dim_vrnl[sec_new]) continue;
-                            latt_parent.coor2cart(scratch_disp[tid], scratch_cart[tid]);
                             double exp_coef = 0.0;
                             for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
-                                exp_coef += momentum[d] * scratch_cart[tid][d];
+                                exp_coef += momentum[d] * scratch_disp[tid][d];
                             }
-                            auto coef = sj * ele_new.second * std::exp(std::complex<double>(0.0,exp_coef));
+                            auto coef = sj * ele_new.second * std::exp(std::complex<double>(0.0,2.0*pi*exp_coef));
                             values.push_back(std::pair<MKL_INT, T>(i, coef));
                         }
                     }
