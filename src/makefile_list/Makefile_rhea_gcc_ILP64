@@ -1,0 +1,23 @@
+CXX       = g++
+CPPFLAGS  = -O2 -std=c++11 -Wall -Wextra -DMKL_ILP64 -m64 -fopenmp \
+            -isystem ${MKLROOT}/include \
+            -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig \
+            -isystem ${HOME}/installs_rhea/include
+LIBS      = -L${HOME}/opt/ARPACK_ILP64 -larpack -lgfortran \
+            -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl \
+            -fopenmp \
+            -L${HOME}/installs_rhea/lib -lboost_filesystem -lboost_system
+
+include makefile_list/object_list.txt
+
+libqbasis.a: $(OBJS)
+	ar rvs libqbasis.a $(OBJS)
+
+install: libqbasis.a
+	$(RM) ${HOME}/installs_rhea/lib/libqbasis.*; cp libqbasis.a ${HOME}/installs_rhea/lib; cp qbasis.h ${HOME}/installs_rhea/include
+
+%.o: %.cc
+	$(CXX) $(CPPFLAGS) -c -o $@ $<
+
+clean:
+	$(RM) *.o *.a
