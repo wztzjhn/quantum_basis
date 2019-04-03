@@ -44,7 +44,7 @@ test
 out_Qckpt
 plots
 refs
-cmake-build-debug
+cmake-build-*
 .idea
 
 #temporarily keep the doxygen files private
