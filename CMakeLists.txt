@@ -71,14 +71,11 @@ elseif(CMAKE_COMPILER_IS_GNUCXX AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
 #linux gcc
 elseif(CMAKE_COMPILER_IS_GNUCXX AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
-  #set(LIBS "-L${MKL_ROOT}/lib/intel64 -Wl,-rpath,${MKL_ROOT}/lib -lmkl_gf_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl")
-  #set(LIBS "-L${MKL_ROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl")
   set(LIBS "-L${MKL_ROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl")
 #linux intel
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel" AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mkl=parallel")
   set(LIBS "-liomp5 -lpthread -lm -ldl")
-#  set(LIBS "-L${MKL_ROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl")
 #elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
 #  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
 #  set(LIBS "-L${MKL_ROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl")
@@ -89,7 +86,7 @@ find_package(ARPACK REQUIRED)
 if (ARPACK_FOUND)
   include_directories(SYSTEM ${ARPACK_INCLUDE_DIRS})
   include_directories(SYSTEM ${ARPACK_INCLUDE_DIRS}/../examples/areig)
-  set(LIBS "${LIBS} ${ARPACK_LIBRARIES}")
+  set(LIBS ${LIBS} ${ARPACK_LIBRARIES})
   add_definitions(-DWITH_ARPACK)
   if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lgfortran")
@@ -100,12 +97,12 @@ endif()
 find_package(Boost REQUIRED COMPONENTS
              filesystem system)
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
-set(LIBS "${LIBS} ${Boost_LIBRARIES}")
+set(LIBS ${LIBS} ${Boost_LIBRARIES})
 
 # Add openmp if Linux platform
 if(CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
-  set(LIBS "${LIBS} -fopenmp")
+  set(LIBS "${LIBS};-fopenmp")
 endif()
 
 # -- BUILD -------------------------------------------

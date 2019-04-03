@@ -6,7 +6,7 @@
 #   MKL_LIBRARIES        : the library to link against.
 
 
-set(MKL_ROOT $ENV{MKLROOT} CACHE PATH "Folder contains MKL")
+set(MKL_ROOT $ENV{MKLROOT})
 
 # Find include dir
 IF(MKL_INCLUDE_DIRS)
@@ -14,7 +14,6 @@ IF(MKL_INCLUDE_DIRS)
   FIND_LIBRARY(MKL_LIBRARY mkl ${MKL_LIBRARY_DIRS})
 ELSE(MKL_INCLUDE_DIRS)
     SET(TRIAL_PATHS
-      $HOME/installs/include
       /usr/include
       /usr/local/include
       ${MKL_ROOT}/include
