@@ -1,15 +1,11 @@
-CXX       = g++-8
+CXX       = g++
 CPPFLAGS  = -O0 -g -D_GLIBCXX_DEBUG -std=c++11 -Wall -Wextra -m64 -fopenmp \
             -isystem ${MKLROOT}/include \
-            -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig \
-            -isystem ${HOME}/installs/include
+            -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
 LIBS      = -larpack \
-            -L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl \
+            -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl \
             -fopenmp \
-            ${HOME}/installs/lib/libboost_filesystem.a ${HOME}/installs/lib/libboost_system.a
-
-#comment: The default boost libs on mac are typically built with clang, incompatible with g++. 
-#         To resolve, we built a separate boost with g++, in folder ${HOME}/installs
+            -lboost_filesystem -lboost_system
 
 include makefile_list/object_list.txt
 
