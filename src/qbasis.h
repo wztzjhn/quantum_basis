@@ -1415,7 +1415,8 @@ namespace qbasis {
         std::vector<std::vector<MKL_INT>>              basis_repr_deprec;
         // ---------------- deprecated --------------------
         
-        
+        model() {}
+
         model(const lattice &latt, const uint32_t &num_secs = 5, const double &fake_pos_ = 100.0);
         
         ~model() {}
