@@ -820,6 +820,7 @@ namespace qbasis {
                 }
             }
         }
+        std::cout << "GS_E0_vrnl = " << gs_E0_vrnl << std::endl;
         
         #pragma omp parallel for schedule(dynamic,256)
         for (MKL_INT i = 0; i < dim; i++) {
