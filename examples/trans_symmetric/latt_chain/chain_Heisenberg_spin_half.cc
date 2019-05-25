@@ -82,7 +82,7 @@ int main() {
         // generate the translational symmetric basis
         Heisenberg.enumerate_basis_repr({momentum}, {Sz_total}, {Sz_total_val});
 
-        // generating matrix of the Hamiltonian in the full Hilbert space
+        // generating matrix of the Hamiltonian in the subspace
         //Heisenberg.generate_Ham_sparse_repr();
         std::cout << std::endl;
 
@@ -124,7 +124,7 @@ int main() {
         Heisenberg.basis_init_repr_deprecated({momentum});
 
         // optional in future, will use more memory and give higher speed
-        // generating matrix of the Hamiltonian in the full Hilbert space
+        // generating matrix of the Hamiltonian in the subspace
         Heisenberg.generate_Ham_sparse_repr_deprecated();
         std::cout << std::endl;
 

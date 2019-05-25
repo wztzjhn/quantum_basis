@@ -84,7 +84,7 @@ int main() {
         // constructing the Hilbert space basis
         Heisenberg.enumerate_basis_repr({momentum}, {Sz_total}, {Sz_total_val});
 
-        // generating matrix of the Hamiltonian in the full Hilbert space
+        // generating matrix of the Hamiltonian in the subspace
         Heisenberg.generate_Ham_sparse_repr();
         std::cout << std::endl;
 

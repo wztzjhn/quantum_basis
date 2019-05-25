@@ -114,7 +114,7 @@ int main() {
         // constructing the Hilbert space basis
         Kondo.enumerate_basis_repr({momentum}, {Nelec_total,Sz_total}, {Nelec_total_val,Sz_total_val});
 
-        // generating matrix of the Hamiltonian in the full Hilbert space
+        // generating matrix of the Hamiltonian in the subspace
         Kondo.generate_Ham_sparse_repr();
         std::cout << std::endl;
 
