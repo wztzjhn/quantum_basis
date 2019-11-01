@@ -11,4 +11,5 @@ EXEC = chain_Heisenberg_spin_half.x \
        honeycomb_Spinless_Fermion.x \
        kagome_tJ.x \
        square_Fermi_Hubbard.x \
+       square_Kondo.x \
        triangular_Heisenberg_spin_half.x

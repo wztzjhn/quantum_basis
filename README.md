@@ -41,6 +41,7 @@ To learn how to use this library to design ED code for your own models, please r
 - Square lattice
   - Bose-Hubbard model
   - Fermi-Hubbard model
+  - Kondo Lattice model
 - Triangular lattice
   - Heisenberg spin-1/2
 
