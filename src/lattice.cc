@@ -6,7 +6,8 @@ namespace qbasis {
     // ----------------- implementation of lattice ------------------
     lattice::lattice(const std::string &name,
                      const std::vector<uint32_t> &L_,
-                     const std::vector<std::string> &bc_) : bc(bc_), L(L_)
+                     const std::vector<std::string> &bc_,
+                     bool auto_dim_spec) : bc(bc_), L(L_)
     {
         assert(L.size() == bc.size());
         dim = static_cast<uint32_t>(L.size());
@@ -18,7 +19,7 @@ namespace qbasis {
             R[d][d] = L[d];
             for (uint32_t i = 0; i < dim; i++) Rmat[i+dim*d] = static_cast<double>(R[d][i]);
         }
-        
+
         tilted.resize(dim);
         for (uint32_t d = 0; d < dim; d++) {
             tilted[d] = false;
@@ -27,7 +28,7 @@ namespace qbasis {
             }
             assert(tilted[d] == false);
         }
-        
+
         if (name == "chain" || name == "Chain" || name == "CHAIN") {
             std::cout << "Chain lattice built."<< std::endl;
             assert(L.size() == 1);
@@ -114,7 +115,7 @@ namespace qbasis {
             std::cout << "Lattice not recognized! " << std::endl;
             assert(false);
         }
-        
+
         std::cout << "dim     = " << dim << std::endl;
         std::cout << "num_sub = " << num_sub << std::endl;
         std::cout << "Real space basis: " << std::endl;
@@ -142,9 +143,9 @@ namespace qbasis {
             std::cout << std::endl;
         }
         std::cout << "Nsites: " << Nsites << std::endl;
-        
+
         dim_spec = dim;
-        if (num_sub % 2 != 0) {
+        if (auto_dim_spec && num_sub % 2 != 0) {
             for (uint32_t d = 0; d < dim; d++) {
                 if (L[d] % 2 == 0) {
                     dim_spec = d;
@@ -153,11 +154,11 @@ namespace qbasis {
             }
         }
         std::cout << "dim_spec = " << dim_spec << std::endl;
-        
+
         for (uint32_t j = 0; j < dim; j++) {
             assert(bc[j] == "pbc" || bc[j] == "PBC" || bc[j] == "obc" || bc[j] == "OBC");
         }
-        
+
         site2coor_map.resize(Nsites);
         coor2site_map.resize(num_sub);
         if (q_tilted()) {
@@ -174,7 +175,7 @@ namespace qbasis {
             site2coor_old(coor, sub, site);
             site2coor_map[site].first  = coor;
             site2coor_map[site].second = sub;
-            
+
             if (q_tilted()) {
                 site2super_map[site].resize(dim);
                 coor2supercell0(site2coor_map[site].first.data(), coor0_list[site].data(), site2super_map[site].data());
@@ -196,17 +197,17 @@ namespace qbasis {
             assert(coor0_list[j-1] < coor0_list[j]);
         }
     }
-    
-    lattice::lattice(const std::string &filename)
+
+    lattice::lattice(const std::string &filename, bool auto_dim_spec)
     {
         std::cout << "Reading lattice information from " << filename << std::endl;
         auto config = cpptoml::parse_file(filename);
-        
+
         dim     = static_cast<uint32_t>(*config->get_as<int>("dim"));
         num_sub = static_cast<uint32_t>(*config->get_as<int>("num_sub"));
         std::cout << "dim     = " << dim << std::endl;
         std::cout << "num_sub = " << num_sub << std::endl;
-        
+
         a = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
         b = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
         R = std::vector<std::vector<int>>(dim, std::vector<int>(dim, 0));
@@ -257,7 +258,7 @@ namespace qbasis {
             for (uint32_t j = 0; j < dim; j++) std::cout << pos_sub[sub_idx][j] << "*a[" << j << "],\t";
             std::cout << std::endl;
         }
-        
+
         switch (dim) {
             case 1:
                 Nsites = abs(R[0][0]);
@@ -281,7 +282,7 @@ namespace qbasis {
         if (! q_tilted()) {
             L.resize(dim);
             for (uint32_t d = 0; d < dim; d++) L[d] = abs(R[d][d]);
-            if (num_sub % 2 != 0) {
+            if (auto_dim_spec && num_sub % 2 != 0) {
                 for (uint32_t d = 0; d < dim; d++) {
                     if (L[d] % 2 == 0) {
                         dim_spec = d;
@@ -291,7 +292,7 @@ namespace qbasis {
             }
         }
         std::cout << "dim_spec = " << dim_spec << std::endl;
-        
+
         site2coor_map.resize(Nsites);
         coor2site_map.resize(num_sub);
         if (q_tilted()) {
@@ -312,7 +313,7 @@ namespace qbasis {
                     site2coor_map[site].first[d] = static_cast<int>(coor[d]);
                 }
                 site2coor_map[site].second = static_cast<int>(sub_idx);
-                
+
                 if (q_tilted()) {
                     site2super_map[site].resize(dim);
                     coor2supercell0(site2coor_map[site].first.data(), coor0_list[site].data(), site2super_map[site].data());
@@ -337,7 +338,7 @@ namespace qbasis {
             assert(coor0_list[j-1] < coor0_list[j]);
         }
     }
-    
+
     bool lattice::q_tilted() const
     {
         for (uint32_t d = 0; d < dim; d++) {
@@ -345,14 +346,14 @@ namespace qbasis {
         }
         return false;
     }
-    
+
     bool lattice::q_dividable() const
     {
         if (total_sites() % 2 != 0) return false;
         if (dim_spec == dim && num_sub % 2 != 0) return false;
         return true;
     }
-    
+
     void lattice::coor2supercell0(const int *coor, int *coor0, int *M) const
     {
         assert(dim <= 4);
@@ -361,7 +362,7 @@ namespace qbasis {
         double Rmat_copy[16];
         for (uint32_t i = 0; i < dim; i++) alpha[i] = static_cast<double>(coor[i]);
         std::copy(Rmat.begin(), Rmat.end(), Rmat_copy);
-        
+
         lapack_int d = static_cast<lapack_int>(dim);
         auto info = gesv(LAPACK_COL_MAJOR, d, 1, Rmat_copy, d, ipiv, alpha, d);
         assert(info == 0);
@@ -376,7 +377,7 @@ namespace qbasis {
             coor0[i] = coor[i] - shift;
         }
     }
-    
+
     void lattice::coor2site(const std::vector<int> &coor, const int &sub, uint32_t &site, std::vector<int> &work) const
     {
         assert(coor.size() == dim);
@@ -388,7 +389,7 @@ namespace qbasis {
         coor2supercell0(coor.data(), work.data(), M);
         site = coor2site_map[sub_temp].at(work);
     }
-    
+
     void lattice::coor2site_old(const std::vector<int> &coor, const int &sub, uint32_t &site) const
     {
         assert(static_cast<uint32_t>(coor.size()) == dim);
@@ -397,7 +398,7 @@ namespace qbasis {
         int sub_temp = sub;
         while (sub_temp < 0) sub_temp += static_cast<int>(num_sub);
         while (sub_temp >= static_cast<int>(num_sub)) sub_temp -= static_cast<int>(num_sub);
-        
+
         if (dim_spec != dim) {
             dim_arr.push_back(dim_spec);
             for (uint32_t j = 0; j < dim; j++) {
@@ -426,7 +427,7 @@ namespace qbasis {
         }
         site = dynamic_base<uint32_t,uint32_t>(coor2, base);
     }
-    
+
     void lattice::site2coor(std::vector<int> &coor, int &sub, const uint32_t &site) const
     {
         assert(site < Nsites);
@@ -434,7 +435,7 @@ namespace qbasis {
         sub  = site2coor_map[site].second;
         return;
     }
-    
+
     void lattice::site2coor_old(std::vector<int> &coor, int &sub, const uint32_t &site) const
     {
         assert(site < Nsites);
@@ -460,7 +461,7 @@ namespace qbasis {
             for (uint32_t j = 0; j < dim; j++) coor[dim_arr[j]] = coor_temp[j+1];
         }
     }
-    
+
     void lattice::coor2cart(const std::vector<int> &coor, std::vector<double> &cart) const
     {
         if (cart.size() != dim) cart.resize(dim);
@@ -471,7 +472,7 @@ namespace qbasis {
             }
         }
     }
-    
+
     void lattice::coor2cart(const std::vector<int> &coor, std::vector<double> &cart, const int &sub) const
     {
         assert(sub >= 0 && sub < static_cast<int>(num_sub));
@@ -483,12 +484,12 @@ namespace qbasis {
             }
         }
     }
-    
+
     std::vector<std::vector<uint32_t>> lattice::divisor_v1(const std::vector<bool> &trans_sym) const
     {
         assert(trans_sym.size() == dim);
         std::vector<std::vector<uint32_t>> res(dim, std::vector<uint32_t>{1});
-        
+
         for (uint32_t d = 0; d < dim; d++) {
             if (trans_sym[d]) {
                 assert(bc[d] == "pbc" || bc[d] == "PBC");
@@ -499,7 +500,7 @@ namespace qbasis {
         }
         return res;
     }
-    
+
     /*
     std::vector<std::vector<uint32_t>> lattice::divisor_v2(const std::vector<bool> &trans_sym) const
     {
@@ -539,7 +540,7 @@ namespace qbasis {
         return res;
     }
     */
-    
+
     uint32_t volume_from_vec(const std::vector<uint32_t> &vecs)
     {
         assert(vecs.size() == 1 || vecs.size() == 4 || vecs.size() == 9);
@@ -557,12 +558,12 @@ namespace qbasis {
             return static_cast<uint32_t>(res);
         }
     }
-    
+
     std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> lattice::trans_subgroups(const std::vector<bool> &trans_sym) const
     {
         assert(trans_sym.size() == dim);
         std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> res;
-        
+
         uint32_t dim_trans = 0;
         std::vector<uint32_t> L_trans;
         std::vector<uint32_t> base0;                       // for enumerating the possible translations
@@ -578,7 +579,7 @@ namespace qbasis {
         }
         std::vector<uint32_t> base;
         for (decltype(base0.size()) d = 0; d < base0.size(); d++) base.insert(base.end(), base0.begin(), base0.end());
-        
+
         // the translational symmetric part of the original lattice
         lattice latt_trans;
         if (dim_trans == 1) {
@@ -589,13 +590,13 @@ namespace qbasis {
             latt_trans = lattice("cubic",  L_trans, std::vector<std::string>(dim_trans,"pbc"));
         }
         assert(lattice_size = latt_trans.total_sites());
-        
+
         std::cout << "Translation subgroups on lattice with size ";
         for (uint32_t d = 0; d < dim_trans - 1; d++) {
             std::cout << L_trans[d] << " x ";
         }
         std::cout << L_trans[dim_trans-1] << ":" << std::endl;
-        
+
         std::vector<uint32_t> disp_total(base.size(),0);
         while (! dynamic_base_overflow(disp_total, base)) {
             uint32_t unitcell_size = volume_from_vec(disp_total);               // NOT always equal to omega_g
@@ -607,7 +608,7 @@ namespace qbasis {
                 disp_total = dynamic_base_plus1(disp_total, base);
                 continue;
             }
-            
+
             std::pair<std::vector<std::vector<uint32_t>>,uint32_t> ele;
             ele.second = unitcell_size;
             ele.first.resize(dim_trans);
@@ -620,7 +621,7 @@ namespace qbasis {
             res.push_back(ele);
             disp_total = dynamic_base_plus1(disp_total, base);
         }
-        
+
         // for each basis combination, create a covering
         std::vector<std::pair<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>, std::vector<uint32_t>>> covering(res.size());
         std::vector<uint32_t> temp(lattice_size);
@@ -630,7 +631,7 @@ namespace qbasis {
             covering[j].second = temp;
         }
         res.clear();
-        
+
         // for each basis vector, draw the covering
         // use OPENMP here!!!
         for (decltype(covering.size()) j = 0; j < covering.size(); j++) {
@@ -651,7 +652,7 @@ namespace qbasis {
                 std::vector<int> coor0;
                 int sub0 = 0;
                 latt_trans.site2coor(coor0, sub0, pos0);
-                
+
                 // paint all translational equivalents to the same number
                 // naive way, improve in future
                 std::vector<uint32_t> base_naive(dim_trans,lattice_size);
@@ -673,7 +674,7 @@ namespace qbasis {
                 }
             }
         }
-        
+
         /*
         std::cout << " ------------------ " << std::endl;
         for (uint32_t j = 0; j < covering.size(); j++) {
@@ -694,7 +695,7 @@ namespace qbasis {
         }
         std::cout << " ------------------ " << std::endl;
         */
-        
+
         // sort the basis with the coverings, then you see lots of dulplicates
         auto cmp = [](const std::pair<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>, std::vector<uint32_t>> &lhs,
                       const std::pair<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>, std::vector<uint32_t>> &rhs)
@@ -719,7 +720,7 @@ namespace qbasis {
             }
         };
         std::sort(covering.begin(), covering.end(),cmp);
-        
+
         /*
         for (uint32_t j = 0; j < covering.size(); j++) {
             std::cout << "j = " << j << std::endl;
@@ -738,7 +739,7 @@ namespace qbasis {
             std::cout << std::endl << std::endl;
         }
         */
-        
+
         assert(! covering.empty());
         std::vector<uint32_t> pattern;
         for (decltype(covering.size()) j = 0; j < covering.size(); j++) {
@@ -766,15 +767,15 @@ namespace qbasis {
                         ele_new.first[d_ou] = std::vector<uint32_t>(dim,0);
                     }
                 }
-                
+
                 res.push_back(ele_new);
                 pattern = covering[j].second;
-                
+
                 auto check_pattern = pattern;
                 std::sort(check_pattern.begin(),check_pattern.end());
                 auto it = std::unique(check_pattern.begin(),check_pattern.end());
                 assert(std::distance(check_pattern.begin(), it) == covering[j].first.second);
-                
+
                 std::cout << "g = " << res.size() - 1 << ",\t";
                 std::cout << "{ ";
                 for (uint32_t d_ou=0; d_ou < dim_trans; d_ou++) {
@@ -787,15 +788,15 @@ namespace qbasis {
                 std::cout << res.back().second << " }, pattern =\t";
                 for (auto &eee : pattern) std::cout << eee << ",";
                 std::cout << std::endl;
-                
+
             }
         }
         std::cout << std::endl;
         res.shrink_to_fit();
-        
+
         return res;
     }
-    
+
     /*
     std::vector<uint32_t> lattice::translation_plan(const std::vector<int> &disp) const
     {
@@ -811,7 +812,7 @@ namespace qbasis {
         return result;
     }
     */
-    
+
     void lattice::translation_plan(std::vector<uint32_t> &plan, const std::vector<int> &disp,
                                    std::vector<int> &scratch_coor, std::vector<int> &scratch_work) const
     {
@@ -826,7 +827,7 @@ namespace qbasis {
             coor2site(scratch_coor,sub,plan[site], scratch_work);
         }
     }
-    
+
     std::vector<uint32_t> lattice::rotation_plan(const uint32_t &origin, const double &angle) const
     {
         assert(dim == 2);
@@ -834,19 +835,19 @@ namespace qbasis {
         std::vector<int> coor(dim), work(dim);
         std::vector<double> x0(dim), x1(dim), xwork(dim);
         int sub;
-        
+
         // obtain x0
         site2coor(coor, sub, origin);
         x0[0] = coor[0] * a[0][0] + coor[1] * a[1][0];
         x0[1] = coor[0] * a[0][1] + coor[1] * a[1][1];
-        
+
         // rotation matrix
         std::vector<double> matR(4);
         matR[0] = cos(angle);
         matR[1] = sin(angle);
         matR[2] = -matR[1];
         matR[3] = matR[0];
-        
+
         // currently only the simplest case implemented: one sublattice. More complicated cases come later
         assert(num_sub == 1);
         if (num_sub == 1) {
@@ -865,16 +866,16 @@ namespace qbasis {
                 coor2site(coor, sub, result[site], work);
             }
         }
-        
+
         // check no repetition
         auto result_check = result;
         std::sort(result_check.begin(), result_check.end());
         assert(is_sorted_norepeat(result_check));
-        
+
         return result;
     }
-    
-    
+
+
     std::vector<std::vector<std::pair<uint32_t,uint32_t>>> lattice::plan_product(
         const std::vector<std::vector<std::pair<uint32_t,uint32_t>>> &lhs,
         const std::vector<std::vector<std::pair<uint32_t,uint32_t>>> &rhs) const
@@ -893,7 +894,7 @@ namespace qbasis {
         }
         return res;
     }
-    
+
     std::vector<std::vector<std::pair<uint32_t,uint32_t>>> lattice::plan_inverse(
         const std::vector<std::vector<std::pair<uint32_t,uint32_t>>> &old) const
     {
@@ -911,7 +912,7 @@ namespace qbasis {
         }
         return res;
     }
-            
+
     lattice divide_lattice(const lattice &parent)
     {
         assert(parent.q_dividable());
@@ -934,10 +935,10 @@ namespace qbasis {
                 child.a[dim_spec][d] *= 2;
                 child.b[dim_spec][d] /= 2;
             }
-            
+
         }
         child.Nsites /= 2;
-        
+
         child.site2coor_map.clear();
         child.coor2site_map.clear();
         child.site2coor_map.resize(child.Nsites);
@@ -950,8 +951,8 @@ namespace qbasis {
             child.site2coor_map[site].second = sub;
             child.coor2site_map[sub][coor] = site;
         }
-        
+
         return child;
     }
-    
+
 }
