@@ -111,6 +111,22 @@ namespace qbasis {
             Nsites = L[0] * L[1] * L[2] * num_sub;
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0, 0.0};
+        } else if (name == "RTiO3") {
+            std::cout << "Lattice for RTiO3 built."<< std::endl;
+            assert(L.size() == 3);
+            num_sub = 4;
+            a[0][0] = 1.0;      a[0][1] = 0.0;      a[0][2] = 0.0;
+            a[1][0] = 0.0;      a[1][1] = 1.0;      a[1][2] = 0.0;
+            a[2][0] = 0.0;      a[2][1] = 0.0;      a[2][2] = 1.0;
+            b[0][0] = 2.0 * pi; b[0][1] = 0.0;      b[0][2] = 0.0;
+            b[1][0] = 0.0;      b[1][1] = 2.0 * pi; b[1][2] = 0.0;
+            b[2][0] = 0.0;      b[2][1] = 0.0;      b[2][2] = 2.0 * pi;
+            Nsites = L[0] * L[1] * L[2] * num_sub;
+            pos_sub.resize(num_sub);
+            pos_sub[0] = std::vector<double>{0.0, 0.5, 0.0};
+            pos_sub[1] = std::vector<double>{0.5, 0.0, 0.0};
+            pos_sub[2] = std::vector<double>{0.0, 0.5, 0.5};
+            pos_sub[3] = std::vector<double>{0.5, 0.0, 0.5};
         } else {
             std::cout << "Lattice not recognized! " << std::endl;
             assert(false);
