@@ -1141,14 +1141,14 @@ namespace qbasis {
 //  ----------------------------------------------------------------------------
    /** In general, the position of any site can be represented as:
     *  \f[
-    *   \vec{r} = \sum_{i=1}^{D} m_i^0 \vec{a}_i + \sum_{i=1}^D M_i \vec{R}_i + \vec{d}_s
+    *   \vec{r} = \sum_{i=1}^{D} m_i^0 \vec{a}_i + \sum_{i=1}^D M_i \vec{A}_i + \vec{d}_s
     *           = \sum_{i=1}^{D} m_i \vec{a}_i + \vec{d}_s,
     *  \f]
     *  where \f$ m_i^0 \f$, \f$ m_i \f$, and \f$ M_i \f$ are integers,
     *  and \f$ \vec{d}_s \f$ are the position shift of sublattices.
     *  Note: \f$ m_i^0 \f$ is located in the 1st supercell defined by
     *  \f[
-    *   \sum_{i=1}^D m_i^0 \vec{a}_i = \sum_{i=1}^D x_i \vec{R}_i,
+    *   \sum_{i=1}^D m_i^0 \vec{a}_i = \sum_{i=1}^D x_i \vec{A}_i,
     *  \f]
     *  where \f$ 0 \le x_i < 1 \f$.
     *  In other words, any site has two coordinate labels, one within the supercell,
@@ -1243,9 +1243,9 @@ namespace qbasis {
             return a;
         }
 
-        /** \brief return superlattice basis \f$ R_i \f$*/
-        std::vector<std::vector<int>> basis_R() const {
-            return R;
+        /** \brief return superlattice basis \f$ A_i \f$*/
+        std::vector<std::vector<int>> basis_A() const {
+            return A;
         }
 
         /** \brief return the center of the lattice */
@@ -1295,15 +1295,18 @@ namespace qbasis {
         std::vector<std::vector<double>> b;  // momentum space basis
 
         /** \brief superlattice basis, in units of \f$ \vec{a}_i \f$ */
-        std::vector<std::vector<int>> R;
+        std::vector<std::vector<int>> A;
 
-        /** \brief superlattice basis in matrix format (column i -> R_i) */
-        std::vector<double> Rmat;
+        /** \brief superlattice basis in matrix format (column i -> A_i) */
+        std::vector<double> Amat;
+
+        /** \brief reciprocal superlattice basis, in units of \f$ \vec{b}_i \f$ */
+        std::vector<std::vector<double>> B;
 
         /** \brief position shift \f$ \vec{d}_s \f$ of each sublattice, in units of \f$ \vec{a}_i \f$ */
         std::vector<std::vector<double>> pos_sub;
 
-        /** \brief true if {R1,R2,...} unparallel to {a1,a2,...} */
+        /** \brief true if {A1,A2,...} unparallel to {a1,a2,...} */
         std::vector<bool> tilted;
 
         /** \brief boundary condition. Only explicitly used when all in 1st supercell, otherwise too complicated */

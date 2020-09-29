@@ -13,18 +13,18 @@ namespace qbasis {
         dim = static_cast<uint32_t>(L.size());
         a = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
         b = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
-        R = std::vector<std::vector<int>>(dim, std::vector<int>(dim, 0));  // for the moment, only allow R to be parallel to a
-        Rmat = std::vector<double>(dim*dim,0.0);
+        A = std::vector<std::vector<int>>(dim, std::vector<int>(dim, 0));  // for the moment, only allow A to be parallel to a
+        Amat = std::vector<double>(dim * dim, 0.0);
         for (uint32_t d = 0; d < dim; d++) {
-            R[d][d] = L[d];
-            for (uint32_t i = 0; i < dim; i++) Rmat[i+dim*d] = static_cast<double>(R[d][i]);
+            A[d][d] = L[d];
+            for (uint32_t i = 0; i < dim; i++) Amat[i + dim * d] = static_cast<double>(A[d][i]);
         }
 
         tilted.resize(dim);
         for (uint32_t d = 0; d < dim; d++) {
             tilted[d] = false;
             for (uint32_t j = 0; j < dim; j++) {
-                if (j != d) tilted[d] = (tilted[d] || (R[d][j] != 0));
+                if (j != d) tilted[d] = (tilted[d] || (A[d][j] != 0));
             }
             assert(tilted[d] == false);
         }
@@ -148,8 +148,8 @@ namespace qbasis {
         }
         std::cout << "Superlattice basis: " << std::endl;
         for (uint32_t d = 0; d < dim; d++) {
-            std::cout << "R[" << d << "] = ";
-            for (uint32_t j = 0; j < dim; j++) std::cout << R[d][j] << "*a[" << j << "],\t";
+            std::cout << "A[" << d << "] = ";
+            for (uint32_t j = 0; j < dim; j++) std::cout << A[d][j] << "*a[" << j << "],\t";
             std::cout << "tilted: " << (tilted[d]?"true":"false") << std::endl;
         }
         std::cout << "Sublattice positions: " << std::endl;
@@ -226,22 +226,22 @@ namespace qbasis {
 
         a = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
         b = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
-        R = std::vector<std::vector<int>>(dim, std::vector<int>(dim, 0));
-        Rmat = std::vector<double>(dim*dim,0.0);
+        A = std::vector<std::vector<int>>(dim, std::vector<int>(dim, 0));
+        Amat = std::vector<double>(dim * dim, 0.0);
         for (uint32_t d = 0; d < dim; d++) {
             a[d] = *config->get_array_of<double>(std::string("a")+std::to_string(d));
             b[d] = *config->get_array_of<double>(std::string("b")+std::to_string(d));
-            auto Rtemp = *config->get_array_of<int64_t>(std::string("R")+std::to_string(d));
+            auto Atemp = *config->get_array_of<int64_t>(std::string("A") + std::to_string(d));
             for (uint32_t i = 0; i < dim; i++) {
-                R[d][i] = static_cast<int>(Rtemp[i]);
-                Rmat[i+dim*d] = static_cast<double>(R[d][i]);
+                A[d][i] = static_cast<int>(Atemp[i]);
+                Amat[i + dim * d] = static_cast<double>(A[d][i]);
             }
         }
         tilted.resize(dim);
         for (decltype(dim) d = 0; d < dim; d++) {
             tilted[d] = false;
             for (decltype(dim) j = 0; j < dim; j++) {
-                if (j != d) tilted[d] = (tilted[d] || (R[d][j] != 0));
+                if (j != d) tilted[d] = (tilted[d] || (A[d][j] != 0));
             }
         }
         pos_sub.resize(num_sub);
@@ -264,8 +264,8 @@ namespace qbasis {
         }
         std::cout << "Superlattice basis: " << std::endl;
         for (uint32_t d = 0; d < dim; d++) {
-            std::cout << "R[" << d << "] = ";
-            for (uint32_t j = 0; j < dim; j++) std::cout << R[d][j] << "*a[" << j << "],\t";
+            std::cout << "A[" << d << "] = ";
+            for (uint32_t j = 0; j < dim; j++) std::cout << A[d][j] << "*a[" << j << "],\t";
             std::cout << "tilted: " << (tilted[d]?"true":"false") << std::endl;
         }
         std::cout << "Sublattice positions: " << std::endl;
@@ -277,15 +277,15 @@ namespace qbasis {
 
         switch (dim) {
             case 1:
-                Nsites = abs(R[0][0]);
+                Nsites = abs(A[0][0]);
                 break;
             case 2:
-                Nsites = abs(R[0][0] * R[1][1] - R[0][1] * R[1][0]);
+                Nsites = abs(A[0][0] * A[1][1] - A[0][1] * A[1][0]);
                 break;
             case 3:
-                Nsites = abs(  R[0][0] * (R[1][1] * R[2][2] - R[2][1] * R[1][2])
-                             - R[0][1] * (R[1][0] * R[2][2] - R[2][0] * R[1][2])
-                             + R[0][2] * (R[1][0] * R[2][1] - R[2][0] * R[1][1]) );
+                Nsites = abs(  A[0][0] * (A[1][1] * A[2][2] - A[2][1] * A[1][2])
+                             - A[0][1] * (A[1][0] * A[2][2] - A[2][0] * A[1][2])
+                             + A[0][2] * (A[1][0] * A[2][1] - A[2][0] * A[1][1]) );
                 break;
             default:
                 assert(false);
@@ -297,7 +297,7 @@ namespace qbasis {
         dim_spec = dim;
         if (! q_tilted()) {
             L.resize(dim);
-            for (uint32_t d = 0; d < dim; d++) L[d] = abs(R[d][d]);
+            for (uint32_t d = 0; d < dim; d++) L[d] = abs(A[d][d]);
             if (auto_dim_spec && num_sub % 2 != 0) {
                 for (uint32_t d = 0; d < dim; d++) {
                     if (L[d] % 2 == 0) {
@@ -375,12 +375,12 @@ namespace qbasis {
         assert(dim <= 4);
         double alpha[4];
         lapack_int ipiv[4];
-        double Rmat_copy[16];
+        double Amat_copy[16];
         for (uint32_t i = 0; i < dim; i++) alpha[i] = static_cast<double>(coor[i]);
-        std::copy(Rmat.begin(), Rmat.end(), Rmat_copy);
+        std::copy(Amat.begin(), Amat.end(), Amat_copy);
 
         lapack_int d = static_cast<lapack_int>(dim);
-        auto info = gesv(LAPACK_COL_MAJOR, d, 1, Rmat_copy, d, ipiv, alpha, d);
+        auto info = gesv(LAPACK_COL_MAJOR, d, 1, Amat_copy, d, ipiv, alpha, d);
         assert(info == 0);
         for (uint32_t i = 0; i < dim; i++) {
             M[i] = round2int(floor(alpha[i] + 1e-14));
@@ -389,7 +389,7 @@ namespace qbasis {
         }
         for (uint32_t i = 0; i < dim; i++) {
             int shift = 0;
-            for (uint32_t j = 0; j < dim; j++) shift += R[j][i] * M[j];
+            for (uint32_t j = 0; j < dim; j++) shift += A[j][i] * M[j];
             coor0[i] = coor[i] - shift;
         }
     }
@@ -945,8 +945,8 @@ namespace qbasis {
             }
         } else {
             child.L[dim_spec] /= 2;
-            child.R[dim_spec][dim_spec] /= 2;
-            for (uint32_t i = 0; i < dim; i++) child.Rmat[i+dim*dim_spec] = static_cast<double>(child.R[dim_spec][i]);
+            child.A[dim_spec][dim_spec] /= 2;
+            for (uint32_t i = 0; i < dim; i++) child.Amat[i + dim * dim_spec] = static_cast<double>(child.A[dim_spec][i]);
             for (uint32_t d = 0; d < dim; d++) {
                 child.a[dim_spec][d] *= 2;
                 child.b[dim_spec][d] /= 2;
