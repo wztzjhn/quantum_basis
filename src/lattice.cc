@@ -15,11 +15,49 @@ namespace qbasis {
         b = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
         A = std::vector<std::vector<int>>(dim, std::vector<int>(dim, 0));  // for the moment, only allow A to be parallel to a
         Amat = std::vector<double>(dim * dim, 0.0);
+        B = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
         for (uint32_t d = 0; d < dim; d++) {
             A[d][d] = L[d];
             for (uint32_t i = 0; i < dim; i++) Amat[i + dim * d] = static_cast<double>(A[d][i]);
         }
-
+        if (dim == 1) {
+            B[0][0] = 1.0 / L[0];
+        } else if (dim == 2) {
+            double det =  A[0][0] * A[1][1] - A[0][1] * A[1][0];
+            B[0][0] =  A[1][1] / det;
+            B[0][1] = -A[1][0] / det;
+            B[1][0] = -A[0][1] / det;
+            B[1][1] =  A[0][0] / det;
+        } else if (dim == 3) {
+            double det =  A[0][0] * (A[1][1] * A[2][2] - A[2][1] * A[1][2])
+                        - A[0][1] * (A[1][0] * A[2][2] - A[2][0] * A[1][2])
+                        + A[0][2] * (A[1][0] * A[2][1] - A[2][0] * A[1][1]);
+            B[0][0] = (A[1][1] * A[2][2] - A[1][2] * A[2][1]) / det;
+            B[0][1] = (A[1][2] * A[2][0] - A[1][0] * A[2][2]) / det;
+            B[0][2] = (A[1][0] * A[2][1] - A[1][1] * A[2][0]) / det;
+            B[1][0] = (A[2][1] * A[0][2] - A[2][2] * A[0][1]) / det;
+            B[1][1] = (A[2][2] * A[0][0] - A[2][0] * A[0][2]) / det;
+            B[1][2] = (A[2][0] * A[0][1] - A[2][1] * A[0][0]) / det;
+            B[2][0] = (A[0][1] * A[1][2] - A[0][2] * A[1][1]) / det;
+            B[2][1] = (A[0][2] * A[1][0] - A[0][0] * A[1][2]) / det;
+            B[2][2] = (A[0][0] * A[1][1] - A[0][1] * A[1][0]) / det;
+        } else {
+            assert(false);
+        }
+        for (uint32_t i = 0; i < dim; i++) {
+            for (uint32_t j = 0; j < dim; j++) {
+                double prod = 0.0;
+                for (uint32_t k = 0; k < dim; k++) {
+                    prod += A[i][k] * B[j][k];
+                }
+                if (i == j) {
+                    assert(std::abs(prod - 1.0) < opr_precision);
+                }
+                else {
+                    assert(std::abs(prod) < opr_precision);
+                }
+            }
+        }
         tilted.resize(dim);
         for (uint32_t d = 0; d < dim; d++) {
             tilted[d] = false;
@@ -146,11 +184,17 @@ namespace qbasis {
             for (uint32_t j = 0; j < dim; j++) std::cout << b[d][j]/pi << "*pi,\t";
             std::cout << std::endl;
         }
-        std::cout << "Superlattice basis: " << std::endl;
+        std::cout << "Superlattice real space basis: " << std::endl;
         for (uint32_t d = 0; d < dim; d++) {
             std::cout << "A[" << d << "] = ";
             for (uint32_t j = 0; j < dim; j++) std::cout << A[d][j] << "*a[" << j << "],\t";
             std::cout << "tilted: " << (tilted[d]?"true":"false") << std::endl;
+        }
+        std::cout << "Superlattice reciprocal space basis: " << std::endl;
+        for (uint32_t d = 0; d < dim; d++) {
+            std::cout << "B[" << d << "] = ";
+            for (uint32_t j = 0; j < dim; j++) std::cout << std::setw(18) << B[d][j] << "*b[" << j << "],\t";
+            std::cout << std::endl;
         }
         std::cout << "Sublattice positions: " << std::endl;
         for (uint32_t sub_idx = 0; sub_idx < num_sub; sub_idx++) {
@@ -228,6 +272,7 @@ namespace qbasis {
         b = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
         A = std::vector<std::vector<int>>(dim, std::vector<int>(dim, 0));
         Amat = std::vector<double>(dim * dim, 0.0);
+        B = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
         for (uint32_t d = 0; d < dim; d++) {
             a[d] = *config->get_array_of<double>(std::string("a")+std::to_string(d));
             b[d] = *config->get_array_of<double>(std::string("b")+std::to_string(d));
@@ -235,6 +280,44 @@ namespace qbasis {
             for (uint32_t i = 0; i < dim; i++) {
                 A[d][i] = static_cast<int>(Atemp[i]);
                 Amat[i + dim * d] = static_cast<double>(A[d][i]);
+            }
+        }
+        if (dim == 1) {
+            B[0][0] = 1.0 / L[0];
+        } else if (dim == 2) {
+            double det =  A[0][0] * A[1][1] - A[0][1] * A[1][0];
+            B[0][0] =  A[1][1] / det;
+            B[0][1] = -A[1][0] / det;
+            B[1][0] = -A[0][1] / det;
+            B[1][1] =  A[0][0] / det;
+        } else if (dim == 3) {
+            double det =  A[0][0] * (A[1][1] * A[2][2] - A[2][1] * A[1][2])
+                        - A[0][1] * (A[1][0] * A[2][2] - A[2][0] * A[1][2])
+                        + A[0][2] * (A[1][0] * A[2][1] - A[2][0] * A[1][1]);
+            B[0][0] = (A[1][1] * A[2][2] - A[1][2] * A[2][1]) / det;
+            B[0][1] = (A[1][2] * A[2][0] - A[1][0] * A[2][2]) / det;
+            B[0][2] = (A[1][0] * A[2][1] - A[1][1] * A[2][0]) / det;
+            B[1][0] = (A[2][1] * A[0][2] - A[2][2] * A[0][1]) / det;
+            B[1][1] = (A[2][2] * A[0][0] - A[2][0] * A[0][2]) / det;
+            B[1][2] = (A[2][0] * A[0][1] - A[2][1] * A[0][0]) / det;
+            B[2][0] = (A[0][1] * A[1][2] - A[0][2] * A[1][1]) / det;
+            B[2][1] = (A[0][2] * A[1][0] - A[0][0] * A[1][2]) / det;
+            B[2][2] = (A[0][0] * A[1][1] - A[0][1] * A[1][0]) / det;
+        } else {
+            assert(false);
+        }
+        for (uint32_t i = 0; i < dim; i++) {
+            for (uint32_t j = 0; j < dim; j++) {
+                double prod = 0.0;
+                for (uint32_t k = 0; k < dim; k++) {
+                    prod += A[i][k] * B[j][k];
+                }
+                if (i == j) {
+                    assert(std::abs(prod - 1.0) < opr_precision);
+                }
+                else {
+                    assert(std::abs(prod) < opr_precision);
+                }
             }
         }
         tilted.resize(dim);
@@ -262,11 +345,17 @@ namespace qbasis {
             for (uint32_t j = 0; j < dim; j++) std::cout << b[d][j]/pi << "*pi,\t";
             std::cout << std::endl;
         }
-        std::cout << "Superlattice basis: " << std::endl;
+        std::cout << "Superlattice real space basis: " << std::endl;
         for (uint32_t d = 0; d < dim; d++) {
             std::cout << "A[" << d << "] = ";
             for (uint32_t j = 0; j < dim; j++) std::cout << A[d][j] << "*a[" << j << "],\t";
             std::cout << "tilted: " << (tilted[d]?"true":"false") << std::endl;
+        }
+        std::cout << "Superlattice reciprocal space basis: " << std::endl;
+        for (uint32_t d = 0; d < dim; d++) {
+            std::cout << "B[" << d << "] = ";
+            for (uint32_t j = 0; j < dim; j++) std::cout << std::setw(18) << B[d][j] << "*b[" << j << "],\t";
+            std::cout << std::endl;
         }
         std::cout << "Sublattice positions: " << std::endl;
         for (uint32_t sub_idx = 0; sub_idx < num_sub; sub_idx++) {
