@@ -16,6 +16,7 @@ namespace qbasis {
         A = std::vector<std::vector<int>>(dim, std::vector<int>(dim, 0));  // for the moment, only allow A to be parallel to a
         Amat = std::vector<double>(dim * dim, 0.0);
         B = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
+        Bmat = std::vector<double>(dim * dim, 0.0);
         for (uint32_t d = 0; d < dim; d++) {
             A[d][d] = L[d];
             for (uint32_t i = 0; i < dim; i++) Amat[i + dim * d] = static_cast<double>(A[d][i]);
@@ -43,6 +44,9 @@ namespace qbasis {
             B[2][2] = (A[0][0] * A[1][1] - A[0][1] * A[1][0]) / det;
         } else {
             assert(false);
+        }
+        for (uint32_t d = 0; d < dim; d++) {
+            for (uint32_t i = 0; i < dim; i++) Bmat[i + dim * d] = B[d][i];
         }
         for (uint32_t i = 0; i < dim; i++) {
             for (uint32_t j = 0; j < dim; j++) {
@@ -273,6 +277,7 @@ namespace qbasis {
         A = std::vector<std::vector<int>>(dim, std::vector<int>(dim, 0));
         Amat = std::vector<double>(dim * dim, 0.0);
         B = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
+        Bmat = std::vector<double>(dim * dim, 0.0);
         for (uint32_t d = 0; d < dim; d++) {
             a[d] = *config->get_array_of<double>(std::string("a")+std::to_string(d));
             b[d] = *config->get_array_of<double>(std::string("b")+std::to_string(d));
@@ -305,6 +310,9 @@ namespace qbasis {
             B[2][2] = (A[0][0] * A[1][1] - A[0][1] * A[1][0]) / det;
         } else {
             assert(false);
+        }
+        for (uint32_t d = 0; d < dim; d++) {
+            for (uint32_t i = 0; i < dim; i++) Bmat[i + dim * d] = B[d][i];
         }
         for (uint32_t i = 0; i < dim; i++) {
             for (uint32_t j = 0; j < dim; j++) {
@@ -480,6 +488,28 @@ namespace qbasis {
             int shift = 0;
             for (uint32_t j = 0; j < dim; j++) shift += A[j][i] * M[j];
             coor0[i] = coor[i] - shift;
+        }
+    }
+
+    void lattice::k2superBZ(const std::vector<double> &k, std::vector<int> &K, std::vector<double> &ktilde) const
+    {
+        assert(k.size() == dim);
+        if (K.size() != dim) K.resize(dim);
+        if (ktilde.size() != dim) ktilde.resize(dim);
+        assert(dim <= 4);
+        double alpha[4];
+        lapack_int ipiv[4];
+        double Bmat_copy[16];
+        for (uint32_t i = 0; i < dim; i++) alpha[i] = k[i];
+        std::copy(Bmat.begin(), Bmat.end(), Bmat_copy);
+
+        lapack_int d = static_cast<lapack_int>(dim);
+        auto info = gesv(LAPACK_COL_MAJOR, d, 1, Bmat_copy, d, ipiv, alpha, d);
+        assert(info == 0);
+        for (uint32_t i = 0; i < dim; i++) {
+            K[i]      = round2int(floor(alpha[i]));
+            ktilde[i] = alpha[i] - K[i];
+            assert(ktilde[i] >= 0.0 && ktilde[i] < 1.0);
         }
     }
 

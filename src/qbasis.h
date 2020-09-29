@@ -1197,7 +1197,12 @@ namespace qbasis {
         /** \brief with given \f$ m_i \f$ and sublattice index, output cartisian coordinates */
         void coor2cart(const std::vector<int> &coor, std::vector<double> &cart, const int &sub) const;
 
-
+        /** with given \f$ \vec{k}=\sum_i k_i \vec{b}_i \f$,
+         *  return \f$ \vec{K} = \sum_i K_i \vec{B}_i \f$ and \f$ \tilde{k} = \sum_i \tilde{k}_i \vec{B}_i \f$,
+         *  which satisfies \f$ \vec{k} = \vec{K} + \tilde{k} \f$.
+         *  Here \f$ K_i \f$ are integers, and \f$ \tilde{k}_i \in [0,1) \f$.
+         */
+        void k2superBZ(const std::vector<double> &k, std::vector<int> &K, std::vector<double> &ktilde) const;
 
         /** \brief on return, the vector "plan" contains the positions of each site after translation T(disp) */
         void translation_plan(std::vector<uint32_t> &plan, const std::vector<int> &disp,
@@ -1302,6 +1307,9 @@ namespace qbasis {
 
         /** \brief reciprocal superlattice basis, in units of \f$ \vec{b}_i \f$ */
         std::vector<std::vector<double>> B;
+
+        /** \brief reciprocal superlattice basis in matrix format (column i -> B_i) */
+        std::vector<double> Bmat;
 
         /** \brief position shift \f$ \vec{d}_s \f$ of each sublattice, in units of \f$ \vec{a}_i \f$ */
         std::vector<std::vector<double>> pos_sub;
