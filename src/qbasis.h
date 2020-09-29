@@ -1253,6 +1253,14 @@ namespace qbasis {
             return A;
         }
 
+        std::vector<std::vector<double>> basis_b() const {
+            return b;
+        }
+
+        std::vector<std::vector<double>> basis_B() const {
+            return B;
+        }
+
         /** \brief return the center of the lattice */
         std::vector<double> center_pos() const {
             return center;

@@ -511,6 +511,13 @@ namespace qbasis {
             ktilde[i] = alpha[i] - K[i];
             assert(ktilde[i] >= 0.0 && ktilde[i] < 1.0);
         }
+        for (uint32_t i = 0; i < dim; i++) {
+            double k_check = 0.0;
+            for (uint32_t j = 0; j < dim; j++) {
+                k_check += Bmat[i + j * dim] * (K[j] + ktilde[j]);
+            }
+            assert(std::abs(k[i] - k_check) < opr_precision);
+        }
     }
 
     void lattice::coor2site(const std::vector<int> &coor, const int &sub, uint32_t &site, std::vector<int> &work) const
