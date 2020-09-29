@@ -1202,7 +1202,7 @@ namespace qbasis {
          *  which satisfies \f$ \vec{k} = \vec{K} + \tilde{k} \f$.
          *  Here \f$ K_i \f$ are integers, and \f$ \tilde{k}_i \in [0,1) \f$.
          */
-        void k2superBZ(const std::vector<double> &k, std::vector<int> &K, std::vector<double> &ktilde) const;
+        void k2superBZ(const double *k, int *K, double *ktilde) const;
 
         /** \brief on return, the vector "plan" contains the positions of each site after translation T(disp) */
         void translation_plan(std::vector<uint32_t> &plan, const std::vector<int> &disp,

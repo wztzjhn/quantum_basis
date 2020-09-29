@@ -491,11 +491,8 @@ namespace qbasis {
         }
     }
 
-    void lattice::k2superBZ(const std::vector<double> &k, std::vector<int> &K, std::vector<double> &ktilde) const
+    void lattice::k2superBZ(const double *k, int *K, double *ktilde) const
     {
-        assert(k.size() == dim);
-        if (K.size() != dim) K.resize(dim);
-        if (ktilde.size() != dim) ktilde.resize(dim);
         assert(dim <= 4);
         double alpha[4];
         lapack_int ipiv[4];
