@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # a python code to plot the tilted lattice for double checking purpose
 # first just write a 2D lattice plot, generalize later
 import toml
@@ -28,7 +28,7 @@ a = np.array(a)
 
 R = []
 for d in range(0,dim):
-    R.append(np.array(parsed_toml["R"+str(d)]))
+    R.append(np.array(parsed_toml["A"+str(d)]))
 R = np.array(R)
 
 pos_sub = []
