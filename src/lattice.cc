@@ -1,4 +1,5 @@
 #include <iostream>
+#include <limits>
 #include "qbasis.h"
 #include "cpptoml.h"
 
@@ -504,8 +505,13 @@ namespace qbasis {
         auto info = gesv(LAPACK_COL_MAJOR, d, 1, Bmat_copy, d, ipiv, alpha, d);
         assert(info == 0);
         for (uint32_t i = 0; i < dim; i++) {
-            K[i]      = round2int(floor(alpha[i]));
-            ktilde[i] = alpha[i] - K[i];
+            if (std::abs(alpha[i]) < std::numeric_limits<double>::epsilon()) {
+                K[i]      = 0.0;
+                ktilde[i] = 0.0;
+            } else {
+                K[i]      = round2int(floor(alpha[i]));
+                ktilde[i] = alpha[i] - K[i];
+            }
             assert(ktilde[i] >= 0.0 && ktilde[i] < 1.0);
         }
         for (uint32_t i = 0; i < dim; i++) {
