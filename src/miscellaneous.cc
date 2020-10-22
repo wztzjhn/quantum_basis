@@ -68,11 +68,11 @@ namespace qbasis {
         struct tm * timeinfo;
         timeinfo = localtime(&rawtime);
         char buffer[80];
-        strftime(buffer,sizeof(buffer),"%Y-%m-%d %H:%M:%S",timeinfo);
+        strftime(buffer,sizeof(buffer),"%Y-%m-%d---%H:%M:%S",timeinfo);
         std::string res(buffer);
         res += ".";
         res += std::to_string(static_cast<unsigned>(tp / std::chrono::milliseconds(1)));
-        strftime(buffer,sizeof(buffer), " %Z",timeinfo);
+        strftime(buffer,sizeof(buffer), "---%Z",timeinfo);
         res += buffer;
         return res;
     }
