@@ -6,6 +6,7 @@ vpath %.cc ../latt_chain \
 
 EXEC = chain_Heisenberg_spin_half.x \
        chain_Heisenberg_spin_one.x \
+       chain_Heisenberg_spin_one_excitation.x \
        chain_tJ.x \
        chain_Kondo.x \
        honeycomb_Spinless_Fermion.x \
