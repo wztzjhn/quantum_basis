@@ -21,29 +21,29 @@ int main() {
 
     // local matrix representation
     // Spins:
-    std::vector<std::vector<std::complex<double>>> Sx(3,std::vector<std::complex<double>>(3));
-    std::vector<std::vector<std::complex<double>>> Sy(3,std::vector<std::complex<double>>(3));
+    std::vector<std::vector<std::complex<double>>> Splus(3,std::vector<std::complex<double>>(3));
+    std::vector<std::vector<std::complex<double>>> Sminus(3,std::vector<std::complex<double>>(3));
     std::vector<std::complex<double>> Sz(3);
 
-    Sx[0][0]  = 0.0;
-    Sx[0][1]  = 1.0 / sqrt(2.0);
-    Sx[0][2]  = 0.0;
-    Sx[1][0]  = 1.0 / sqrt(2.0);
-    Sx[1][1]  = 0.0;
-    Sx[1][2]  = 1.0 / sqrt(2.0);
-    Sx[2][0]  = 0.0;
-    Sx[2][1]  = 1.0 / sqrt(2.0);
-    Sx[2][2]  = 0.0;
+    Splus[0][0] = 0.0;
+    Splus[0][1] = std::sqrt(2.0);
+    Splus[0][2] = 0.0;
+    Splus[1][0] = 0.0;
+    Splus[1][1] = 0.0;
+    Splus[1][2] = std::sqrt(2.0);
+    Splus[2][0] = 0.0;
+    Splus[2][1] = 0.0;
+    Splus[2][2] = 0.0;
 
-    Sy[0][0]  = 0.0;
-    Sy[0][1]  = std::complex<double>(0.0, -1.0 / sqrt(2.0));
-    Sy[0][2]  = 0.0;
-    Sy[1][0]  = std::complex<double>(0.0, 1.0 / sqrt(2.0));
-    Sy[1][1]  = 0.0;
-    Sy[1][2]  = std::complex<double>(0.0, -1.0 / sqrt(2.0));
-    Sy[2][0]  = 0.0;
-    Sy[2][1]  = std::complex<double>(0.0, 1.0 / sqrt(2.0));
-    Sy[2][2]  = 0.0;
+    Sminus[0][0] = 0.0;
+    Sminus[0][1] = 0.0;
+    Sminus[0][2] = 0.0;
+    Sminus[1][0] = std::sqrt(2.0);
+    Sminus[1][1] = 0.0;
+    Sminus[1][2] = 0.0;
+    Sminus[2][0] = 0.0;
+    Sminus[2][1] = std::sqrt(2.0);
+    Sminus[2][2] = 0.0;
 
     Sz[0]     = 1.0;
     Sz[1]     = 0.0;
@@ -59,18 +59,18 @@ int main() {
         lattice.coor2site({x}, 0, site_i, work); // obtain site label of (x)
         // construct operators on each site
         // spin
-        auto Sx_i  = qbasis::opr<std::complex<double>>(site_i,0,false,Sx);
-        auto Sy_i  = qbasis::opr<std::complex<double>>(site_i,0,false,Sy);
-        auto Sz_i  = qbasis::opr<std::complex<double>>(site_i,0,false,Sz);
+        auto Splus_i  = qbasis::opr<std::complex<double>>(site_i,0,false,Splus);
+        auto Sminus_i = qbasis::opr<std::complex<double>>(site_i,0,false,Sminus);
+        auto Sz_i     = qbasis::opr<std::complex<double>>(site_i,0,false,Sz);
 
         // with neighbor (x+1)
         if (bc[0] == "pbc" || (bc[0] == "obc" && x < L - 1)) {
             lattice.coor2site({x+1}, 0, site_j, work);
             // spin exchanges
-            auto Sx_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sx);
-            auto Sy_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sy);
-            auto Sz_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Sz);
-            Heisenberg.add_Ham(std::complex<double>(J,0.0) * (Sx_i * Sx_j + Sy_i * Sy_j));
+            auto Splus_j  = qbasis::opr<std::complex<double>>(site_j,0,false,Splus);
+            auto Sminus_j = qbasis::opr<std::complex<double>>(site_j,0,false,Sminus);
+            auto Sz_j     = qbasis::opr<std::complex<double>>(site_j,0,false,Sz);
+            Heisenberg.add_Ham(std::complex<double>(0.5 * J,0.0) * (Splus_i * Sminus_j + Sminus_i * Splus_j));
             Heisenberg.add_Ham(std::complex<double>(J,0.0) * (Sz_i * Sz_j));
         }
         Sz_total += Sz_i;
