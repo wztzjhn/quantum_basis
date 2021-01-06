@@ -141,6 +141,19 @@ namespace qbasis {
             Nsites = L[0] * L[1] * L[2] * num_sub;
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0, 0.0};
+        } else if (name == "fcc" || name == "Fcc" || name == "FCC") {
+            std::cout << "FCC lattice built."<< std::endl;
+            assert(L.size() == 3);
+            num_sub = 1;
+            a[0][0] = 0.0;       a[0][1] = 0.5;       a[0][2] = 0.5;
+            a[1][0] = 0.5;       a[1][1] = 0.0;       a[1][2] = 0.5;
+            a[2][0] = 0.5;       a[2][1] = 0.5;       a[2][2] = 0.0;
+            b[0][0] = -2.0 * pi; b[0][1] =  2.0 * pi; b[0][2] =  2.0 * pi;
+            b[1][0] =  2.0 * pi; b[1][1] = -2.0 * pi; b[1][2] =  2.0 * pi;
+            b[2][0] =  2.0 * pi; b[2][1] =  2.0 * pi; b[2][2] = -2.0 * pi;
+            Nsites = L[0] * L[1] * L[2] * num_sub;
+            pos_sub.resize(num_sub);
+            pos_sub[0] = std::vector<double>{0.0, 0.0, 0.0};
         } else if (name == "triangular-stacked" || name == "Triangular-Stacked" || name == "TRIANGULAR-STACKED") {
             std::cout << "Stacked triangular lattice built."<< std::endl;
             assert(L.size() == 3);
