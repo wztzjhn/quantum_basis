@@ -2538,6 +2538,29 @@ namespace qbasis {
         swap(lhs.total_bytes, rhs.total_bytes);
         swap(lhs.ele, rhs.ele);
     }
+
+    template <typename T>
+    T inner_product(const wavefunction<T> &lhs, const wavefunction<T> &rhs)
+    {
+        if (lhs.size() == 0 || rhs.size() == 0) return static_cast<T>(0.0);
+        assert(lhs.ele[lhs.bgn].first.mbits[0] == rhs.ele[rhs.bgn].first.mbits[0] &&
+               lhs.ele[lhs.bgn].first.mbits[1] == rhs.ele[rhs.bgn].first.mbits[1]);
+
+        MKL_INT size_lhs = lhs.size();
+        MKL_INT size_rhs = rhs.size();
+
+        T res = 0.0;
+        for (MKL_INT i = 0; i < size_lhs; i++) {
+            auto &phi_i = lhs[i];
+            for (MKL_INT j = 0; j < size_rhs; j++) {
+                auto &phi_j = rhs[j];
+                if (phi_i.first == phi_j.first) {
+                    res += conjugate(phi_i.second) * phi_j.second;
+                }
+            }
+        }
+        return res;
+    }
     
     template <typename T>
     wavefunction<T> operator+(const wavefunction<T> &lhs, const wavefunction<T> &rhs)
@@ -2998,7 +3021,10 @@ namespace qbasis {
     
     template void oprXphi(const mopr<double>&,               const std::vector<basis_prop>&, wavefunction<double>&,               wavefunction<double>, const bool&);
     template void oprXphi(const mopr<std::complex<double>>&, const std::vector<basis_prop>&, wavefunction<std::complex<double>>&, wavefunction<std::complex<double>>, const bool&);
-    
+
+    template double inner_product(const wavefunction<double>&, const wavefunction<double>&);
+    template std::complex<double> inner_product(const wavefunction<std::complex<double>>&, const wavefunction<std::complex<double>>&);
+
     template void gen_mbasis_by_mopr(const mopr<double>&, std::list<mbasis_elem>&, const std::vector<basis_prop>&,
                                      std::vector<mopr<double>> conserve_lst, std::vector<double> val_lst);
     template void gen_mbasis_by_mopr(const mopr<std::complex<double>>&, std::list<mbasis_elem>&, const std::vector<basis_prop>&,

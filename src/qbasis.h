@@ -226,6 +226,7 @@ namespace qbasis {
     template <typename T> wavefunction<T> operator*(const T&, const wavefunction<T>&);
     template <typename T> wavefunction<T> operator*(const mbasis_elem&, const T&);
     template <typename T> wavefunction<T> operator*(const T&, const mbasis_elem&);
+    template <typename T> T inner_product(const wavefunction<T>&, const wavefunction<T>&);
 
     // -------- operators -----------
     template <typename T> void swap(opr<T>&, opr<T>&);
@@ -373,6 +374,7 @@ namespace qbasis {
         template <typename T> friend void oprXphi(const opr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, const bool&);
         template <typename T> friend void oprXphi(const opr<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem, const bool&);
         template <typename T> friend void oprXphi(const opr_prod<T>&, const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem, const bool&);
+        template <typename T> friend T inner_product(const wavefunction<T> &, const wavefunction<T> &);
         friend int basis_disk_read(const std::string&, std::vector<mbasis_elem>&);
         friend int basis_disk_write(const std::string&, const std::vector<mbasis_elem>&);
     public:
@@ -549,6 +551,7 @@ namespace qbasis {
         friend void oprXphi <> (const opr_prod<T>&, const std::vector<basis_prop>&, wavefunction<T>&, wavefunction<T>, const bool&);
         friend void oprXphi <> (const mopr<T>&,     const std::vector<basis_prop>&, wavefunction<T>&, mbasis_elem,     const bool&);
         friend void oprXphi <> (const mopr<T>&,     const std::vector<basis_prop>&, wavefunction<T>&, wavefunction<T>, const bool&);
+        friend T inner_product <> (const wavefunction<T> &, const wavefunction<T> &);
         friend void gen_mbasis_by_mopr <> (const mopr<T> &, std::list<mbasis_elem>&, const std::vector<basis_prop>&,
                                            std::vector<mopr<T>> conserve_lst, std::vector<double> val_lst);
     public:
