@@ -467,12 +467,12 @@ namespace qbasis {
     
     int basis_disk_write(const std::string &filename, const std::vector<mbasis_elem> &basis)
     {
-        std::ofstream fout(filename, std::ios::out | std::ios::binary);
         MKL_INT n = basis.size();
         assert(n > 0 && basis[0].mbits != nullptr);
         uint16_t total_bytes = static_cast<uint16_t>(basis[0].mbits[0] * 256) + static_cast<uint16_t>(basis[0].mbits[1]);
         boost::crc_32_type res_crc;
-        
+
+        std::ofstream fout(filename, std::ios::out | std::ios::binary);
         fout.write(reinterpret_cast<char*>(&n), sizeof(MKL_INT));
         res_crc.process_bytes(&n, sizeof(MKL_INT));
         fout.write(reinterpret_cast<char*>(&total_bytes), 2);

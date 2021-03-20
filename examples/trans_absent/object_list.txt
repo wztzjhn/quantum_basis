@@ -13,4 +13,5 @@ EXEC = chain_Heisenberg_spin_half.x \
        kagome_tJ.x \
        square_Bose_Hubbard.x \
        square_Fermi_Hubbard.x \
-       triangular_Heisenberg_spin_half.x
+       triangular_Heisenberg_spin_half.x \
+       playground.x
