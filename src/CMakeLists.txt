@@ -16,10 +16,10 @@ add_library(qbasis SHARED ${QBASIS_SRC})
 target_link_libraries(qbasis ${LIBS})
 
 add_executable(half_repr.x ../examples/trans_symmetric/latt_chain/chain_Heisenberg_spin_half.cc ${QBASIS_SRC})
-target_link_libraries(half_repr.x ${LIBS})
+target_link_libraries(half_repr.x PUBLIC ${LIBS} OpenMP::OpenMP_CXX)
 
-#add_executable(ex.x ../../2017_Filip/lanczos/src/exchange.cc ${QBASIS_SRC})
-#target_link_libraries(ex.x ${LIBS})
+add_executable(playground.x ../examples/trans_absent/playground.cc ${QBASIS_SRC})
+target_link_libraries(playground.x PUBLIC ${LIBS} OpenMP::OpenMP_CXX)
 
 set_target_properties(qbasis PROPERTIES PUBLIC_HEADER "${QBASIS_INCLUDE}")
 
