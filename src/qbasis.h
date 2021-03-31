@@ -1277,8 +1277,8 @@ namespace qbasis {
         std::vector<uint32_t> Linear_size() const { return L; }
 
         uint32_t Lx() const { return L[0]; }
-        uint32_t Ly() const { assert(L.size() > 1); return L[1]; }
-        uint32_t Lz() const { assert(L.size() > 2); return L[2]; }
+        uint32_t Ly() const { if (L.size() > 1) return L[1]; else return 1; }
+        uint32_t Lz() const { if (L.size() > 2) return L[2]; else return 1; }
 
         // obtain all possible divisors of a lattice, for the divide and conquer method
         // the returned value is a list of lists: {{divisors for Lx}, {divisors for Ly}, ...}

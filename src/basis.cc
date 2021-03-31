@@ -653,7 +653,7 @@ namespace qbasis {
     mbasis_elem &mbasis_elem::translate2center_OBC(const std::vector<basis_prop> &props,
                                                    const lattice &latt, std::vector<int> &disp_vec)
     {
-        uint32_t total_sites    = props[0].num_sites;
+        uint32_t total_sites = props[0].num_sites;
         assert(latt.total_sites() == total_sites);
         if (q_same_state_all_site(props)) return *this;
         
