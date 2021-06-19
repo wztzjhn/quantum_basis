@@ -5,7 +5,7 @@ CPPFLAGS  = -O2 -std=c++11 -m64 \
             -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
 LIBS      = -L ${HOME}/installs/lib -lqbasis \
             -larpack \
-            -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl \
+            -L${MKLROOT}/lib/intel64 -L${MKLROOT}/../../compiler/latest/linux/compiler/lib/intel64_lin -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl \
             -lboost_filesystem -lboost_system
 
 include ../object_list.txt

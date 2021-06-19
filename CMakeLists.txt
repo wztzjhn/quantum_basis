@@ -68,14 +68,14 @@ elseif(CMAKE_COMPILER_IS_GNUCXX AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
 #linux gcc
 elseif(CMAKE_COMPILER_IS_GNUCXX AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
-  set(LIBS "-L${MKL_ROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl")
+  set(LIBS "-L${MKL_ROOT}/lib/intel64 -L${MKL_ROOT}/../../compiler/latest/linux/compiler/lib/intel64_lin -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl")
 #linux intel
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel" AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
   set(LIBS "-L${MKL_ROOT}/lib/intel64 -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
-  set(LIBS "-L${MKL_ROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl")
+  set(LIBS "-L${MKL_ROOT}/lib/intel64 -L${MKL_ROOT}/../../compiler/latest/linux/compiler/lib/intel64_lin -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl")
 endif()
 
 #ARPACK
