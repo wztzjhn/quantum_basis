@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.12)
 
 project(qbasis)
 set(QBASIS_VERSION 0.1.0)
@@ -33,14 +33,15 @@ endif()
 add_definitions(-D_GLIBCXX_DEBUG=1) # libstdc++
 add_definitions(-D_LIBCPP_DEBUG2=1) # libc++
 
+# -- C++17 -------------------------------------------
 
-# C++11
+# C++17
 include(CheckCXXCompilerFlag)
-check_cxx_compiler_flag("-std=c++11" COMPILER_SUPPORTS_CXX11)
-if(NOT COMPILER_SUPPORTS_CXX11)
-  message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Aborting.")
+check_cxx_compiler_flag("-std=c++17" COMPILER_SUPPORTS_CXX17)
+if(NOT COMPILER_SUPPORTS_CXX17)
+  message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++17 support. Aborting.")
 endif()
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
 endif()
@@ -53,30 +54,6 @@ if (APPLE)
 endif()
 
 # -- DEPENDENCIES -------------------------------------------
-
-#MKL, temporarily use the following ugly way
-find_package(MKL REQUIRED)
-include_directories(SYSTEM ${MKL_INCLUDE_DIRS})
-#mac clang
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
-  set(LIBS "-L/opt/intel/lib -L${MKL_ROOT}/lib -Wl,-rpath,${MKL_ROOT}/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl")
-#mac gcc
-elseif(CMAKE_COMPILER_IS_GNUCXX AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
-  set(LIBS "-L${MKL_ROOT}/lib -Wl,-rpath,${MKL_ROOT}/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl")
-#linux gcc
-elseif(CMAKE_COMPILER_IS_GNUCXX AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
-  set(LIBS "-L${MKL_ROOT}/lib/intel64 -L${MKL_ROOT}/../../compiler/latest/linux/compiler/lib/intel64_lin -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl")
-#linux intel
-elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel" AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
-  set(LIBS "-L${MKL_ROOT}/lib/intel64 -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl")
-elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
-  set(LIBS "-L${MKL_ROOT}/lib/intel64 -L${MKL_ROOT}/../../compiler/latest/linux/compiler/lib/intel64_lin -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl")
-endif()
 
 #ARPACK
 find_package(ARPACK REQUIRED)
@@ -91,10 +68,17 @@ if (ARPACK_FOUND)
 endif()
 
 # Boost
-find_package(Boost REQUIRED COMPONENTS
-             filesystem system)
+find_package(Boost REQUIRED)
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${Boost_LIBRARIES})
+
+# MKL
+set(MKL_ARCH "intel64")
+set(MKL_LINK "dynamic")
+set(MKL_THREADING "sequential")
+set(MKL_INTERFACE_FULL "intel_lp64")
+find_package(MKL CONFIG REQUIRED)
+message("MKL_INCLUDE: ${MKL_INCLUDE}")
 
 # OPENMP
 find_package(OpenMP REQUIRED)

@@ -19,16 +19,13 @@
 #define lapack_complex_double MKL_Complex16
 #endif
 
-#ifndef BOOST_FILESYSTEM_NO_DEPRECATED
-#define BOOST_FILESYSTEM_NO_DEPRECATED
-#endif
-
 #include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <complex>
+#include <filesystem>
 #include <forward_list>
 #include <functional>
 #include <initializer_list>
@@ -37,12 +34,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <boost/filesystem.hpp>
-#include <boost/archive/text_oarchive.hpp>
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/serialization/map.hpp>
-#include <boost/serialization/utility.hpp>
-#include <boost/serialization/vector.hpp>
 
 #include "mkl.h"
 
@@ -62,7 +53,7 @@
 #endif
 
 
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace qbasis {
 
@@ -1366,31 +1357,6 @@ namespace qbasis {
 
         // one more variable here, denoting the divide and conquer partition
         // if empty(false), then force to store the matrix when working with translational symmetry
-
-        // for mpi communications
-        friend class boost::serialization::access;
-        template <class Archive>
-        void serialize(Archive & ar, const unsigned int version)
-        {
-            ar & a;
-            ar & b;
-            ar & A;
-            ar & Amat;
-            ar & B;
-            ar & Bmat;
-            ar & pos_sub;
-            ar & tilted;
-            ar & bc;
-            ar & dim;
-            ar & num_sub;
-            ar & Nsites;
-            ar & dim_spec;
-            ar & L;
-            ar & site2coor_map;
-            ar & site2super_map;
-            ar & coor2site_map;
-            ar & center;
-        }
     };
 
 

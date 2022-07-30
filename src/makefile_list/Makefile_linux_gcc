@@ -1,11 +1,8 @@
 CXX       = g++
-CPPFLAGS  = -O2 -std=c++11 -Wall -Wextra -m64 -fopenmp \
-            -isystem ${MKLROOT}/include \
+CXXFLAGS  = -std=c++17 -Wall -O3 -funroll-loops -m64 -march=native -fPIC -fopenmp -I${MKL_INC_DIR} \
             -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
-LIBS      = -larpack \
-            -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl \
-            -fopenmp \
-            -lboost_filesystem -lboost_system
+LIBS      = -larpack -fopenmp \
+            -L${MKL_LIB_DIR} -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl
 
 include makefile_list/object_list.txt
 
@@ -16,7 +13,7 @@ install: libqbasis.a
 	$(RM) ${HOME}/installs/lib/libqbasis.*; cp libqbasis.a ${HOME}/installs/lib; cp qbasis.h ${HOME}/installs/include
 
 %.o: %.cc
-	$(CXX) $(CPPFLAGS) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 clean:
 	$(RM) *.o *.a

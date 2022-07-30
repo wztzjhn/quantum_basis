@@ -591,7 +591,6 @@ namespace qbasis {
         assert(site < Nsites);
         coor = site2coor_map[site].first;
         sub  = site2coor_map[site].second;
-        return;
     }
 
     void lattice::site2coor_old(std::vector<int> &coor, int &sub, const uint32_t &site) const

@@ -13,10 +13,14 @@ set(QBASIS_SRC
 set(QBASIS_INCLUDE qbasis.h)
 
 add_library(qbasis SHARED ${QBASIS_SRC})
-target_link_libraries(qbasis ${LIBS})
+target_compile_options(qbasis     PUBLIC $<TARGET_PROPERTY:MKL::MKL,INTERFACE_COMPILE_OPTIONS>)
+target_include_directories(qbasis PUBLIC $<TARGET_PROPERTY:MKL::MKL,INTERFACE_INCLUDE_DIRECTORIES>)
+target_link_libraries(qbasis ${LIBS} $<LINK_ONLY:MKL::MKL> OpenMP::OpenMP_CXX)
 
 add_executable(half_repr.x ../examples/trans_symmetric/latt_chain/chain_Heisenberg_spin_half.cc ${QBASIS_SRC})
-target_link_libraries(half_repr.x PUBLIC ${LIBS} OpenMP::OpenMP_CXX)
+target_compile_options(half_repr.x     PUBLIC $<TARGET_PROPERTY:MKL::MKL,INTERFACE_COMPILE_OPTIONS>)
+target_include_directories(half_repr.x PUBLIC $<TARGET_PROPERTY:MKL::MKL,INTERFACE_INCLUDE_DIRECTORIES>)
+target_link_libraries(half_repr.x PUBLIC ${LIBS} $<LINK_ONLY:MKL::MKL> OpenMP::OpenMP_CXX)
 
 add_executable(playground.x ../examples/trans_absent/playground.cc ${QBASIS_SRC})
 target_link_libraries(playground.x PUBLIC ${LIBS} OpenMP::OpenMP_CXX)

@@ -1,12 +1,10 @@
-CXX       = clang++-7
-CPPFLAGS  = -O2 -std=c++11 -m64 \
+CXX       = clang++
+CPPFLAGS  = -std=c++17 -Wall -O3 -funroll-loops -m64 -march=native -fopenmp -I${MKL_INC_DIR} \
             -I ${HOME}/installs/include \
-            -isystem ${MKLROOT}/include \
             -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
 LIBS      = -L ${HOME}/installs/lib -lqbasis \
             -larpack \
-            -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl \
-            -lboost_filesystem -lboost_system
+            -L${MKL_LIB_DIR}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl
 
 include ../object_list.txt
 
