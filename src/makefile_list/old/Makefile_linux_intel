@@ -1,10 +1,9 @@
-CXX       = g++
-CXXFLAGS  = -std=c++17 -Wall -O3 -funroll-loops -m64 -march=native -fPIC -fopenmp -I${MKL_INC_DIR} \
+CXX       = dpcpp
+CXXFLAGS  = -std=c++17 -O3 -unroll -ipo -no-fma -fp-model=precise -m64 -march=native -fPIC -qopenmp -I${MKL_INC_DIR} \
             -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
-LIBS      = -larpack -fopenmp \
-            -L${MKL_LIB_DIR} -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_tbb_thread -lmkl_core -lpthread -lm -ldl
+LIBS      = -larpack -qopenmp \
+            -L${MKL_LIB_DIR} -lmkl_intel_lp64 -lmkl_tbb_thread -lmkl_core -lpthread -lm -ldl
 OBJS = basis.o ckpt.o lanczos.o lattice.o miscellaneous.o model.o operators.o sparse.o
-
 
 test: main_test.o $(OBJS)
 	$(CXX) main_test.o $(OBJS) $(LIBS) -o ../bin/test.x

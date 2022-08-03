@@ -101,4 +101,6 @@ int test_chain_Heisenberg_spin_half() {
     assert(std::abs(m1 + 0.1487978408) < 1e-8);
     assert(std::abs(m2 - 0.0617414604) < 1e-8);
     assert(std::abs(m3 + 0.2975956817) < 1e-8);
+
+    return 0;
 }
