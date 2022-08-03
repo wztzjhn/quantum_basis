@@ -4,17 +4,15 @@ CXXFLAGS  = -O0 -g -D_GLIBCXX_DEBUG -std=c++17 -Wall -Wextra -m64 -fopenmp -I${M
 LIBS      = -larpack \
             -L${MKL_LIB_DIR} -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl \
             -fopenmp
+OBJS = basis.o ckpt.o lanczos.o lattice.o miscellaneous.o model.o operators.o sparse.o
 
-include makefile_list/object_list.txt
-
-libqbasis_debug.a: $(OBJS)
-	ar rvs libqbasis_debug.a $(OBJS)
-
-install: libqbasis_debug.a
-	$(RM) ${HOME}/installs/lib/libqbasis_debug.*; cp libqbasis_debug.a ${HOME}/installs/lib; cp qbasis.h ${HOME}/installs/include
-
+test: main_test.o $(OBJS)
+	$(CXX) main_test.o $(OBJS) $(LIBS) -o ../bin/test.x
+libqbasis_debug.so: $(OBJS)
+	$(CXX) -shared -fPIC $(OBJS) $(LIBS) -o libqbasis_debug.so
+install: libqbasis_debug.so
+	cp libqbasis_debug.so ${HOME}/installs/lib; cp qbasis.h ${HOME}/installs/include
 %.o: %.cc
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
-
 clean:
-	$(RM) *.o *.a
+	$(RM) *.o *.a *.so *.dylib

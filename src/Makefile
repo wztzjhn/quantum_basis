@@ -4,17 +4,16 @@ CXXFLAGS  = -std=c++17 -Wall -O3 -funroll-loops -m64 -march=native -fPIC -fopenm
 LIBS      = -larpack \
             -L${MKL_LIB_DIR} -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl \
             -fopenmp
+OBJS = basis.o ckpt.o lanczos.o lattice.o miscellaneous.o model.o operators.o sparse.o
 
-include makefile_list/object_list.txt
 
-libqbasis.a: $(OBJS)
-	ar rvs libqbasis.a $(OBJS)
-
-install: libqbasis.a
-	$(RM) ${HOME}/installs/lib/libqbasis.*; cp libqbasis.a ${HOME}/installs/lib; cp qbasis.h ${HOME}/installs/include
-
+test: main_test.o $(OBJS)
+	$(CXX) main_test.o $(OBJS) $(LIBS) -o ../bin/test.x
+libqbasis.so: $(OBJS)
+	$(CXX) -shared -fPIC $(OBJS) $(LIBS) -o libqbasis.so
+install: libqbasis.so
+	cp libqbasis.so ${HOME}/installs/lib; cp qbasis.h ${HOME}/installs/include
 %.o: %.cc
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
-
 clean:
-	$(RM) *.o *.a
+	$(RM) *.o *.a *.so *.dylib
