@@ -1,7 +1,10 @@
 #include <iostream>
 #include <limits>
+
 #include "qbasis.h"
 #include "cpptoml.h"
+
+#define PI 3.1415926535897932
 
 namespace qbasis {
     // ----------------- implementation of lattice ------------------
@@ -77,7 +80,7 @@ namespace qbasis {
             assert(L.size() == 1);
             num_sub = 1;
             a[0][0] = 1.0;
-            b[0][0] = 2.0 * pi;
+            b[0][0] = 2.0 * PI;
             Nsites = L[0] * num_sub;
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0};
@@ -87,8 +90,8 @@ namespace qbasis {
             num_sub = 1;
             a[0][0] = 1.0;      a[0][1] = 0.0;
             a[1][0] = 0.0;      a[1][1] = 1.0;
-            b[0][0] = 2.0 * pi; b[0][1] = 0.0;
-            b[1][0] = 0.0;      b[1][1] = 2.0 * pi;
+            b[0][0] = 2.0 * PI; b[0][1] = 0.0;
+            b[1][0] = 0.0;      b[1][1] = 2.0 * PI;
             Nsites = L[0] * L[1] * num_sub;
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0};
@@ -98,8 +101,8 @@ namespace qbasis {
             num_sub = 1;
             a[0][0] = 1.0;      a[0][1] = 0.0;
             a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);
-            b[0][0] = 2.0 * pi; b[0][1] = -2.0 * pi / sqrt(3.0);
-            b[1][0] = 0.0;      b[1][1] = 4.0 * pi / sqrt(3.0);
+            b[0][0] = 2.0 * PI; b[0][1] = -2.0 * PI / sqrt(3.0);
+            b[1][0] = 0.0;      b[1][1] = 4.0 * PI / sqrt(3.0);
             Nsites = L[0] * L[1] * num_sub;
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0};
@@ -109,8 +112,8 @@ namespace qbasis {
             num_sub = 3;
             a[0][0] = 1.0;      a[0][1] = 0.0;
             a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);
-            b[0][0] = 2.0 * pi; b[0][1] = -2.0 * pi / sqrt(3.0);
-            b[1][0] = 0.0;      b[1][1] = 4.0 * pi / sqrt(3.0);
+            b[0][0] = 2.0 * PI; b[0][1] = -2.0 * PI / sqrt(3.0);
+            b[1][0] = 0.0;      b[1][1] = 4.0 * PI / sqrt(3.0);
             Nsites = L[0] * L[1] * num_sub;
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0};
@@ -122,8 +125,8 @@ namespace qbasis {
             num_sub = 2;
             a[0][0] = 1.0;      a[0][1] = 0.0;
             a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);
-            b[0][0] = 2.0 * pi; b[0][1] = -2.0 * pi / sqrt(3.0);
-            b[1][0] = 0.0;      b[1][1] = 4.0 * pi / sqrt(3.0);
+            b[0][0] = 2.0 * PI; b[0][1] = -2.0 * PI / sqrt(3.0);
+            b[1][0] = 0.0;      b[1][1] = 4.0 * PI / sqrt(3.0);
             Nsites = L[0] * L[1] * num_sub;
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0};
@@ -135,9 +138,9 @@ namespace qbasis {
             a[0][0] = 1.0;      a[0][1] = 0.0;      a[0][2] = 0.0;
             a[1][0] = 0.0;      a[1][1] = 1.0;      a[1][2] = 0.0;
             a[2][0] = 0.0;      a[2][1] = 0.0;      a[2][2] = 1.0;
-            b[0][0] = 2.0 * pi; b[0][1] = 0.0;      b[0][2] = 0.0;
-            b[1][0] = 0.0;      b[1][1] = 2.0 * pi; b[1][2] = 0.0;
-            b[2][0] = 0.0;      b[2][1] = 0.0;      b[2][2] = 2.0 * pi;
+            b[0][0] = 2.0 * PI; b[0][1] = 0.0;      b[0][2] = 0.0;
+            b[1][0] = 0.0;      b[1][1] = 2.0 * PI; b[1][2] = 0.0;
+            b[2][0] = 0.0;      b[2][1] = 0.0;      b[2][2] = 2.0 * PI;
             Nsites = L[0] * L[1] * L[2] * num_sub;
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0, 0.0};
@@ -148,9 +151,9 @@ namespace qbasis {
             a[0][0] = 0.0;       a[0][1] = 0.5;       a[0][2] = 0.5;
             a[1][0] = 0.5;       a[1][1] = 0.0;       a[1][2] = 0.5;
             a[2][0] = 0.5;       a[2][1] = 0.5;       a[2][2] = 0.0;
-            b[0][0] = -2.0 * pi; b[0][1] =  2.0 * pi; b[0][2] =  2.0 * pi;
-            b[1][0] =  2.0 * pi; b[1][1] = -2.0 * pi; b[1][2] =  2.0 * pi;
-            b[2][0] =  2.0 * pi; b[2][1] =  2.0 * pi; b[2][2] = -2.0 * pi;
+            b[0][0] = -2.0 * PI; b[0][1] =  2.0 * PI; b[0][2] =  2.0 * PI;
+            b[1][0] =  2.0 * PI; b[1][1] = -2.0 * PI; b[1][2] =  2.0 * PI;
+            b[2][0] =  2.0 * PI; b[2][1] =  2.0 * PI; b[2][2] = -2.0 * PI;
             Nsites = L[0] * L[1] * L[2] * num_sub;
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0, 0.0};
@@ -161,9 +164,9 @@ namespace qbasis {
             a[0][0] = 1.0;      a[0][1] = 0.0;                   a[0][2] = 0.0;
             a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);       a[1][2] = 0.0;
             a[2][0] = 0.0;      a[2][1] = 0.0;                   a[2][2] = 1.0;
-            b[0][0] = 2.0 * pi; b[0][1] = -2.0 * pi / sqrt(3.0); b[0][2] = 0.0;
-            b[1][0] = 0.0;      b[1][1] = 4.0 * pi / sqrt(3.0);  b[1][2] = 0.0;
-            b[2][0] = 0.0;      b[2][1] = 0.0;                   b[2][2] = 2.0 * pi;
+            b[0][0] = 2.0 * PI; b[0][1] = -2.0 * PI / sqrt(3.0); b[0][2] = 0.0;
+            b[1][0] = 0.0;      b[1][1] = 4.0 * PI / sqrt(3.0);  b[1][2] = 0.0;
+            b[2][0] = 0.0;      b[2][1] = 0.0;                   b[2][2] = 2.0 * PI;
             Nsites = L[0] * L[1] * L[2] * num_sub;
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0, 0.0};
@@ -174,9 +177,9 @@ namespace qbasis {
             a[0][0] = 1.0;      a[0][1] = 0.0;      a[0][2] = 0.0;
             a[1][0] = 0.0;      a[1][1] = 1.0;      a[1][2] = 0.0;
             a[2][0] = 0.0;      a[2][1] = 0.0;      a[2][2] = 1.0;
-            b[0][0] = 2.0 * pi; b[0][1] = 0.0;      b[0][2] = 0.0;
-            b[1][0] = 0.0;      b[1][1] = 2.0 * pi; b[1][2] = 0.0;
-            b[2][0] = 0.0;      b[2][1] = 0.0;      b[2][2] = 2.0 * pi;
+            b[0][0] = 2.0 * PI; b[0][1] = 0.0;      b[0][2] = 0.0;
+            b[1][0] = 0.0;      b[1][1] = 2.0 * PI; b[1][2] = 0.0;
+            b[2][0] = 0.0;      b[2][1] = 0.0;      b[2][2] = 2.0 * PI;
             Nsites = L[0] * L[1] * L[2] * num_sub;
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.5, 0.0};
@@ -199,7 +202,7 @@ namespace qbasis {
         std::cout << "Reciprocal space basis: " << std::endl;
         for (uint32_t d = 0; d < dim; d++) {
             std::cout << "b[" << d << "] = ";
-            for (uint32_t j = 0; j < dim; j++) std::cout << b[d][j]/pi << "*pi,\t";
+            for (uint32_t j = 0; j < dim; j++) std::cout << b[d][j]/PI << "*pi,\t";
             std::cout << std::endl;
         }
         std::cout << "Superlattice real space basis: " << std::endl;
@@ -364,7 +367,7 @@ namespace qbasis {
         std::cout << "Reciprocal space basis: " << std::endl;
         for (uint32_t d = 0; d < dim; d++) {
             std::cout << "b[" << d << "] = ";
-            for (uint32_t j = 0; j < dim; j++) std::cout << b[d][j]/pi << "*pi,\t";
+            for (uint32_t j = 0; j < dim; j++) std::cout << b[d][j]/PI << "*pi,\t";
             std::cout << std::endl;
         }
         std::cout << "Superlattice real space basis: " << std::endl;
@@ -1014,8 +1017,8 @@ namespace qbasis {
                 xwork[1] = coor[0] * a[0][1] + coor[1] * a[1][1] - x0[1];
                 x1[0] = x0[0] + matR[0] * xwork[0] + matR[2] * xwork[1];
                 x1[1] = x0[1] + matR[1] * xwork[0] + matR[3] * xwork[1];
-                xwork[0] = ( b[0][0] * x1[0] + b[0][1] * x1[1] ) * 0.5 / pi;
-                xwork[1] = ( b[1][0] * x1[0] + b[1][1] * x1[1] ) * 0.5 / pi;
+                xwork[0] = ( b[0][0] * x1[0] + b[0][1] * x1[1] ) * 0.5 / PI;
+                xwork[1] = ( b[1][0] * x1[0] + b[1][1] * x1[1] ) * 0.5 / PI;
                 coor[0] = static_cast<int>(xwork[0] >= 0 ? xwork[0] + 0.5 : xwork[0] - 0.5);
                 coor[1] = static_cast<int>(xwork[1] >= 0 ? xwork[1] + 0.5 : xwork[1] - 0.5);
                 if (std::abs(coor[0] - xwork[0]) > opr_precision || std::abs(coor[1] - xwork[1]) > opr_precision)

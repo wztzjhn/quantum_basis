@@ -60,11 +60,6 @@ namespace qbasis {
 //  -------------part 0: global variables, forward declarations ----------------
 //  ----------------------------------------------------------------------------
     /** @file qbasis.h
-     *  \var const double pi
-     *  \brief pi = 3.1415926...
-     */
-    extern const double pi;
-    /** @file qbasis.h
      *  \var const double machine_prec
      *  \brief machine precision
      */

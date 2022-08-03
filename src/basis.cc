@@ -4,8 +4,11 @@
 #include <fstream>
 #include <iostream>
 #include <iomanip>
+
 #include "qbasis.h"
 #include "graph.h"
+
+#define PI 3.1415926535897932
 
 namespace qbasis {
     
@@ -2210,7 +2213,7 @@ namespace qbasis {
                     exp_coef += momentum2[d] * disp[d] / static_cast<double>(L[d]);
                 }
             }
-            auto coef = std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
+            auto coef = std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef));
             if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
             nu_inv_check += coef;
         }

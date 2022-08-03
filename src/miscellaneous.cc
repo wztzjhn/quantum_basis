@@ -4,13 +4,13 @@
 #include <boost/asio.hpp>
 #include <boost/crc.hpp>
 #include <boost/version.hpp>
+
 #include "qbasis.h"
 #include "graph.h"
 
 namespace ip  = boost::asio::ip;
 
 namespace qbasis {
-    const double pi = 3.141592653589793238462643;
     // later let's try to combine these three as a unified name "precision"
     const double machine_prec = std::numeric_limits<double>::epsilon();
     const double opr_precision = 1e-12;

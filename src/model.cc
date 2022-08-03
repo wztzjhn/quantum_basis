@@ -4,8 +4,11 @@
 #include <iomanip>
 #include <random>
 #include <regex>
+
 #include "qbasis.h"
 #include "graph.h"
+
+#define PI 3.1415926535897932
 
 namespace qbasis {
     
@@ -542,8 +545,8 @@ namespace qbasis {
         for (decltype(dis_gs.size()) d = 0; d < dis_gs.size(); d++) {
             dis_gs[d] -= momentum_gs[d];
             dis_gs[d] += 10.0*machine_prec;
-            while (dis_gs[d] < 0) dis_gs[d] += 2.0*pi;
-            while (dis_gs[d] > 2.0 * pi) dis_gs[d] -= 2.0*pi;
+            while (dis_gs[d] < 0) dis_gs[d] += 2.0 * PI;
+            while (dis_gs[d] > 2.0 * PI) dis_gs[d] -= 2.0 * PI;
         }
         auto dis_gs_nrm2 = nrm2(static_cast<MKL_INT>(dis_gs.size()), dis_gs.data(), 1);
         std::cout << "dis_gs_nrm2 = " << dis_gs_nrm2 << std::endl;
@@ -746,7 +749,7 @@ namespace qbasis {
                             exp_coef += momentum[d] * disp_i_int[d] / static_cast<double>(L[d]);
                         }
                     }
-                    auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
+                    auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef));
                     if (! bosonic) {
                         latt_parent.translation_plan(plans_parent[tid], disp_i_int, scratch_coors[tid], scratch_works[tid]);
                         ra_z_Tj_rb.transform(props, plans_parent[tid], sgn);      // to get sgn
@@ -815,7 +818,7 @@ namespace qbasis {
                         exp_coef += gs_momentum_vrnl[d] * scratch_disp[0][d];
                     }
                     auto coeff = static_cast<double>(gs_omegaG_vrnl) / NsitesPsublatt
-                               * std::exp(std::complex<double>(0.0,2.0*pi*exp_coef));
+                               * std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef));
                     gs_E0_vrnl += coeff.real();
                 }
             }
@@ -845,7 +848,7 @@ namespace qbasis {
                     for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                         exp_coef += momentum[d] * scratch_disp[tid][d];
                     }
-                    auto coeff = std::exp(std::complex<double>(0.0,2.0*pi*exp_coef));
+                    auto coeff = std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef));
                     matrix_lil.add(i, j, conjugate(coeff*ele_new.second));
                 }
             }
@@ -1020,7 +1023,7 @@ namespace qbasis {
                                 exp_coef += momenta[sec_mat][d] * disp_i_int[tid][d] / static_cast<double>(L[d]);
                             }
                         }
-                        auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
+                        auto coef = std::sqrt(nu_i / nu_j) * conjugate(ele_new.second) * std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef));
                         if (! bosonic) {
                             latt_parent.translation_plan(plans_parent[tid], disp_i_int[tid], scratch_coors[tid], scratch_works[tid]);
                             ra_z_Tj_rb[tid].transform(props, plans_parent[tid], sgn);   // to get sgn
@@ -1461,7 +1464,7 @@ namespace qbasis {
             for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                 exp_coef += momentum[d] * disp[d] / static_cast<double>(L[d]);
             }
-            auto coef = std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
+            auto coef = std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef));
             
             latt_parent.translation_plan(plan, disp, scratch_coor, scratch_work);
             transform_vec_full(plan, sec_full, vec_old, vec_temp.data());
@@ -1485,7 +1488,7 @@ namespace qbasis {
             latt_parent.translation_plan(plan, disp, scratch_coor, scratch_work);
             transform_vec_full(plan, sec_full, vec_new, vec_temp.data());          // vec_temp = T(R) vec_new
             double exp_coef = momentum[d] * disp[d] / static_cast<double>(L[d]);
-            auto coef = std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
+            auto coef = std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef));
             scal(dim, coef, vec_temp.data(), 1);                                   // vec_temp = vec_temp * e^{iKR}
             axpy(dim, std::complex<double>(-1.0), vec_new, 1, vec_temp.data(), 1); // vec_temp - vec_new
             double nrm = nrm2(dim, vec_temp.data(), 1);
@@ -1663,7 +1666,7 @@ namespace qbasis {
                                 exp_coef += momenta[sec_new][d] * disp_i_int[d] / static_cast<double>(L[d]);
                             }
                         }
-                        auto coef = std::sqrt(nu_j / nu_i) * sj * ele_new.second * std::exp(std::complex<double>(0.0, -2.0 * pi * exp_coef));
+                        auto coef = std::sqrt(nu_j / nu_i) * sj * ele_new.second * std::exp(std::complex<double>(0.0, -2.0 * PI * exp_coef));
                         if (! bosonic) {
                             latt_parent.translation_plan(plans_parent[tid], disp_i_int, scratch_coors[tid], scratch_works[tid]);
                             ra_z_Tj_rb.transform(props, plans_parent[tid], sgn);          // to get sgn
@@ -1813,7 +1816,7 @@ namespace qbasis {
                     for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                         exp_coef += momentum[d] * scratch_disp[tid][d];
                     }
-                    auto coeff = std::exp(std::complex<double>(0.0,2.0*pi*exp_coef));
+                    auto coeff = std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef));
                     vec_new[j] += sqrt_omega_g * conjugate(coeff*ele_new.second);
                 }
             }
@@ -1872,7 +1875,7 @@ namespace qbasis {
                                 exp_coef += momentum[d] * scratch_disp[tid][d];
                             }
                             value_gs +=  sj * ele_new.second / sqrt_omega_g
-                                       * std::exp(std::complex<double>(0.0,2.0*pi*exp_coef)) ;
+                                       * std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef)) ;
                         } else {
                             MKL_INT i = binary_search<mbasis_elem,MKL_INT>(basis_vrnl[sec_new], unique_state, 0, dim_vrnl[sec_new]);
                             if (i < 0 || i >= dim_vrnl[sec_new]) continue;
@@ -1880,7 +1883,7 @@ namespace qbasis {
                             for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                                 exp_coef += momentum[d] * scratch_disp[tid][d];
                             }
-                            auto coef = sj * ele_new.second * std::exp(std::complex<double>(0.0,2.0*pi*exp_coef));
+                            auto coef = sj * ele_new.second * std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef));
                             values.push_back(std::pair<MKL_INT, T>(i, coef));
                         }
                     }
@@ -2231,7 +2234,7 @@ namespace qbasis {
                         exp_coef += momentum[d] * disp[d] / static_cast<double>(L[d]);
                     }
                 }
-                auto coef = std::exp(std::complex<double>(0.0, 2.0 * pi * exp_coef));
+                auto coef = std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef));
                 if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
                 #pragma omp critical
                 {
