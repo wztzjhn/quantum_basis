@@ -3,6 +3,8 @@
 #include "qbasis.h"
 #include <fstream>
 
+#define PI 3.1415926535897932
+
 // Fermi-Hubbard model on square lattice
 int main() {
     qbasis::initialize();
@@ -139,7 +141,7 @@ int main() {
         q_list.push_back({m,n});
     }
     // along (pi,0) -> (pi,pi)
-    for (int n = 0; n < Ly/2; n++) {
+    for (int n = 0; n <= Ly/2; n++) {
         int m = Lx/2;
         q_list.push_back({m,n});
     }
@@ -153,7 +155,7 @@ int main() {
         qbasis::mopr<std::complex<double>> Szq;
         for (int x = 0; x < Lx; x++) {
             for (int y = 0; y < Ly; y++) {
-                double qdotr = 2.0 * qbasis::pi * (m * x / static_cast<double>(Lx) + n * y / static_cast<double>(Ly));
+                double qdotr = 2.0 * PI * (m * x / static_cast<double>(Lx) + n * y / static_cast<double>(Ly));
                 auto coeff = 0.5 / sqrt(static_cast<double>(Lx * Ly)) * std::exp(std::complex<double>{0.0,qdotr});
                 uint32_t site;
                 std::vector<int> work(lattice.dimension());
@@ -195,4 +197,6 @@ int main() {
         std::cout << std::endl << std::endl;
     }
     fout.close();
+
+    return 0;
 }

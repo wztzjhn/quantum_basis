@@ -98,4 +98,6 @@ int main() {
     // for the parameters considered, we should obtain:
     assert(std::abs(tJ.eigenvals_full[0] + 9.762087307) < 1e-8);
     assert(std::abs(tJ.eigenvals_full[1] + 9.762087307) < 1e-8);
+
+    return 0;
 }

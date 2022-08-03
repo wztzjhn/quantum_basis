@@ -125,4 +125,6 @@ int main() {
 
     // for the parameters considered, we should obtain:
     assert(std::abs(spinless.eigenvals_full[0] + 28.60363167) < 1e-8);
+
+    return 0;
 }

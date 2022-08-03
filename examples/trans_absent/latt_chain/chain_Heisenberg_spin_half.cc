@@ -78,12 +78,12 @@ int main() {
 
 
     // measure operators
-    auto Sz0Sz1 = qbasis::opr<std::complex<double>>(0,0,false,Sz) *
-                  qbasis::opr<std::complex<double>>(1,0,false,Sz);
-    auto Sz0Sz2 = qbasis::opr<std::complex<double>>(0,0,false,Sz) *
-                  qbasis::opr<std::complex<double>>(2,0,false,Sz);
-    auto Sp0Sm1 = qbasis::opr<std::complex<double>>(0,0,false,Splus) *
-                  qbasis::opr<std::complex<double>>(1,0,false,Sminus);
+    qbasis::mopr<std::complex<double>> Sz0Sz1(qbasis::opr<std::complex<double>>(0,0,false,Sz) *
+                  qbasis::opr<std::complex<double>>(1,0,false,Sz));
+    qbasis::mopr<std::complex<double>> Sz0Sz2(qbasis::opr<std::complex<double>>(0,0,false,Sz) *
+                  qbasis::opr<std::complex<double>>(2,0,false,Sz));
+    qbasis::mopr<std::complex<double>> Sp0Sm1(qbasis::opr<std::complex<double>>(0,0,false,Splus) *
+                  qbasis::opr<std::complex<double>>(1,0,false,Sminus));
 
     auto m1 = Heisenberg.measure_full_static(Sz0Sz1, 0, 0);
     auto m2 = Heisenberg.measure_full_static(Sz0Sz2, 0, 0);
@@ -96,4 +96,5 @@ int main() {
     assert(std::abs(m2 - 0.0617414604) < 1e-8);
     assert(std::abs(m3 + 0.2975956817) < 1e-8);
 
+    return 0;
 }

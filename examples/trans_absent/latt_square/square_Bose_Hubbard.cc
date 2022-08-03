@@ -97,4 +97,6 @@ int main() {
 
     // for the parameters considered, we should obtain:
     assert(std::abs(Hubbard.eigenvals_full[0] + 25.81136094) < 1e-8);
+
+    return 0;
 }

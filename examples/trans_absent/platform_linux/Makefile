@@ -1,5 +1,5 @@
 CXX       = g++
-CPPFLAGS  = -std=c++17 -Wall -O3 -funroll-loops -m64 -march=native -fopenmp -I${MKL_INC_DIR} \
+CXXFLAGS  = -std=c++17 -Wall -O3 -funroll-loops -m64 -march=native -fopenmp -I${MKL_INC_DIR} \
             -I ${HOME}/installs/include
 LIBS      = -L ${HOME}/installs/lib -lqbasis \
             -larpack \
@@ -10,6 +10,6 @@ include ../object_list.txt
 all: $(EXEC)
 	@echo '************  COMPILED!  ************'
 %.x: %.cc
-	$(CXX) $(CPPFLAGS) $< $(LIBS) -o $@
+	$(CXX) $(CXXFLAGS) $< $(LIBS) -o $@
 clean:
 	$(RM) *.o *.x

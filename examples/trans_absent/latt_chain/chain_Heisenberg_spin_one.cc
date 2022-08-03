@@ -94,4 +94,6 @@ int main() {
     // for the parameters considered, we should obtain:
     assert(std::abs(Heisenberg.eigenvals_full[0] + 14.09412995) < 1e-8);
     assert(std::abs(Heisenberg.eigenvals_full[1] + 13.569322) < 1e-8);
+
+    return 0;
 }

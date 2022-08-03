@@ -85,26 +85,28 @@ int main() {
             }
 
 
-            //   2
-            //    ^
-            //     \
-            //      1
-            //       \
-            //        \
-            //         2
+            /*   2
+             *    ^
+             *     \
+             *      1
+             *       \
+             *        \
+             *         2
+             */
             {
                 Heisenberg.add_Ham(std::complex<double>(0.5*J,0.0) * (Splus_i1 * Sminus_i2 + Sminus_i1 * Splus_i2));
                 Heisenberg.add_Ham(std::complex<double>(J,0.0) * ( Sz_i1 * Sz_i2 ));
             }
 
 
-            //   2
-            //    \
-            //     \
-            //      1
-            //       \
-            //        v
-            //         2
+            /*   2
+             *    \
+             *     \
+             *      1
+             *       \
+             *        v
+             *         2
+             */
             {
                 uint32_t site_j2;
                 lattice.coor2site({m+1,n-1}, 2, site_j2, work);
@@ -116,26 +118,28 @@ int main() {
             }
 
 
-            //         0
-            //        /
-            //       /
-            //      2
-            //     /
-            //    v
-            //   0
+            /*         0
+             *        /
+             *       /
+             *      2
+             *     /
+             *    v
+             *   0
+             */
             {
                 Heisenberg.add_Ham(std::complex<double>(0.5*J,0.0) * (Splus_i2 * Sminus_i0 + Sminus_i2 * Splus_i0));
                 Heisenberg.add_Ham(std::complex<double>(J,0.0) * ( Sz_i2 * Sz_i0 ));
             }
 
 
-            //         0
-            //        ^
-            //       /
-            //      2
-            //     /
-            //    /
-            //   0
+            /*         0
+             *        ^
+             *       /
+             *      2
+             *     /
+             *    /
+             *   0
+             */
             {
                 uint32_t site_j0;
                 lattice.coor2site({m,n+1}, 0, site_j0, work);
@@ -168,4 +172,6 @@ int main() {
 
     // for the parameters considered, we should obtain:
     assert(std::abs(Heisenberg.energy_min() + 5.444875217) < 1e-8);
+
+    return 0;
 }

@@ -124,4 +124,6 @@ int main() {
     // for the parameters considered, we should obtain:
     assert(std::abs(Kondo.eigenvals_full[0] + 12.67762138) < 1e-8);
     assert(std::abs(Kondo.eigenvals_full[1] + 9.834798964) < 1e-8);
+
+    return 0;
 }
