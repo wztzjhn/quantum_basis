@@ -1,10 +1,13 @@
 #include <ctime>
 #include <random>
 #include <fstream>
+#include <boost/asio.hpp>
 #include <boost/crc.hpp>
 #include <boost/version.hpp>
 #include "qbasis.h"
 #include "graph.h"
+
+namespace ip  = boost::asio::ip;
 
 namespace qbasis {
     const double pi = 3.141592653589793238462643;
@@ -16,28 +19,9 @@ namespace qbasis {
     
     void initialize(const bool &enable_ckpt_)
     {
-        std::cout << "----- Qbasis Version 2021/03/20 -----" << std::endl;
+        std::cout << "Hostname:               " << ip::host_name() << std::endl;
         std::cout << "Time Now:               " << date_and_time() << std::endl << std::endl;
-        
-#if defined(_OPENMP)
-        std::cout << "Recommended environment variables: OMP_PLACES=cores, OMP_PROC_BIND=spread" << std::endl;
-        std::cout << "OMP version:            " << _OPENMP << std::endl;
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-            if (tid == 0) {
-                #if _OPENMP >= 201307
-                auto policy = omp_get_proc_bind();
-                std::vector<std::string> policy_names = {"false","true","master","close","spread"};
-                std::cout << "OMP bind policy:        " << policy_names[policy] << std::endl;
-                #endif
-                std::cout << "OMP number of procs:    " << omp_get_num_procs() << std::endl;
-                std::cout << "OMP number of threads:  " << omp_get_num_threads() << std::endl << std::endl;
-            }
-        }
-        
-#endif
-        
+
         MKLVersion ver;
         MKL_Get_Version(&ver);
         std::cout << "MKL version:            " << ver.MajorVersion << "." << ver.MinorVersion << "." << ver.UpdateVersion << std::endl;
@@ -51,6 +35,25 @@ namespace qbasis {
         } else {
             std::cout << "MKL integer length:     32-bit (LP64)" << std::endl << std::endl;
         }
+
+    #if defined(_OPENMP)
+        std::cout << "OMP version:            " << _OPENMP << std::endl;
+        #pragma omp parallel default(none) shared(std::cout)
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) {
+                #if _OPENMP >= 201307
+                auto policy = omp_get_proc_bind();
+                std::vector<std::string> policy_names = {"false","true","master","close","spread"};
+                std::cout << "OMP bind policy:        " << policy_names[policy] << std::endl;
+                #endif
+                std::cout << "OMP number of procs:    " << omp_get_num_procs() << std::endl;
+                std::cout << "OMP number of threads:  " << omp_get_num_threads() << std::endl << std::endl;
+            }
+        }
+    #else
+        std::cout << "OMP:                    disabled." << std::endl << std::endl;
+    #endif
         
         std::cout << "Boost lib version:      " << BOOST_LIB_VERSION << std::endl << std::endl;
         
@@ -92,7 +95,7 @@ namespace qbasis {
     T2 dynamic_base(const std::vector<T1> &nums, const std::vector<T1> &base)
     {
         assert(nums.size() == base.size());
-        assert(nums.size() > 0);
+        assert(!nums.empty());
         T2 res = 0;
         auto j = nums.size() - 1;
         while (nums[j] == 0 && j > 0) j--;
@@ -132,7 +135,7 @@ namespace qbasis {
     template <typename T1, typename T2>
     std::vector<T1> dynamic_base(const T2 &total, const std::vector<T1> &base)
     {
-        assert(base.size() > 0);
+        assert(!base.empty());
         assert(total >= 0);
         auto len = base.size();
         std::vector<T1> res(len);
@@ -467,7 +470,7 @@ namespace qbasis {
     
     int basis_disk_write(const std::string &filename, const std::vector<mbasis_elem> &basis)
     {
-        MKL_INT n = basis.size();
+        auto n = static_cast<MKL_INT>(basis.size());
         assert(n > 0 && basis[0].mbits != nullptr);
         uint16_t total_bytes = static_cast<uint16_t>(basis[0].mbits[0] * 256) + static_cast<uint16_t>(basis[0].mbits[1]);
         boost::crc_32_type res_crc;
@@ -605,8 +608,8 @@ namespace qbasis {
     int ALGraph::BSF_set_JaJb(std::vector<MKL_INT> &ja, std::vector<MKL_INT> &jb)
     {
         MKL_INT magic = -19900917;
-        for (decltype(ja.size()) j = 0; j < ja.size(); j++) ja[j] = magic;
-        for (decltype(jb.size()) j = 0; j < jb.size(); j++) jb[j] = magic;
+        for (MKL_INT & j : ja) j = magic;
+        for (MKL_INT & j : jb) j = magic;
         
         std::vector<bool> visited(vertices.size(),false);
         std::list<uint64_t> Q;
@@ -621,7 +624,7 @@ namespace qbasis {
                 //std::cout << "ia,ib -> ja,jb : " << vertices[v].i_a << "," << vertices[v].i_b << " -> " <<
                 //ja[vertices[v].i_a] << "," << jb[vertices[v].i_b] << std::endl;
                 Q.push_back(v);
-                while (Q.size() != 0) {
+                while (!Q.empty()) {
                     uint64_t u = Q.front();
                     Q.pop_front();
                     auto u_arcs = vertices[u].arcs;

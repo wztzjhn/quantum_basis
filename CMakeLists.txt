@@ -1,41 +1,20 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(qbasis)
-set(QBASIS_VERSION 0.1.0)
+project(qbasis VERSION 0.1.0 DESCRIPTION "Exact diagonalization library")
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
-#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-SET(CMAKE_INSTALL_PREFIX "$ENV{HOME}/installs")
-#SET(CMAKE_LIBRARY_PATH "$ENV{HOME}/installs/lib")
 
 # -- COMPILE OPTIONS -------------------------------------------
-set(INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
-set(INSTALL_INCLUDE_DIR include CACHE PATH "Installation directory for header files")
-set(INSTALL_CMAKE_DIR lib/CMake/qbasis CACHE PATH "Installation directory for CMake files")
-
-# Make relative paths absolute (needed later on)
-foreach(p LIB BIN INCLUDE CMAKE)
-  set(var INSTALL_${p}_DIR)
-  if(NOT IS_ABSOLUTE "${${var}}")
-    set(${var} "${CMAKE_INSTALL_PREFIX}/${${var}}")
-  endif()
-endforeach()
-
 
 # Performance/debug options
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -gdwarf-3 -DDEBUG")
-elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -gdwarf-3 -debug all -traceback -fstack-security-check")
-else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -g -Wall -Wextra")
-endif()
+set(GCC_COVERAGE_COMPILE_FLAGS "-Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g ${GCC_COVERAGE_COMPILE_FLAGS}")
 add_definitions(-D_GLIBCXX_DEBUG=1) # libstdc++
 add_definitions(-D_LIBCPP_DEBUG2=1) # libc++
 
-# -- C++17 -------------------------------------------
 
-# C++17
+# -- C++17 -------------------------------------------
 include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag("-std=c++17" COMPILER_SUPPORTS_CXX17)
 if(NOT COMPILER_SUPPORTS_CXX17)
@@ -46,12 +25,6 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
 endif()
 
-# Mac fixes
-if (APPLE)
-  cmake_policy(SET CMP0042 NEW) # @rpath
-  #set(LIBS ${LIBS} "-framework Accelerate")
-  #set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY "libc++")
-endif()
 
 # -- DEPENDENCIES -------------------------------------------
 
@@ -93,35 +66,6 @@ include_directories(
   "${PROJECT_BINARY_DIR}")
 add_subdirectory(src)
 
-# -- INSTALLATION -------------------------------------------
-
-# Generate qbasisTargets.cmake suitable for use by downstreams
-export(TARGETS qbasis FILE "${PROJECT_BINARY_DIR}/qbasisTargets.cmake")
-
-# Register the build-tree with a global CMake-registry
-export(PACKAGE qbasis)
-
-
-# Create the FooBarConfig.cmake and FooBarConfigVersion files
-file(RELATIVE_PATH REL_INCLUDE_DIR "${INSTALL_CMAKE_DIR}"
-   "${INSTALL_INCLUDE_DIR}")
-# ... for the build tree
-set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/src")
-configure_file(qbasisConfig.cmake.in "${PROJECT_BINARY_DIR}/qbasisConfig.cmake" @ONLY)
-# ... for the install tree
-set(CONF_INCLUDE_DIRS "${INSTALL_INCLUDE_DIR}")
-configure_file(qbasisConfig.cmake.in "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/qbasisConfig.cmake" @ONLY)
-# ... for both
-configure_file(qbasisConfigVersion.cmake.in "${PROJECT_BINARY_DIR}/qbasisConfigVersion.cmake" @ONLY)
-
-# Install qbasisConfig.cmake and qbasisConfigVersion.cmake
-install(FILES
-  "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/qbasisConfig.cmake"
-  "${PROJECT_BINARY_DIR}/qbasisConfigVersion.cmake"
-  DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev)
-
-# Install qbasisTargets.cmake
-install(EXPORT qbasisTargets DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev)
 
 
 # -- REPORT -------------------------------------------
