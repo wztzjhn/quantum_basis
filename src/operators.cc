@@ -3,29 +3,27 @@
 
 #include "qbasis.h"
 
-// blas level 1, Euclidean norm of vector
-inline // double
-double nrm2(const MKL_INT n, const double *x, const MKL_INT incx) {
-    return dnrm2(&n, x, &incx);
+// Euclidean norm
+inline double blas_nrm2(const MKL_INT &n, const double *x, const MKL_INT &incx) {
+    return cblas_dnrm2(n, x, incx);
 }
-inline // complex double
-double nrm2(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx) {
-    return dznrm2(&n, x, &incx);
+inline double blas_nrm2(const MKL_INT &n, const std::complex<double> *x, const MKL_INT &incx) {
+    return cblas_dznrm2(n, x, incx);
 }
 
-// blas level 3, matrix matrix product
-inline // double
-void gemm(const char transa, const char transb, const MKL_INT m, const MKL_INT n, const MKL_INT k,
-          const double alpha, const double *a, const MKL_INT lda, const double *b, const MKL_INT ldb,
-          const double beta, double *c, const MKL_INT ldc) {
-    dgemm(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
+// C := alpha * op(A) * op(B) + beta * C
+// A: mxk, B: kxn, C: mxn
+inline void blas_gemm(const CBLAS_LAYOUT &Layout, const CBLAS_TRANSPOSE &transA, const CBLAS_TRANSPOSE &transB,
+                      const MKL_INT &m, const MKL_INT &n, const MKL_INT &k, const double &alpha,
+                      const double *a, const MKL_INT &lda, const double *b, const MKL_INT &ldb,
+                      const double &beta, double *c, const MKL_INT &ldc) {
+    cblas_dgemm(Layout, transA, transB, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-inline // complex double
-void gemm(const char transa, const char transb, const MKL_INT m, const MKL_INT n, const MKL_INT k,
-          const std::complex<double> alpha, const std::complex<double> *a, const MKL_INT lda,
-          const std::complex<double> *b, const MKL_INT ldb,
-          const std::complex<double> beta, std::complex<double> *c, const MKL_INT ldc) {
-    zgemm(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
+inline void blas_gemm(const CBLAS_LAYOUT &Layout, const CBLAS_TRANSPOSE &transA, const CBLAS_TRANSPOSE &transB,
+                      const MKL_INT &m, const MKL_INT &n, const MKL_INT &k, const std::complex<double> &alpha,
+                      const std::complex<double> *a, const MKL_INT &lda, const std::complex<double> *b, const MKL_INT &ldb,
+                      const std::complex<double> &beta, std::complex<double> *c, const MKL_INT &ldc) {
+    cblas_zgemm(Layout, transA, transB, m, n, k, &alpha, a, lda, b, ldb, &beta, c, ldc);
 }
 
 namespace qbasis {
@@ -159,7 +157,7 @@ namespace qbasis {
             return 0.0;
         } else {
             decltype(dim) n = diagonal ? dim : dim * dim;
-            return nrm2(static_cast<MKL_INT>(n), mat, 1);
+            return blas_nrm2(static_cast<MKL_INT>(n), mat, 1);
         }
     }
     
@@ -332,7 +330,7 @@ namespace qbasis {
                 }
             } else {
                 MKL_INT diml = static_cast<MKL_INT>(dim);
-                gemm('n', 'n', diml, diml, diml, 1.0, mat, diml, rhs.mat, diml, 0.0, mat_new, diml);
+                blas_gemm(CblasColMajor, CblasNoTrans, CblasNoTrans, diml, diml, diml, 1.0, mat, diml, rhs.mat, diml, 0.0, mat_new, diml);
             }
             using std::swap;
             swap(mat, mat_new); // now mat points to the correct memory

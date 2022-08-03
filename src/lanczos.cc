@@ -5,91 +5,64 @@
 #include "qbasis.h"
 #include "areig.h"
 
-/** @file
-     *  \fn void axpy(const MKL_INT n, const double alpha, const double *x, const MKL_INT incx, double *y, const MKL_INT incy)
-     *  \brief blas level 1, y = a*x + y (double)
-     */
-inline
-void blas_axpy(const MKL_INT n, const double alpha, const double *x, const MKL_INT incx, double *y, const MKL_INT incy) {
-    daxpy(&n, &alpha, x, &incx, y, &incy);
+// y := a * x + y
+inline void blas_axpy(const MKL_INT &n, const double &alpha, const double *x, const MKL_INT &incx,
+                      double *y, const MKL_INT &incy) {
+    cblas_daxpy(n, alpha, x, incx, y, incy);
 }
-/** @file
- *  \fn void axpy(const MKL_INT n, const std::complex<double> alpha, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy)
- *  \brief blas level 1, y = a*x + y (complex double)
- */
-inline
-void blas_axpy(const MKL_INT n, const std::complex<double> alpha, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy) {
-    zaxpy(&n, &alpha, x, &incx, y, &incy);
+inline void blas_axpy(const MKL_INT &n, const std::complex<double> &alpha, const std::complex<double> *x, const MKL_INT &incx,
+                      std::complex<double> *y, const MKL_INT &incy) {
+    cblas_zaxpy(n, &alpha, x, incx, y, incy);
 }
 
-/** @file
-     *  \fn void copy(const MKL_INT n, const double *x, const MKL_INT incx, double *y, const MKL_INT incy)
-     *  \brief blas level 1, y = x (double)
-     */
-inline
-void blas_copy(const MKL_INT n, const double *x, const MKL_INT incx, double *y, const MKL_INT incy) {
-    dcopy(&n, x, &incx, y, &incy);
+// y := x
+inline void blas_copy(const MKL_INT &n, const double *x, const MKL_INT &incx, double *y, const MKL_INT &incy) {
+    cblas_dcopy(n, x, incx, y, incy);
 }
-/** @file
- *  \fn void copy(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy)
- *  \brief blas level 1, y = x (complex double)
- */
-inline
-void blas_copy(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy) {
-    zcopy(&n, x, &incx, y, &incy);
+inline void blas_copy(const MKL_INT &n, const std::complex<double> *x, const MKL_INT &incx, std::complex<double> *y, const MKL_INT &incy) {
+    cblas_zcopy(n, x, incx, y, incy);
 }
 
-// blas level 1, Euclidean norm of vector
-inline // double
-double blas_nrm2(const MKL_INT n, const double *x, const MKL_INT incx) {
-    return dnrm2(&n, x, &incx);
+// Euclidean norm
+inline double blas_nrm2(const MKL_INT &n, const double *x, const MKL_INT &incx) {
+    return cblas_dnrm2(n, x, incx);
 }
-inline // complex double
-double blas_nrm2(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx) {
-    return dznrm2(&n, x, &incx);
+inline double blas_nrm2(const MKL_INT &n, const std::complex<double> *x, const MKL_INT &incx) {
+    return cblas_dznrm2(n, x, incx);
 }
 
-// blas level 1, rescale: x = a*x
-inline // double * double vector
-void blas_scal(const MKL_INT n, const double a, double *x, const MKL_INT incx) {
-    dscal(&n, &a, x, &incx);
+//  x := a * x
+inline void blas_scal(const MKL_INT &n, const double &a, double *x, const MKL_INT &incx) {
+    cblas_dscal(n, a, x, incx);
 }
-inline // double complex * double complex vector
-void blas_scal(const MKL_INT n, const std::complex<double> a, std::complex<double> *x, const MKL_INT incx) {
-    zscal(&n, &a, x, &incx);
-}
-inline // double * double complex vector
-void blas_scal(const MKL_INT n, const double a, std::complex<double> *x, const MKL_INT incx) {
-    zdscal(&n, &a, x, &incx);
+inline void blas_scal(const MKL_INT &n, const std::complex<double> &a, std::complex<double> *x, const MKL_INT &incx) {
+    cblas_zscal(n, &a, x, incx);
 }
 
-// blas level 1, conjugated vector dot vector
-inline // double
-double blas_dotc(const MKL_INT n, const double *x, const MKL_INT incx, const double *y, const MKL_INT incy) {
-    return ddot(&n, x, &incx, y, &incy);
+// conj(x) . y
+inline double blas_dotc(const MKL_INT &n, const double *x, const MKL_INT &incx, const double *y, const MKL_INT &incy) {
+    return cblas_ddot(n, x, incx, y, incy);
 }
-// comment: zdotc is a problematic function in lapack, when returning std::complex. So using cblas here.
-inline // complex double
-std::complex<double> blas_dotc(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx,
-                          const std::complex<double> *y, const MKL_INT incy) {
+inline std::complex<double> blas_dotc(const MKL_INT &n, const std::complex<double> *x, const MKL_INT &incx,
+                                      const std::complex<double> *y, const MKL_INT &incy) {
     std::complex<double> result(0.0, 0.0);
     cblas_zdotc_sub(n, x, incx, y, incy, &result);
     return result;
 }
 
-// blas level 3, matrix matrix product
-inline // double
-void gemm(const char transa, const char transb, const MKL_INT m, const MKL_INT n, const MKL_INT k,
-          const double alpha, const double *a, const MKL_INT lda, const double *b, const MKL_INT ldb,
-          const double beta, double *c, const MKL_INT ldc) {
-    dgemm(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
+// C := alpha * op(A) * op(B) + beta * C
+// A: mxk, B: kxn, C: mxn
+inline void blas_gemm(const CBLAS_LAYOUT &Layout, const CBLAS_TRANSPOSE &transA, const CBLAS_TRANSPOSE &transB,
+                      const MKL_INT &m, const MKL_INT &n, const MKL_INT &k, const double &alpha,
+                      const double *a, const MKL_INT &lda, const double *b, const MKL_INT &ldb,
+                      const double &beta, double *c, const MKL_INT &ldc) {
+    cblas_dgemm(Layout, transA, transB, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-inline // complex double
-void gemm(const char transa, const char transb, const MKL_INT m, const MKL_INT n, const MKL_INT k,
-          const std::complex<double> alpha, const std::complex<double> *a, const MKL_INT lda,
-          const std::complex<double> *b, const MKL_INT ldb,
-          const std::complex<double> beta, std::complex<double> *c, const MKL_INT ldc) {
-    zgemm(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
+inline void blas_gemm(const CBLAS_LAYOUT &Layout, const CBLAS_TRANSPOSE &transA, const CBLAS_TRANSPOSE &transB,
+                      const MKL_INT &m, const MKL_INT &n, const MKL_INT &k, const std::complex<double> &alpha,
+                      const std::complex<double> *a, const MKL_INT &lda, const std::complex<double> *b, const MKL_INT &ldb,
+                      const std::complex<double> &beta, std::complex<double> *c, const MKL_INT &ldc) {
+    cblas_zgemm(Layout, transA, transB, m, n, k, &alpha, a, lda, b, ldb, &beta, c, ldc);
 }
 
 // lapack computational routine, computes all eigenvalues and (optionally) eigenvectors of a symmetric/hermitian TRIDIAGONAL matrix using the divide and conquer method.
@@ -505,7 +478,7 @@ namespace qbasis {
         blas_copy(dim * m, v, 1, v_old.data(), 1);
         std::vector<T> Q_typeT(m*m);
         for (MKL_INT j = 0; j < m*m; j++) Q_typeT[j] = Q[j];
-        gemm('n', 'n', dim, m, m, one, v_old.data(), dim, Q_typeT.data(), m, zero, v, dim); // v updated
+        blas_gemm(CblasColMajor, CblasNoTrans, CblasNoTrans, dim, m, m, one, v_old.data(), dim, Q_typeT.data(), m, zero, v, dim); // v updated
         blas_scal(dim, hessenberg[m]*Q_typeT[m-1 + m*(k-1)], v+m*dim, 1);
         blas_axpy(dim, static_cast<T>(hess_full[k + (k-1)*maxit]), v+k*dim, 1, v+m*dim, 1);
         hessenberg[m] = blas_nrm2(dim, v+m*dim, 1);                                                  // rnorm updated

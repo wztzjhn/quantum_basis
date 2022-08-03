@@ -10,28 +10,20 @@
 
 namespace ip  = boost::asio::ip;
 
-// blas level 1, Euclidean norm of vector
-inline // double
-double nrm2(const MKL_INT n, const double *x, const MKL_INT incx) {
-    return dnrm2(&n, x, &incx);
+// Euclidean norm
+inline double blas_nrm2(const MKL_INT &n, const double *x, const MKL_INT &incx) {
+    return cblas_dnrm2(n, x, incx);
 }
-inline // complex double
-double nrm2(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx) {
-    return dznrm2(&n, x, &incx);
+inline double blas_nrm2(const MKL_INT &n, const std::complex<double> *x, const MKL_INT &incx) {
+    return cblas_dznrm2(n, x, incx);
 }
 
-// blas level 1, rescale: x = a*x
-inline // double * double vector
-void scal(const MKL_INT n, const double a, double *x, const MKL_INT incx) {
-    dscal(&n, &a, x, &incx);
+//  x := a * x
+inline void blas_scal(const MKL_INT &n, const double &a, double *x, const MKL_INT &incx) {
+    cblas_dscal(n, a, x, incx);
 }
-inline // double complex * double complex vector
-void scal(const MKL_INT n, const std::complex<double> a, std::complex<double> *x, const MKL_INT incx) {
-    zscal(&n, &a, x, &incx);
-}
-inline // double * double complex vector
-void scal(const MKL_INT n, const double a, std::complex<double> *x, const MKL_INT incx) {
-    zdscal(&n, &a, x, &incx);
+inline void blas_scal(const MKL_INT &n, const std::complex<double> &a, std::complex<double> *x, const MKL_INT &incx) {
+    cblas_zscal(n, &a, x, incx);
 }
 
 namespace qbasis {
@@ -346,14 +338,14 @@ namespace qbasis {
         if (seed == 0) {
             T ele = static_cast<T>(sqrt(1.0 / n));
             for (MKL_INT j = 0; j < n; j++) x[j] = ele;
-            assert(std::abs(nrm2(n, x, 1) - 1.0) < lanczos_precision);
+            assert(std::abs(blas_nrm2(n, x, 1) - 1.0) < lanczos_precision);
         } else {
             std::minstd_rand0 g(seed);
             double pref = 1.0 / 2147483647.0;
             for (MKL_INT j = 0; j < n; j++) x[j] = g() * pref - 0.5;
-            double rnorm = nrm2(n, x, 1);
-            scal(n, 1.0/rnorm, x, 1);
-            assert(std::abs(nrm2(n, x, 1) - 1.0) < lanczos_precision);
+            double rnorm = blas_nrm2(n, x, 1);
+            blas_scal(n, 1.0/rnorm, x, 1);
+            assert(std::abs(blas_nrm2(n, x, 1) - 1.0) < lanczos_precision);
         }
     }
     template void vec_randomize(const MKL_INT &n, double *x, const uint32_t &seed);

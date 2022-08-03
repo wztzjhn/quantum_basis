@@ -11,73 +11,45 @@
 
 #define PI 3.1415926535897932
 
-/** @file
-     *  \fn void axpy(const MKL_INT n, const double alpha, const double *x, const MKL_INT incx, double *y, const MKL_INT incy)
-     *  \brief blas level 1, y = a*x + y (double)
-     */
-inline
-void axpy(const MKL_INT n, const double alpha, const double *x, const MKL_INT incx, double *y, const MKL_INT incy) {
-    daxpy(&n, &alpha, x, &incx, y, &incy);
+inline void blas_axpy(const MKL_INT &n, const double &alpha, const double *x, const MKL_INT &incx,
+                      double *y, const MKL_INT &incy) {
+    cblas_daxpy(n, alpha, x, incx, y, incy);
 }
-/** @file
- *  \fn void axpy(const MKL_INT n, const std::complex<double> alpha, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy)
- *  \brief blas level 1, y = a*x + y (complex double)
- */
-inline
-void axpy(const MKL_INT n, const std::complex<double> alpha, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy) {
-    zaxpy(&n, &alpha, x, &incx, y, &incy);
+inline void blas_axpy(const MKL_INT &n, const std::complex<double> &alpha, const std::complex<double> *x, const MKL_INT &incx,
+                      std::complex<double> *y, const MKL_INT &incy) {
+    cblas_zaxpy(n, &alpha, x, incx, y, incy);
 }
 
-/** @file
-     *  \fn void copy(const MKL_INT n, const double *x, const MKL_INT incx, double *y, const MKL_INT incy)
-     *  \brief blas level 1, y = x (double)
-     */
-inline
-void copy(const MKL_INT n, const double *x, const MKL_INT incx, double *y, const MKL_INT incy) {
-    dcopy(&n, x, &incx, y, &incy);
+// y := x
+inline void blas_copy(const MKL_INT &n, const double *x, const MKL_INT &incx, double *y, const MKL_INT &incy) {
+    cblas_dcopy(n, x, incx, y, incy);
 }
-/** @file
- *  \fn void copy(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy)
- *  \brief blas level 1, y = x (complex double)
- */
-inline
-void copy(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy) {
-    zcopy(&n, x, &incx, y, &incy);
+inline void blas_copy(const MKL_INT &n, const std::complex<double> *x, const MKL_INT &incx, std::complex<double> *y, const MKL_INT &incy) {
+    cblas_zcopy(n, x, incx, y, incy);
 }
 
-// blas level 1, Euclidean norm of vector
-inline // double
-double nrm2(const MKL_INT n, const double *x, const MKL_INT incx) {
-    return dnrm2(&n, x, &incx);
+// Euclidean norm
+inline double blas_nrm2(const MKL_INT &n, const double *x, const MKL_INT &incx) {
+    return cblas_dnrm2(n, x, incx);
 }
-inline // complex double
-double nrm2(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx) {
-    return dznrm2(&n, x, &incx);
+inline double blas_nrm2(const MKL_INT &n, const std::complex<double> *x, const MKL_INT &incx) {
+    return cblas_dznrm2(n, x, incx);
 }
 
-// blas level 1, rescale: x = a*x
-inline // double * double vector
-void scal(const MKL_INT n, const double a, double *x, const MKL_INT incx) {
-    dscal(&n, &a, x, &incx);
+//  x := a * x
+inline void blas_scal(const MKL_INT &n, const double &a, double *x, const MKL_INT &incx) {
+    cblas_dscal(n, a, x, incx);
 }
-inline // double complex * double complex vector
-void scal(const MKL_INT n, const std::complex<double> a, std::complex<double> *x, const MKL_INT incx) {
-    zscal(&n, &a, x, &incx);
-}
-inline // double * double complex vector
-void scal(const MKL_INT n, const double a, std::complex<double> *x, const MKL_INT incx) {
-    zdscal(&n, &a, x, &incx);
+inline void blas_scal(const MKL_INT &n, const std::complex<double> &a, std::complex<double> *x, const MKL_INT &incx) {
+    cblas_zscal(n, &a, x, incx);
 }
 
-// blas level 1, conjugated vector dot vector
-inline // double
-double dotc(const MKL_INT n, const double *x, const MKL_INT incx, const double *y, const MKL_INT incy) {
-    return ddot(&n, x, &incx, y, &incy);
+// conj(x) . y
+inline double blas_dotc(const MKL_INT &n, const double *x, const MKL_INT &incx, const double *y, const MKL_INT &incy) {
+    return cblas_ddot(n, x, incx, y, incy);
 }
-// comment: zdotc is a problematic function in lapack, when returning std::complex. So using cblas here.
-inline // complex double
-std::complex<double> dotc(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx,
-                          const std::complex<double> *y, const MKL_INT incy) {
+inline std::complex<double> blas_dotc(const MKL_INT &n, const std::complex<double> *x, const MKL_INT &incx,
+                                      const std::complex<double> *y, const MKL_INT &incy) {
     std::complex<double> result(0.0, 0.0);
     cblas_zdotc_sub(n, x, incx, y, incy, &result);
     return result;
@@ -621,7 +593,7 @@ namespace qbasis {
             while (dis_gs[d] < 0) dis_gs[d] += 2.0 * PI;
             while (dis_gs[d] > 2.0 * PI) dis_gs[d] -= 2.0 * PI;
         }
-        auto dis_gs_nrm2 = nrm2(static_cast<MKL_INT>(dis_gs.size()), dis_gs.data(), 1);
+        auto dis_gs_nrm2 = blas_nrm2(static_cast<MKL_INT>(dis_gs.size()), dis_gs.data(), 1);
         std::cout << "dis_gs_nrm2 = " << dis_gs_nrm2 << std::endl;
         gs_norm_vrnl[sec_vrnl] = dis_gs_nrm2 > lanczos_precision ? 0 : gs_omegaG_vrnl;
         assert(std::abs(gs_norm_vrnl[sec_vrnl]) < 50.0);
@@ -1225,10 +1197,10 @@ namespace qbasis {
             std::cout << "Calculating 1st excited state energy (simple Lanczos)..." << std::endl;
             std::cout << "Lanczos may/maynot miss degenerate states, BE CAREFUL!" << std::endl;
             vec_randomize(dim, v.data(), seed);
-            auto alpha = dotc(dim, v.data() + 2 * dim, 1, v.data(), 1);          // (phi0, v0)
-            axpy(dim, -alpha, v.data() + 2 * dim, 1, v.data(), 1);               // v0 -= alpha * phi0
-            double rnorm = nrm2(dim, v.data(), 1);
-            scal(dim, 1.0 / rnorm, v.data(), 1);                                 // normalize v0
+            auto alpha = blas_dotc(dim, v.data() + 2 * dim, 1, v.data(), 1);          // (phi0, v0)
+            blas_axpy(dim, -alpha, v.data() + 2 * dim, 1, v.data(), 1);               // v0 -= alpha * phi0
+            double rnorm = blas_nrm2(dim, v.data(), 1);
+            blas_scal(dim, 1.0 / rnorm, v.data(), 1);                                 // normalize v0
             
             MKL_INT m = 0;
             if (matrix_free) {
@@ -1255,7 +1227,7 @@ namespace qbasis {
         }
         
         if (ncv == 1) {
-            copy(dim, v.data() + 2 * dim, 1, v.data(), 1);                       // copy eigenvec to head of v
+            blas_copy(dim, v.data() + 2 * dim, 1, v.data(), 1);                       // copy eigenvec to head of v
             v.resize(dim);
             swap(eigenvecs,v);
             // clean ckpt
@@ -1286,17 +1258,17 @@ namespace qbasis {
             
             V1_done = true;
             nconv = 2;
-            copy(2*dim, v.data() + 2 * dim, 1, v.data(), 1);                     // copy eigenvec to head of v
+            blas_copy(2*dim, v.data() + 2 * dim, 1, v.data(), 1);                     // copy eigenvec to head of v
             v.resize(2*dim);
             swap(eigenvecs,v);
             if (gap < lanczos_precision) {                                       // orthogonalize the two degenerate states
                 std::cout << "Orthogonalizing degenerate ground states..." << std::endl;
-                T alpha = dotc(dim, eigenvecs.data(), 1, eigenvecs.data() + dim, 1); // (v0,v1)
+                T alpha = blas_dotc(dim, eigenvecs.data(), 1, eigenvecs.data() + dim, 1); // (v0,v1)
                 std::cout << "Before: v0 . v1 = " << alpha << std::endl;
-                axpy(dim, -alpha, eigenvecs.data(), 1, eigenvecs.data() + dim, 1);
-                double rnorm = nrm2(dim, eigenvecs.data() + dim, 1);
-                scal(dim, 1.0 / rnorm, eigenvecs.data() + dim, 1);
-                alpha = dotc(dim, eigenvecs.data(), 1, eigenvecs.data() + dim, 1);   // (v0,v1)
+                blas_axpy(dim, -alpha, eigenvecs.data(), 1, eigenvecs.data() + dim, 1);
+                double rnorm = blas_nrm2(dim, eigenvecs.data() + dim, 1);
+                blas_scal(dim, 1.0 / rnorm, eigenvecs.data() + dim, 1);
+                alpha = blas_dotc(dim, eigenvecs.data(), 1, eigenvecs.data() + dim, 1);   // (v0,v1)
                 std::cout << "After:  v0 . v1 = " << alpha << std::endl;
             }
             std::cout << std::endl;
@@ -1541,13 +1513,13 @@ namespace qbasis {
             
             latt_parent.translation_plan(plan, disp, scratch_coor, scratch_work);
             transform_vec_full(plan, sec_full, vec_old, vec_temp.data());
-            axpy(dim, coef, vec_temp.data(), 1, vec_new, 1);
+            blas_axpy(dim, coef, vec_temp.data(), 1, vec_new, 1);
         }
         
         // normalize
-        double nrm = nrm2(dim, vec_new, 1);
+        double nrm = blas_nrm2(dim, vec_new, 1);
         if (nrm < lanczos_precision) return;                                     // the state has no projection in this momentum sector
-        scal(dim, 1.0/nrm, vec_new, 1);
+        blas_scal(dim, 1.0/nrm, vec_new, 1);
         
         // double check momentum
         for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
@@ -1562,9 +1534,9 @@ namespace qbasis {
             transform_vec_full(plan, sec_full, vec_new, vec_temp.data());          // vec_temp = T(R) vec_new
             double exp_coef = momentum[d] * disp[d] / static_cast<double>(L[d]);
             auto coef = std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef));
-            scal(dim, coef, vec_temp.data(), 1);                                   // vec_temp = vec_temp * e^{iKR}
-            axpy(dim, std::complex<double>(-1.0), vec_new, 1, vec_temp.data(), 1); // vec_temp - vec_new
-            double nrm = nrm2(dim, vec_temp.data(), 1);
+            blas_scal(dim, coef, vec_temp.data(), 1);                                   // vec_temp = vec_temp * e^{iKR}
+            blas_axpy(dim, std::complex<double>(-1.0), vec_new, 1, vec_temp.data(), 1); // vec_temp - vec_new
+            double nrm = blas_nrm2(dim, vec_temp.data(), 1);
             assert(nrm < lanczos_precision);
         }
     }
@@ -1586,7 +1558,7 @@ namespace qbasis {
         MKL_INT base = dim_full[sec_full] * which_col;
         std::vector<T> vec_new(dim_full[sec_full]);
         moprXvec_full(lhs, sec_full, sec_full, which_col, vec_new.data());
-        return dotc(dim_full[sec_full], eigenvecs_full.data() + base, 1, vec_new.data(), 1);
+        return blas_dotc(dim_full[sec_full], eigenvecs_full.data() + base, 1, vec_new.data(), 1);
     }
     
     
@@ -1609,7 +1581,7 @@ namespace qbasis {
             moprXvec_full(lhs[j], sec_old_list[j], sec_new_list[j], vec_new.data(), vec_temp.data());
             vec_new = vec_temp;
         }
-        return dotc(dim_full[sec_old_list[0]], eigenvecs_full.data() + base, 1, vec_new.data(), 1);
+        return blas_dotc(dim_full[sec_old_list[0]], eigenvecs_full.data() + base, 1, vec_new.data(), 1);
     }
     
     template <typename T>
@@ -1620,9 +1592,9 @@ namespace qbasis {
         auto &HamMat    = HamMat_csr_full[sec_new];
         std::vector<T> vec_new(2*dim_new);
         moprXvec_full(Aq, sec_old, sec_new, static_cast<MKL_INT>(0), vec_new.data()); // vec_new = Aq |phi>
-        norm = nrm2(dim_new, vec_new.data(), 1);                                 // norm = sqrt(<phi| Aq^\dagger * Aq |phi>)
+        norm = blas_nrm2(dim_new, vec_new.data(), 1);                                 // norm = sqrt(<phi| Aq^\dagger * Aq |phi>)
         if (std::abs(norm) < lanczos_precision) return;
-        scal(dim_new, 1.0 / norm, vec_new.data(), 1);                            // normalize vec_new
+        blas_scal(dim_new, 1.0 / norm, vec_new.data(), 1);                            // normalize vec_new
         if (matrix_free) {
             lanczos(0, maxit-1, maxit, m, dim_new, *this,  vec_new.data(), hessenberg, "dnmcs");
         } else {
@@ -1805,7 +1777,7 @@ namespace qbasis {
         
         std::vector<T> vec_new(dim_repr[sec_repr]);
         moprXvec_repr(opr_trans, sec_repr, sec_repr, which_col, vec_new.data());
-        return dotc(dim_repr[sec_repr], eigenvecs_repr.data() + dim_repr[sec_repr] * which_col, 1, vec_new.data(), 1);
+        return blas_dotc(dim_repr[sec_repr], eigenvecs_repr.data() + dim_repr[sec_repr] * which_col, 1, vec_new.data(), 1);
     }
     
     
@@ -1817,9 +1789,9 @@ namespace qbasis {
         auto &HamMat    = HamMat_csr_repr[sec_new];
         std::vector<T> vec_new(2*dim_new);
         moprXvec_repr(Aq, sec_old, sec_new, static_cast<MKL_INT>(0), vec_new.data()); // vec_new = Aq * |phi>
-        norm = nrm2(dim_new, vec_new.data(), 1);                      // norm = sqrt(<phi| Aq^\dagger * Aq |phi>)
+        norm = blas_nrm2(dim_new, vec_new.data(), 1);                      // norm = sqrt(<phi| Aq^\dagger * Aq |phi>)
         if (std::abs(norm) < lanczos_precision) return;
-        scal(dim_new, 1.0 / norm, vec_new.data(), 1);                            // normalize vec_new
+        blas_scal(dim_new, 1.0 / norm, vec_new.data(), 1);                            // normalize vec_new
         if (matrix_free) {
             lanczos(0, maxit-1, maxit, m, dim_new, *this,  vec_new.data(), hessenberg, "dnmcs");
         } else {
@@ -2046,9 +2018,9 @@ namespace qbasis {
         auto &HamMat = HamMat_csr_vrnl[sec_vrnl];
         std::vector<T> vec_new(2*dim);
         moprXgs_vrnl(Bq, sec_vrnl, vec_new.data());                   // vec_new = N * Aq * |phi>
-        norm = nrm2(dim, vec_new.data(), 1);                          // norm = sqrt(<phi| Aq^\dagger * Aq |phi>)
+        norm = blas_nrm2(dim, vec_new.data(), 1);                          // norm = sqrt(<phi| Aq^\dagger * Aq |phi>)
         if (std::abs(norm) < lanczos_precision) return;
-        scal(dim, 1.0 / norm, vec_new.data(), 1);                     // normalize vec_new
+        blas_scal(dim, 1.0 / norm, vec_new.data(), 1);                     // normalize vec_new
         lanczos(0, maxit-1, maxit, m, dim, HamMat, vec_new.data(), hessenberg, "dnmcs");
     }
     
@@ -2112,8 +2084,8 @@ namespace qbasis {
                 
                 // re-calculate the GS normalization factor
                 auto momentum_dis = momentum;
-                axpy(static_cast<MKL_INT>(momentum.size()), -1.0, gs_momentum_vrnl.data(), 1, momentum_dis.data(), 1);
-                auto dis_gs_nrm2 = nrm2(static_cast<MKL_INT>(momentum_dis.size()), momentum_dis.data(), 1);
+                blas_axpy(static_cast<MKL_INT>(momentum.size()), -1.0, gs_momentum_vrnl.data(), 1, momentum_dis.data(), 1);
+                auto dis_gs_nrm2 = blas_nrm2(static_cast<MKL_INT>(momentum_dis.size()), momentum_dis.data(), 1);
                 gs_norm_vrnl[sec_vrnl] = dis_gs_nrm2 > lanczos_precision ? 0 : gs_omegaG_vrnl;
                 
                 generate_Ham_sparse_vrnl(sec_vrnl);
@@ -2124,7 +2096,7 @@ namespace qbasis {
                 MKL_INT level = locate_state(*this, sec_vrnl);
                 std::vector<std::complex<double>> eigvec_k(dim);
                 if (level >=0 && level < nconv) {
-                    copy(dim, eigenvecs_vrnl.data() + level * dim, 1, eigvec_k.data(), 1);
+                    blas_copy(dim, eigenvecs_vrnl.data() + level * dim, 1, eigvec_k.data(), 1);
                 } else {
                     std::cout << "Warning#" << ++warning_cnt << ": state not located!" << std::endl;
                     vec_zeros(dim, eigvec_k.data());
@@ -2172,7 +2144,7 @@ namespace qbasis {
             momenta_vrnl[sec_vrnl] = momenta_list[k2_idx];
             auto momentum_dis_k2 = momenta_vrnl[sec_vrnl];
             for (uint32_t d = 0; d < momentum_dis_k2.size(); d++) momentum_dis_k2[d] -= gs_momentum_vrnl[d];
-            auto dis_gs_nrm2_k2 = nrm2(static_cast<MKL_INT>(momentum_dis_k2.size()), momentum_dis_k2.data(), 1);
+            auto dis_gs_nrm2_k2 = blas_nrm2(static_cast<MKL_INT>(momentum_dis_k2.size()), momentum_dis_k2.data(), 1);
             gs_norm_vrnl[sec_vrnl] = dis_gs_nrm2_k2 > lanczos_precision ? 0 : gs_omegaG_vrnl;
             
             for (uint32_t k1_idx = 0; k1_idx <= k2_idx; k1_idx++) {
@@ -2196,13 +2168,13 @@ namespace qbasis {
                 momenta_vrnl[sec_new] = momenta_list[k1_idx];
                 auto momentum_dis_k1 = momenta_vrnl[sec_new];
                 for (uint32_t d = 0; d < momentum_dis_k1.size(); d++) momentum_dis_k1[d] -= gs_momentum_vrnl[d];
-                auto dis_gs_nrm2_k1 = nrm2(static_cast<MKL_INT>(momentum_dis_k1.size()), momentum_dis_k1.data(), 1);
+                auto dis_gs_nrm2_k1 = blas_nrm2(static_cast<MKL_INT>(momentum_dis_k1.size()), momentum_dis_k1.data(), 1);
                 gs_norm_vrnl[sec_new] = dis_gs_nrm2_k1 > lanczos_precision ? 0 : gs_omegaG_vrnl;
                 
                 moprXvec_vrnl(Bq, sec_vrnl, sec_new, eigvec_k2.data(), vec_new.data(), pG);
                 
                 // temporarily neglect contributions from pG
-                matrix_mu[k1_idx + k2_idx * num_k] = dotc(dim, eigvec_k1.data(), 1, vec_new.data(), 1);
+                matrix_mu[k1_idx + k2_idx * num_k] = blas_dotc(dim, eigvec_k1.data(), 1, vec_new.data(), 1);
             }
         }
         
