@@ -374,7 +374,7 @@ namespace qbasis {
         mbasis_elem() : mbits(nullptr) {}
 
         /** \brief constructor with its properties */
-        mbasis_elem(const std::vector<basis_prop> &props);
+        explicit mbasis_elem(const std::vector<basis_prop> &props);
 
         /** \brief copy constructor */
         mbasis_elem(const mbasis_elem& old);
@@ -421,25 +421,25 @@ namespace qbasis {
 
         //    ----------- basic inquiries ----------
         /** \brief question if the vacuum state on a particular site */
-        bool q_zero_site(const std::vector<basis_prop> &props, const uint32_t &site) const;
+        [[nodiscard]] bool q_zero_site(const std::vector<basis_prop> &props, const uint32_t &site) const;
 
         /** \brief question if the vacuum state on a particular orbital */
-        bool q_zero_orbital(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
+        [[nodiscard]] bool q_zero_orbital(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
 
         /** \brief question if the vacuum state */
-        bool q_zero() const;
+        [[nodiscard]] bool q_zero() const;
 
         /** \brief question if every site occupied by the highest state, for a given orbital */
-        bool q_maximized(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
+        [[nodiscard]] bool q_maximized(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
 
         /** \brief question if every site occupied by the highest state */
-        bool q_maximized(const std::vector<basis_prop> &props) const;
+        [[nodiscard]] bool q_maximized(const std::vector<basis_prop> &props) const;
 
         /** \brief question if every site occupied by the same state, for a given orbital */
-        bool q_same_state_all_site(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
+        [[nodiscard]] bool q_same_state_all_site(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
 
         /** \brief question if every site occupied by the same state */
-        bool q_same_state_all_site(const std::vector<basis_prop> &props) const;
+        [[nodiscard]] bool q_same_state_all_site(const std::vector<basis_prop> &props) const;
 
         // get a label
         // preferred size of work: 2*num_sites
@@ -460,13 +460,13 @@ namespace qbasis {
                        std::vector<uint8_t> &work1, std::vector<uint64_t> &work2) const;
 
         // return a vector of length dim_local (for orbital), reporting # of each state
-        std::vector<uint32_t> statistics(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
+        [[nodiscard]] std::vector<uint32_t> statistics(const std::vector<basis_prop> &props, const uint32_t &orbital) const;
 
         // a direct product of the statistics of all orbitals, size: dim_orb1 * dim_orb2 * ...
-        std::vector<uint32_t> statistics(const std::vector<basis_prop> &props) const;
+        [[nodiscard]] std::vector<uint32_t> statistics(const std::vector<basis_prop> &props) const;
 
         /** \brief output the center of the non-vacuum states, in units of the lattice basis \f$ \vec{a}_i \f$ */
-        std::vector<double> center_pos(const std::vector<basis_prop> &props, const lattice &latt) const;
+        [[nodiscard]] std::vector<double> center_pos(const std::vector<basis_prop> &props, const lattice &latt) const;
 
         //    ---------- transformations -----------
         // translate the basis according to the given plan, transform a single orbital
@@ -497,17 +497,17 @@ namespace qbasis {
                                           const lattice &latt, std::vector<int> &disp_vec);
 
         //    ------------ measurements ------------
-        double diagonal_operator(const std::vector<basis_prop> &props, const opr<double> &lhs) const;
+        [[nodiscard]] double diagonal_operator(const std::vector<basis_prop> &props, const opr<double> &lhs) const;
 
-        std::complex<double> diagonal_operator(const std::vector<basis_prop> &props, const opr<std::complex<double>> &lhs) const;
+        [[nodiscard]] std::complex<double> diagonal_operator(const std::vector<basis_prop> &props, const opr<std::complex<double>> &lhs) const;
 
-        double diagonal_operator(const std::vector<basis_prop> &props, const opr_prod<double> &lhs) const;
+        [[nodiscard]] double diagonal_operator(const std::vector<basis_prop> &props, const opr_prod<double> &lhs) const;
 
-        std::complex<double> diagonal_operator(const std::vector<basis_prop> &props, const opr_prod<std::complex<double>> &lhs) const;
+        [[nodiscard]] std::complex<double> diagonal_operator(const std::vector<basis_prop> &props, const opr_prod<std::complex<double>> &lhs) const;
 
-        double diagonal_operator(const std::vector<basis_prop> &props, const mopr<double> &lhs) const;
+        [[nodiscard]] double diagonal_operator(const std::vector<basis_prop> &props, const mopr<double> &lhs) const;
 
-        std::complex<double> diagonal_operator(const std::vector<basis_prop> &props, const mopr<std::complex<double>> &lhs) const;
+        [[nodiscard]] std::complex<double> diagonal_operator(const std::vector<basis_prop> &props, const mopr<std::complex<double>> &lhs) const;
 
     private:
         /** store an array of basis elements, for multi-orbital site (or unit cell)
@@ -548,11 +548,11 @@ namespace qbasis {
                                            std::vector<mopr<T>> conserve_lst, std::vector<double> val_lst);
     public:
         // constructor from props
-        wavefunction(const std::vector<basis_prop> &props, const MKL_INT &capacity = 64);
+        explicit wavefunction(const std::vector<basis_prop> &props, const MKL_INT &capacity = 64);
 
         // constructor from an element
-        wavefunction(const mbasis_elem &old, const MKL_INT &capacity = 64);
-        wavefunction(mbasis_elem &&old,      const MKL_INT &capacity = 64);
+        explicit wavefunction(const mbasis_elem &old, const MKL_INT &capacity = 64);
+        explicit wavefunction(mbasis_elem &&old,      const MKL_INT &capacity = 64);
 
         // copy constructor
         wavefunction(const wavefunction<T> &old) : bgn(old.bgn), end(old.end), total_bytes(old.total_bytes), ele(old.ele) {}
@@ -568,25 +568,25 @@ namespace qbasis {
         }
 
         // destructor
-        ~wavefunction() {}
+        ~wavefunction() = default;
 
         //    ----------- basic inquiries ----------
         MKL_INT size() const { MKL_INT capacity = static_cast<MKL_INT>(ele.size()); return ( (end + capacity - bgn) % capacity ); }
 
         // check if zero
-        bool q_empty() const { return (size() == 0); }
+        [[nodiscard]] bool q_empty() const { return (size() == 0); }
 
         // check if full
-        bool q_full() const { return (size() + 1 == static_cast<int>(ele.size())); }
+        [[nodiscard]] bool q_full() const { return (size() + 1 == static_cast<int>(ele.size())); }
 
         // check if sorted
-        bool q_sorted() const;
+        [[nodiscard]] bool q_sorted() const;
 
         // check if sorted and there are no dulplicated terms
-        bool q_sorted_fully() const;
+        [[nodiscard]] bool q_sorted_fully() const;
 
         // for \sum_i \alpha_i * element[i], return \sum_i |\alpha_i|^2
-        double amplitude() const;
+        [[nodiscard]] double amplitude() const;
 
         //    ---------------- print ---------------
         void prt_bits(const std::vector<basis_prop> &props) const;
@@ -689,26 +689,26 @@ namespace qbasis {
 
         //    ----------- basic inquiries ----------
         /** \brief question if it is zero operator */
-        bool q_zero() const;
+        [[nodiscard]] bool q_zero() const;
 
         /** \brief question if it is identity operator */
-        bool q_diagonal() const { return diagonal; }
+        [[nodiscard]] bool q_diagonal() const { return diagonal; }
 
         /** \brief question if it is identity operator */
-        bool q_identity() const;
+        [[nodiscard]] bool q_identity() const;
 
         /** \brief return site index */
-        uint32_t pos_site() const { return site; }
+        [[nodiscard]] uint32_t pos_site() const { return site; }
 
         /** \brief return orbital index */
-        uint32_t pos_orb() const { return orbital; }
+        [[nodiscard]] uint32_t pos_orb() const { return orbital; }
 
         //    ------------ arithmetics -------------
         /**
          *  \brief \f$ \sqrt { \sum_{i,j} |M_{i,j}|^2 } \f$,
          *  where \f$ M \f$ is the matrix representation of the operator
          */
-        double norm() const;
+        [[nodiscard]] double norm() const;
 
         /** \brief simplify the structure if possible */
         opr& simplify();
@@ -775,7 +775,7 @@ namespace qbasis {
         opr_prod() = default;
 
         // constructor from one fundamental operator
-        opr_prod(const opr<T> &ele);
+        explicit opr_prod(const opr<T> &ele);
 
         // copy constructor
         opr_prod(const opr_prod<T> &old): coeff(old.coeff), mat_prod(old.mat_prod) {}
@@ -787,21 +787,21 @@ namespace qbasis {
         opr_prod& operator=(opr_prod<T> old) { swap(*this, old); return *this; }
 
         // destructor
-        ~opr_prod() {}
+        ~opr_prod() = default;
 
         void prt() const;
 
         //    ----------- basic inquiries ----------
         // question if it is zero operator
-        bool q_zero() const;
+        [[nodiscard]] bool q_zero() const;
 
         // question if each opr is diagonal
-        bool q_diagonal() const;
+        [[nodiscard]] bool q_diagonal() const;
 
         // question if it is proportional to identity operator
-        bool q_prop_identity() const;
+        [[nodiscard]] bool q_prop_identity() const;
 
-        uint32_t len() const;
+        [[nodiscard]] uint32_t len() const;
 
         opr<T>& operator[](uint32_t n);
 
@@ -873,10 +873,10 @@ namespace qbasis {
         mopr() = default;
 
         // constructor from one fundamental operator
-        mopr(const opr<T> &ele);
+        explicit mopr(const opr<T> &ele);
 
         // constructor from operator products
-        mopr(const opr_prod<T> &ele);
+        explicit mopr(const opr_prod<T> &ele);
 
         // copy constructor
         mopr(const mopr<T> &old): mats(old.mats) {}
@@ -888,17 +888,17 @@ namespace qbasis {
         mopr& operator=(mopr<T> old) { swap(*this, old); return *this; }
 
         // destructor
-        ~mopr() {}
+        ~mopr() = default;
 
         void prt() const;
 
         //    ----------- basic inquiries ----------
-        bool q_zero() const { return mats.empty(); }
+        [[nodiscard]] bool q_zero() const { return mats.empty(); }
 
         // question if each opr_prod is diagonal
-        bool q_diagonal() const;
+        [[nodiscard]] bool q_diagonal() const;
 
-        uint32_t size() const { return static_cast<uint32_t>(mats.size()); }
+        [[nodiscard]] uint32_t size() const { return static_cast<uint32_t>(mats.size()); }
 
         opr_prod<T>& operator[](uint32_t n);
 
@@ -959,7 +959,7 @@ namespace qbasis {
         lil_mat() = default;
 
         // constructor with the Hilbert space dimension
-        lil_mat(const MKL_INT &n, bool sym_ = false);
+        explicit lil_mat(const MKL_INT &n, bool sym_ = false);
 
         // add one element
         void add(const MKL_INT &row, const MKL_INT &col, const T &val);
@@ -970,7 +970,7 @@ namespace qbasis {
         void destroy();
 
         // destructor
-        ~lil_mat() {};
+        ~lil_mat() = default;;
 
         MKL_INT dimension() const { return dim; }
 
@@ -1020,7 +1020,7 @@ namespace qbasis {
 
         // construcotr from an lil_mat, and if sym_ == true, use only the upper triangle
         // then destroy the lil_mat
-        csr_mat(lil_mat<T> &old);
+        explicit csr_mat(lil_mat<T> &old);
 
         // matrix vector product
         // y = H * x + y
@@ -1160,7 +1160,7 @@ namespace qbasis {
                 const std::vector<std::string> &bc_, bool auto_dim_spec = true);
 
         /** \brief constructor from manually designed lattices, specified from input files */
-        lattice(const std::string &filename, bool auto_dim_spec = true);
+        explicit lattice(const std::string &filename, bool auto_dim_spec = true);
 
         /** \brief if all directions untilted, return true */
         bool q_tilted() const;
@@ -1432,9 +1432,9 @@ namespace qbasis {
 
         model() {}
 
-        model(const lattice &latt, const uint32_t &num_secs = 5, const double &fake_pos_ = 100.0);
+        explicit model(lattice latt, const uint32_t &num_secs = 5, const double &fake_pos_ = 100.0);
 
-        ~model() {}
+        ~model() = default;
 
         void prt_Ham_diag() const { Ham_diag.prt(); }
 
@@ -1989,19 +1989,6 @@ namespace qbasis {
     lapack_int stedc(const int &matrix_layout, const char &compz, const lapack_int &n, double *d, double *e, std::complex<double> *z, const lapack_int &ldz) {
         return LAPACKE_zstedc(matrix_layout, compz, n, d, e, z, ldz);
     }
-
-
-
-    //// lapack symmetric eigenvalue driver routine, using divide and conquer, for band matrix
-    //inline // double
-    //lapack_int bevd(const int &matrix_layout, const char &jobz, const char &uplo, const lapack_int &n, const lapack_int &kd,
-    //                double *ab, const lapack_int &ldab, double *w, double *z, const lapack_int &ldz) {
-    //    return LAPACKE_dsbevd(matrix_layout, jobz, uplo, n, kd, ab, ldab, w, z, ldz);
-    //}
-    //lapack_int bevd(const int &matrix_layout, const char &jobz, const char &uplo, const lapack_int &n, const lapack_int &kd,
-    //                std::complex<double> *ab, const lapack_int &ldab, double *w, std::complex<double> *z, const lapack_int &ldz) {
-    //    return LAPACKE_zhbevd(matrix_layout, jobz, uplo, n, kd, ab, ldab, w, z, ldz);
-    //}
 
 
     // lapack, Computes the QR factorization of a general m-by-n matrix.

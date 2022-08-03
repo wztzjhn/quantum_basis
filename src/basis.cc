@@ -2880,7 +2880,7 @@ namespace qbasis {
             if (tid == 0) num_threads = omp_get_num_threads();
         }
         // prepare intermediates in advance
-        std::vector<wavefunction<T>> intermediate_states(num_threads, {props});
+        std::vector<wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(props));
         
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();

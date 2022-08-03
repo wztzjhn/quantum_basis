@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <random>
 #include <regex>
+#include <utility>
 
 #include "qbasis.h"
 #include "graph.h"
@@ -16,7 +17,7 @@ namespace qbasis {
     void ckpt_CG_clean();
     
     template <typename T>
-    model<T>::model(const lattice &latt, const uint32_t &num_secs, const double &fake_pos_):
+    model<T>::model(lattice latt, const uint32_t &num_secs, const double &fake_pos_):
                     matrix_free(true),
                     nconv(0),
                     sec_mat(0),
@@ -25,7 +26,7 @@ namespace qbasis {
                     dim_vrnl(std::vector<MKL_INT>(num_secs,0)),
                     gs_E0_vrnl(100.0),
                     fake_pos(fake_pos_),
-                    latt_parent(latt)
+                    latt_parent(std::move(latt))
     {
         momenta.resize(num_secs);
         momenta_vrnl.resize(num_secs);
@@ -578,7 +579,7 @@ namespace qbasis {
             if (tid == 0) num_threads = omp_get_num_threads();
         }
         // prepare intermediates in advance
-        std::vector<wavefunction<T>> intermediate_states(num_threads, {basis[0]});
+        std::vector<wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(basis[0]));
         std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
         std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
         
@@ -651,7 +652,7 @@ namespace qbasis {
             if (tid == 0) num_threads = omp_get_num_threads();
         }
         // prepare intermediates in advance
-        std::vector<wavefunction<T>> intermediate_states(num_threads, {basis[0]});
+        std::vector<wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(basis[0]));
         auto dim_latt = latt_parent.dimension();
         auto L = latt_parent.Linear_size();
         bool bosonic = q_bosonic(props);
@@ -791,7 +792,7 @@ namespace qbasis {
             if (tid == 0) num_threads = omp_get_num_threads();
         }
         // prepare intermediates in advance
-        std::vector<wavefunction<T>> intermediate_states(num_threads, {gs_vrnl});
+        std::vector<wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(gs_vrnl));
         std::vector<std::vector<int>> scratch_disp(num_threads);
         
         std::cout << "Generating LIL Hamiltonian matrix (vrnl)..." << std::endl;
@@ -888,7 +889,7 @@ namespace qbasis {
             if (tid == 0) num_threads = omp_get_num_threads();
         }
         // prepare intermediates in advance
-        std::vector<wavefunction<T>> intermediate_states(num_threads, {basis[0]});
+        std::vector<wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(basis[0]));
         std::vector<std::vector<uint32_t>> plans_parent(num_threads);
         std::vector<std::vector<uint32_t>> plans_sub(num_threads);
         std::vector<std::vector<int>> scratch_works(num_threads);
@@ -1330,7 +1331,7 @@ namespace qbasis {
             if (tid == 0) num_threads = omp_get_num_threads();
         }
         // prepare intermediates in advance
-        std::vector<wavefunction<T>> intermediate_states(num_threads, {props});
+        std::vector<wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(props));
         std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
         std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
         
@@ -1410,7 +1411,7 @@ namespace qbasis {
             if (tid == 0) num_threads = omp_get_num_threads();
         }
         // prepare intermediates in advance
-        std::vector<mbasis_elem> intermediate_basis(num_threads, {props});
+        std::vector<mbasis_elem> intermediate_basis(num_threads, mbasis_elem(props));
         std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
         std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
         
@@ -1577,7 +1578,7 @@ namespace qbasis {
             if (tid == 0) num_threads = omp_get_num_threads();
         }
         // prepare intermediates in advance
-        std::vector<wavefunction<T>> intermediate_states(num_threads, {props});
+        std::vector<wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(props));
         std::vector<std::vector<uint32_t>> plans_parent(num_threads);
         std::vector<std::vector<uint32_t>> plans_sub(num_threads);
         std::vector<std::vector<int>> scratch_works(num_threads);
@@ -1777,7 +1778,7 @@ namespace qbasis {
             if (tid == 0) num_threads = omp_get_num_threads();
         }
         // prepare intermediates in advance
-        std::vector<wavefunction<T>> intermediate_states(num_threads, {props});
+        std::vector<wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(props));
         std::vector<std::vector<int>> scratch_disp(num_threads,std::vector<int>(L.size()));
         
         std::cout << "mopr * gs (t = " << sec_vrnl << ")... " << std::endl;
@@ -1843,7 +1844,7 @@ namespace qbasis {
             if (tid == 0) num_threads = omp_get_num_threads();
         }
         // prepare intermediates in advance
-        std::vector<wavefunction<T>> intermediate_states(num_threads, {props});
+        std::vector<wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(props));
         std::vector<std::vector<int>> scratch_disp(num_threads);
         
         std::cout << "mopr * vec (s = " << sec_old << ", t = " << sec_new << ")... " << std::endl;
@@ -1928,7 +1929,7 @@ namespace qbasis {
             if (tid == 0) num_threads = omp_get_num_threads();
         }
         // prepare intermediates in advance
-        std::vector<qbasis::wavefunction<T>> intermediate_states(num_threads, {props});
+        std::vector<qbasis::wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(props));
         
         #pragma omp parallel for schedule(dynamic,256)
         for (MKL_INT n = 0; n < dim; n++) {
@@ -2286,7 +2287,7 @@ namespace qbasis {
             if (tid == 0) num_threads = omp_get_num_threads();
         }
         // prepare intermediates in advance
-        std::vector<wavefunction<T>> intermediate_states(num_threads, {props});
+        std::vector<wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(props));
         std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
         std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
         
