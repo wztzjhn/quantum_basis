@@ -1,8 +1,135 @@
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
+
 #include "qbasis.h"
 #include "areig.h"
+
+/** @file
+     *  \fn void axpy(const MKL_INT n, const double alpha, const double *x, const MKL_INT incx, double *y, const MKL_INT incy)
+     *  \brief blas level 1, y = a*x + y (double)
+     */
+inline
+void blas_axpy(const MKL_INT n, const double alpha, const double *x, const MKL_INT incx, double *y, const MKL_INT incy) {
+    daxpy(&n, &alpha, x, &incx, y, &incy);
+}
+/** @file
+ *  \fn void axpy(const MKL_INT n, const std::complex<double> alpha, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy)
+ *  \brief blas level 1, y = a*x + y (complex double)
+ */
+inline
+void blas_axpy(const MKL_INT n, const std::complex<double> alpha, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy) {
+    zaxpy(&n, &alpha, x, &incx, y, &incy);
+}
+
+/** @file
+     *  \fn void copy(const MKL_INT n, const double *x, const MKL_INT incx, double *y, const MKL_INT incy)
+     *  \brief blas level 1, y = x (double)
+     */
+inline
+void blas_copy(const MKL_INT n, const double *x, const MKL_INT incx, double *y, const MKL_INT incy) {
+    dcopy(&n, x, &incx, y, &incy);
+}
+/** @file
+ *  \fn void copy(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy)
+ *  \brief blas level 1, y = x (complex double)
+ */
+inline
+void blas_copy(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy) {
+    zcopy(&n, x, &incx, y, &incy);
+}
+
+// blas level 1, Euclidean norm of vector
+inline // double
+double blas_nrm2(const MKL_INT n, const double *x, const MKL_INT incx) {
+    return dnrm2(&n, x, &incx);
+}
+inline // complex double
+double blas_nrm2(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx) {
+    return dznrm2(&n, x, &incx);
+}
+
+// blas level 1, rescale: x = a*x
+inline // double * double vector
+void blas_scal(const MKL_INT n, const double a, double *x, const MKL_INT incx) {
+    dscal(&n, &a, x, &incx);
+}
+inline // double complex * double complex vector
+void blas_scal(const MKL_INT n, const std::complex<double> a, std::complex<double> *x, const MKL_INT incx) {
+    zscal(&n, &a, x, &incx);
+}
+inline // double * double complex vector
+void blas_scal(const MKL_INT n, const double a, std::complex<double> *x, const MKL_INT incx) {
+    zdscal(&n, &a, x, &incx);
+}
+
+// blas level 1, conjugated vector dot vector
+inline // double
+double blas_dotc(const MKL_INT n, const double *x, const MKL_INT incx, const double *y, const MKL_INT incy) {
+    return ddot(&n, x, &incx, y, &incy);
+}
+// comment: zdotc is a problematic function in lapack, when returning std::complex. So using cblas here.
+inline // complex double
+std::complex<double> blas_dotc(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx,
+                          const std::complex<double> *y, const MKL_INT incy) {
+    std::complex<double> result(0.0, 0.0);
+    cblas_zdotc_sub(n, x, incx, y, incy, &result);
+    return result;
+}
+
+// blas level 3, matrix matrix product
+inline // double
+void gemm(const char transa, const char transb, const MKL_INT m, const MKL_INT n, const MKL_INT k,
+          const double alpha, const double *a, const MKL_INT lda, const double *b, const MKL_INT ldb,
+          const double beta, double *c, const MKL_INT ldc) {
+    dgemm(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
+}
+inline // complex double
+void gemm(const char transa, const char transb, const MKL_INT m, const MKL_INT n, const MKL_INT k,
+          const std::complex<double> alpha, const std::complex<double> *a, const MKL_INT lda,
+          const std::complex<double> *b, const MKL_INT ldb,
+          const std::complex<double> beta, std::complex<double> *c, const MKL_INT ldc) {
+    zgemm(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
+}
+
+// lapack computational routine, computes all eigenvalues and (optionally) eigenvectors of a symmetric/hermitian TRIDIAGONAL matrix using the divide and conquer method.
+inline // double
+lapack_int stedc(const int &matrix_layout, const char &compz, const lapack_int &n, double *d, double *e, double *z, const lapack_int &ldz) {
+    return LAPACKE_dstedc(matrix_layout, compz, n, d, e, z, ldz);
+}
+inline // complex double (for the unitary matrix which brings the original matrix to tridiagonal form)
+lapack_int stedc(const int &matrix_layout, const char &compz, const lapack_int &n, double *d, double *e, std::complex<double> *z, const lapack_int &ldz) {
+    return LAPACKE_zstedc(matrix_layout, compz, n, d, e, z, ldz);
+}
+
+// lapack, Computes the QR factorization of a general m-by-n matrix.
+inline // double
+lapack_int geqrf(const int &matrix_layout, const lapack_int &m, const lapack_int &n, double *a, const lapack_int &lda, double *tau) {
+    return LAPACKE_dgeqrf(matrix_layout, m, n, a, lda, tau);
+}
+inline // complex double
+lapack_int geqrf(const int &matrix_layout, const lapack_int &m, const lapack_int &n, std::complex<double> *a, const lapack_int &lda, std::complex<double> *tau) {
+    return LAPACKE_zgeqrf(matrix_layout, m, n, a, lda, tau);
+}
+
+// lapack, Multiplies a real matrix by the orthogonal matrix Q of the QR factorization formed by ?geqrf or ?geqpf.
+inline // double
+lapack_int ormqr(const int &matrix_layout, const char &side, const char &trans,
+                 const lapack_int &m, const lapack_int &n, const lapack_int &k,
+                 const double *a, const lapack_int &lda, const double *tau, double *c, const lapack_int &ldc) {
+    return LAPACKE_dormqr(matrix_layout, side, trans, m, n, k, a, lda, tau, c, ldc);
+}
+
+// lapack driver routine, computes all eigenvalues and, optionally, all eigenvectors of a hermitian matrix using divide and conquer algorithm.
+inline // double
+lapack_int heevd(const int &matrix_layout, const char &jobz, const char &uplo, const lapack_int &n, double *a, const lapack_int &lda, double *w) {
+    return LAPACKE_dsyevd(matrix_layout, jobz, uplo, n, a, lda, w);
+}
+inline // complex double
+lapack_int heevd(const int &matrix_layout, const char &jobz, const char &uplo, const lapack_int &n, std::complex<double> *a, const lapack_int &lda, double *w) {
+    return LAPACKE_zheevd(matrix_layout, jobz, uplo, n, a, lda, w);
+}
+
 namespace qbasis {
     
     // the ckpt functions are defined in ckpt.cc
@@ -88,30 +215,30 @@ namespace qbasis {
         std::vector<double> ritz(mm), s(mm * mm);                                // Ritz values and eigenvecs of Hess
         if (purpose.find("vec") != npos) hess_eigen(hessenberg, maxit, mm, "sr", ritz, s);
         
-        assert(std::abs(nrm2(dim, vpt[k], 1) - 1.0) < lanczos_precision);        // v[k] should be normalized
+        assert(std::abs(blas_nrm2(dim, vpt[k], 1) - 1.0) < lanczos_precision);        // v[k] should be normalized
         if (k == 0) {                                                            // prepare 2 vectors to start
             hessenberg[0] = 0.0;
             for (MKL_INT l = 0; l < dim; l++) vpt[1][l] = zero;                  // v[1] = 0
             mat.MultMv2(vpt[0], vpt[1]);                                         // v[1] = H * v[0] + v[1]
             if (purpose == "iram" || purpose.find("val") != npos || purpose == "dnmcs") {
-                hessenberg[maxit] = std::real(dotc(dim, vpt[0], 1, vpt[1], 1));  // a[0] = (v[0], v[1])
+                hessenberg[maxit] = std::real(blas_dotc(dim, vpt[0], 1, vpt[1], 1));  // a[0] = (v[0], v[1])
             } else if (purpose.find("vec") != npos) {
-                assert(std::abs(hessenberg[maxit] - std::real(dotc(dim, vpt[0], 1, vpt[1], 1))) < lanczos_precision);
+                assert(std::abs(hessenberg[maxit] - std::real(blas_dotc(dim, vpt[0], 1, vpt[1], 1))) < lanczos_precision);
             } else {
                 assert(false);
             }
-            axpy(dim, -hessenberg[maxit], vpt[0], 1, vpt[1], 1);                 // v[1] = v[1] - a[0] * v[0]
+            blas_axpy(dim, -hessenberg[maxit], vpt[0], 1, vpt[1], 1);                 // v[1] = v[1] - a[0] * v[0]
             if (purpose == "iram" || purpose.find("val") != npos || purpose == "dnmcs") {
-                hessenberg[1] = nrm2(dim, vpt[1], 1);                            // b[1] = || v[1] ||
+                hessenberg[1] = blas_nrm2(dim, vpt[1], 1);                            // b[1] = || v[1] ||
             } else if (purpose.find("vec") != npos) {
-                assert(std::abs(hessenberg[1] - nrm2(dim, vpt[1], 1)) < lanczos_precision);
+                assert(std::abs(hessenberg[1] - blas_nrm2(dim, vpt[1], 1)) < lanczos_precision);
             } else {
                 assert(false);
             }
-            scal(dim, 1.0 / hessenberg[1], vpt[1], 1);                           // v[1] = v[1] / b[1]
+            blas_scal(dim, 1.0 / hessenberg[1], vpt[1], 1);                           // v[1] = v[1] / b[1]
             m = ++k;
             --np;
-            if (purpose.find("vec") != npos) axpy(dim, s[m], vpt[m], 1, ypt, 1); // y += s[m] * v[m]
+            if (purpose.find("vec") != npos) blas_axpy(dim, s[m], vpt[m], 1, ypt, 1); // y += s[m] * v[m]
             ckpt_lanczos_update(m, maxit, dim, cnt_accuE0, accuracy, theta0_prev, theta1_prev, v, hessenberg, purpose);
         }
         
@@ -122,31 +249,31 @@ namespace qbasis {
             mat.MultMv2(vpt[m-1], vpt[m]);                                       // v[m] = H * v[m-1] + v[m]
             
             if (purpose == "iram" || purpose.find("val") != npos || purpose == "dnmcs") {
-                hessenberg[maxit+m-1] = std::real(dotc(dim, vpt[m-1], 1, vpt[m], 1)); // a[m-1] = (v[m-1], v[m])
+                hessenberg[maxit+m-1] = std::real(blas_dotc(dim, vpt[m-1], 1, vpt[m], 1)); // a[m-1] = (v[m-1], v[m])
             } else if (purpose.find("vec") != npos) {
-                assert(std::abs(hessenberg[maxit+m-1] - std::real(dotc(dim, vpt[m-1], 1, vpt[m], 1))) < lanczos_precision);
+                assert(std::abs(hessenberg[maxit+m-1] - std::real(blas_dotc(dim, vpt[m-1], 1, vpt[m], 1))) < lanczos_precision);
             } else {
                 assert(false);
             }
-            axpy(dim, -hessenberg[maxit+m-1], vpt[m-1], 1, vpt[m], 1);           // v[m] = v[m] - a[m-1] * v[m-1]
+            blas_axpy(dim, -hessenberg[maxit+m-1], vpt[m-1], 1, vpt[m], 1);           // v[m] = v[m] - a[m-1] * v[m-1]
             if (purpose == "iram" || purpose.find("val") != npos || purpose == "dnmcs") {
-                hessenberg[m] = nrm2(dim, vpt[m], 1);                            // b[m] = || v[m] ||
+                hessenberg[m] = blas_nrm2(dim, vpt[m], 1);                            // b[m] = || v[m] ||
             } else if (purpose.find("vec") != npos) {
-                assert(std::abs(hessenberg[m] - nrm2(dim, vpt[m], 1)) < lanczos_precision);
+                assert(std::abs(hessenberg[m] - blas_nrm2(dim, vpt[m], 1)) < lanczos_precision);
             } else {
                 assert(false);
             }
-            scal(dim, 1.0 / hessenberg[m], vpt[m], 1);                           // v[m] = v[m] / b[m]
+            blas_scal(dim, 1.0 / hessenberg[m], vpt[m], 1);                           // v[m] = v[m] / b[m]
             
             if (std::abs(hessenberg[m]) < lanczos_precision) break;
             
             if (purpose.find("val1") != npos || purpose.find("vec1") != npos) {  // re-orthogonalization again phi0
-                auto temp = dotc(dim, phipt, 1, vpt[m], 1);
+                auto temp = blas_dotc(dim, phipt, 1, vpt[m], 1);
                 if (std::abs(temp) > lanczos_precision) {
                     std::cout << "-" << std::flush;
-                    axpy(dim, -temp, phipt, 1, vpt[m], 1);
-                    double rnorm = nrm2(dim, vpt[m], 1);
-                    scal(dim, 1.0 / rnorm, vpt[m], 1);
+                    blas_axpy(dim, -temp, phipt, 1, vpt[m], 1);
+                    double rnorm = blas_nrm2(dim, vpt[m], 1);
+                    blas_scal(dim, 1.0 / rnorm, vpt[m], 1);
                 }
             }
             
@@ -171,17 +298,17 @@ namespace qbasis {
                 theta0_prev = ritz[0];
                 theta1_prev = ritz[1];
             }
-            if (purpose.find("vec") != npos) axpy(dim, s[m], vpt[m], 1, ypt, 1); // y += s[m] * v[m]
+            if (purpose.find("vec") != npos) blas_axpy(dim, s[m], vpt[m], 1, ypt, 1); // y += s[m] * v[m]
             
             // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             // naive re-orthogonalization, change checking criteria and replace with DGKS later
             if (purpose == "iram") {
                 for (MKL_INT l = 0; l < m-1; l++) {
-                    auto q = dotc(dim, vpt[l], 1, vpt[m], 1);
+                    auto q = blas_dotc(dim, vpt[l], 1, vpt[m], 1);
                     double qabs = std::abs(q);
                     if (qabs > lanczos_precision) {
-                        axpy(dim, -q, vpt[l], 1, vpt[m], 1);
-                        scal(dim, 1.0 / std::sqrt(1.0 - qabs * qabs), vpt[m], 1);
+                        blas_axpy(dim, -q, vpt[l], 1, vpt[m], 1);
+                        blas_scal(dim, 1.0 / std::sqrt(1.0 - qabs * qabs), vpt[m], 1);
                     }
                 }
             }
@@ -217,21 +344,21 @@ namespace qbasis {
         if (m == 0) {
             accu = 0.0;
         } else {
-            accu = nrm2(dim, r, 1);
+            accu = blas_nrm2(dim, r, 1);
         }
         
         while (m < maxit) {
             if (accu < lanczos_precision) {
-                double rnorm = nrm2(dim, v, 1);
+                double rnorm = blas_nrm2(dim, v, 1);
                 if (m == 0 || std::abs(rnorm - 1.0) > lanczos_precision) {       // re-normalize and restart
                     std::cout << "1" << std::flush;
-                    scal(dim, 1.0/rnorm, v, 1);
+                    blas_scal(dim, 1.0/rnorm, v, 1);
                     for (MKL_INT j = 0; j < dim; j++) r[j] = 0.0;
                     mat.MultMv2(v,r);
-                    scal(dim, -static_cast<T>(1.0), r, 1);
-                    axpy(dim, E0, v, 1, r, 1);                                   // r = (E0 - H) * v
-                    copy(dim, r, 1, p, 1);                                       // p = r
-                    accu = nrm2(dim, r, 1);
+                    blas_scal(dim, -static_cast<T>(1.0), r, 1);
+                    blas_axpy(dim, E0, v, 1, r, 1);                                   // r = (E0 - H) * v
+                    blas_copy(dim, r, 1, p, 1);                                       // p = r
+                    accu = blas_nrm2(dim, r, 1);
                     m++;
                     
                     std::ofstream fout("log_CG.txt", std::ios::out | std::ios::app);
@@ -246,16 +373,16 @@ namespace qbasis {
                     break;
                 }
             } else {
-                copy(dim, p, 1, pp, 1);
-                scal(dim, machine_prec - E0, pp, 1);
+                blas_copy(dim, p, 1, pp, 1);
+                blas_scal(dim, machine_prec - E0, pp, 1);
                 mat.MultMv2(p,pp);                                               // pp[m]    = (H - E0) * p[m]
-                T delta = dotc(dim, p, 1, pp, 1);                                // delta[m] = (p[m], pp[m])
+                T delta = blas_dotc(dim, p, 1, pp, 1);                                // delta[m] = (p[m], pp[m])
                 T alpha = accu * accu / delta;                                   // alpha[m] = gamma[m]^2 / delta[m]
-                axpy(dim,  alpha,  p, 1, v, 1);                                  // v[m+1]   = v[m] + alpha[m] * p[m]
-                axpy(dim, -alpha, pp, 1, r, 1);                                  // r[m+1]   = r[m] - alpha[m] * pp[m]
-                double beta = nrm2(dim, r, 1) / accu;                            // beta[m]  = gamma[m+1] / gamma[m]
-                scal(dim, static_cast<T>(beta*beta), p, 1);
-                axpy(dim, static_cast<T>(1.0), r, 1, p, 1);                      // p[m+1]   = r[m+1] + beta^2 * p[m]
+                blas_axpy(dim,  alpha,  p, 1, v, 1);                                  // v[m+1]   = v[m] + alpha[m] * p[m]
+                blas_axpy(dim, -alpha, pp, 1, r, 1);                                  // r[m+1]   = r[m] - alpha[m] * pp[m]
+                double beta = blas_nrm2(dim, r, 1) / accu;                            // beta[m]  = gamma[m+1] / gamma[m]
+                blas_scal(dim, static_cast<T>(beta*beta), p, 1);
+                blas_axpy(dim, static_cast<T>(1.0), r, 1, p, 1);                      // p[m+1]   = r[m+1] + beta^2 * p[m]
                 accu *= beta;                                                    // gamma[m+1] = beta[m] * gamma[m]
                 m++;
                 
@@ -289,9 +416,9 @@ namespace qbasis {
         s.resize(m*m);
         std::vector<double> b(m);
         std::vector<double> eigenvecs(m*m);
-        
-        copy(m, hessenberg + maxit, 1, ritz.data(), 1);                          // ritz = a
-        copy(m, hessenberg,         1, b.data(),    1);                          // b
+
+        blas_copy(m, hessenberg + maxit, 1, ritz.data(), 1);                          // ritz = a
+        blas_copy(m, hessenberg,         1, b.data(),    1);                          // b
         // ritz to be rewritten by eigenvalues in ascending order
         int info = stedc(LAPACK_COL_MAJOR, 'I', m, ritz.data(), b.data() + 1, eigenvecs.data(), m);
         assert(info == 0);
@@ -315,7 +442,7 @@ namespace qbasis {
                       [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return std::abs(b.first) < std::abs(a.first); });
         }
         for (MKL_INT j = 0; j < m; j++) ritz[j] = eigenvals[j].first;
-        for (MKL_INT j = 0; j < m; j++) copy(m, eigenvecs.data() + m * eigenvals[j].second, 1, s.data() + m * j, 1);
+        for (MKL_INT j = 0; j < m; j++) blas_copy(m, eigenvecs.data() + m * eigenvals[j].second, 1, s.data() + m * j, 1);
     }
 
 
@@ -375,14 +502,14 @@ namespace qbasis {
         for (MKL_INT j = 0; j < k; j++) hessenberg[j + maxit] = hess_full[j + j * maxit]; // diagonal elements of hessenberg matrix
         for (MKL_INT j = 1; j < k; j++) hessenberg[j] = hess_full[j + (j-1) * maxit];   // subdiagonal
         std::vector<T> v_old(dim * m);
-        copy(dim * m, v, 1, v_old.data(), 1);
+        blas_copy(dim * m, v, 1, v_old.data(), 1);
         std::vector<T> Q_typeT(m*m);
         for (MKL_INT j = 0; j < m*m; j++) Q_typeT[j] = Q[j];
         gemm('n', 'n', dim, m, m, one, v_old.data(), dim, Q_typeT.data(), m, zero, v, dim); // v updated
-        scal(dim, hessenberg[m]*Q_typeT[m-1 + m*(k-1)], v+m*dim, 1);
-        axpy(dim, static_cast<T>(hess_full[k + (k-1)*maxit]), v+k*dim, 1, v+m*dim, 1);
-        hessenberg[m] = nrm2(dim, v+m*dim, 1);                                                  // rnorm updated
-        scal(dim, 1.0 / hessenberg[m], v+m*dim, 1);                                             // resid updated
+        blas_scal(dim, hessenberg[m]*Q_typeT[m-1 + m*(k-1)], v+m*dim, 1);
+        blas_axpy(dim, static_cast<T>(hess_full[k + (k-1)*maxit]), v+k*dim, 1, v+m*dim, 1);
+        hessenberg[m] = blas_nrm2(dim, v+m*dim, 1);                                                  // rnorm updated
+        blas_scal(dim, 1.0 / hessenberg[m], v+m*dim, 1);                                             // resid updated
 
 
 
@@ -546,7 +673,7 @@ namespace qbasis {
             }
             // sort the eigenvecs
             for (MKL_INT j = 0; j < nconv; j++)
-                copy(dim, mat_dense.data() + dim * eigenvals_copy[j].second, 1, eigenvecs + dim * j, 1);
+                blas_copy(dim, mat_dense.data() + dim * eigenvals_copy[j].second, 1, eigenvecs + dim * j, 1);
         } else if (use_arpack) {
             call_arpack(dim, mat, v0, nev, ncv, maxit, nconv, niter, orderC, eigenvals, eigenvecs);
             assert(nconv > 0);
@@ -588,8 +715,8 @@ namespace qbasis {
             MKL_INT maxit = m + 1;
             std::vector<T> v(dim*(m+1));
             std::vector<double> hessenberg(maxit*2), ritz(m), s(m*m), Q(m*m);
-            double rnorm = nrm2(dim, v0, 1);
-            axpy(dim, 1.0/rnorm, v0, 1, v.data(), 1);                                  // v[0] = v0 normalized
+            double rnorm = blas_nrm2(dim, v0, 1);
+            blas_axpy(dim, 1.0/rnorm, v0, 1, v.data(), 1);                                  // v[0] = v0 normalized
             lanczos(0, ncv, maxit, m, dim, mat, v.data(), hessenberg.data(), "iram");
             assert(m == ncv);
 

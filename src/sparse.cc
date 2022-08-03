@@ -1,6 +1,21 @@
 #include <iostream>
 #include <iomanip>
+
 #include "qbasis.h"
+
+// general function to perform matrix vector product in mkl, deprecated since MKL 2018.3
+inline // double
+void mkl_csrmv(const char transa, const MKL_INT m, const MKL_INT k, const double alpha, const char *matdescra,
+               const double *val, const MKL_INT *indx, const MKL_INT *pntrb, const MKL_INT *pntre,
+               const double *x, const double beta, double *y) {
+    mkl_dcsrmv(&transa, &m, &k, &alpha, matdescra, val, indx, pntrb, pntre, x, &beta, y);
+}
+inline // complex double
+void mkl_csrmv(const char transa, const MKL_INT m, const MKL_INT k, const std::complex<double> alpha, const char *matdescra,
+               const std::complex<double> *val, const MKL_INT *indx, const MKL_INT *pntrb, const MKL_INT *pntre,
+               const std::complex<double> *x, const std::complex<double> beta, std::complex<double> *y) {
+    mkl_zcsrmv(&transa, &m, &k, &alpha, matdescra, val, indx, pntrb, pntre, x, &beta, y);
+}
 
 namespace qbasis {
     // --------- implementation of class lil (list of list sparse matrix data structure) ----------

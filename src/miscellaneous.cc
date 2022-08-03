@@ -10,6 +10,30 @@
 
 namespace ip  = boost::asio::ip;
 
+// blas level 1, Euclidean norm of vector
+inline // double
+double nrm2(const MKL_INT n, const double *x, const MKL_INT incx) {
+    return dnrm2(&n, x, &incx);
+}
+inline // complex double
+double nrm2(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx) {
+    return dznrm2(&n, x, &incx);
+}
+
+// blas level 1, rescale: x = a*x
+inline // double * double vector
+void scal(const MKL_INT n, const double a, double *x, const MKL_INT incx) {
+    dscal(&n, &a, x, &incx);
+}
+inline // double complex * double complex vector
+void scal(const MKL_INT n, const std::complex<double> a, std::complex<double> *x, const MKL_INT incx) {
+    zscal(&n, &a, x, &incx);
+}
+inline // double * double complex vector
+void scal(const MKL_INT n, const double a, std::complex<double> *x, const MKL_INT incx) {
+    zdscal(&n, &a, x, &incx);
+}
+
 namespace qbasis {
     // later let's try to combine these three as a unified name "precision"
     const double machine_prec = std::numeric_limits<double>::epsilon();

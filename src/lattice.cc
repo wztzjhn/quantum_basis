@@ -6,6 +6,12 @@
 
 #define PI 3.1415926535897932
 
+// lapack driver routine, Computes the solution to the system of linear equations with a square coefficient matrix A and multiple right-hand sides.
+inline // double
+lapack_int gesv(const int &matrix_layout, const lapack_int &n, const lapack_int &nrhs, double *a, const lapack_int &lda, lapack_int *ipiv, double *b, const lapack_int &ldb) {
+    return LAPACKE_dgesv(matrix_layout, n, nrhs, a, lda, ipiv, b, ldb);
+}
+
 namespace qbasis {
     // ----------------- implementation of lattice ------------------
     lattice::lattice(const std::string &name,
@@ -749,7 +755,7 @@ namespace qbasis {
         } else {
             latt_trans = lattice("cubic",  L_trans, std::vector<std::string>(dim_trans,"pbc"));
         }
-        assert(lattice_size = latt_trans.total_sites());
+        assert(lattice_size == latt_trans.total_sites());
 
         std::cout << "Translation subgroups on lattice with size ";
         for (uint32_t d = 0; d < dim_trans - 1; d++) {

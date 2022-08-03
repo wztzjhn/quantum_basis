@@ -11,6 +11,78 @@
 
 #define PI 3.1415926535897932
 
+/** @file
+     *  \fn void axpy(const MKL_INT n, const double alpha, const double *x, const MKL_INT incx, double *y, const MKL_INT incy)
+     *  \brief blas level 1, y = a*x + y (double)
+     */
+inline
+void axpy(const MKL_INT n, const double alpha, const double *x, const MKL_INT incx, double *y, const MKL_INT incy) {
+    daxpy(&n, &alpha, x, &incx, y, &incy);
+}
+/** @file
+ *  \fn void axpy(const MKL_INT n, const std::complex<double> alpha, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy)
+ *  \brief blas level 1, y = a*x + y (complex double)
+ */
+inline
+void axpy(const MKL_INT n, const std::complex<double> alpha, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy) {
+    zaxpy(&n, &alpha, x, &incx, y, &incy);
+}
+
+/** @file
+     *  \fn void copy(const MKL_INT n, const double *x, const MKL_INT incx, double *y, const MKL_INT incy)
+     *  \brief blas level 1, y = x (double)
+     */
+inline
+void copy(const MKL_INT n, const double *x, const MKL_INT incx, double *y, const MKL_INT incy) {
+    dcopy(&n, x, &incx, y, &incy);
+}
+/** @file
+ *  \fn void copy(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy)
+ *  \brief blas level 1, y = x (complex double)
+ */
+inline
+void copy(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx, std::complex<double> *y, const MKL_INT incy) {
+    zcopy(&n, x, &incx, y, &incy);
+}
+
+// blas level 1, Euclidean norm of vector
+inline // double
+double nrm2(const MKL_INT n, const double *x, const MKL_INT incx) {
+    return dnrm2(&n, x, &incx);
+}
+inline // complex double
+double nrm2(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx) {
+    return dznrm2(&n, x, &incx);
+}
+
+// blas level 1, rescale: x = a*x
+inline // double * double vector
+void scal(const MKL_INT n, const double a, double *x, const MKL_INT incx) {
+    dscal(&n, &a, x, &incx);
+}
+inline // double complex * double complex vector
+void scal(const MKL_INT n, const std::complex<double> a, std::complex<double> *x, const MKL_INT incx) {
+    zscal(&n, &a, x, &incx);
+}
+inline // double * double complex vector
+void scal(const MKL_INT n, const double a, std::complex<double> *x, const MKL_INT incx) {
+    zdscal(&n, &a, x, &incx);
+}
+
+// blas level 1, conjugated vector dot vector
+inline // double
+double dotc(const MKL_INT n, const double *x, const MKL_INT incx, const double *y, const MKL_INT incy) {
+    return ddot(&n, x, &incx, y, &incy);
+}
+// comment: zdotc is a problematic function in lapack, when returning std::complex. So using cblas here.
+inline // complex double
+std::complex<double> dotc(const MKL_INT n, const std::complex<double> *x, const MKL_INT incx,
+                          const std::complex<double> *y, const MKL_INT incy) {
+    std::complex<double> result(0.0, 0.0);
+    cblas_zdotc_sub(n, x, incx, y, incy, &result);
+    return result;
+}
+
 namespace qbasis {
     
     void ckpt_lanczos_clean();
