@@ -1,11 +1,3 @@
-//
-//  qbasis.h
-//  qbasis
-//
-//  Created by Zhentao Wang on 11/21/16.
-//
-//
-
 #ifndef qbasis_h
 #define qbasis_h
 
@@ -34,26 +26,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-
 #include "mkl.h"
-
-#ifdef _OPENMP
-  #include <omp.h>
-#else
-  #define omp_get_thread_num() 0
-  #define omp_get_num_threads() 1
-  #define omp_get_num_procs() 1
-  #define omp_get_proc_bind() 0
-#endif
-
-#if defined(__clang__)
-#elif defined(__GNUC__) && defined(_OPENMP)
-  #include <parallel/algorithm>
-  #define use_gnu_parallel_sort
-#endif
-
-
-namespace fs = std::filesystem;
 
 namespace qbasis {
 
@@ -1016,7 +989,7 @@ namespace qbasis {
         // print
         void prt() const;
 
-        MKL_INT dimension() const {return dim; }
+        MKL_INT dimension() const { return dim; }
 
         // construcotr from an lil_mat, and if sym_ == true, use only the upper triangle
         // then destroy the lil_mat
@@ -1026,7 +999,7 @@ namespace qbasis {
         // y = H * x + y
         void MultMv2(const T *x, T *y) const;
         // y = H * x
-        void MultMv(T *x, T *y);              // non-const, to be compatible with arpack++
+        void MultMv(const T *x, T *y) const;
 
         std::vector<T> to_dense() const;
 
@@ -1081,12 +1054,9 @@ namespace qbasis {
     //
     // if purpose == "sr_vec0" (smallest eigenvector):
     // same as "sr_val0", but with one extra column storing the eigenvector
-
     template <typename T, typename MAT>
     void lanczos(MKL_INT k, MKL_INT np, const MKL_INT &maxit, MKL_INT &m, const MKL_INT &dim,
                  const MAT &mat, T v[], double hessenberg[], const std::string &purpose);
-
-
 
     // Iterative sparse solver using conjugate gradient method
     // given well converged eigenvalue E0, and a good initital guess v[0], solves (H - E0) * v[j] = 0
@@ -1105,31 +1075,14 @@ namespace qbasis {
     void hess_eigen(const double hessenberg[], const MKL_INT &maxit, const MKL_INT &m,
                     const std::string &order, std::vector<double> &ritz, std::vector<double> &s);
 
-    // transform from band storage to general storage
-    // on exit, mat of size m*m
-    void hess2dense(const double hessenberg[], const MKL_INT &maxit, const MKL_INT &m, std::vector<double> &mat);
-
-    // --------------------------
-    // ideally, here we should use the bulge-chasing algorithm; for this moment, we simply use the less efficient brute force QR factorization
-    // --------------------------
-    // QR factorization of hessenberg matrix, using np selected eigenvalues from ritz
-    // [H, Q] = QR(H, shift1, shift2, ..., shift_np)
-    // \tilde{H} = Q_np^T ... Q_1^T H Q_1 ... Q_np
-    // \tilde{V} = V Q
-    template <typename T>
-    void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
-                        T v[], double hessenberg[], const MKL_INT &maxit, std::vector<double> &Q);
-
     // implicitly restarted Arnoldi method
     // nev: number of eigenvalues needed
     // ncv: length of each individual lanczos process
     // 2 < nev + 2 <= ncv
-    // when not using arpack++, we can modify the property of mat to be const
     template <typename T, typename MAT>
     void iram(const MKL_INT &dim, MAT &mat, T v0[], const MKL_INT &nev, const MKL_INT &ncv,
               const MKL_INT &maxit, const std::string &order,
-              MKL_INT &nconv, double eigenvals[], T eigenvecs[],
-              const bool &use_arpack = true);
+              MKL_INT &nconv, double eigenvals[], T eigenvecs[]);
 
 
 //  ----------------------------- part 5: Lattices  ----------------------------
@@ -1525,7 +1478,7 @@ namespace qbasis {
         /** \brief y = H * x + y (matrix generated on the fly) */
         void MultMv2(const T *x, T *y) const;
         /** \brief y = H * x (matrix generated on the fly) */
-        void MultMv(T *x, T *y);              // non-const, to be compatible with arpack++
+        void MultMv(const T *x, T *y) const;
 
         // Note: in this function, (nev, ncv, maxit) have different meanings comparing to IRAM!
         // 1 <= nev <= 2, nev-1 <= ncv <= nev

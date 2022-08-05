@@ -5,6 +5,21 @@
 #include <iostream>
 #include <iomanip>
 
+#if defined(__clang__)
+#elif defined(__GNUC__) && defined(_OPENMP)
+#include <parallel/algorithm>
+#define use_gnu_parallel_sort
+#endif
+
+#ifdef _OPENMP
+  #include <omp.h>
+#else
+#define omp_get_thread_num() 0
+  #define omp_get_num_threads() 1
+  #define omp_get_num_procs() 1
+  #define omp_get_proc_bind() 0
+#endif
+
 #include "qbasis.h"
 #include "graph.h"
 

@@ -6,8 +6,19 @@
 #include <regex>
 #include <utility>
 
+#ifdef _OPENMP
+  #include <omp.h>
+#else
+#define omp_get_thread_num() 0
+  #define omp_get_num_threads() 1
+  #define omp_get_num_procs() 1
+  #define omp_get_proc_bind() 0
+#endif
+
 #include "qbasis.h"
 #include "graph.h"
+
+namespace fs = std::filesystem;
 
 #define PI 3.1415926535897932
 
@@ -1084,7 +1095,7 @@ namespace qbasis {
     }
     
     template <typename T>
-    void model<T>::MultMv(T *x, T *y)
+    void model<T>::MultMv(const T *x, T *y) const
     {
         T zero = static_cast<T>(0.0);
         if (sec_sym == 0) {

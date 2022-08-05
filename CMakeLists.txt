@@ -30,15 +30,8 @@ endif()
 
 #ARPACK
 find_package(ARPACK REQUIRED)
-if (ARPACK_FOUND)
-  include_directories(SYSTEM ${ARPACK_INCLUDE_DIRS})
-  include_directories(SYSTEM ${ARPACK_INCLUDE_DIRS}/../examples/areig)
-  set(LIBS ${LIBS} ${ARPACK_LIBRARIES})
-  add_definitions(-DWITH_ARPACK)
-  if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lgfortran")
-  endif()
-endif()
+include_directories(SYSTEM ${ARPACK_INCLUDE_DIRS})
+set(LIBS ${LIBS} ${ARPACK_LIBRARIES})
 
 # Boost
 find_package(Boost REQUIRED)
@@ -48,8 +41,9 @@ set(LIBS ${LIBS} ${Boost_LIBRARIES})
 # MKL
 set(MKL_ARCH "intel64")
 set(MKL_LINK "dynamic")
-set(MKL_THREADING "sequential")
-set(MKL_INTERFACE_FULL "intel_lp64")
+set(MKL_THREADING "tbb_thread")
+set(MKL_INTERFACE_FULL "intel_ilp64")
+add_compile_definitions(MKL_ILP64)
 find_package(MKL CONFIG REQUIRED)
 message("MKL_INCLUDE: ${MKL_INCLUDE}")
 

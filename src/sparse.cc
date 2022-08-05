@@ -237,7 +237,7 @@ namespace qbasis {
     }
     
     template <typename T>
-    void csr_mat<T>::MultMv(T *x, T *y)
+    void csr_mat<T>::MultMv(const T *x, T *y) const
     {
         T zero = static_cast<T>(0.0);
         for (MKL_INT j = 0; j < dim; j++) y[j] = zero;

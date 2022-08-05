@@ -6,12 +6,6 @@
 
 #define PI 3.1415926535897932
 
-// lapack driver routine, Computes the solution to the system of linear equations with a square coefficient matrix A and multiple right-hand sides.
-inline // double
-lapack_int gesv(const int &matrix_layout, const lapack_int &n, const lapack_int &nrhs, double *a, const lapack_int &lda, lapack_int *ipiv, double *b, const lapack_int &ldb) {
-    return LAPACKE_dgesv(matrix_layout, n, nrhs, a, lda, ipiv, b, ldb);
-}
-
 namespace qbasis {
     // ----------------- implementation of lattice ------------------
     lattice::lattice(const std::string &name,
@@ -176,22 +170,6 @@ namespace qbasis {
             Nsites = L[0] * L[1] * L[2] * num_sub;
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0, 0.0};
-        } else if (name == "RTiO3") {
-            std::cout << "Lattice for RTiO3 built."<< std::endl;
-            assert(L.size() == 3);
-            num_sub = 4;
-            a[0][0] = 1.0;      a[0][1] = 0.0;      a[0][2] = 0.0;
-            a[1][0] = 0.0;      a[1][1] = 1.0;      a[1][2] = 0.0;
-            a[2][0] = 0.0;      a[2][1] = 0.0;      a[2][2] = 1.0;
-            b[0][0] = 2.0 * PI; b[0][1] = 0.0;      b[0][2] = 0.0;
-            b[1][0] = 0.0;      b[1][1] = 2.0 * PI; b[1][2] = 0.0;
-            b[2][0] = 0.0;      b[2][1] = 0.0;      b[2][2] = 2.0 * PI;
-            Nsites = L[0] * L[1] * L[2] * num_sub;
-            pos_sub.resize(num_sub);
-            pos_sub[0] = std::vector<double>{0.0, 0.5, 0.0};
-            pos_sub[1] = std::vector<double>{0.5, 0.0, 0.0};
-            pos_sub[2] = std::vector<double>{0.0, 0.5, 0.5};
-            pos_sub[3] = std::vector<double>{0.5, 0.0, 0.5};
         } else {
             std::cout << "Lattice not recognized! " << std::endl;
             assert(false);
@@ -500,7 +478,7 @@ namespace qbasis {
         std::copy(Amat.begin(), Amat.end(), Amat_copy);
 
         lapack_int d = static_cast<lapack_int>(dim);
-        auto info = gesv(LAPACK_COL_MAJOR, d, 1, Amat_copy, d, ipiv, alpha, d);
+        auto info = LAPACKE_dgesv(LAPACK_COL_MAJOR, d, 1, Amat_copy, d, ipiv, alpha, d);
         assert(info == 0);
         for (uint32_t i = 0; i < dim; i++) {
             M[i] = round2int(floor(alpha[i] + 1e-14));
@@ -524,7 +502,7 @@ namespace qbasis {
         std::copy(Bmat.begin(), Bmat.end(), Bmat_copy);
 
         lapack_int d = static_cast<lapack_int>(dim);
-        auto info = gesv(LAPACK_COL_MAJOR, d, 1, Bmat_copy, d, ipiv, alpha, d);
+        auto info = LAPACKE_dgesv(LAPACK_COL_MAJOR, d, 1, Bmat_copy, d, ipiv, alpha, d);
         assert(info == 0);
         for (uint32_t i = 0; i < dim; i++) {
             if (std::abs(alpha[i]) < std::numeric_limits<double>::epsilon()) {

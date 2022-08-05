@@ -1,9 +1,10 @@
 #include <algorithm>
+#include <fstream>
 #include <iostream>
 #include <iomanip>
+#include "arpack.hpp"
 
 #include "qbasis.h"
-#include "areig.h"
 
 // y := a * x + y
 inline void blas_axpy(const MKL_INT &n, const double &alpha, const double *x, const MKL_INT &incx,
@@ -65,41 +66,14 @@ inline void blas_gemm(const CBLAS_LAYOUT &Layout, const CBLAS_TRANSPOSE &transA,
     cblas_zgemm(Layout, transA, transB, m, n, k, &alpha, a, lda, b, ldb, &beta, c, ldc);
 }
 
-// lapack computational routine, computes all eigenvalues and (optionally) eigenvectors of a symmetric/hermitian TRIDIAGONAL matrix using the divide and conquer method.
-inline // double
-lapack_int stedc(const int &matrix_layout, const char &compz, const lapack_int &n, double *d, double *e, double *z, const lapack_int &ldz) {
-    return LAPACKE_dstedc(matrix_layout, compz, n, d, e, z, ldz);
-}
-inline // complex double (for the unitary matrix which brings the original matrix to tridiagonal form)
-lapack_int stedc(const int &matrix_layout, const char &compz, const lapack_int &n, double *d, double *e, std::complex<double> *z, const lapack_int &ldz) {
-    return LAPACKE_zstedc(matrix_layout, compz, n, d, e, z, ldz);
-}
-
-// lapack, Computes the QR factorization of a general m-by-n matrix.
-inline // double
-lapack_int geqrf(const int &matrix_layout, const lapack_int &m, const lapack_int &n, double *a, const lapack_int &lda, double *tau) {
-    return LAPACKE_dgeqrf(matrix_layout, m, n, a, lda, tau);
-}
-inline // complex double
-lapack_int geqrf(const int &matrix_layout, const lapack_int &m, const lapack_int &n, std::complex<double> *a, const lapack_int &lda, std::complex<double> *tau) {
-    return LAPACKE_zgeqrf(matrix_layout, m, n, a, lda, tau);
-}
-
-// lapack, Multiplies a real matrix by the orthogonal matrix Q of the QR factorization formed by ?geqrf or ?geqpf.
-inline // double
-lapack_int ormqr(const int &matrix_layout, const char &side, const char &trans,
-                 const lapack_int &m, const lapack_int &n, const lapack_int &k,
-                 const double *a, const lapack_int &lda, const double *tau, double *c, const lapack_int &ldc) {
-    return LAPACKE_dormqr(matrix_layout, side, trans, m, n, k, a, lda, tau, c, ldc);
-}
-
-// lapack driver routine, computes all eigenvalues and, optionally, all eigenvectors of a hermitian matrix using divide and conquer algorithm.
-inline // double
-lapack_int heevd(const int &matrix_layout, const char &jobz, const char &uplo, const lapack_int &n, double *a, const lapack_int &lda, double *w) {
+// Computes all eigenvalues and, optionally, all eigenvectors of a real symmetric / complex Hermitian matrix
+// using divide and conquer algorithm.
+inline lapack_int lapack_syevd_heevd(const int &matrix_layout, const char &jobz, const char &uplo,
+                                     const lapack_int &n, double* a, const lapack_int &lda, double *w) {
     return LAPACKE_dsyevd(matrix_layout, jobz, uplo, n, a, lda, w);
 }
-inline // complex double
-lapack_int heevd(const int &matrix_layout, const char &jobz, const char &uplo, const lapack_int &n, std::complex<double> *a, const lapack_int &lda, double *w) {
+inline lapack_int lapack_syevd_heevd(const int &matrix_layout, const char &jobz, const char &uplo,
+                                     const lapack_int &n, lapack_complex_double* a, const lapack_int &lda, double *w) {
     return LAPACKE_zheevd(matrix_layout, jobz, uplo, n, a, lda, w);
 }
 
@@ -301,12 +275,8 @@ namespace qbasis {
 //    template void lanczos(MKL_INT k, MKL_INT np, MKL_INT &mm, const MKL_INT &dim,
 //                          const model<double> &mat, double v[],
 //                          double hessenberg[], const MKL_INT &ldh, const std::string &purpose);
-    
-    
-    
-    
-    
-    
+
+
     template <typename T, typename MAT>
     void eigenvec_CG(const MKL_INT &dim, const MKL_INT &maxit, MKL_INT &m,
                      const MAT &mat, const T &E0, double &accu,
@@ -393,7 +363,7 @@ namespace qbasis {
         blas_copy(m, hessenberg + maxit, 1, ritz.data(), 1);                          // ritz = a
         blas_copy(m, hessenberg,         1, b.data(),    1);                          // b
         // ritz to be rewritten by eigenvalues in ascending order
-        int info = stedc(LAPACK_COL_MAJOR, 'I', m, ritz.data(), b.data() + 1, eigenvecs.data(), m);
+        auto info = LAPACKE_dstedc(LAPACK_COL_MAJOR, 'I', m, ritz.data(), b.data() + 1, eigenvecs.data(), m);
         assert(info == 0);
         
         std::vector<std::pair<double, MKL_INT>> eigenvals(m);
@@ -418,185 +388,107 @@ namespace qbasis {
         for (MKL_INT j = 0; j < m; j++) blas_copy(m, eigenvecs.data() + m * eigenvals[j].second, 1, s.data() + m * j, 1);
     }
 
-
-    void hess2dense(const double hessenberg[], const MKL_INT &maxit, const MKL_INT &m, std::vector<double> &mat)
+    // interface to arpack-ng
+    template <typename MAT>
+    void call_arpack(const a_int &N, const MAT &mat, double resid[],
+                     const a_int &nev, const a_int &ncv, const a_int &maxit, a_int &nconv, a_int &niter,
+                     const arpack::which &ritz_option, double eigenvals[], double eigenvecs[])
     {
-        assert(m > 0 && m < maxit);
-        mat.assign(m*m, 0.0);
-        
-        mat[0] = hessenberg[maxit];
-        if(m > 1) mat[m] = hessenberg[1];
-        for (MKL_INT i = 1; i < m - 1; i++) {
-            mat[i +     i * m] = hessenberg[i + maxit];
-            mat[i + (i-1) * m] = hessenberg[i];
-            mat[i + (i+1) * m] = hessenberg[i + 1];
-        }
-        if (m > 1) {
-            mat[m-1 + (m-1) * m] = hessenberg[maxit + m -1];
-            mat[m-1 + (m-2) * m] = hessenberg[m-1];
-        }
-    }
-
-
-    // when there is time, re-write this subroutine with bulge-chasing
-    template <typename T>
-    void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
-                        T v[], double hessenberg[], const MKL_INT &maxit, std::vector<double> &Q)
-    {
-        lapack_int info;
-        const T zero = 0.0;
-        const T one = 1.0;
-        MKL_INT k = m - np;
-        assert(np > 0 && np < m);
-        std::vector<double> hess_full(m*m), hess_qr(m*m);
-        std::vector<double> tau(m);
-        Q.resize(m*m);
-        for (MKL_INT j = 0; j < m; j++) {                                            // Q = I
-            for (MKL_INT i = 0; i < m; i++) Q[i + j * m] = (i == j ? 1.0 : 0.0);
-        }
-        hess2dense(hessenberg, maxit, m, hess_full);
-        for (MKL_INT j = 0; j < np; j++) {
-            //std::cout << "QR shift with theta = " << shift[j] << std::endl;
-            hess_qr = hess_full;
-            for (MKL_INT i = 0; i < m; i++) hess_qr[i + i * m] -= shift[j];       // H - shift[j] * I
-            info = geqrf(LAPACK_COL_MAJOR, m, m, hess_qr.data(), m, tau.data());  // upper triangle of hess_copy represents R, lower + tau represent Q
-            assert(info == 0);
-            info = ormqr(LAPACK_COL_MAJOR, 'L', 'T', m, m, m, hess_qr.data(), m,  // H_new = Q^T * H
-                         tau.data(), hess_full.data(), m);
-            assert(info == 0);
-            info = ormqr(LAPACK_COL_MAJOR, 'R', 'N', m, m, m, hess_qr.data(), m,  // H_new = Q^T * H * Q
-                         tau.data(), hess_full.data(), m);
-            assert(info == 0);
-            info = ormqr(LAPACK_COL_MAJOR, 'R', 'N', m, m, m, hess_qr.data(), m,  // Q_new = Q_old * Q
-                         tau.data(), Q.data(), m);
-            assert(info == 0);
-        }
-
-        for (MKL_INT j = 0; j < k; j++) hessenberg[j + maxit] = hess_full[j + j * maxit]; // diagonal elements of hessenberg matrix
-        for (MKL_INT j = 1; j < k; j++) hessenberg[j] = hess_full[j + (j-1) * maxit];   // subdiagonal
-        std::vector<T> v_old(dim * m);
-        blas_copy(dim * m, v, 1, v_old.data(), 1);
-        std::vector<T> Q_typeT(m*m);
-        for (MKL_INT j = 0; j < m*m; j++) Q_typeT[j] = Q[j];
-        blas_gemm(CblasColMajor, CblasNoTrans, CblasNoTrans, dim, m, m, one, v_old.data(), dim, Q_typeT.data(), m, zero, v, dim); // v updated
-        blas_scal(dim, hessenberg[m]*Q_typeT[m-1 + m*(k-1)], v+m*dim, 1);
-        blas_axpy(dim, static_cast<T>(hess_full[k + (k-1)*maxit]), v+k*dim, 1, v+m*dim, 1);
-        hessenberg[m] = blas_nrm2(dim, v+m*dim, 1);                                                  // rnorm updated
-        blas_scal(dim, 1.0 / hessenberg[m], v+m*dim, 1);                                             // resid updated
-
-
-
-
-        //    // ------ check here, can be removed --------
-        //    std::cout << "---------- Q ---------- " << std::endl;
-        //    for (MKL_INT i=0; i < m; i++) {
-        //        for (MKL_INT j = 0; j < m; j++) {
-        //            double out = std::abs(Q[i + j * ldq])>lanczos_precision?Q[i + j * ldq]:0.0;
-        //            std::cout << std::setw(15) << out;
-        //        }
-        //        std::cout << std::endl;
-        //    }
-        //    std::cout << std::endl;
-        // ------ check here, can be removed --------
-        //    // ------ check here, can be removed --------
-        //    std::cout << "---------- Q^T Q ---------- " << std::endl;
-        //    std::vector<double> productQ(m*m, 0.0);
-        //    gemm('t', 'n', m, m, m, 1.0, Q, ldq, Q, ldq, 0.0, productQ.data(), m);
-        //    for (MKL_INT i=0; i < m; i++) {
-        //        for (MKL_INT j = 0; j < m; j++) {
-        //            double out = std::abs(productQ[i + j * m])>lanczos_precision?productQ[i + j * m]:0.0;
-        //            std::cout << std::setw(15) << out;
-        //        }
-        //        std::cout << std::endl;
-        //    }
-        //    std::cout << std::endl;
-        //    // ------ check here, can be removed --------
-        //    // ------ check here, can be removed --------
-        //    std::cout << "---------- Q^T H Q ---------- " << std::endl;
-        //    hess2matform(hessenberg, hess_qr.data(), m, ldh);
-        //    for (MKL_INT j = 0; j < m*m; j++) productQ[j] = 0.0;
-        //    gemm('t', 'n', m, m, m, 1.0, Q, ldq, hess_qr.data(), ldh, 0.0, productQ.data(), m);
-        //    std::vector<double> productQ2(productQ);
-        //    gemm('n', 'n', m, m, m, 1.0, productQ2.data(), m, Q, ldq, 0.0, productQ.data(), m);
-        //    for (MKL_INT i=0; i < m; i++) {
-        //        for (MKL_INT j = 0; j < m; j++) {
-        //            double out = std::abs(productQ[i + j * m])>1e-12?productQ[i + j * m]:0.0;
-        //            std::cout << std::setw(15) << out;
-        //        }
-        //        std::cout << std::endl;
-        //    }
-        //    std::cout << std::endl;
-        //    // ------ check here, can be removed --------
-
-    }
-    template void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
-                                 double v[], double hessenberg[], const MKL_INT &maxit, std::vector<double> &Q);
-    template void perform_shifts(const MKL_INT &dim, const MKL_INT &m, const MKL_INT &np, const double shift[],
-                                 std::complex<double> v[], double hessenberg[], const MKL_INT &maxit, std::vector<double> &Q);
-
-    // interface to arpack++
-    void call_arpack(const MKL_INT &dim, csr_mat<double> &mat, double v0[],
-                     const MKL_INT &nev, const MKL_INT &ncv, const MKL_INT &maxit, MKL_INT &nconv, MKL_INT &niter,
-                     const std::string &order, double eigenvals[], double eigenvecs[])
-    {
-        ARSymStdEig<double, csr_mat<double>>
-            prob(dim, nev, &mat, &csr_mat<double>::MultMv, order, ncv, 0.0, 0, v0);
-        //prob.Trace();
         std::cout << "ARPACK info:" << std::endl;
-        std::cout << "(nev, ncv)    = (" << prob.GetNev() << "," << prob.GetNcv() << ")" << std::endl;
-        std::cout << "Max iteration = " << prob.GetMaxit() << " -> ";
-        prob.ChangeMaxit(maxit);
-        std::cout << prob.GetMaxit() << std::endl;
-        std::cout << "Max Mat*Vec   = " << prob.GetMaxit() * (ncv - nev) << std::endl;
-        prob.EigenValVectors(eigenvecs, eigenvals);
-        nconv = prob.ConvergedEigenvalues();
-        niter = prob.GetIter();
+        std::cout << "(nev, ncv)    = (" << nev << "," << ncv << ")" << std::endl;
+        std::cout << "Max iteration = " << maxit << std::endl;
+        std::cout << "Max Mat*Vec   = " << maxit * (ncv - nev) << std::endl;
+
+        const auto bmat_option   = arpack::bmat::identity;
+        const auto howmny_option = arpack::howmny::ritz_vectors;
+        const double tol         = 0.0;  // when tol <= 0, it is reset to machine precision
+        const double sigma       = 0.0;  // not referenced
+        a_int const rvec         = 1;    // need eigenvectors
+
+        a_int iparam[11], ipntr[11];
+        iparam[0] = 1;      // ishift
+        iparam[2] = maxit;  // on input: maxit; on output: actual iteration
+        iparam[3] = 1;      // NB, only 1 allowed
+        iparam[6] = 1;      // mode
+
+        a_int lworkl = ncv * (ncv + 8);
+        std::vector<double> V(ncv * N);
+        std::vector<double> workd(3 * N);
+        std::vector<double> workl(lworkl);
+        std::vector<a_int> select(ncv);
+
+        a_int info = 0;     // use random initial residual vector
+        a_int ido = 0;
+        do {
+            arpack::saupd(ido, bmat_option, N, ritz_option, nev, tol, resid, ncv,
+                          V.data(), N, iparam, ipntr, workd.data(), workl.data(), lworkl, info);
+            mat.MultMv(&(workd[ipntr[0] - 1]), &(workd[ipntr[1] - 1]));
+        } while (ido == 1 || ido == -1);
+        if (info < 0) throw std::runtime_error("Error with saupd, info = " + std::to_string(info));
+        niter = iparam[2];
+        nconv = iparam[4];
+
+        arpack::seupd(rvec, howmny_option, select.data(), eigenvals,
+                      eigenvecs, N, sigma, bmat_option, N, ritz_option, nev, tol, resid, ncv,
+                      V.data(), N, iparam, ipntr, workd.data(), workl.data(), lworkl, info);
+        if (info < 0) throw std::runtime_error("Error with seupd, info = " + std::to_string(info));
     }
-    void call_arpack(const MKL_INT &dim, csr_mat<std::complex<double>> &mat, std::complex<double> v0[],
-                     const MKL_INT &nev, const MKL_INT &ncv, const MKL_INT &maxit, MKL_INT &nconv, MKL_INT &niter,
-                     const std::string &order, double eigenvals[], std::complex<double> eigenvecs[])
+
+    template <typename MAT>
+    void call_arpack(const a_int &N, const MAT &mat, std::complex<double> resid[],
+                     const a_int &nev, const a_int &ncv, const a_int &maxit, a_int &nconv, a_int &niter,
+                     const arpack::which &ritz_option, double eigenvals[], std::complex<double> eigenvecs[])
     {
-        std::complex<double> *eigenvals_copy = new std::complex<double>[nev];
-        ARCompStdEig<double, csr_mat<std::complex<double>>> prob(dim, nev, &mat,
-                                                                 &csr_mat<std::complex<double>>::MultMv,
-                                                                 order, ncv, 0.0, 0, v0);
-        //prob.Trace();
+        auto *eigenvals_copy = new std::complex<double>[nev];
+
         std::cout << "ARPACK info:" << std::endl;
-        std::cout << "(nev, ncv)    = (" << prob.GetNev() << "," << prob.GetNcv() << ")" << std::endl;
-        std::cout << "Max iteration = " << prob.GetMaxit() << " -> ";
-        prob.ChangeMaxit(maxit);
-        std::cout << prob.GetMaxit() << std::endl;
-        std::cout << "Max Mat*Vec   = " << prob.GetMaxit() * (ncv - nev) << std::endl;
-        prob.EigenValVectors(eigenvecs, eigenvals_copy);
-        nconv = prob.ConvergedEigenvalues();
-        niter = prob.GetIter();
-        for (MKL_INT j = 0; j < nconv; j++) {
-            assert(std::abs(eigenvals_copy[j].imag()) < lanczos_precision);
+        std::cout << "(nev, ncv)    = (" << nev << "," << ncv << ")" << std::endl;
+        std::cout << "Max iteration = " << maxit << std::endl;
+        std::cout << "Max Mat*Vec   = " << maxit * (ncv - nev) << std::endl;
+
+        const auto bmat_option           = arpack::bmat::identity;
+        const auto howmny_option         = arpack::howmny::ritz_vectors;
+        const double tol                 = 0.0;  // when tol <= 0, it is reset to machine precision
+        const std::complex<double> sigma = 0.0;  // not referenced
+        a_int const rvec                 = 1;    // need eigenvectors
+
+        a_int iparam[11], ipntr[14];
+        iparam[0] = 1;      // ishift
+        iparam[2] = maxit;  // on input: maxit; on output: actual iteration
+        iparam[3] = 1;      // NB, only 1 allowed
+        iparam[6] = 1;      // mode
+
+        a_int lworkl = ncv * (3 * ncv + 5);
+        std::vector<std::complex<double>> V(ncv * N);
+        std::vector<std::complex<double>> workd(3 * N);
+        std::vector<std::complex<double>> workl(lworkl);
+        std::vector<std::complex<double>> workev(3 * ncv);
+        std::vector<double> rwork(ncv);
+        std::vector<a_int> select(ncv);
+
+        a_int info = 0;     // use random initial residual vector
+        a_int ido = 0;
+        do {
+            arpack::naupd(ido, bmat_option, N, ritz_option, nev, tol, resid, ncv,
+                          V.data(), N, iparam, ipntr,
+                          workd.data(), workl.data(), lworkl, rwork.data(), info);
+            mat.MultMv(&(workd[ipntr[0] - 1]), &(workd[ipntr[1] - 1]));
+        } while (ido == 1 || ido == -1);
+        if (info < 0) throw std::runtime_error("Error with naupd, info = " + std::to_string(info));
+        niter = iparam[2];
+        nconv = iparam[4];
+
+        arpack::neupd(rvec, howmny_option, select.data(), eigenvals_copy,
+                      eigenvecs, N, sigma, workev.data(), bmat_option, N, ritz_option, nev, tol, resid, ncv,
+                      V.data(), N, iparam, ipntr, workd.data(), workl.data(), lworkl, rwork.data(), info);
+        if (info < 0) throw std::runtime_error("Error with neupd, info = " + std::to_string(info));
+
+        for (a_int j = 0; j < nconv; j++) {
             eigenvals[j] = eigenvals_copy[j].real();
-        }
-        delete [] eigenvals_copy;
-    }
-    void call_arpack(const MKL_INT &dim, model<std::complex<double>> &mat, std::complex<double> v0[],
-                     const MKL_INT &nev, const MKL_INT &ncv, const MKL_INT &maxit, MKL_INT &nconv, MKL_INT &niter,
-                     const std::string &order, double eigenvals[], std::complex<double> eigenvecs[])
-    {
-        std::complex<double> *eigenvals_copy = new std::complex<double>[nev];
-        ARCompStdEig<double, model<std::complex<double>>> prob(dim, nev, &mat,
-                                                               &model<std::complex<double>>::MultMv,
-                                                               order, ncv, 0.0, 0, v0);
-        //prob.Trace();
-        std::cout << "ARPACK info:" << std::endl;
-        std::cout << "(nev, ncv)    = (" << prob.GetNev() << "," << prob.GetNcv() << ")" << std::endl;
-        std::cout << "Max iteration = " << prob.GetMaxit() << " -> ";
-        prob.ChangeMaxit(maxit);
-        std::cout << prob.GetMaxit() << std::endl;
-        std::cout << "Max Mat*Vec   = " << prob.GetMaxit() * (ncv - nev) << std::endl;
-        prob.EigenValVectors(eigenvecs, eigenvals_copy);
-        nconv = prob.ConvergedEigenvalues();
-        niter = prob.GetIter();
-        for (MKL_INT j = 0; j < nconv; j++) {
-            assert(std::abs(eigenvals_copy[j].imag()) < lanczos_precision);
-            eigenvals[j] = eigenvals_copy[j].real();
+            if (std::abs(eigenvals_copy[j].imag()) > lanczos_precision) {
+                std::cout << "Eigenvalue[" << j << "]: " << eigenvals_copy[j] << std::endl;
+                throw std::runtime_error("eigenvalue should be real.");
+            }
         }
         delete [] eigenvals_copy;
     }
@@ -604,30 +496,29 @@ namespace qbasis {
     template <typename T, typename MAT>
     void iram(const MKL_INT &dim, MAT &mat, T v0[], const MKL_INT &nev, const MKL_INT &ncv,
               const MKL_INT &maxit, const std::string &order,
-              MKL_INT &nconv, double eigenvals[], T eigenvecs[],
-              const bool &use_arpack)
+              MKL_INT &nconv, double eigenvals[], T eigenvecs[])
     {
-        assert(maxit >= 20);
-        MKL_INT np = ncv - nev;
-        MKL_INT niter;
+        if (nev <= 0 || nev >= dim - 1) throw std::invalid_argument("0 < nev < N-1 should be satisfied.");
+
+        if (maxit < 20) throw std::invalid_argument("maxit should not be smaller than 20!");
         std::string orderC(order);
         std::transform(orderC.begin(), orderC.end(), orderC.begin(), ::toupper);
-        
-        if (dim <= 30) {                                                                // fall back to full diagonalization
+
+        if (dim <= 30) {              // fall back to full diagonalization
             auto mat_dense = mat.to_dense();
             std::vector<double> eigenvals_all(dim);
-            auto info = heevd(LAPACK_COL_MAJOR, 'V', 'U', dim, mat_dense.data(), dim, eigenvals_all.data());
-            assert(info == 0);
-            nconv = nev < dim ? nev : dim;
+            auto info = lapack_syevd_heevd(LAPACK_COL_MAJOR, 'V', 'U', dim, mat_dense.data(), dim, eigenvals_all.data());
+            if (info != 0) throw std::runtime_error("heevd failed!");
+            nconv = nev;
             std::vector<std::pair<double, MKL_INT>> eigenvals_copy(dim);
             for (MKL_INT j = 0; j < dim; j++) {
                 eigenvals_copy[j].first = eigenvals_all[j];
                 eigenvals_copy[j].second = j;
             }
-            if (orderC == "SR"|| orderC == "SA") {                               // smallest real part
+            if (orderC == "SR" || orderC == "SA") {                               // smallest real part
                 std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
                           [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return a.first < b.first; });
-            } else if (orderC == "LR"|| orderC == "LA") {                        // largest real part
+            } else if (orderC == "LR" || orderC == "LA") {                        // largest real part
                 std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
                           [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return b.first < a.first; });
             } else if (orderC == "SM") {                                         // smallest magnitude
@@ -637,7 +528,7 @@ namespace qbasis {
                 std::sort(eigenvals_copy.begin(), eigenvals_copy.end(),
                           [](const std::pair<double, MKL_INT> &a, const std::pair<double, MKL_INT> &b){ return std::abs(b.first) < std::abs(a.first); });
             } else {
-                assert(false);
+                throw std::invalid_argument("Invalid argument orderC.");
             }
             for (MKL_INT j = 0; j < nconv; j++)
                 eigenvals[j] = eigenvals_copy[j].first;
@@ -645,11 +536,34 @@ namespace qbasis {
                 std::cout << "j = " << j << ", E_j = " << eigenvals[j] << std::endl;
             }
             // sort the eigenvecs
-            for (MKL_INT j = 0; j < nconv; j++)
+            for (MKL_INT j = 0; j < nconv; j++) {
                 blas_copy(dim, mat_dense.data() + dim * eigenvals_copy[j].second, 1, eigenvecs + dim * j, 1);
-        } else if (use_arpack) {
-            call_arpack(dim, mat, v0, nev, ncv, maxit, nconv, niter, orderC, eigenvals, eigenvecs);
-            assert(nconv > 0);
+            }
+        } else {
+            arpack::which ritz_option;
+            if (orderC == "LA") {
+                ritz_option = arpack::which::largest_algebraic;
+            } else if (orderC == "SA") {
+                ritz_option = arpack::which::smallest_algebraic;
+            } else if (orderC == "LM") {
+                ritz_option = arpack::which::largest_magnitude;
+            } else if (orderC == "SM") {
+                ritz_option = arpack::which::smallest_magnitude;
+            } else if (orderC == "LR") {
+                ritz_option = arpack::which::largest_real;
+            } else if (orderC == "SR") {
+                ritz_option = arpack::which::smallest_real;
+            } else if (orderC == "BE") {
+                ritz_option = arpack::which::both_ends;
+            } else {
+                throw std::invalid_argument("Invalid argument orderC.");
+            }
+
+            a_int nconv_arpack, niter;
+            call_arpack(static_cast<a_int>(dim), mat, v0, static_cast<a_int>(nev), static_cast<a_int>(ncv),
+                        static_cast<a_int>(maxit), nconv_arpack, niter, ritz_option, eigenvals, eigenvecs);
+            if (nconv_arpack <= 0) throw std::runtime_error("nconv == 0...");
+            nconv = static_cast<MKL_INT>(nconv_arpack);
             std::cout << std::endl << "(nev,ncv,nconv) = (" << nev << "," << ncv << "," << nconv << ")" << std::endl;
             std::cout << "Number of implicit restarts: " << niter << std::endl;
             auto comp = [&orderC](const double &a, const double &b)
@@ -683,62 +597,23 @@ namespace qbasis {
             }
             std::cout << "Caution: IRAM may miss a few degenerate eigenstates!" << std::endl;
             std::cout << "(in these cases, try a different set of {nev, ncv} may help finding the missing eigenstates)" << std::endl;
-        } else {                                                                       // hand-coded arpack
-            MKL_INT m = ncv;
-            MKL_INT maxit = m + 1;
-            std::vector<T> v(dim*(m+1));
-            std::vector<double> hessenberg(maxit*2), ritz(m), s(m*m), Q(m*m);
-            double rnorm = blas_nrm2(dim, v0, 1);
-            blas_axpy(dim, 1.0/rnorm, v0, 1, v.data(), 1);                                  // v[0] = v0 normalized
-            lanczos(0, ncv, maxit, m, dim, mat, v.data(), hessenberg.data(), "iram");
-            assert(m == ncv);
-
-            MKL_INT step = 0, step_max=100;
-            while (step < step_max) {
-                hess_eigen(hessenberg.data(), maxit, m, order, ritz, s);
-                perform_shifts(dim, ncv, np, ritz.data()+nev, v.data(), hessenberg.data(), maxit, Q);
-                lanczos(nev, np, maxit, m, dim, mat, v.data(), hessenberg.data(), "iram");
-                for (MKL_INT j = 0; j < nev; j++) {
-                    std::cout << std::setw(16) << ritz[j];
-                }
-                std::cout << std::endl;
-                std::cout << "ritz = " << ritz[0] << "\t" << ritz[0] << std::endl;
-                step++;
-            }
-            nconv = 1;
-            eigenvals[0] = ritz[0];
-            
-            std::cout << "Caution: IRAM may miss a few degenerate eigenstates!" << std::endl;
-            std::cout << "(in these cases, try a different set of {nev, ncv} may help finding the missing eigenstates)" << std::endl;
         }
-        assert(nconv > 0);
-
-
     }
 
     // Explicit instantiation
-
-
-    
-
-
-//    template void iram(const MKL_INT &dim, csr_mat<double> &mat, double v0[],
-//                       const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
-//                       const std::string &order, double eigenvals[], double eigenvecs[],
-//                       const bool &use_arpack);
+/*
+    template void iram(const MKL_INT &dim, csr_mat<double> &mat, double v0[], const MKL_INT &nev, const MKL_INT &ncv,
+                       const MKL_INT &maxit, const std::string &order,
+                       MKL_INT &nconv, double eigenvals[], double eigenvecs[]);
+    template void iram(const MKL_INT &dim, model<double> &mat, double v0[], const MKL_INT &nev, const MKL_INT &ncv,
+                       const MKL_INT &maxit, const std::string &order,
+                       MKL_INT &nconv, double eigenvals[], double eigenvecs[]);
+*/
     template void iram(const MKL_INT &dim, csr_mat<std::complex<double>> &mat, std::complex<double> v0[],
-                       const MKL_INT &nev, const MKL_INT &ncv,
-                       const MKL_INT &maxit, const std::string &order,
-                       MKL_INT &nconv, double eigenvals[], std::complex<double> eigenvecs[],
-                       const bool &use_arpack);
-//    template void iram(const MKL_INT &dim, model<double> &mat, double v0[],
-//                       const MKL_INT &nev, const MKL_INT &ncv, MKL_INT &nconv,
-//                       const std::string &order, double eigenvals[], double eigenvecs[],
-//                       const bool &use_arpack);
+                       const MKL_INT &nev, const MKL_INT &ncv, const MKL_INT &maxit, const std::string &order,
+                       MKL_INT &nconv, double eigenvals[], std::complex<double> eigenvecs[]);
     template void iram(const MKL_INT &dim, model<std::complex<double>> &mat, std::complex<double> v0[],
-                       const MKL_INT &nev, const MKL_INT &ncv,
-                       const MKL_INT &maxit, const std::string &order,
-                       MKL_INT &nconv, double eigenvals[], std::complex<double> eigenvecs[],
-                       const bool &use_arpack);
+                       const MKL_INT &nev, const MKL_INT &ncv, const MKL_INT &maxit, const std::string &order,
+                       MKL_INT &nconv, double eigenvals[], std::complex<double> eigenvecs[]);
 
 }

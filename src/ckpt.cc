@@ -4,6 +4,7 @@
 #include <regex>
 #include "qbasis.h"
 
+namespace fs = std::filesystem;
 
 namespace qbasis {
     bool enable_ckpt = false;

@@ -5,10 +5,20 @@
 #include <boost/crc.hpp>
 #include <boost/version.hpp>
 
+#ifdef _OPENMP
+  #include <omp.h>
+#else
+#define omp_get_thread_num() 0
+  #define omp_get_num_threads() 1
+  #define omp_get_num_procs() 1
+  #define omp_get_proc_bind() 0
+#endif
+
 #include "qbasis.h"
 #include "graph.h"
 
-namespace ip  = boost::asio::ip;
+namespace fs = std::filesystem;
+namespace ip = boost::asio::ip;
 
 // Euclidean norm
 inline double blas_nrm2(const MKL_INT &n, const double *x, const MKL_INT &incx) {

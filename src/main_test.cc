@@ -99,7 +99,7 @@ int test_chain_Heisenberg_spin_half() {
     auto m3 = Heisenberg.measure_full_static(Sp0Sm1, 0, 0);
     std::cout << "Sz0Sz1 = " << m1 << std::endl;
     std::cout << "Sz0Sz2 = " << m2 << std::endl;
-    std::cout << "Sp0Sm1 = " << m3 << std::endl;
+    std::cout << "Sp0Sm1 = " << m3 << std::endl << std::endl;
 
     assert(std::abs(m1 + 0.1487978408) < 1e-8);
     assert(std::abs(m2 - 0.0617414604) < 1e-8);
@@ -198,7 +198,7 @@ int test_chain_tJ() {
 
     // obtaining the eigenvals of the matrix
     tJ.locate_E0_iram(0,4,8);
-    std::cout << std::endl;
+    std::cout << std::endl << std::endl;
 
 
     // for the parameters considered, we should obtain:
