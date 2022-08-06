@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-22.04
     
     env:
+      CFLAGS: '-DMKL_ILP64 -m64 -I/usr/include/mkl'
+      CXXFLAGS: '-DMKL_ILP64 -m64 -I/usr/include/mkl'
       OMP_NUM_THREADS: 2
 
     steps:
@@ -29,7 +31,6 @@ jobs:
         unzip dev.zip
         cd arpack-ng-dev/
         sh bootstrap
-        echo "--- $LIBS ---"
         ./configure --enable-icb --with-blas=mkl_gf_ilp64 --with-lapack=mkl_gf_ilp64 --prefix=$HOME/installs
         make check
         make install
