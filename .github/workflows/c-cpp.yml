@@ -12,6 +12,11 @@ jobs:
     runs-on: ubuntu-22.04
     
     env:
+      LD_LIBRARY_PATH: '/home/runner/installs/lib'
+      MKL_INC_DIR: '/usr/include/mkl'
+      MKL_LIB_DIR: '/usr/lib/x86_64-linux-gnu'
+      FFLAGS: '-m64 -I/usr/include/mkl'
+      FCFLAGS: '-m64 -I/usr/include/mkl'
       CFLAGS: '-DMKL_ILP64 -m64 -I/usr/include/mkl'
       CXXFLAGS: '-DMKL_ILP64 -m64 -I/usr/include/mkl'
       LIBSUFFIX: 'ILP64'
@@ -39,7 +44,6 @@ jobs:
     
     - name: make test
       run: |
-        export LD_LIBRARY_PATH=${HOME}/installs/lib:$LD_LIBRARY_PATH
         echo " ------ $LD_LIBRARY_PATH ------"
         mkdir bin
         cd src; make test -j2
