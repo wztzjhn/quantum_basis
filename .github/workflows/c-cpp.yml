@@ -22,7 +22,8 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install gfortran libmkl-dev libboost-dev
+        gfortran --version
+        sudo apt-get install libmkl-dev libboost-dev
         cd /tmp
         wget https://github.com/wztzjhn/arpack-ng/archive/refs/heads/dev.zip
         unzip dev.zip
