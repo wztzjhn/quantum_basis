@@ -30,7 +30,7 @@ jobs:
         cd arpack-ng-dev/
         sh bootstrap
         echo "--- $LIBS ---"
-        ./configure --enable-icb --with-blas=mkl_gf_ilp64 --with-lapack=mkl_gf_ilp64
+        ./configure --enable-icb --with-blas=mkl_gf_ilp64 --with-lapack=mkl_gf_ilp64 --prefix=$HOME/installs
         make check
         make install
     
