@@ -1,4 +1,4 @@
-# Qbasis
+# Quantum Basis
 Basis of condensed matter quantum lattice problems, for usage in exact diagonalization (ED). The code is designed for any general bosonic or fermionic problem (or a mix of both), as long as the user can provide the [matrix form of the elementary operators](docs/Manual.pdf) of the Hamiltonian.
 
 ## Human-friendly usage (Heisenberg model as *example*)
@@ -45,29 +45,74 @@ To learn how to use this library to design ED code for your own models, please r
 - Triangular lattice
   - Heisenberg spin-1/2
 
-## Dependencies:
-- [Boost](http://www.boost.org/) (Boost lib and Qbasis lib have to be built with compatible compilers)
-- [MKL](https://software.intel.com/en-us/intel-mkl) (some old versions may not work)
-- [arpack](https://github.com/opencollab/arpack-ng) (dependency to be removed in future)
-- [arpack++](https://github.com/wztzjhn/arpackpp/tree/long) (dependency to be removed in future)
+## Install from source (Linux):
 
-**Note: using a modified version of arpack++ to be compatible with MKL.**
+0. (Optional but recommended) Create a local folder to keep the manually installed libraries: 
+
+    ```mkdir ~/installs; mkdir ~/installs/lib; mkdir ~/installs/include```
+
+    Then add the following to the end of your *~/.bashrc* file and restart the terminal:
+
+    ```
+    export LD_LIBRARY_PATH=${HOME}/installs/lib:$LD_LIBRARY_PATH
+    if [ -d ${HOME}/installs/lib/pkgconfig ]; then
+        export PKG_CONFIG_PATH=${HOME}/installs/lib/pkgconfig:$PKG_CONFIG_PATH
+    fi
+    ```
+
+1. Install MKL and TBB. There are two options: 
+
+    - For regular users, you can install from your linux distro. e.g., in Ubuntu, you can simply type
+    
+        ```sudo apt install libmkl-dev libtbb-dev```
+    
+    - For developers, it is recommended to download directly from [*Intel*](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl-download.html).
+    
+    Either way, after installaltion, you should add the following to the end of your *~/.bashrc* file and restart the terminal:
+
+    ```
+    if [ -f /opt/intel/oneapi/setvars.sh ]; then
+        source /opt/intel/oneapi/setvars.sh intel64 lp64
+        export MKL_INC_DIR=${MKLROOT}/include
+        export MKL_LIB_DIR=${MKLROOT}/lib/intel64
+    elif [ -d /usr/include/mkl ] && [ -d /usr/lib/x86_64-linux-gnu ]; then
+        export MKL_INC_DIR=/usr/include/mkl
+        export MKL_LIB_DIR=/usr/lib/x86_64-linux-gnu
+    fi
+    ```
+
+    Note: The variables {intel64, lp64} and the destination folders may vary depending on the system, should change the above lines accordingly.
+    
+2. Install the following dependencies:
+
+    ```libboost-dev```
+
+3. Install ARPACK-NG:
+
+    ```
+    cd /tmp
+    wget https://github.com/wztzjhn/arpack-ng/archive/refs/heads/dev.zip
+    unzip dev.zip
+    cd arpack-ng-dev/
+    sh bootstrap
+    FFLAGS="-m64 -I${MKL_INC_DIR}" FCFLAGS="-m64 -I$MKL_INC_DIR" CFLAGS="-DMKL_ILP64 -m64 -I${MKL_INC_DIR}" CXXFLAGS="-DMKL_ILP64 -m64 -I${MKL_INC_DIR}" LIBS="-L${MKL_LIB_DIR} -Wl,--no-as-needed -lmkl_gf_ilp64 -lmkl_tbb_thread -lmkl_core -lpthread -lm -ldl" LIBSUFFIX="ILP64" INTERFACE64="1" ./configure --with-blas=mkl_gf_ilp64 --with-lapack=mkl_gf_ilp64 --enable-icb --prefix=$HOME/installs
+    make check
+    make install
+    ```
+
+4. Test *Quantum Basis*:
+
+    Create a directory "bin" that sits at the same level of "src": `mkdir bin`, then go inside "src": `cd src`, then type
+
+    ```make clean; make test```
+    
+    Then execute the file `./test.x` in folder bin. :beer: if you see "All tests passed!" :beer:
+
+5. Install *Quantum Basis* as a library:
+
+    ```make clean; make install```
+
 
 ## Restrictions on lattice:
 When using translational symmetry, at least one of the dimensions (Lx, Ly, Lz, or number of sublattices) has to be an even number (current implementation of the generalized Lin Table).
 
-## Parallel scheme: 
-MKL + OpenMP
-
-## Compilation
-Currently the known working compilers are g++, icpc, and clang++ (c++11 required).
-(openmp in clang++ not tested yet)
-
-The code can be compiled in two modes:
-- 32-bit integer
-- 64-bit integer (if the unrestricted Hilbert space reaches 10^9, it is necessary to use 64-bit mode)
-
-**In the 64-bit mode**:
-- arpack has to be compiled with "-fdefault-integer-8"
-- arpack++ has to use the branch "long"
-- linking to MKL has to use the ILP64 mode

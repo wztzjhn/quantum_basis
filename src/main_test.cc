@@ -10,6 +10,7 @@ int main() {
 
     test_chain_tJ();
 
+    std::cout << "All tests passed!" << std::endl;
     return 0;
 }
 

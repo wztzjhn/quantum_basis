@@ -1,6 +1,9 @@
+#include <fstream>
 #include <iostream>
 #include <iomanip>
 #include "qbasis.h"
+
+#define PI 3.1415926535897932
 
 qbasis::mopr<std::complex<double>> Sm_mQ(std::vector<std::vector<std::complex<double>>>&, qbasis::lattice&,
                                          const int &L, const double &Q);
@@ -111,7 +114,7 @@ int main() {
     MKL_INT m;
     double norm;
     for (int x = 0; x <= L/2; x++) {
-        double Q = 2.0 * qbasis::pi * x / static_cast<double>(L);
+        double Q = 2.0 * PI * x / static_cast<double>(L);
         std::cout << "Q = " << Q << std::endl;
 
         std::cout << "----------- S+S- -----------" << std::endl;

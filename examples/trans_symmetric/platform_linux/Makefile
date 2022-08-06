@@ -1,19 +1,15 @@
 CXX       = g++
-CPPFLAGS  = -O2 -std=c++11 -m64 \
-            -I ${HOME}/installs/include \
-            -isystem ${MKLROOT}/include -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
-LIBS      = -L ${HOME}/installs/lib -lqbasis \
-            -larpack \
-            -L${MKLROOT}/lib/intel64 -L${MKLROOT}/../../compiler/latest/linux/compiler/lib/intel64_lin -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl \
-            -lboost_filesystem -lboost_system
+CXXFLAGS  = -std=c++17 -Wall -O3 -funroll-loops -m64 -DMKL_ILP64 -march=native \
+            -I${HOME}/installs/include -I${MKL_INC_DIR}
+LIBS      = -L${HOME}/installs/lib -lqbasis -larpackILP64 \
+            -L${MKL_LIB_DIR} -Wl,--no-as-needed -lmkl_intel_ilp64 -lmkl_tbb_thread -lmkl_core -lpthread -lm -ldl
+
 
 include ../object_list.txt
 
 all: $(EXEC)
 	@echo '************  COMPILED!  ************'
-
 %.x: %.cc
-	$(CXX) $(CPPFLAGS) $< $(LIBS) -o $@
-
+	$(CXX) $(CXXFLAGS) $< $(LIBS) -o $@
 clean:
-	$(RM) *.o *.x
+	$(RM) *.o *.x *.txt *.dat

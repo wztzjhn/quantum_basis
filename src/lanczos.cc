@@ -2,7 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <iomanip>
-#include "arpack.hpp"
+#include "arpack-ng/arpack.hpp"
 
 #include "qbasis.h"
 

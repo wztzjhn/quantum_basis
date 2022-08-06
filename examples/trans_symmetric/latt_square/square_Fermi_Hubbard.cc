@@ -94,8 +94,8 @@ int main() {
 
 
     // measure operators
-    auto cupdg1cup5 = qbasis::opr<std::complex<double>>(1,0,true,c_up).dagger() *
-                      qbasis::opr<std::complex<double>>(5,0,true,c_up);
+    qbasis::mopr<std::complex<double>> cupdg1cup5(qbasis::opr<std::complex<double>>(1,0,true,c_up).dagger() *
+                      qbasis::opr<std::complex<double>>(5,0,true,c_up));
     std::complex<double> m1;
 
     std::vector<double> E0_list;

@@ -94,12 +94,12 @@ int main() {
 
 
     // measurement opeartors
-    auto Sz0Sz1 = qbasis::opr<std::complex<double>>(0,0,false,Sz) *
-    qbasis::opr<std::complex<double>>(1,0,false,Sz);
-    auto Sz0Sz2 = qbasis::opr<std::complex<double>>(0,0,false,Sz) *
-    qbasis::opr<std::complex<double>>(2,0,false,Sz);
-    auto Sp0Sm1 = qbasis::opr<std::complex<double>>(0,0,false,Splus) *
-    qbasis::opr<std::complex<double>>(1,0,false,Sminus);
+    qbasis::mopr<std::complex<double>> Sz0Sz1(qbasis::opr<std::complex<double>>(0,0,false,Sz) *
+                                              qbasis::opr<std::complex<double>>(1,0,false,Sz));
+    qbasis::mopr<std::complex<double>> Sz0Sz2(qbasis::opr<std::complex<double>>(0,0,false,Sz) *
+                                              qbasis::opr<std::complex<double>>(2,0,false,Sz));
+    qbasis::mopr<std::complex<double>> Sp0Sm1(qbasis::opr<std::complex<double>>(0,0,false,Splus) *
+                                              qbasis::opr<std::complex<double>>(1,0,false,Sminus));
     std::complex<double> m1, m2, m3;
 
 

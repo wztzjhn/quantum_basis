@@ -1,8 +1,8 @@
 CXX       = g++
-CXXFLAGS  = -std=c++17 -Wall -O3 -funroll-loops -m64 -march=native -fPIC -fopenmp -I${MKL_INC_DIR} \
-            -isystem ${HOME}/opt/arpackpp/include -isystem ${HOME}/opt/arpackpp/examples/areig
-LIBS      = -larpack -fopenmp \
-            -L${MKL_LIB_DIR} -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_tbb_thread -lmkl_core -lpthread -lm -ldl
+CXXFLAGS  = -std=c++17 -Wall -O3 -funroll-loops -m64 -DMKL_ILP64 -march=native -fPIC -fopenmp \
+            -I${HOME}/installs/include -I${MKL_INC_DIR}
+LIBS      = -L${HOME}/installs/lib -larpackILP64 -fopenmp \
+            -L${MKL_LIB_DIR} -Wl,--no-as-needed -lmkl_intel_ilp64 -lmkl_tbb_thread -lmkl_core -lpthread -lm -ldl
 OBJS = basis.o ckpt.o lanczos.o lattice.o miscellaneous.o model.o operators.o sparse.o
 
 

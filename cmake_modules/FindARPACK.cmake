@@ -1,14 +1,13 @@
-# ARPACK_INCLUDE_DIR = arpack.hpp
+# ARPACK_INCLUDE_DIR = arpack-ng/arpack.hpp
 # ARPACK_LIBRARIES = libarpackILP64.so
 # ARPACK_FOUND = true if arpack is found
 
 IF(ARPACK_INCLUDE_DIRS)
-  FIND_PATH(ARPACK_INCLUDE_DIR arpack.hpp ${ARPACK_INCLUDE_DIRS})
+  FIND_PATH(ARPACK_INCLUDE_DIR arpack-ng/arpack.hpp ${ARPACK_INCLUDE_DIRS})
   FIND_LIBRARY(ARPACK_LIBRARY arpackILP64 ${ARPACK_LIBRARY_DIRS})
 ELSE(ARPACK_INCLUDE_DIRS)
     SET(TRIAL_PATHS
       $ENV{HOME}/installs/include
-      $ENV{HOME}/installs/include/arpack-ng
       /usr/include
       /usr/local/include
     )
@@ -22,7 +21,7 @@ ELSE(ARPACK_INCLUDE_DIRS)
       /usr/local/lib64
     )
     
-    FIND_PATH(ARPACK_INCLUDE_DIR arpack.hpp ${TRIAL_PATHS})
+    FIND_PATH(ARPACK_INCLUDE_DIR arpack-ng/arpack.hpp ${TRIAL_PATHS})
     FIND_LIBRARY(ARPACK_LIBRARY arpackILP64 ${TRIAL_LIBRARY_PATHS})
 ENDIF(ARPACK_INCLUDE_DIRS)
 set(ARPACK_INCLUDE_DIRS ${ARPACK_INCLUDE_DIR} )

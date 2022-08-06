@@ -3,6 +3,8 @@
 #include <fstream>
 #include "qbasis.h"
 
+#define PI 3.1415926535897932
+
 // Kondo Lattice model on square lattice
 int main() {
     qbasis::initialize();
@@ -155,8 +157,8 @@ int main() {
 
     for (int m = 0; m < Lx; m++) {
         for (int n = 0; n < Ly; n++) {
-            double kx = (2.0*qbasis::pi*m) / Lx;
-            double ky = (2.0*qbasis::pi*n) / Ly;
+            double kx = (2.0*PI*m) / Lx;
+            double ky = (2.0*PI*n) / Ly;
             // constructing the Hilbert space basis
             //Kondo.enumerate_basis_repr({m,n}, {Nelec_total,Sz_total}, {Nelec_total_val,Sz_total_val});
             Kondo.enumerate_basis_repr({m,n}, {Nelec_total}, {Nelec_total_val});

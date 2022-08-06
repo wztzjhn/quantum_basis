@@ -113,8 +113,8 @@ int main() {
 
 
     // measure operators
-    auto cupdg1cup5 = qbasis::opr<std::complex<double>>(1,0,true,c_up).dagger() *
-                      qbasis::opr<std::complex<double>>(5,0,true,c_up);
+    qbasis::mopr<std::complex<double>> cupdg1cup5(qbasis::opr<std::complex<double>>(1,0,true,c_up).dagger() *
+                      qbasis::opr<std::complex<double>>(5,0,true,c_up));
 
     auto m1 = Hubbard.measure_full_static(cupdg1cup5, 0, 0);
     std::cout << "cupdg1cup5 = " << m1 << std::endl << std::endl;

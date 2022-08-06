@@ -110,13 +110,14 @@ int main() {
             }
 
 
-            //   2
-            //    ^
-            //     \
-            //      1
-            //       \
-            //        \
-            //         2
+            /*   2
+             *    ^
+             *     \
+             *      1
+             *       \
+             *        \
+             *         2
+             */
             {
                 tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i1 * c_up_i2 ));
                 tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i2 * c_up_i1 ));
@@ -128,13 +129,14 @@ int main() {
             }
 
 
-            //   2
-            //    \
-            //     \
-            //      1
-            //       \
-            //        v
-            //         2
+            /*   2
+             *    \
+             *     \
+             *      1
+             *       \
+             *        v
+             *         2
+             */
             {
                 uint32_t site_j2;
                 lattice.coor2site({m+1,n-1}, 2, site_j2, work);
@@ -156,13 +158,14 @@ int main() {
             }
 
 
-            //         0
-            //        /
-            //       /
-            //      2
-            //     /
-            //    v
-            //   0
+            /*         0
+             *        /
+             *       /
+             *      2
+             *     /
+             *    v
+             *   0
+             */
             {
                 tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i2 * c_up_i0 ));
                 tJ.add_Ham(std::complex<double>(-t,0.0) * ( c_up_dg_i0 * c_up_i2 ));
@@ -174,13 +177,14 @@ int main() {
             }
 
 
-            //         0
-            //        ^
-            //       /
-            //      2
-            //     /
-            //    /
-            //   0
+            /*         0
+             *        ^
+             *       /
+             *      2
+             *     /
+             *    /
+             *   0
+             */
             {
                 uint32_t site_j0;
                 lattice.coor2site({m,n+1}, 0, site_j0, work);
