@@ -25,8 +25,10 @@ jobs:
         mkdir ~/installs
         mkdir ~/installs/lib
         mkdir ~/installs/include
-        sudo apt-get update
-        sudo apt-get install libmkl-dev libboost-dev
+        sudo apt update
+        sudo apt upgrade
+        sudo apt uninstall gfortran
+        sudo apt install gfortran libmkl-dev libboost-dev
         cd /tmp
         wget https://github.com/wztzjhn/arpack-ng/archive/refs/heads/dev.zip
         unzip dev.zip
