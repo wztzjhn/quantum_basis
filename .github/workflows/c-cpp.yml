@@ -1,0 +1,31 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-22.04
+    
+    env:
+      MKL_INC_DIR: /usr/include/mkl
+      MKL_LIB_DIR: /usr/lib/x86_64-linux-gnu
+      OMP_NUM_THREADS: 2
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libmkl-dev libtbb-dev libboost-dev
+    
+    - name: make test
+      run: |
+        mkdir bin
+        cd src; make test -j2
+        cd ../bin; ./test.x
