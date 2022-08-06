@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-22.04
     
     env:
+      FFLAGS: '-m64 -I/usr/include/mkl'
+      FCFLAGS: '-m64 -I/usr/include/mkl'
       CFLAGS: '-DMKL_ILP64 -m64 -I/usr/include/mkl'
       CXXFLAGS: '-DMKL_ILP64 -m64 -I/usr/include/mkl'
       LIBS: '-L/usr/lib/x86_64-linux-gnu -Wl,--no-as-needed -lmkl_gf_ilp64 -lmkl_tbb_thread -lmkl_core -lpthread -lm -ldl'
@@ -35,7 +37,7 @@ jobs:
         cd arpack-ng-dev/
         sh bootstrap
         echo "--- $LIBS ---"
-        ./configure --with-blas=mkl_gf_ilp64 --with-lapack=mkl_gf_ilp64 --enable-icb --prefix=$HOME/installs
+        ./configure --with-blas=mkl_gf_ilp64 --with-lapack=mkl_gf_ilp64 --enable-icb
         make check
         make install
     
