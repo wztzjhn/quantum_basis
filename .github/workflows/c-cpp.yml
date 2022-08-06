@@ -14,6 +14,7 @@ jobs:
     env:
       MKL_INC_DIR: /usr/include/mkl
       MKL_LIB_DIR: /usr/lib/x86_64-linux-gnu
+      LD_LIBRARY_PATH: ${HOME}/installs/lib
       OMP_NUM_THREADS: 2
 
     steps:
@@ -21,16 +22,12 @@ jobs:
     
     - name: Install dependencies
       run: |
+        mkdir ~/installs
+        mkdir ~/installs/lib
+        mkdir ~/installs/include
         sudo apt-get update
-        gfortran --version
-        echo -e "program hello\n    print*,\"hello\"\nend program" > test.f90
-        gfortran test.f90
-        ./a.out
-        echo "------"
         sudo apt-get install libmkl-dev libboost-dev
-        mkdir tmp
-        cd tmp
-        echo "------ $PWD ------"
+        cd /tmp
         wget https://github.com/wztzjhn/arpack-ng/archive/refs/heads/dev.zip
         unzip dev.zip
         cd arpack-ng-dev/
@@ -41,6 +38,8 @@ jobs:
     
     - name: make test
       run: |
+        export LD_LIBRARY_PATH=${HOME}/installs/lib:$LD_LIBRARY_PATH
+        echo " ------ $LD_LIBRARY_PATH ------"
         mkdir bin
         cd src; make test -j2
         cd ../bin; ./test.x
