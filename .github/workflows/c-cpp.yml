@@ -23,6 +23,10 @@ jobs:
       run: |
         sudo apt-get update
         gfortran --version
+        echo -e "program hello\n    print*,\"hello\"\nend program" > test.f90
+        gfortran test.f90
+        ./a.out
+        echo "------"
         sudo apt-get install libmkl-dev libboost-dev
         cd /tmp
         wget https://github.com/wztzjhn/arpack-ng/archive/refs/heads/dev.zip
