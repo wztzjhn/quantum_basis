@@ -60,11 +60,11 @@ To learn how to use this library to design ED code for your own models, please r
     fi
     ```
 
-1. Install MKL and TBB. There are two options: 
+1. Install MKL. There are two options: 
 
     - For regular users, you can install from your linux distro. e.g., in Ubuntu, you can simply type
     
-        ```sudo apt install libmkl-dev libtbb-dev```
+        ```sudo apt install libmkl-dev```
     
     - For developers, it is recommended to download directly from [*Intel*](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl-download.html).
     
@@ -72,7 +72,7 @@ To learn how to use this library to design ED code for your own models, please r
 
     ```
     if [ -f /opt/intel/oneapi/setvars.sh ]; then
-        source /opt/intel/oneapi/setvars.sh intel64 lp64
+        source /opt/intel/oneapi/setvars.sh intel64 
         export MKL_INC_DIR=${MKLROOT}/include
         export MKL_LIB_DIR=${MKLROOT}/lib/intel64
     elif [ -d /usr/include/mkl ] && [ -d /usr/lib/x86_64-linux-gnu ]; then
@@ -81,7 +81,7 @@ To learn how to use this library to design ED code for your own models, please r
     fi
     ```
 
-    Note: The variables {intel64, lp64} and the destination folders may vary depending on the system, should change the above lines accordingly.
+    Note: The variable {intel64} and the destination folders may vary depending on the system, should change the above lines accordingly.
     
 2. Install the following dependencies:
 
@@ -95,7 +95,7 @@ To learn how to use this library to design ED code for your own models, please r
     unzip dev.zip
     cd arpack-ng-dev/
     sh bootstrap
-    FFLAGS="-m64 -I${MKL_INC_DIR}" FCFLAGS="-m64 -I$MKL_INC_DIR" CFLAGS="-DMKL_ILP64 -m64 -I${MKL_INC_DIR}" CXXFLAGS="-DMKL_ILP64 -m64 -I${MKL_INC_DIR}" LIBS="-L${MKL_LIB_DIR} -Wl,--no-as-needed -lmkl_gf_ilp64 -lmkl_tbb_thread -lmkl_core -lpthread -lm -ldl" LIBSUFFIX="ILP64" INTERFACE64="1" ./configure --with-blas=mkl_gf_ilp64 --with-lapack=mkl_gf_ilp64 --enable-icb --prefix=$HOME/installs
+    FFLAGS="-m64 -I${MKL_INC_DIR}" FCFLAGS="-m64 -I$MKL_INC_DIR" CFLAGS="-DMKL_ILP64 -m64 -I${MKL_INC_DIR}" CXXFLAGS="-DMKL_ILP64 -m64 -I${MKL_INC_DIR}" LIBS="-L${MKL_LIB_DIR} -Wl,--no-as-needed -lmkl_gf_ilp64 -lmkl_tbb_thread -lmkl_core -lpthread -ltbb -lstdc++ -lm -ldl" LIBSUFFIX="ILP64" INTERFACE64="1" ./configure --with-blas=mkl_gf_ilp64 --with-lapack=mkl_gf_ilp64 --enable-icb --prefix=$HOME/installs
     make check
     make install
     ```
