@@ -28,7 +28,9 @@ jobs:
         ./a.out
         echo "------"
         sudo apt-get install libmkl-dev libboost-dev
-        cd /tmp
+        mkdir tmp
+        cd tmp
+        echo "------ $PWD ------"
         wget https://github.com/wztzjhn/arpack-ng/archive/refs/heads/dev.zip
         unzip dev.zip
         cd arpack-ng-dev/
