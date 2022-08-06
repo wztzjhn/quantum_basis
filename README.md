@@ -88,6 +88,8 @@ To learn how to use this library to design ED code for your own models, please r
 
     ```libboost-dev```
 
+    (for example, if on Ubuntu, simply type ```sudo apt install libboost-dev```)
+
 3. Install ARPACK-NG:
 
     ```
