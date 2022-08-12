@@ -1,3 +1,4 @@
+#include <cassert>
 #include <iostream>
 #include <iomanip>
 #include "qbasis.h"
@@ -87,7 +88,7 @@ int main() {
         std::cout << std::endl;
 
         // obtaining the eigenvals of the matrix
-        Heisenberg.locate_E0_lanczos(1,2,2);
+        Heisenberg.locate_E0_lanczos(qbasis::which_sym::repr, 2, 2);
         std::cout << std::endl;
 
         E0_list.push_back(Heisenberg.eigenvals_repr[0]);
@@ -129,7 +130,7 @@ int main() {
         std::cout << std::endl;
 
         // obtaining the eigenvals of the matrix
-        Heisenberg.locate_E0_iram(1,10,20);
+        Heisenberg.locate_E0_iram(qbasis::which_sym::repr, 10, 20);
         std::cout << std::endl;
 
         E0_check_list.push_back(Heisenberg.eigenvals_repr[0]);

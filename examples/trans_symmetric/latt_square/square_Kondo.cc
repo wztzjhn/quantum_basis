@@ -1,3 +1,4 @@
+#include <cassert>
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -168,7 +169,7 @@ int main() {
             std::cout << std::endl;
 
             // obtaining the lowest eigenvals of the matrix
-            Kondo.locate_E0_iram(1, 20, 30);
+            Kondo.locate_E0_iram(qbasis::which_sym::repr, 20, 30);
             std::cout << std::endl;
 
             // note: eigenvals above +100 are typically faked numbers used in my code, should discard

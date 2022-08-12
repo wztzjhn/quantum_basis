@@ -1,3 +1,4 @@
+#include <cassert>
 #include <iostream>
 #include <iomanip>
 #include "qbasis.h"
@@ -111,13 +112,13 @@ int main() {
 
     // optional, will use more memory and give higher speed
     // generating matrix of the Hamiltonian in the full Hilbert space
-    spinless.generate_Ham_sparse_full(0,false);
+    spinless.generate_Ham_sparse_full(0, false);
     std::cout << std::endl;
 
 
     // obtaining the eigenvals of the matrix
     std::cout << "Energy correction per site   = " << (constant / lattice.total_sites()) << std::endl;
-    spinless.locate_E0_lanczos(0);
+    spinless.locate_E0_lanczos(qbasis::which_sym::full);
     std::cout << "Energy correction = " << constant << std::endl;
     std::cout << "Energy per site   = " << ( spinless.energy_min() + constant ) / lattice.total_sites() << std::endl;
     std::cout << std::endl;

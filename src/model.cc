@@ -1,4 +1,5 @@
 #include <fstream>
+#include <filesystem>
 #include <iostream>
 #include <iomanip>
 #include <random>
@@ -1919,8 +1920,7 @@ namespace qbasis {
                     auto &ele_new = intermediate_states[tid][cnt];
                     if (gs_omegaG_vrnl == 1) {
                         if (ele_new.first != gs_vrnl) continue;
-                        for (uint32_t d = 0; d < scratch_disp[tid].size(); d++)
-                            scratch_disp[tid][d] = 0;
+                        for (int &ele : scratch_disp[tid]) ele = 0;
                     } else {
                         auto unique_state = ele_new.first;
                         unique_state.translate2center_OBC(props,latt_parent,scratch_disp[tid]);
@@ -1935,6 +1935,9 @@ namespace qbasis {
                 }
             }
         }
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
 
 

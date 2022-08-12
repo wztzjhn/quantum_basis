@@ -1,3 +1,4 @@
+#include <cassert>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
@@ -95,7 +96,7 @@ int main() {
     std::cout << std::endl;
 
     // obtaining the eigenvals of the matrix
-    Heisenberg.locate_E0_lanczos(1,1,1);
+    Heisenberg.locate_E0_lanczos(qbasis::which_sym::repr, 1, 1);
     std::cout << std::endl;
 
     double E_ground = Heisenberg.energy_min();

@@ -1,3 +1,4 @@
+#include <cassert>
 #include <iostream>
 #include <iomanip>
 #include "qbasis.h"
@@ -91,7 +92,7 @@ int main() {
 
 
     // obtaining the eigenvals of the matrix
-    tJ.locate_E0_iram(0,4,8);
+    tJ.locate_E0_iram(qbasis::which_sym::full, 4, 8);
     std::cout << std::endl;
 
 

@@ -1,3 +1,4 @@
+#include <cassert>
 #include <iostream>
 #include <iomanip>
 #include "qbasis.h"
@@ -120,12 +121,12 @@ int main() {
             std::cout << std::endl;
 
             // obtaining the lowest eigenvals of the matrix
-            spinless.locate_E0_lanczos(1);
+            spinless.locate_E0_lanczos(qbasis::which_sym::repr);
             std::cout << std::endl;
 
             E0_list.push_back(spinless.eigenvals_repr[0]);
 
-            spinless.locate_Emax_iram(1,4,10);
+            spinless.locate_Emax_iram(qbasis::which_sym::repr, 4, 10);
             std::cout << std::endl;
         }
     }
@@ -156,7 +157,7 @@ int main() {
             std::cout << std::endl;
 
             // obtaining the lowest eigenvals of the matrix
-            spinless.locate_E0_iram(1,3,10);
+            spinless.locate_E0_iram(qbasis::which_sym::repr, 3, 10);
             std::cout << std::endl;
             E0_check_list.push_back(spinless.eigenvals_repr[0]);
         }

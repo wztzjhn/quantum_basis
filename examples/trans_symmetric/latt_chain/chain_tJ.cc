@@ -93,7 +93,7 @@ int main() {
         std::cout << std::endl;
 
         // obtaining the eigenvals of the matrix
-        tJ.locate_E0_lanczos(1);
+        tJ.locate_E0_lanczos(qbasis::which_sym::repr);
         std::cout << std::endl;
 
         E0_list.push_back(tJ.eigenvals_repr[0]);

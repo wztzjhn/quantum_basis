@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cassert>
 #include <iostream>
 
 #include "qbasis.h"
@@ -1377,4 +1378,3 @@ namespace qbasis {
     template mopr<std::complex<double>> operator*(const mopr<std::complex<double>>&, const std::complex<double>&);
 
 }
-

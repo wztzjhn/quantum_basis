@@ -1,3 +1,4 @@
+#include <cassert>
 #include <iostream>
 #include <iomanip>
 #include "qbasis.h"
@@ -91,7 +92,7 @@ int main() {
 
 
     // obtaining the eigenvals of the matrix
-    Hubbard.locate_E0_lanczos(0);
+    Hubbard.locate_E0_lanczos(qbasis::which_sym::full);
     std::cout << std::endl;
 
 

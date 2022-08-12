@@ -1,3 +1,4 @@
+#include <cassert>
 #include <iostream>
 #include <iomanip>
 #include "qbasis.h"
@@ -223,7 +224,7 @@ int main() {
 
 
     // obtaining the eigenvals of the matrix
-    tJ.locate_E0_lanczos(0);
+    tJ.locate_E0_lanczos(qbasis::which_sym::full);
     std::cout << std::endl;
 
 

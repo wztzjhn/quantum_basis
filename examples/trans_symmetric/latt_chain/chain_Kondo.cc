@@ -1,3 +1,4 @@
+#include <cassert>
 #include <iostream>
 #include <iomanip>
 #include "qbasis.h"
@@ -119,7 +120,7 @@ int main() {
         std::cout << std::endl;
 
         // obtaining the eigenvals of the matrix
-        Kondo.locate_E0_lanczos(1);
+        Kondo.locate_E0_lanczos(qbasis::which_sym::repr);
         std::cout << std::endl;
 
         E0_list.push_back(Kondo.eigenvals_repr[0]);

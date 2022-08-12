@@ -1,5 +1,6 @@
+#include <cassert>
 #include <iostream>
-#include <iomanip>
+#include <filesystem>
 #include <fstream>
 #include <regex>
 #include "qbasis.h"
@@ -35,7 +36,7 @@ namespace qbasis {
         for (auto &p : fs::directory_iterator("out_Qckpt")) fout << p << std::endl;
         auto size_Qckpt1 = sizeof(MKL_INT);
         bool updating = (fs::exists(fs::path("out_Qckpt/lczs_updt.Qckpt1")) &&
-                         fs::file_size(fs::path("out_Qckpt/lczs_updt.Qckpt1")) == size_Qckpt1) ? true : false;
+                         fs::file_size(fs::path("out_Qckpt/lczs_updt.Qckpt1")) == size_Qckpt1);
 
 
         fout << "Resuming from an interrupted update? " << updating << std::endl;

@@ -1,3 +1,4 @@
+#include <cassert>
 #include <iostream>
 #include <iomanip>
 #include "qbasis.h"
@@ -109,7 +110,7 @@ int main() {
             std::cout << std::endl;
 
             // obtaining the lowest eigenvals of the matrix
-            Hubbard.locate_E0_lanczos(1);
+            Hubbard.locate_E0_lanczos(qbasis::which_sym::repr);
             std::cout << std::endl;
 
             E0_list.push_back(Hubbard.eigenvals_repr[0]);
@@ -148,7 +149,7 @@ int main() {
             std::cout << std::endl;
 
             // obtaining the lowest eigenvals of the matrix
-            Hubbard.locate_E0_iram(1,2,10);
+            Hubbard.locate_E0_iram(qbasis::which_sym::repr, 2, 10);
             std::cout << std::endl;
             E0_check_list.push_back(Hubbard.eigenvals_repr[0]);
         }
