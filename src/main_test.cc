@@ -79,7 +79,7 @@ int test_chain_Heisenberg_spin_half() {
 
 
     // obtaining the eigenvals of the matrix
-    Heisenberg.locate_E0_lanczos(0);
+    Heisenberg.locate_E0_lanczos(qbasis::which_sym::full);
     std::cout << std::endl;
 
 
@@ -198,7 +198,7 @@ int test_chain_tJ() {
 
 
     // obtaining the eigenvals of the matrix
-    tJ.locate_E0_iram(0,4,8);
+    tJ.locate_E0_iram(qbasis::which_sym::full, 4, 8);
     std::cout << std::endl << std::endl;
 
 

@@ -40,7 +40,7 @@ namespace qbasis {
             for (decltype(mat_.size()) i=0; i<mat_.size(); i++) mat[i] = mat_[i];
         }
     }
-    
+
     template <typename T>
     opr<T>::opr(const uint32_t &site_, const uint32_t &orbital_, const bool &fermion_, const std::vector<std::vector<T>> &mat_):
         site(site_), orbital(orbital_), dim(static_cast<uint32_t>(mat_.size())), fermion(fermion_), diagonal(false)
@@ -68,7 +68,7 @@ namespace qbasis {
             }
         }
     }
-    
+
     template <typename T>
     opr<T>::opr(const opr<T> &old):
         site(old.site), orbital(old.orbital), dim(old.dim), fermion(old.fermion), diagonal(old.diagonal)
@@ -81,7 +81,7 @@ namespace qbasis {
             mat = nullptr;
         }
     }
-    
+
     template <typename T>
     opr<T>::opr(opr<T> &&old) noexcept :
     site(old.site), orbital(old.orbital), dim(old.dim), fermion(old.fermion), diagonal(old.diagonal)
@@ -89,7 +89,7 @@ namespace qbasis {
         mat = old.mat;
         old.mat = nullptr;
     }
-    
+
     template <typename T>
     opr<T>::~opr()
     {
@@ -99,7 +99,7 @@ namespace qbasis {
             mat = nullptr;
         }
     }
-    
+
     template <typename T>
     void opr<T>::prt() const
     {
@@ -122,7 +122,7 @@ namespace qbasis {
             std::cout << "zero operator!" << std::endl;
         }
     }
-    
+
     template <typename T>
     bool opr<T>::q_zero() const
     {
@@ -134,7 +134,7 @@ namespace qbasis {
             return false;
         }
     }
-    
+
     template <typename T>
     bool opr<T>::q_identity() const
     {
@@ -149,7 +149,7 @@ namespace qbasis {
             return true;
         }
     }
-    
+
     template <typename T>
     double opr<T>::norm() const
     {
@@ -160,7 +160,7 @@ namespace qbasis {
             return blas_nrm2(static_cast<MKL_INT>(n), mat, 1);
         }
     }
-    
+
     template <typename T>
     opr<T> &opr<T>::simplify()
     {
@@ -208,7 +208,7 @@ namespace qbasis {
         }
         return *this;
     }
-    
+
     template <typename T>
     opr<T> &opr<T>::negative()
     {
@@ -216,7 +216,7 @@ namespace qbasis {
         for (decltype(sz) i = 0; i < sz; i++) mat[i] = -mat[i];
         return *this;
     }
-    
+
     template <typename T>
     opr<T> &opr<T>::dagger()
     {
@@ -232,21 +232,21 @@ namespace qbasis {
         delete [] mat_new;
         return *this;
     }
-    
+
     template <typename T>
     opr<T> &opr<T>::change_site(const uint32_t &site_)
     {
         site = site_;
         return *this;
     }
-    
+
     template <typename T>
     opr<T> &opr<T>::transform(const std::vector<uint32_t> &plan)
     {
         site = plan[site];
         return *this;
     }
-    
+
     template <typename T>
     opr<T> &opr<T>::operator+=(const opr<T> &rhs)
     {
@@ -272,7 +272,7 @@ namespace qbasis {
         }
         return *this;
     }
-    
+
     template <typename T>
     opr<T> &opr<T>::operator-=(const opr<T> &rhs)
     {
@@ -299,7 +299,7 @@ namespace qbasis {
         }
         return *this;
     }
-    
+
     template <typename T>
     opr<T> &opr<T>::operator*=(const opr<T> &rhs)
     {
@@ -339,7 +339,7 @@ namespace qbasis {
         this->simplify();
         return *this;
     }
-    
+
     template <typename T>
     opr<T> &opr<T>::operator*=(const T &rhs)
     {
@@ -354,7 +354,7 @@ namespace qbasis {
         for (decltype(sz) i = 0; i < sz; i++) mat[i] *= rhs;
         return *this;
     }
-    
+
     template <typename T>
     void swap(opr<T> &lhs, opr<T> &rhs)
     {
@@ -366,7 +366,7 @@ namespace qbasis {
         swap(lhs.diagonal, rhs.diagonal);
         swap(lhs.mat, rhs.mat);
     }
-    
+
     template <typename T>
     bool operator==(const opr<T> &lhs, const opr<T> &rhs)
     {
@@ -409,13 +409,13 @@ namespace qbasis {
             return false;
         }
     }
-    
+
     template <typename T>
     bool operator!=(const opr<T> &lhs, const opr<T> &rhs)
     {
         return !(lhs == rhs);
     }
-    
+
     template <typename T>
     bool operator<(const opr<T> &lhs, const opr<T> &rhs)
     {
@@ -436,7 +436,7 @@ namespace qbasis {
         }
         return (lhs.fermion < rhs.fermion ? true : false);
     }
-    
+
     template <typename T>
     opr<T> operator*(const T &lhs, const opr<T> &rhs)
     {
@@ -444,7 +444,7 @@ namespace qbasis {
         prod *= lhs;
         return prod;
     }
-    
+
     template <typename T>
     opr<T> operator*(const opr<T> &lhs, const T &rhs)
     {
@@ -452,7 +452,7 @@ namespace qbasis {
         prod *= rhs;
         return prod;
     }
-    
+
     template <typename T>
     opr<T> normalize(const opr<T> &old, T &prefactor)
     {
@@ -478,8 +478,8 @@ namespace qbasis {
         }
         return temp;
     }
-    
-    
+
+
     // ----------------- implementation of class opr_prod --------------------
     template <typename T>
     opr_prod<T>::opr_prod(const opr<T> &ele)
@@ -493,7 +493,7 @@ namespace qbasis {
             mat_prod = std::list<opr<T>>();
         }
     }
-    
+
     template <typename T>
     void opr_prod<T>::prt() const
     {
@@ -504,13 +504,13 @@ namespace qbasis {
             std::cout << "xxxxxxxx" << std::endl;
         }
     }
-    
+
     template <typename T>
     bool opr_prod<T>::q_zero() const
     {
         return std::abs(coeff) < opr_precision ? true : false;
     }
-    
+
     template <typename T>
     bool opr_prod<T>::q_diagonal() const
     {
@@ -520,19 +520,19 @@ namespace qbasis {
         }
         return true;
     }
-    
+
     template <typename T>
     bool opr_prod<T>::q_prop_identity() const // ask this question without simplifying the operator products
     {
         return (std::abs(coeff) >= opr_precision && mat_prod.empty()) ? true : false;
     }
-    
+
     template <typename T>
     uint32_t opr_prod<T>::len() const
     {
         return static_cast<uint32_t>(mat_prod.size());
     }
-    
+
     template <typename T>
     opr<T> &opr_prod<T>::operator[](uint32_t n)
     {
@@ -541,7 +541,7 @@ namespace qbasis {
         for (decltype(n) i = 0; i < n; i++) ++it;
         return *it;
     }
-    
+
     template <typename T>
     const opr<T> &opr_prod<T>::operator[](uint32_t n) const
     {
@@ -550,14 +550,14 @@ namespace qbasis {
         for (decltype(n) i = 0; i < n; i++) ++it;
         return *it;
     }
-    
+
     template <typename T>
     opr_prod<T> &opr_prod<T>::negative()
     {
         coeff = -coeff;
         return *this;
     }
-    
+
     template <typename T>
     opr_prod<T> &opr_prod<T>::dagger()
     {
@@ -566,13 +566,13 @@ namespace qbasis {
         for (auto it = mat_prod.begin(); it != mat_prod.end(); it++) it->dagger();
         return *this;
     }
-    
+
     template <typename T>
     opr_prod<T> &opr_prod<T>::bubble_sort()
     {
         if (q_zero() || q_prop_identity() || len() <= 1) return *this;
         uint32_t length = len();
-        
+
         auto it_end = mat_prod.end();
         using std::swap;
         for (uint32_t j = 1; j < length; j++) {
@@ -588,23 +588,23 @@ namespace qbasis {
                     if (it->fermion && it_next->fermion) coeff = -coeff;
                     swap(*it,*it_next);
                 }
-                
+
             }
             if (cnt0 == 0) break;                                                 // already sorted
         }
         return *this;
     }
-    
+
     template <typename T>
     opr_prod<T> &opr_prod<T>::transform(const std::vector<uint32_t> &plan)
     {
         if (q_zero() || q_prop_identity()) return *this;
-        
+
         for (auto it = mat_prod.begin(); it != mat_prod.end(); it++) it->site = plan[it->site];
         bubble_sort();
         return *this;
     }
-    
+
     template <typename T>
     opr_prod<T> &opr_prod<T>::operator*=(opr<T> rhs)
     {
@@ -653,7 +653,7 @@ namespace qbasis {
         }
         return *this;
     }
-    
+
     template <typename T>
     opr_prod<T> &opr_prod<T>::operator*=(opr_prod<T> rhs)
     {
@@ -678,15 +678,15 @@ namespace qbasis {
         }
         return *this;
     }
-    
+
     template <typename T>
     opr_prod<T> &opr_prod<T>::operator*=(const T &rhs)
     {
         coeff *= rhs;
         return *this;
     }
-    
-    
+
+
     template <typename T>
     void swap(opr_prod<T> &lhs, opr_prod<T> &rhs)
     {
@@ -694,7 +694,7 @@ namespace qbasis {
         swap(lhs.coeff, rhs.coeff);
         swap(lhs.mat_prod, rhs.mat_prod);
     }
-    
+
     template <typename T>
     bool operator==(const opr_prod<T> &lhs, const opr_prod<T> &rhs)
     {
@@ -704,13 +704,13 @@ namespace qbasis {
             return lhs.mat_prod == rhs.mat_prod;
         }
     }
-    
+
     template <typename T>
     bool operator!=(const opr_prod<T> &lhs, const opr_prod<T> &rhs)
     {
         return !(lhs == rhs);
     }
-    
+
     template <typename T>
     bool operator<(const opr_prod<T> &lhs, const opr_prod<T> &rhs)
     {
@@ -725,7 +725,7 @@ namespace qbasis {
             return lhs.mat_prod < rhs.mat_prod;
         }
     }
-    
+
     template <typename T>
     opr_prod<T> operator*(const opr_prod<T> &lhs, const opr_prod<T> &rhs)
     {
@@ -733,7 +733,7 @@ namespace qbasis {
         prod *= rhs;
         return prod;
     }
-    
+
     template <typename T>
     opr_prod<T> operator*(const opr_prod<T> &lhs, const opr<T> &rhs)
     {
@@ -741,7 +741,7 @@ namespace qbasis {
         prod *= rhs;
         return prod;
     }
-    
+
     template <typename T>
     opr_prod<T> operator*(const opr<T> &lhs, const opr_prod<T> &rhs)
     {
@@ -749,7 +749,7 @@ namespace qbasis {
         prod *= rhs;
         return prod;
     }
-    
+
     template <typename T>
     opr_prod<T> operator*(const opr_prod<T> &lhs, const T &rhs)
     {
@@ -757,7 +757,7 @@ namespace qbasis {
         prod *= rhs;
         return prod;
     }
-    
+
     template <typename T>
     opr_prod<T> operator*(const T &lhs, const opr_prod<T> &rhs)
     {
@@ -765,7 +765,7 @@ namespace qbasis {
         prod *= lhs;
         return prod;
     }
-    
+
     template <typename T>
     opr_prod<T> operator*(const opr<T> &lhs, const opr<T> &rhs)
     {
@@ -773,7 +773,7 @@ namespace qbasis {
         prod *= rhs;
         return prod;
     }
-    
+
     // ----------------- implementation of class mopr ------------------------
     template <typename T>
     mopr<T>::mopr(const opr<T> &ele)
@@ -784,7 +784,7 @@ namespace qbasis {
             mats.emplace_back(ele);
         }
     }
-    
+
     template <typename T>
     mopr<T>::mopr(const opr_prod<T> &ele)
     {
@@ -794,7 +794,7 @@ namespace qbasis {
             mats = std::list<opr_prod<T>>(1, ele);
         }
     }
-    
+
     template <typename T>
     void mopr<T>::prt() const
     {
@@ -809,7 +809,7 @@ namespace qbasis {
             std::cout << std::endl;
         }
     }
-    
+
     template <typename T>
     bool mopr<T>::q_diagonal() const
     {
@@ -819,7 +819,7 @@ namespace qbasis {
         }
         return true;
     }
-    
+
     template <typename T>
     opr_prod<T> &mopr<T>::operator[](uint32_t n)
     {
@@ -829,7 +829,7 @@ namespace qbasis {
         for (decltype(n) i = 0; i < n; i++) ++it;
         return *it;
     }
-    
+
     template <typename T>
     const opr_prod<T> &mopr<T>::operator[](uint32_t n) const
     {
@@ -839,7 +839,7 @@ namespace qbasis {
         for (decltype(n) i = 0; i < n; i++) ++it;
         return *it;
     }
-    
+
     template <typename T>
     mopr<T> &mopr<T>::simplify()
     {
@@ -864,28 +864,28 @@ namespace qbasis {
         }
         return *this;
     }
-    
+
     template <typename T>
     mopr<T> &mopr<T>::negative()
     {
         for (auto &ele : mats) ele.negative();
         return *this;
     }
-    
+
     template <typename T>
     mopr<T> &mopr<T>::dagger()
     {
         for (auto &ele : mats) ele.dagger();
         return *this;
     }
-    
+
     template <typename T>
     mopr<T> &mopr<T>::transform(const std::vector<uint32_t> &plan)
     {
         for (auto &ele: mats) ele.transform(plan);
         return *this;
     }
-    
+
     template <typename T>
     mopr<T> &mopr<T>::operator+=(opr<T> rhs)
     {
@@ -895,7 +895,7 @@ namespace qbasis {
         (*this) += opr_prod<T>(prefactor * rhs);
         return *this;
     }
-    
+
     template <typename T>
     mopr<T> &mopr<T>::operator+=(opr_prod<T> rhs)
     {
@@ -922,7 +922,7 @@ namespace qbasis {
         }
         return *this;
     }
-    
+
     template <typename T>
     mopr<T> &mopr<T>::operator+=(mopr<T> rhs)
     {
@@ -934,28 +934,28 @@ namespace qbasis {
         for (auto &ele : rhs.mats) (*this) += ele;
         return *this;
     }
-    
+
     template <typename T>
     mopr<T> &mopr<T>::operator-=(opr<T> rhs)
     {
         (*this) += rhs.negative();
         return *this;
     }
-    
+
     template <typename T>
     mopr<T> &mopr<T>::operator-=(opr_prod<T> rhs)
     {
         (*this) += rhs.negative();
         return *this;
     }
-    
+
     template <typename T>
     mopr<T> &mopr<T>::operator-=(mopr<T> rhs)
     {
         (*this) += rhs.negative();
         return *this;
     }
-    
+
     template <typename T>
     mopr<T> &mopr<T>::operator*=(opr<T> rhs)
     {
@@ -970,7 +970,7 @@ namespace qbasis {
         }
         return *this;
     }
-    
+
     template <typename T>
     mopr<T> &mopr<T>::operator*=(opr_prod<T> rhs)
     {
@@ -985,7 +985,7 @@ namespace qbasis {
         }
         return *this;
     }
-    
+
     template <typename T>
     mopr<T> &mopr<T>::operator*=(mopr<T> rhs)
     {
@@ -996,8 +996,8 @@ namespace qbasis {
         swap(*this, sum);
         return *this;
     }
-    
-    
+
+
     template <typename T>
     mopr<T> &mopr<T>::operator*=(const T &rhs)
     {
@@ -1008,26 +1008,26 @@ namespace qbasis {
         for (auto &ele : mats) ele *= rhs;
         return *this;
     }
-    
+
     template <typename T>
     void swap(mopr<T> &lhs, mopr<T> &rhs)
     {
         using std::swap;
         swap(lhs.mats, rhs.mats);
     }
-    
+
     template <typename T>
     bool operator==(const mopr<T> &lhs, const mopr<T> &rhs)
     {
         return lhs.mats == rhs.mats;
     }
-    
+
     template <typename T>
     bool operator!=(const mopr<T> &lhs, const mopr<T> &rhs)
     {
         return lhs.mats != rhs.mats;
     }
-    
+
     template <typename T>
     mopr<T> operator+(const mopr<T> &lhs, const mopr<T> &rhs)
     {
@@ -1035,7 +1035,7 @@ namespace qbasis {
         sum += rhs;
         return sum;
     }
-    
+
     template <typename T>
     mopr<T> operator+(const mopr<T> &lhs, const opr_prod<T> &rhs)
     {
@@ -1043,7 +1043,7 @@ namespace qbasis {
         sum += rhs;
         return sum;
     }
-    
+
     template <typename T>
     mopr<T> operator+(const opr_prod<T> &lhs, const mopr<T> &rhs)
     {
@@ -1051,7 +1051,7 @@ namespace qbasis {
         sum += lhs;
         return sum;
     }
-    
+
     template <typename T>
     mopr<T> operator+(const mopr<T> &lhs, const opr<T> &rhs)
     {
@@ -1059,7 +1059,7 @@ namespace qbasis {
         sum += rhs;
         return sum;
     }
-    
+
     template <typename T>
     mopr<T> operator+(const opr<T> &lhs, const mopr<T> &rhs)
     {
@@ -1067,7 +1067,7 @@ namespace qbasis {
         sum += lhs;
         return sum;
     }
-    
+
     template <typename T>
     mopr<T> operator+(const opr_prod<T> &lhs, const opr_prod<T> &rhs)
     {
@@ -1075,7 +1075,7 @@ namespace qbasis {
         sum += rhs;
         return sum;
     }
-    
+
     template <typename T>
     mopr<T> operator+(const opr_prod<T> &lhs, const opr<T> &rhs)
     {
@@ -1083,7 +1083,7 @@ namespace qbasis {
         sum += rhs;
         return sum;
     }
-    
+
     template <typename T>
     mopr<T> operator+(const opr<T> &lhs, const opr_prod<T> &rhs)
     {
@@ -1091,7 +1091,7 @@ namespace qbasis {
         sum += lhs;
         return sum;
     }
-    
+
     template <typename T>
     mopr<T> operator+(const opr<T> &lhs, const opr<T> &rhs)
     {
@@ -1099,7 +1099,7 @@ namespace qbasis {
         sum += rhs;
         return sum;
     }
-    
+
     template <typename T>
     mopr<T> operator-(const mopr<T> &lhs, const mopr<T> &rhs)
     {
@@ -1107,7 +1107,7 @@ namespace qbasis {
         dif -= rhs;
         return dif;
     }
-    
+
     template <typename T>
     mopr<T> operator-(const mopr<T> &lhs, const opr_prod<T> &rhs)
     {
@@ -1115,7 +1115,7 @@ namespace qbasis {
         dif -= rhs;
         return dif;
     }
-    
+
     template <typename T>
     mopr<T> operator-(const opr_prod<T> &lhs, const mopr<T> &rhs)
     {
@@ -1124,7 +1124,7 @@ namespace qbasis {
         dif += lhs;
         return dif;
     }
-    
+
     template <typename T>
     mopr<T> operator-(const mopr<T> &lhs, const opr<T> &rhs)
     {
@@ -1132,7 +1132,7 @@ namespace qbasis {
         dif -= rhs;
         return dif;
     }
-    
+
     template <typename T>
     mopr<T> operator-(const opr<T> &lhs, const mopr<T> &rhs)
     {
@@ -1141,7 +1141,7 @@ namespace qbasis {
         dif += lhs;
         return dif;
     }
-    
+
     template <typename T>
     mopr<T> operator-(const opr_prod<T> &lhs, const opr_prod<T> &rhs)
     {
@@ -1149,7 +1149,7 @@ namespace qbasis {
         dif -= rhs;
         return dif;
     }
-    
+
     template <typename T>
     mopr<T> operator-(const opr_prod<T> &lhs, const opr<T> &rhs)
     {
@@ -1157,7 +1157,7 @@ namespace qbasis {
         dif -= rhs;
         return dif;
     }
-    
+
     template <typename T>
     mopr<T> operator-(const opr<T> &lhs, const opr_prod<T> &rhs)
     {
@@ -1166,7 +1166,7 @@ namespace qbasis {
         dif += lhs;
         return dif;
     }
-    
+
     template <typename T>
     mopr<T> operator-(const opr<T> &lhs, const opr<T> &rhs)
     {
@@ -1174,7 +1174,7 @@ namespace qbasis {
         dif -= rhs;
         return dif;
     }
-    
+
     template <typename T>
     mopr<T> operator*(const mopr<T> &lhs, const mopr<T> &rhs)
     {
@@ -1182,7 +1182,7 @@ namespace qbasis {
         prod *= rhs;
         return prod;
     }
-    
+
     template <typename T>
     mopr<T> operator*(const mopr<T> &lhs, const opr_prod<T> &rhs)
     {
@@ -1190,7 +1190,7 @@ namespace qbasis {
         prod *= rhs;
         return prod;
     }
-    
+
     template <typename T>
     mopr<T> operator*(const opr_prod<T> &lhs, const mopr<T> &rhs)
     {
@@ -1198,7 +1198,7 @@ namespace qbasis {
         prod *= rhs;
         return prod;
     }
-    
+
     template <typename T>
     mopr<T> operator*(const mopr<T> &lhs, const opr<T> &rhs)
     {
@@ -1206,7 +1206,7 @@ namespace qbasis {
         prod *= rhs;
         return prod;
     }
-    
+
     template <typename T>
     mopr<T> operator*(const opr<T> &lhs, const mopr<T> &rhs)
     {
@@ -1214,7 +1214,7 @@ namespace qbasis {
         prod *= rhs;
         return prod;
     }
-    
+
     template <typename T>
     mopr<T> operator*(const T &lhs, const mopr<T> &rhs)
     {
@@ -1222,7 +1222,7 @@ namespace qbasis {
         prod *= lhs;
         return prod;
     }
-    
+
     template <typename T>
     mopr<T> operator*(const mopr<T> &lhs, const T &rhs)
     {
@@ -1230,149 +1230,149 @@ namespace qbasis {
         prod *= rhs;
         return prod;
     }
-    
-    
+
+
     // Explicit instantiation, so the class definition can be put in this file
     template class opr<double>;
     template class opr<std::complex<double>>;
-    
+
     template void swap(opr<double>&, opr<double>&);
     template void swap(opr<std::complex<double>>&, opr<std::complex<double>>&);
-    
+
     template bool operator==(const opr<double>&, const opr<double>&);
     template bool operator==(const opr<std::complex<double>>&, const opr<std::complex<double>>&);
-    
+
     template bool operator!=(const opr<double>&, const opr<double>&);
     template bool operator!=(const opr<std::complex<double>>&, const opr<std::complex<double>>&);
-    
+
     template bool operator<(const opr<double>&, const opr<double>&);
     template bool operator<(const opr<std::complex<double>>&, const opr<std::complex<double>>&);
-    
+
     template opr<double> operator*(const double&, const opr<double>&);
     template opr<std::complex<double>> operator*(const std::complex<double>&, const opr<std::complex<double>>&);
-    
+
     template opr<double> operator*(const opr<double>&, const double&);
     template opr<std::complex<double>> operator*(const opr<std::complex<double>>&, const std::complex<double>&);
-    
+
     template opr<double> normalize(const opr<double>&, double&);
     template opr<std::complex<double>> normalize(const opr<std::complex<double>>&, std::complex<double>&);
-    
+
     // explicit instantiation of opr_prod
     template class opr_prod<double>;
     template class opr_prod<std::complex<double>>;
-    
+
     template void swap(opr_prod<double>&, opr_prod<double>&);
     template void swap(opr_prod<std::complex<double>>&, opr_prod<std::complex<double>>&);
-    
+
     template bool operator==(const opr_prod<double>&, const opr_prod<double>&);
     template bool operator==(const opr_prod<std::complex<double>>&, const opr_prod<std::complex<double>>&);
-    
+
     template bool operator!=(const opr_prod<double>&, const opr_prod<double>&);
     template bool operator!=(const opr_prod<std::complex<double>>&, const opr_prod<std::complex<double>>&);
-    
+
     template bool operator<(const opr_prod<double>&, const opr_prod<double>&);
     template bool operator<(const opr_prod<std::complex<double>>&, const opr_prod<std::complex<double>>&);
-    
+
     template opr_prod<double> operator*(const opr_prod<double>&, const opr_prod<double>&);
     template opr_prod<std::complex<double>> operator*(const opr_prod<std::complex<double>>&, const opr_prod<std::complex<double>>&);
-    
+
     template opr_prod<double> operator*(const opr_prod<double>&, const opr<double>&);
     template opr_prod<std::complex<double>> operator*(const opr_prod<std::complex<double>>&, const opr<std::complex<double>>&);
-    
+
     template opr_prod<double> operator*(const opr<double>&, const opr_prod<double>&);
     template opr_prod<std::complex<double>> operator*(const opr<std::complex<double>>&, const opr_prod<std::complex<double>>&);
-    
+
     template opr_prod<double> operator*(const opr_prod<double>&, const double&);
     template opr_prod<std::complex<double>> operator*(const opr_prod<std::complex<double>>&, const std::complex<double>&);
-    
+
     template opr_prod<double> operator*(const double&, const opr_prod<double>&);
     template opr_prod<std::complex<double>> operator*(const std::complex<double>&, const opr_prod<std::complex<double>>&);
-    
+
     template opr_prod<double> operator*(const opr<double>&, const opr<double>&);
     template opr_prod<std::complex<double>> operator*(const opr<std::complex<double>>&, const opr<std::complex<double>>&);
-    
+
     // explicit instantiation of mopr
     template class mopr<double>;
     template class mopr<std::complex<double>>;
-    
+
     template void swap(mopr<double>&, mopr<double>&);
     template void swap(mopr<std::complex<double>>&, mopr<std::complex<double>>&);
-    
+
     template bool operator==(const mopr<double>&, const mopr<double>&);
     template bool operator==(const mopr<std::complex<double>>&, const mopr<std::complex<double>>&);
-    
+
     template mopr<double> operator+(const mopr<double>&, const mopr<double>&);
     template mopr<std::complex<double>> operator+(const mopr<std::complex<double>>&, const mopr<std::complex<double>>&);
-    
+
     template mopr<double> operator+(const mopr<double>&, const opr_prod<double>&);
     template mopr<std::complex<double>> operator+(const mopr<std::complex<double>>&, const opr_prod<std::complex<double>>&);
-    
+
     template mopr<double> operator+(const opr_prod<double>&, const mopr<double>&);
     template mopr<std::complex<double>> operator+(const opr_prod<std::complex<double>>&, const mopr<std::complex<double>>&);
-    
+
     template mopr<double> operator+(const mopr<double>&, const opr<double>&);
     template mopr<std::complex<double>> operator+(const mopr<std::complex<double>>&, const opr<std::complex<double>>&);
-    
+
     template mopr<double> operator+(const opr<double>&, const mopr<double>&);
     template mopr<std::complex<double>> operator+(const opr<std::complex<double>>&, const mopr<std::complex<double>>&);
-    
+
     template mopr<double> operator+(const opr_prod<double>&, const opr_prod<double>&);
     template mopr<std::complex<double>> operator+(const opr_prod<std::complex<double>>&, const opr_prod<std::complex<double>>&);
-    
+
     template mopr<double> operator+(const opr_prod<double>&, const opr<double>&);
     template mopr<std::complex<double>> operator+(const opr_prod<std::complex<double>>&, const opr<std::complex<double>>&);
-    
+
     template mopr<double> operator+(const opr<double>&, const opr_prod<double>&);
     template mopr<std::complex<double>> operator+(const opr<std::complex<double>>&, const opr_prod<std::complex<double>>&);
-    
+
     template mopr<double> operator+(const opr<double>&, const opr<double>&);
     template mopr<std::complex<double>> operator+(const opr<std::complex<double>>&, const opr<std::complex<double>>&);
-    
+
     template mopr<double> operator-(const mopr<double>&, const mopr<double>&);
     template mopr<std::complex<double>> operator-(const mopr<std::complex<double>>&, const mopr<std::complex<double>>&);
-    
+
     template mopr<double> operator-(const mopr<double>&, const opr_prod<double>&);
     template mopr<std::complex<double>> operator-(const mopr<std::complex<double>>&, const opr_prod<std::complex<double>>&);
-    
+
     template mopr<double> operator-(const opr_prod<double>&, const mopr<double>&);
     template mopr<std::complex<double>> operator-(const opr_prod<std::complex<double>>&, const mopr<std::complex<double>>&);
-    
+
     template mopr<double> operator-(const mopr<double>&, const opr<double>&);
     template mopr<std::complex<double>> operator-(const mopr<std::complex<double>>&, const opr<std::complex<double>>&);
-    
+
     template mopr<double> operator-(const opr<double>&, const mopr<double>&);
     template mopr<std::complex<double>> operator-(const opr<std::complex<double>>&, const mopr<std::complex<double>>&);
-    
+
     template mopr<double> operator-(const opr_prod<double>&, const opr_prod<double>&);
     template mopr<std::complex<double>> operator-(const opr_prod<std::complex<double>>&, const opr_prod<std::complex<double>>&);
-    
+
     template mopr<double> operator-(const opr_prod<double>&, const opr<double>&);
     template mopr<std::complex<double>> operator-(const opr_prod<std::complex<double>>&, const opr<std::complex<double>>&);
-    
+
     template mopr<double> operator-(const opr<double>&, const opr_prod<double>&);
     template mopr<std::complex<double>> operator-(const opr<std::complex<double>>&, const opr_prod<std::complex<double>>&);
-    
+
     template mopr<double> operator-(const opr<double>&, const opr<double>&);
     template mopr<std::complex<double>> operator-(const opr<std::complex<double>>&, const opr<std::complex<double>>&);
-    
+
     template mopr<double> operator*(const mopr<double>&, const mopr<double>&);
     template mopr<std::complex<double>> operator*(const mopr<std::complex<double>>&, const mopr<std::complex<double>>&);
-    
+
     template mopr<double> operator*(const mopr<double>&, const opr_prod<double>&);
     template mopr<std::complex<double>> operator*(const mopr<std::complex<double>>&, const opr_prod<std::complex<double>>&);
-    
+
     template mopr<double> operator*(const opr_prod<double>&, const mopr<double>&);
     template mopr<std::complex<double>> operator*(const opr_prod<std::complex<double>>&, const mopr<std::complex<double>>&);
-    
+
     template mopr<double> operator*(const mopr<double>&, const opr<double>&);
     template mopr<std::complex<double>> operator*(const mopr<std::complex<double>>&, const opr<std::complex<double>>&);
-    
+
     template mopr<double> operator*(const opr<double>&, const mopr<double>&);
     template mopr<std::complex<double>> operator*(const opr<std::complex<double>>&, const mopr<std::complex<double>>&);
-    
+
     template mopr<double> operator*(const double&, const mopr<double>&);
     template mopr<std::complex<double>> operator*(const std::complex<double>&, const mopr<std::complex<double>>&);
-    
+
     template mopr<double> operator*(const mopr<double>&, const double&);
     template mopr<std::complex<double>> operator*(const mopr<std::complex<double>>&, const std::complex<double>&);
 

@@ -42,7 +42,7 @@ namespace qbasis {
     const double opr_precision = 1e-12;
     const double sparse_precision = 1e-14;
     const double lanczos_precision = 1e-12;
-    
+
     void initialize(const bool &enable_ckpt_)
     {
         std::cout << "Hostname:               " << ip::host_name() << std::endl;
@@ -80,9 +80,9 @@ namespace qbasis {
     #else
         std::cout << "OMP:                    disabled." << std::endl << std::endl;
     #endif
-        
+
         std::cout << "Boost lib version:      " << BOOST_LIB_VERSION << std::endl << std::endl;
-        
+
         enable_ckpt = enable_ckpt_;
         std::cout << "Checkpoint/Restart:     " << (enable_ckpt?"ON":"OFF") << std::endl;
         std::cout << "=====================================" << std::endl << std::endl;
@@ -105,7 +105,7 @@ namespace qbasis {
         res += buffer;
         return res;
     }
-    
+
     template <typename T1, typename T2>
     T2 int_pow(const T1 &base, const T1 &index)
     {
@@ -116,7 +116,7 @@ namespace qbasis {
     template uint64_t int_pow(const uint8_t &base, const uint8_t &index);
     template uint64_t int_pow(const uint32_t &base, const uint32_t &index);
     template MKL_INT int_pow(const MKL_INT &base, const MKL_INT &index);
-    
+
     template <typename T1, typename T2>
     T2 dynamic_base(const std::vector<T1> &nums, const std::vector<T1> &base)
     {
@@ -139,7 +139,7 @@ namespace qbasis {
     template uint32_t dynamic_base(const std::vector<uint32_t> &nums, const std::vector<uint32_t> &base);
     //template uint64_t dynamic_base(const std::vector<uint64_t> &nums, const std::vector<uint64_t> &base);
     template MKL_INT dynamic_base(const std::vector<MKL_INT> &nums, const std::vector<MKL_INT> &base);
-    
+
     template <typename T1, typename T2>
     void dynamic_base_vec2num(const MKL_INT &len, const T1* base, const T1* vec, T2 &num)
     {
@@ -157,7 +157,7 @@ namespace qbasis {
     }
     template void dynamic_base_vec2num(const MKL_INT &len, const uint8_t* base, const uint8_t* vec, uint64_t &num);
     template void dynamic_base_vec2num(const MKL_INT &len, const uint64_t* base, const uint64_t* vec, uint64_t &num);
-    
+
     template <typename T1, typename T2>
     std::vector<T1> dynamic_base(const T2 &total, const std::vector<T1> &base)
     {
@@ -182,7 +182,7 @@ namespace qbasis {
     template std::vector<uint8_t> dynamic_base(const uint64_t &total, const std::vector<uint8_t> &base);
     template std::vector<uint32_t> dynamic_base(const uint32_t &total, const std::vector<uint32_t> &base);
     template std::vector<uint64_t> dynamic_base(const uint64_t &total, const std::vector<uint64_t> &base);
-    
+
     template <typename T>
     std::vector<T> dynamic_base_plus1(const std::vector<T> &nums, const std::vector<T> &base)
     {
@@ -203,7 +203,7 @@ namespace qbasis {
     template std::vector<MKL_INT> dynamic_base_plus1(const std::vector<MKL_INT> &nums, const std::vector<MKL_INT> &base);
     template std::vector<uint32_t> dynamic_base_plus1(const std::vector<uint32_t> &nums, const std::vector<uint32_t> &base);
     template std::vector<uint64_t> dynamic_base_plus1(const std::vector<uint64_t> &nums, const std::vector<uint64_t> &base);
-    
+
     template <typename T>
     bool dynamic_base_maximized(const std::vector<T> &nums, const std::vector<T> &base)
     {
@@ -219,7 +219,7 @@ namespace qbasis {
     template bool dynamic_base_maximized(const std::vector<uint8_t> &nums, const std::vector<uint8_t> &base);
     template bool dynamic_base_maximized(const std::vector<uint32_t> &nums, const std::vector<uint32_t> &base);
     template bool dynamic_base_maximized(const std::vector<uint64_t> &nums, const std::vector<uint64_t> &base);
-    
+
     template <typename T>
     bool dynamic_base_overflow(const std::vector<T> &nums, const std::vector<T> &base)
     {
@@ -233,8 +233,8 @@ namespace qbasis {
     template bool dynamic_base_overflow(const std::vector<uint8_t> &nums, const std::vector<uint8_t> &base);
     template bool dynamic_base_overflow(const std::vector<uint32_t> &nums, const std::vector<uint32_t> &base);
     template bool dynamic_base_overflow(const std::vector<uint64_t> &nums, const std::vector<uint64_t> &base);
-    
-    
+
+
     template <typename T>
     bool is_sorted_norepeat(const std::vector<T> &array)
     {
@@ -250,7 +250,7 @@ namespace qbasis {
     template bool is_sorted_norepeat(const std::vector<uint32_t> &array);
     template bool is_sorted_norepeat(const std::vector<mbasis_elem> &array);
     template bool is_sorted_norepeat(const std::vector<std::vector<uint32_t>> &array);
-    
+
     template <typename T1, typename T2>
     T2 binary_search(const std::vector<T1> &array, const T1 &val,
                           const T2 &bgn, const T2 &end)
@@ -280,8 +280,8 @@ namespace qbasis {
                                    const MKL_INT &bgn, const MKL_INT &end);
     template MKL_INT binary_search(const std::vector<MKL_INT> &array, const MKL_INT &val,
                                    const MKL_INT &bgn, const MKL_INT &end);
-    
-    
+
+
     template <typename T>
     int bubble_sort(std::vector<T> &array, const int &bgn, const int &end)
     {
@@ -291,7 +291,7 @@ namespace qbasis {
         assert(end > 0 && end <= static_cast<int>(array.size()));
         int len = end - bgn;
         int cnt = 0;
-        
+
         using std::swap;
         for (int j = 1; j < len; j++) {  // e.g. if len = 3, need bubble sort with 2 loops
             int cnt0 = 0;
@@ -311,7 +311,7 @@ namespace qbasis {
     }
     template int bubble_sort(std::vector<uint32_t> &array, const int &bgn, const int &end);
     template int bubble_sort(std::vector<MKL_INT> &array, const int &bgn, const int &end);
-    
+
     template <typename T>
     T continued_fraction(T a[], T b[], const MKL_INT &len)
     {
@@ -321,8 +321,8 @@ namespace qbasis {
     }
     template double continued_fraction(double a[], double b[], const MKL_INT &len);
     template std::complex<double> continued_fraction(std::complex<double> a[], std::complex<double> b[], const MKL_INT &len);
-    
-    
+
+
     template <typename T>
     void vec_swap(const MKL_INT &n, T *x, T *y)
     {
@@ -331,8 +331,8 @@ namespace qbasis {
     }
     template void vec_swap(const MKL_INT &n, double *x, double *y);
     template void vec_swap(const MKL_INT &n, std::complex<double> *x, std::complex<double> *y);
-    
-    
+
+
     template <typename T>
     void vec_zeros(const MKL_INT &n, T *x)
     {
@@ -341,7 +341,7 @@ namespace qbasis {
     }
     template void vec_zeros(const MKL_INT &n, double *x);
     template void vec_zeros(const MKL_INT &n, std::complex<double> *x);
-    
+
     template <typename T>
     void vec_randomize(const MKL_INT &n, T *x, const uint32_t &seed)
     {
@@ -360,7 +360,7 @@ namespace qbasis {
     }
     template void vec_randomize(const MKL_INT &n, double *x, const uint32_t &seed);
     template void vec_randomize(const MKL_INT &n, std::complex<double> *x, const uint32_t &seed);
-    
+
 
     template <typename T>
     int vec_disk_read(const std::string &filename, MKL_INT n, T *x)
@@ -370,7 +370,7 @@ namespace qbasis {
         boost::crc_32_type res_crc;
         uint64_t filesize_ideal = sizeof(MKL_INT) + sizeof(T) * n + sizeof(decltype(res_crc.checksum()));
         if (fs::file_size(fs::path(filename)) != filesize_ideal) return 1;
-        
+
         std::ifstream fin(filename, std::ios::in | std::ios::binary);
         MKL_INT n_check;
         fin.read(reinterpret_cast<char*>(&n_check), sizeof(MKL_INT));
@@ -378,14 +378,14 @@ namespace qbasis {
             return 1;
         }
         res_crc.process_bytes(&n, sizeof(MKL_INT));
-        
+
         const uint64_t buffer_each_size  = 1024*1024;                            // 1M per chunk
         if (n > 0) {
             uint64_t buffer_total_size = static_cast<uint64_t>(n) * sizeof(T);   // in terms of bytes
             uint64_t total_chunks = buffer_total_size / buffer_each_size;
             uint64_t size_last_chunk = (buffer_total_size - 1) % buffer_each_size + 1;
             if (size_last_chunk != buffer_each_size) total_chunks += 1;
-            
+
             char* pos = reinterpret_cast<char*>(x);
             for (uint64_t chunk = 1; chunk < total_chunks; chunk++) {
                 fin.read(pos, buffer_each_size);
@@ -395,12 +395,12 @@ namespace qbasis {
             fin.read(pos, size_last_chunk);
             res_crc.process_bytes(pos, size_last_chunk);
         }
-        
+
         auto checksum = res_crc.checksum();
         decltype(checksum) checksum_check;
         fin.read(reinterpret_cast<char*>(&checksum_check), sizeof(decltype(checksum_check)));
         fin.close();
-        
+
         if (checksum == checksum_check) {
             return 0;
         } else {
@@ -409,7 +409,7 @@ namespace qbasis {
     }
     template int vec_disk_read(const std::string &filename, MKL_INT n, double *x);
     template int vec_disk_read(const std::string &filename, MKL_INT n, std::complex<double> *x);
-    
+
     template <typename T>
     int vec_disk_write(const std::string &filename, MKL_INT n, T *x)
     {
@@ -418,14 +418,14 @@ namespace qbasis {
         boost::crc_32_type res_crc;
         fout.write(reinterpret_cast<char*>(&n), sizeof(MKL_INT));
         res_crc.process_bytes(&n, sizeof(MKL_INT));
-        
+
         const uint64_t buffer_each_size  = 1024*1024;                            // 1M per chunk
         if (n > 0) {
             uint64_t buffer_total_size = static_cast<uint64_t>(n) * sizeof(T);   // in terms of bytes
             uint64_t total_chunks = buffer_total_size / buffer_each_size;
             uint64_t size_last_chunk = (buffer_total_size - 1) % buffer_each_size + 1;
             if (size_last_chunk != buffer_each_size) total_chunks += 1;
-            
+
             char* pos = reinterpret_cast<char*>(x);
             for (uint64_t chunk = 1; chunk < total_chunks; chunk++) {
                 fout.write(pos, buffer_each_size);
@@ -435,7 +435,7 @@ namespace qbasis {
             fout.write(pos, size_last_chunk);
             res_crc.process_bytes(pos, size_last_chunk);
         }
-        
+
         auto checksum = res_crc.checksum();
         fout.write(reinterpret_cast<char*>(&checksum), sizeof(decltype(checksum)));
         fout.close();
@@ -443,13 +443,13 @@ namespace qbasis {
     }
     template int vec_disk_write(const std::string &filename, MKL_INT n, double *x);
     template int vec_disk_write(const std::string &filename, MKL_INT n, std::complex<double> *x);
-    
-    
+
+
     int basis_disk_read(const std::string &filename, std::vector<mbasis_elem> &basis)
     {
         if (! fs::exists(fs::path(filename))) return 1;
         boost::crc_32_type res_crc;
-        
+
         std::ifstream fin(filename, std::ios::in | std::ios::binary);
         MKL_INT n;
         fin.read(reinterpret_cast<char*>(&n), sizeof(MKL_INT));
@@ -459,7 +459,7 @@ namespace qbasis {
         }
         res_crc.process_bytes(&n, sizeof(MKL_INT));
         basis.resize(n);
-        
+
         uint16_t total_bytes;
         fin.read(reinterpret_cast<char*>(&total_bytes), 2);
         if (total_bytes < 3) {
@@ -467,13 +467,13 @@ namespace qbasis {
             return 1;
         }
         res_crc.process_bytes(&total_bytes, 2);
-        
+
         uint64_t filesize_ideal = sizeof(MKL_INT) + 2 + total_bytes * n + sizeof(decltype(res_crc.checksum()));
         if (fs::file_size(fs::path(filename)) != filesize_ideal) {
             fin.close();
             return 1;
         }
-        
+
         for (MKL_INT j = 0; j < n; j++) {
             if (basis[j].mbits != nullptr) free(basis[j].mbits);
             basis[j].mbits = static_cast<uint8_t*>(malloc(total_bytes * sizeof(uint8_t)));
@@ -481,19 +481,19 @@ namespace qbasis {
             fin.read(pos, total_bytes);
             res_crc.process_bytes(pos, total_bytes);
         }
-        
+
         auto checksum = res_crc.checksum();
         decltype(checksum) checksum_check;
         fin.read(reinterpret_cast<char*>(&checksum_check), sizeof(decltype(checksum_check)));
         fin.close();
-        
+
         if (checksum == checksum_check) {
             return 0;
         } else {
             return 1;
         }
     }
-    
+
     int basis_disk_write(const std::string &filename, const std::vector<mbasis_elem> &basis)
     {
         auto n = static_cast<MKL_INT>(basis.size());
@@ -506,21 +506,21 @@ namespace qbasis {
         res_crc.process_bytes(&n, sizeof(MKL_INT));
         fout.write(reinterpret_cast<char*>(&total_bytes), 2);
         res_crc.process_bytes(&total_bytes, 2);
-        
+
         for (MKL_INT j = 0; j < n; j++) {
             char* pos = reinterpret_cast<char*>(basis[j].mbits);
             assert(pos != nullptr);
             fout.write(pos, total_bytes);
             res_crc.process_bytes(pos, total_bytes);
         }
-        
+
         auto checksum = res_crc.checksum();
         fout.write(reinterpret_cast<char*>(&checksum), sizeof(decltype(checksum)));
         fout.close();
         return 0;
     }
-    
-    
+
+
     //  -------------- Multi-dimensional array data structure ------------------
     template <typename T>
     multi_array<T>::multi_array(const std::vector<uint64_t> &linear_size_input):
@@ -533,7 +533,7 @@ namespace qbasis {
             size_ *= linear_size_[j];
         data = std::vector<T>(size_);
     }
-    
+
     template <typename T>
     multi_array<T>::multi_array(const std::vector<uint64_t> &linear_size_input, const T &element):
         dim_(linear_size_input.size()),
@@ -545,14 +545,14 @@ namespace qbasis {
             size_ *= linear_size_[j];
         data = std::vector<T>(size_, element);
     }
-    
+
     template <typename T>
     multi_array<T>& multi_array<T>::operator=(const T &element)
     {
         for (uint64_t j = 0; j < size_; j++) data[j] = element;
         return *this;
     }
-    
+
     template <typename T>
     T& multi_array<T>::index(const std::vector<uint64_t> &pos)
     {
@@ -569,7 +569,7 @@ namespace qbasis {
         res += pos[0];
         return data[res];
     }
-    
+
     template <typename T>
     const T& multi_array<T>::index(const std::vector<uint64_t> &pos) const
     {
@@ -586,7 +586,7 @@ namespace qbasis {
         res += pos[0];
         return data[res];
     }
-    
+
     template <typename T>
     void swap(multi_array<T> &lhs, multi_array<T> &rhs)
     {
@@ -596,20 +596,20 @@ namespace qbasis {
         swap(lhs.linear_size_, rhs.linear_size_);
         swap(lhs.data, rhs.data);
     }
-    
+
     // explicit instantiation
     template class multi_array<uint32_t>;
     template class multi_array<double>;
     //template class multi_array<std::vector<uint32_t>>;
     template class multi_array<std::pair<std::vector<uint32_t>,std::vector<uint32_t>>>;
-    
+
     template void swap(multi_array<uint32_t>&, multi_array<uint32_t>&);
     template void swap(multi_array<double>&, multi_array<double>&);
     template void swap(multi_array<std::pair<std::vector<uint32_t>,std::vector<uint32_t>>>&,
                        multi_array<std::pair<std::vector<uint32_t>,std::vector<uint32_t>>>&);
-    
-    
-    
+
+
+
     //  ----------------------- graph data structure ---------------------------
     void ALGraph::add_edge(const uint64_t &n1, const uint64_t &n2)
     {
@@ -619,7 +619,7 @@ namespace qbasis {
         vertices[n2].arcs.push_back(n1);
         arcnum++;
     }
-    
+
     void ALGraph::prt() const
     {
         for (uint64_t v = 0; v < vertices.size(); v++) {
@@ -630,13 +630,13 @@ namespace qbasis {
             std::cout << std::endl;
         }
     }
-    
+
     int ALGraph::BSF_set_JaJb(std::vector<MKL_INT> &ja, std::vector<MKL_INT> &jb)
     {
         MKL_INT magic = -19900917;
         for (MKL_INT & j : ja) j = magic;
         for (MKL_INT & j : jb) j = magic;
-        
+
         std::vector<bool> visited(vertices.size(),false);
         std::list<uint64_t> Q;
         for (uint64_t v = 0; v < vertices.size(); v++) {
@@ -680,6 +680,6 @@ namespace qbasis {
         }
         return 0;
     }
-    
+
 }
 

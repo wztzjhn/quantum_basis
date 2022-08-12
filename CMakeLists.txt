@@ -6,7 +6,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 
 # -- COMPILE OPTIONS -------------------------------------------
-
 # Performance/debug options
 set(GCC_COVERAGE_COMPILE_FLAGS "-Wall")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g ${GCC_COVERAGE_COMPILE_FLAGS}")
@@ -27,7 +26,6 @@ endif()
 
 
 # -- DEPENDENCIES -------------------------------------------
-
 #ARPACK
 find_package(ARPACK REQUIRED)
 include_directories(SYSTEM ${ARPACK_INCLUDE_DIRS})
@@ -63,7 +61,6 @@ add_subdirectory(src)
 
 
 # -- REPORT -------------------------------------------
-
 message("")
 message("Configuration results")
 message("---------------------")

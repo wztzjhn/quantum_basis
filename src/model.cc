@@ -66,10 +66,10 @@ inline std::complex<double> blas_dotc(const MKL_INT &n, const std::complex<doubl
 }
 
 namespace qbasis {
-    
+
     void ckpt_lanczos_clean();
     void ckpt_CG_clean();
-    
+
     template <typename T>
     model<T>::model(lattice latt, const uint32_t &num_secs, const double &fake_pos_):
                     matrix_free(true),
@@ -100,7 +100,7 @@ namespace qbasis {
         basis_coeff_deprec.resize(num_secs);
         basis_repr_deprec.resize(num_secs);
     }
-    
+
     template <typename T>
     uint32_t model<T>::local_dimension() const
     {
@@ -108,7 +108,7 @@ namespace qbasis {
         for (decltype(props.size()) j = 0; j < props.size(); j++) res *= props[j].dim_local;
         return res;
     }
-    
+
     template <typename T>
     void model<T>::add_Ham(const opr<T> &rhs)
     {
@@ -118,7 +118,7 @@ namespace qbasis {
             Ham_off_diag += rhs;
         }
     }
-    
+
     template <typename T>
     void model<T>::add_Ham(const opr_prod<T> &rhs)
     {
@@ -128,7 +128,7 @@ namespace qbasis {
             Ham_off_diag += rhs;
         }
     }
-    
+
     template <typename T>
     void model<T>::add_Ham(const mopr<T> &rhs)
     {
@@ -140,7 +140,7 @@ namespace qbasis {
             }
         }
     }
-    
+
     template <typename T>
     void model<T>::add_Ham_vrnl(const opr<T> &rhs)
     {
@@ -150,7 +150,7 @@ namespace qbasis {
             Ham_vrnl += rhs;
         }
     }
-    
+
     template <typename T>
     void model<T>::add_Ham_vrnl(const opr_prod<T> &rhs)
     {
@@ -160,7 +160,7 @@ namespace qbasis {
             Ham_vrnl += rhs;
         }
     }
-    
+
     template <typename T>
     void model<T>::add_Ham_vrnl(const mopr<T> &rhs)
     {
@@ -168,13 +168,13 @@ namespace qbasis {
             if (! rhs[j].q_diagonal()) Ham_vrnl += rhs[j];
         }
     }
-    
+
     template <typename T>
     void model<T>::switch_sec_mat(const uint32_t &sec_mat_)
     {
         sec_mat = sec_mat_;
     }
-    
+
     template <typename T>
     void model<T>::check_translation()
     {
@@ -188,7 +188,7 @@ namespace qbasis {
                 trans_sym.push_back(false);
             }
         }
-        
+
         uint32_t dim_spec = latt_parent.dimension_spec();
         if (dim_spec == latt_parent.dimension()) {
             assert(latt_parent.num_sublattice() % 2 == 0);
@@ -196,24 +196,24 @@ namespace qbasis {
         } else {
             dim_spec_involved = trans_sym[dim_spec];
         }
-        
+
         std::cout << std::endl;
     }
-    
+
     template <typename T>
     void model<T>::fill_Weisse_table()
     {
         latt_sub = divide_lattice(latt_parent);
-        
+
         check_translation();
-        
+
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         auto props_sub = props_sub_a;
-        
+
         groups_sub    = latt_sub.trans_subgroups(trans_sym);
         groups_parent = latt_parent.trans_subgroups(trans_sym);
-        
+
         std::cout << "------------------------------------" << std::endl;
         std::cout << "Generating sublattice full basis... " << std::endl;
         std::vector<mbasis_elem> basis_sub_full;
@@ -223,7 +223,7 @@ namespace qbasis {
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "Elapsed time for generating sublattice full basis: " << elapsed_seconds.count() << "s." << std::endl << std::endl;
         start = end;
-        
+
         std::cout << "Classifying sublattice basis... " << std::flush;
         classify_trans_full2rep(props_sub, basis_sub_full, latt_sub, trans_sym, basis_sub_repr, belong2rep_sub, dist2rep_sub);
         classify_trans_rep2group(props_sub, basis_sub_repr, latt_sub, trans_sym, groups_sub, omega_g_sub, belong2group_sub);
@@ -231,12 +231,12 @@ namespace qbasis {
         elapsed_seconds = end - start;
         std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
         start = end;
-        
-        // double checking correctness
+
+        // double check correctness
         uint64_t check_dim_sub_full = 0;
         for (decltype(basis_sub_repr.size()) j = 0; j < basis_sub_repr.size(); j++) check_dim_sub_full += omega_g_sub[belong2group_sub[j]];
         assert(check_dim_sub_full == static_cast<uint64_t>(basis_sub_full.size()));
-        
+
         std::cout << "Generating maps (ga,gb,ja,jb) -> (i,j) and (ga,gb,j) -> (w) ... " << std::flush;
         classify_Weisse_tables(props, props_sub, basis_sub_repr, latt_parent, trans_sym,
                                belong2rep_sub, dist2rep_sub, belong2group_sub, groups_parent, groups_sub,
@@ -246,8 +246,8 @@ namespace qbasis {
         std::cout << elapsed_seconds.count() << "s." << std::endl;
         std::cout << "====================================" << std::endl << std::endl;
     }
-    
-    
+
+
     // need further optimization! (for example, special treatment of dilute limit; special treatment of quantum numbers; quick sort of sign)
     template <typename T>
     void model<T>::enumerate_basis_full(std::vector<mopr<T>> conserve_lst,
@@ -255,21 +255,21 @@ namespace qbasis {
                                         const uint32_t &sec_full)
     {
         enumerate_basis<T>(props, basis_full[sec_full], conserve_lst, val_lst);
-        
+
         dim_full[sec_full] = static_cast<MKL_INT>(basis_full[sec_full].size());
-        
+
         sort_basis_Lin_order(props, basis_full[sec_full]);
-        
+
         fill_Lin_table(props, basis_full[sec_full], Lin_Ja_full[sec_full], Lin_Jb_full[sec_full]);
-        
-        if (Lin_Ja_full[sec_full].size() == 0 || Lin_Jb_full[sec_full].size() == 0) {
+
+        if (Lin_Ja_full[sec_full].empty() || Lin_Jb_full[sec_full].empty()) {
             std::cout << "Due to faliure of Lin Table construction, fall back to bisection index of basis." << std::endl;
             sort_basis_normal_order(basis_full[sec_full]);
         }
-        
+
     }
-    
-    
+
+
     template <typename T>
     void model<T>::enumerate_basis_repr(const std::vector<int> &momentum,
                                         std::vector<mopr<T>> conserve_lst,
@@ -279,16 +279,16 @@ namespace qbasis {
         assert(latt_parent.dimension() == static_cast<uint32_t>(momentum.size()));
         assert(conserve_lst.size() == val_lst.size());
         assert(Weisse_e_lt.size() > 0);
-        assert(basis_sub_repr.size() > 0);   // should be already generated when filling Weisse Tables
-        
+        assert(!basis_sub_repr.empty());   // should be already generated when filling Weisse Tables
+
         momenta[sec_repr] = momentum;
-        
+
         if (dim_spec_involved) {
             assert(Weisse_w_gt.size() == 0);
         } else {
             assert(Weisse_w_lt.size() == Weisse_w_gt.size());
         }
-        
+
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         auto L        = latt_parent.Linear_size();
@@ -302,15 +302,15 @@ namespace qbasis {
             }
         }
         std::cout << "):" << std::endl;
-        
+
         int num_threads = 1;
-        #pragma omp parallel
+        #pragma omp parallel default(none) shared(num_threads)
         {
             int tid = omp_get_thread_num();
             if (tid == 0) num_threads = omp_get_num_threads();
         }
-        
-        bool flag_built = (dim_repr[sec_repr] <= 0 || static_cast<MKL_INT>(basis_repr[sec_repr].size()) != dim_repr[sec_repr]) ? false : true;
+
+        bool flag_built = !(dim_repr[sec_repr] <= 0 || static_cast<MKL_INT>(basis_repr[sec_repr].size()) != dim_repr[sec_repr]);
         // double check quantum numbers
         if (flag_built) {
             for (MKL_INT j = 0; j < dim_repr[sec_repr]; j++) {
@@ -326,31 +326,32 @@ namespace qbasis {
                     it_opr++;
                     it_val++;
                 }
-                if (flag == false) {
+                if (!flag) {
                     flag_built = false;
                     break;
                 }
             }
         }
-        
+
         // now start enumerating representatives, if not generated before (or generated but already destroyed)
         if (! flag_built) {
             std::cout << "Enumerating basis_repr with " << val_lst.size() << " conserved quantum numbers..." << std::endl;
             std::cout << "Quantum #s: ";
-            for (decltype(val_lst.size()) cnt = 0; cnt < val_lst.size(); cnt++)
-                std::cout << val_lst[cnt] << "\t";
+            for (double val : val_lst) std::cout << val << "\t";
             std::cout << std::endl;
             basis_repr[sec_repr].clear();
             std::list<std::vector<mbasis_elem>> basis_temp;
             dim_repr[sec_repr] = 0;
             auto report = basis_sub_repr.size() > 100 ? (basis_sub_repr.size() / 10) : basis_sub_repr.size();
-            
+
             std::vector<std::vector<uint32_t>> plans_parent(num_threads);
             std::vector<std::vector<uint32_t>> plans_sub(num_threads);
             std::vector<std::vector<int>> scratch_works(num_threads);
             std::vector<std::vector<int>> scratch_coors(num_threads);
-            
-            #pragma omp parallel for schedule(dynamic,256)
+
+            #pragma omp parallel for schedule(dynamic,256) default(none) \
+                    shared(report, std::cout, base_sub, plans_sub, scratch_coors, scratch_works, \
+                           conserve_lst, val_lst, sec_repr, basis_temp)
             for (decltype(basis_sub_repr.size()) ra = 0; ra < basis_sub_repr.size(); ra++) {
                 int tid = omp_get_thread_num();
                 if (ra > 0 && ra % report == 0) {
@@ -375,7 +376,7 @@ namespace qbasis {
                         } else {
                             omega = Weisse_w_gt.index(pos);
                         }
-                        
+
                         if (omega < groups_parent.size()) {  // valid representative
                             mbasis_elem rb_new = basis_sub_repr[rb];
                             for (uint32_t j = 0; j < latt_sub.dimension(); j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
@@ -401,22 +402,22 @@ namespace qbasis {
                         disp_j = dynamic_base_plus1(disp_j, base_sub);
                     }
                 }
-                
-                if (basis_temp_job.size() > 0) {
+
+                if (!basis_temp_job.empty()) {
                     #pragma omp critical
                     {
                         dim_repr[sec_repr] += static_cast<MKL_INT>(basis_temp_job.size());
                         basis_temp.push_back(std::move(basis_temp_job));
                     }
                 }
-                
+
             }
             end = std::chrono::system_clock::now();
             std::chrono::duration<double> elapsed_seconds = end - start;
             std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
             start = end;
             std::cout << "Hilbert space size with symmetry:      " << dim_repr[sec_repr] << std::endl;
-            
+
             basis_repr[sec_repr].reserve(dim_repr[sec_repr]);
             std::cout << "Moving temporary basis (" << basis_temp.size() << " pieces) to basis_repr... ";
             for (auto it = basis_temp.begin(); it != basis_temp.end(); it++) {
@@ -429,18 +430,18 @@ namespace qbasis {
             elapsed_seconds = end - start;
             std::cout << elapsed_seconds.count() << "s." << std::endl << std::endl;
             start = end;
-            
+
             sort_basis_Lin_order(props, basis_repr[sec_repr]);
-            
+
             fill_Lin_table(props, basis_repr[sec_repr], Lin_Ja_repr[sec_repr], Lin_Jb_repr[sec_repr]);
-            
-            if (Lin_Ja_repr[sec_repr].size() == 0 || Lin_Jb_repr[sec_repr].size() == 0) {
+
+            if (Lin_Ja_repr[sec_repr].empty() || Lin_Jb_repr[sec_repr].empty()) {
                 std::cout << "Due to faliure of Lin Table construction, fall back to bisection index of basis." << std::endl;
                 sort_basis_normal_order(basis_repr[sec_repr]);
                 assert(is_sorted_norepeat(basis_repr[sec_repr]));
             }
         }
-        
+
         // calculate normalization factors
         std::cout << "Calculating normalization factors (a much faster version already written, should be turned on in future)..." << std::endl;
         start = std::chrono::system_clock::now();
@@ -450,7 +451,8 @@ namespace qbasis {
         norm_repr[sec_repr].resize(dim_repr[sec_repr]);
         std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
         std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
-        #pragma omp parallel for schedule(dynamic,1)
+        #pragma omp parallel for schedule(dynamic,1) default(none) \
+                shared(sec_repr, extra, momentum, scratch_works1, scratch_works2, lanczos_precision)
         for (MKL_INT j = 0; j < dim_repr[sec_repr]; j++) {
             int tid = omp_get_thread_num();
             uint64_t state_sub1_label, state_sub2_label;
@@ -470,7 +472,7 @@ namespace qbasis {
             } else {
                 g_label = Weisse_w_gt.index(pos_w);
             }
-            
+
             norm_repr[sec_repr][j] = norm_trans_repr(props, basis_repr[sec_repr][j], latt_parent, groups_parent[g_label], momentum);
             if (std::abs(norm_repr[sec_repr][j]) < lanczos_precision) {
                 #pragma omp atomic
@@ -482,7 +484,7 @@ namespace qbasis {
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl << std::endl;
     }
-    
+
     template <typename T>
     void model<T>::build_basis_vrnl(const std::list<mbasis_elem> &initial_list,
                                     const mbasis_elem &gs,
@@ -497,11 +499,11 @@ namespace qbasis {
         assert(sec_vrnl < basis_vrnl.size());
         momenta_vrnl[sec_vrnl] = momentum;
         gs_momentum_vrnl = momentum_gs;
-        
+
         gs_vrnl = gs;
         std::vector<int> disp_vec;
         gs_vrnl.translate2center_OBC(props, latt_parent, disp_vec);
-        
+
         // check if basis already generated
         bool flag_built = true;
         if (dim_vrnl[sec_vrnl] <= 0 || static_cast<MKL_INT>(basis_vrnl[sec_vrnl].size()) != dim_vrnl[sec_vrnl]) {
@@ -527,13 +529,12 @@ namespace qbasis {
                 }
             }
         }
-        
+
         if (! flag_built) {
             std::cout << "Building variational basis with " << val_lst.size()
                       << " conserved quantum numbers..." << std::endl;
             std::cout << "Quantum #s: ";
-            for (decltype(val_lst.size()) cnt = 0; cnt < val_lst.size(); cnt++)
-                std::cout << val_lst[cnt] << "\t";
+            for (double val : val_lst) std::cout << val << "\t";
             std::cout << std::endl;
             std::list<mbasis_elem> basis;
             std::cout << "-------- iteration 0 --------" << std::endl;
@@ -554,7 +555,7 @@ namespace qbasis {
             }
             rm_mbasis_dulp_trans(latt_parent, basis, props);
             std::cout << std::endl;
-            
+
             // iterate through all levels
             for (uint32_t level = 1; level <= iteration_depth; level++) {
                 std::cout << "-------- iteration " << level << " --------" << std::endl;
@@ -562,10 +563,10 @@ namespace qbasis {
                 rm_mbasis_dulp_trans(latt_parent, basis, props);
                 std::cout << std::endl;
             }
-            
+
             // remove ground state from list
             basis.remove(gs_vrnl);
-            
+
             // move results to model
             dim_vrnl[sec_vrnl] = static_cast<MKL_INT>(basis.size());
             basis_vrnl[sec_vrnl].resize(basis.size());
@@ -583,7 +584,7 @@ namespace qbasis {
             int sub, sgn;
             latt_parent.site2coor(disp, sub, site);
             if (sub != 0) continue;
-            
+
             std::vector<uint32_t> plan;
             std::vector<int> scratch_work, scratch_coor;
             latt_parent.translation_plan(plan, disp, scratch_coor, scratch_work);
@@ -594,7 +595,7 @@ namespace qbasis {
         gs_omegaG_vrnl = cnt_total / cnt_repeat;
         std::cout << "omega_g(GS) = " << gs_omegaG_vrnl << std::endl;
         assert(gs_omegaG_vrnl > 0 && gs_omegaG_vrnl < 50);
-        
+
         std::cout << "^^^^^^^^^^^ to be updated here! ^^^^^^^^^^^" << std::endl;
         auto dis_gs = momentum;
         for (decltype(dis_gs.size()) d = 0; d < dis_gs.size(); d++) {
@@ -612,8 +613,8 @@ namespace qbasis {
         std::cout << momentum[latt_parent.dimension()-1] << ") = " << gs_norm_vrnl[sec_vrnl] << std::endl;
         std::cout << "vvvvvvvvvvv to be updated here! vvvvvvvvvvv" << std::endl;
     }
-    
-    
+
+
     template <typename T>
     void model<T>::generate_Ham_sparse_full(const uint32_t &sec_full,
                                             const bool &upper_triangle)
@@ -625,9 +626,9 @@ namespace qbasis {
         auto &Lin_Jb     = Lin_Jb_full[sec_full];
         auto &HamMat_csr = HamMat_csr_full[sec_full];
         assert(dim > 0);
-        
+
         int num_threads = 1;
-        #pragma omp parallel
+        #pragma omp parallel default(none) shared(num_threads)
         {
             int tid = omp_get_thread_num();
             if (tid == 0) num_threads = omp_get_num_threads();
@@ -636,19 +637,21 @@ namespace qbasis {
         std::vector<wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(basis[0]));
         std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
         std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
-        
+
         std::cout << "Generating LIL Hamiltonian matrix (full)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         lil_mat<T> matrix_lil(dim, upper_triangle);
-        #pragma omp parallel for schedule(dynamic,1)
+        #pragma omp parallel for schedule(dynamic,1) default(none) \
+                shared(dim, basis, matrix_lil, intermediate_states, Lin_Ja, Lin_Jb, \
+                       scratch_works1, scratch_works2, machine_prec, upper_triangle)
         for (MKL_INT i = 0; i < dim; i++) {
             int tid = omp_get_thread_num();
             // diagonal part:
             for (auto it = Ham_diag.mats.begin(); it != Ham_diag.mats.end(); it++) {
                 matrix_lil.add(i, i, basis[i].diagonal_operator(props, *it));
             }
-            
+
             // non-diagonal part:
             uint64_t i_a, i_b;
             MKL_INT j;
@@ -658,7 +661,7 @@ namespace qbasis {
                 for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                     auto &ele_new = intermediate_states[tid][cnt];
                     if (std::abs(ele_new.second) < machine_prec) continue;
-                    if (Lin_Ja.size() > 0 && Lin_Jb.size() > 0) {
+                    if (!Lin_Ja.empty() && !Lin_Jb.empty()) {
                         ele_new.first.label_sub(props, i_a, i_b, scratch_works1[tid], scratch_works2[tid]);
                         j = Lin_Ja[i_a] + Lin_Jb[i_b];
                     } else {
@@ -679,7 +682,7 @@ namespace qbasis {
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
-    
+
     template <typename T>
     void model<T>::generate_Ham_sparse_repr(const uint32_t &sec_repr,
                                             const bool &upper_triangle)
@@ -693,14 +696,14 @@ namespace qbasis {
         auto &momentum   = momenta[sec_repr];
         auto &HamMat_csr = HamMat_csr_repr[sec_repr];
         assert(dim > 0);
-        
+
         if (dim_spec_involved) {
             assert(Weisse_w_gt.size() == 0);
         } else {
             assert(Weisse_w_lt.size() == Weisse_w_gt.size());
         }
         int num_threads = 1;
-        #pragma omp parallel
+        #pragma omp parallel default(none) shared(num_threads)
         {
             int tid = omp_get_thread_num();
             if (tid == 0) num_threads = omp_get_num_threads();
@@ -716,26 +719,29 @@ namespace qbasis {
         std::vector<std::vector<int>> scratch_coors(num_threads);
         std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
         std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
-        
+
         std::cout << "Generating LIL Hamiltonian Matrix (repr)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        
+
         lil_mat<std::complex<double>> matrix_lil(dim, upper_triangle);
-        #pragma omp parallel for schedule(dynamic,1)
+        #pragma omp parallel for schedule(dynamic,1) default(none) \
+                shared(dim, basis, norm, matrix_lil, dim_latt, intermediate_states, plans_sub,\
+                       Lin_Ja, Lin_Jb, momentum, L, bosonic, plans_parent, upper_triangle, \
+                       scratch_works1, scratch_works2, scratch_coors, scratch_works, lanczos_precision)
         for (MKL_INT i = 0; i < dim; i++) {
             int tid = omp_get_thread_num();
-            
+
             double nu_i = norm[i];                                               // normalization factor for repr i
             if (std::abs(nu_i) < lanczos_precision) {
                 matrix_lil.add(i, i, static_cast<T>(fake_pos + static_cast<double>(i)/static_cast<double>(dim)));
                 continue;
             }
-            
+
             // diagonal part:
             for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
                 matrix_lil.add(i, i, basis[i].diagonal_operator(props,Ham_diag[cnt]));
-            
+
             // non-diagonal part:
             uint64_t state_sub1_label, state_sub2_label;
             std::vector<uint32_t> disp_i(dim_latt), disp_j(dim_latt);
@@ -747,7 +753,7 @@ namespace qbasis {
             for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
                 intermediate_states[tid].copy(basis[i]);
                 oprXphi(*it, props, intermediate_states[tid]);
-                
+
                 for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                     auto &ele_new = intermediate_states[tid][cnt];
                     // use Weisse Tables to find the representative |ra,rb,j>
@@ -770,11 +776,11 @@ namespace qbasis {
                         disp_i = Weisse_e_eq.index(pos_e).first;
                         disp_j = Weisse_e_eq.index(pos_e).second;
                     }
-                    for (uint32_t j = 0; j < disp_j.size(); j++) {
-                        disp_i_int[j] = static_cast<int>(disp_i[j]);
-                        disp_j_int[j] = static_cast<int>(disp_j[j]);
+                    for (uint32_t jj = 0; jj < disp_j.size(); jj++) {
+                        disp_i_int[jj] = static_cast<int>(disp_i[jj]);
+                        disp_j_int[jj] = static_cast<int>(disp_j[jj]);
                     }
-                    
+
                     if (state_rep2_label < state_rep1_label && dim_spec_involved) {
                         state_sub_new1 = basis_sub_repr[state_rep2_label];
                         state_sub_new2 = basis_sub_repr[state_rep1_label];
@@ -785,8 +791,8 @@ namespace qbasis {
                     latt_sub.translation_plan(plans_sub[tid], disp_j_int, scratch_coors[tid], scratch_works[tid]);
                     state_sub_new2.transform(props_sub_b, plans_sub[tid], sgn);    // T_j |rb>
                     zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
-                    
-                    if (Lin_Ja.size() > 0 && Lin_Jb.size() > 0) {
+
+                    if (!Lin_Ja.empty() && !Lin_Jb.empty()) {
                         i_a = state_sub_new1.label(props_sub_a, scratch_works1[tid], scratch_works2[tid]);    // use Lin Tables
                         i_b = state_sub_new2.label(props_sub_b, scratch_works1[tid], scratch_works2[tid]);
                         j = Lin_Ja[i_a] + Lin_Jb[i_b];
@@ -797,7 +803,7 @@ namespace qbasis {
                     assert(ra_z_Tj_rb == basis[j]);
                     double nu_j = norm[j];
                     if (std::abs(nu_j) < lanczos_precision) continue;
-                    
+
                     double exp_coef = 0.0;
                     for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                         if (trans_sym[d]) {
@@ -811,7 +817,7 @@ namespace qbasis {
                         assert(ra_z_Tj_rb == ele_new.first);
                         if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
                     }
-                    
+
                     if (upper_triangle) {
                         if (i <= j) matrix_lil.add(i, j, coef);
                     } else {
@@ -820,14 +826,14 @@ namespace qbasis {
                 }
             }
         }
-        
+
         HamMat_csr = csr_mat<std::complex<double>>(matrix_lil);
         std::cout << "Hamiltonian CSR matrix (repr) generated." << std::endl;
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
-    
+
     template <typename T>
     void model<T>::generate_Ham_sparse_vrnl(const uint32_t &sec_vrnl,
                                             const bool &upper_triangle)
@@ -838,9 +844,9 @@ namespace qbasis {
         auto &momentum   = momenta_vrnl[sec_vrnl];
         auto &HamMat_csr = HamMat_csr_vrnl[sec_vrnl];
         assert(dim > 0);
-        
+
         int num_threads = 1;
-        #pragma omp parallel
+        #pragma omp parallel default(none) shared(num_threads)
         {
             int tid = omp_get_thread_num();
             if (tid == 0) num_threads = omp_get_num_threads();
@@ -848,15 +854,15 @@ namespace qbasis {
         // prepare intermediates in advance
         std::vector<wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(gs_vrnl));
         std::vector<std::vector<int>> scratch_disp(num_threads);
-        
+
         std::cout << "Generating LIL Hamiltonian matrix (vrnl)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         lil_mat<T> matrix_lil(dim, upper_triangle);
-        
+
         // ground state energy
         if (std::abs(gs_E0_vrnl - 100.0) < lanczos_precision) {
-            double NsitesPsublatt = static_cast<double>(latt_parent.total_sites() / latt_parent.num_sublattice());
+            auto NsitesPsublatt = static_cast<double>(latt_parent.total_sites() / latt_parent.num_sublattice());
             gs_E0_vrnl = 0.0;
             for (decltype(Ham_diag.size()) cnt = 0; cnt < Ham_diag.size(); cnt++)
                 gs_E0_vrnl += gs_vrnl.diagonal_operator(props, Ham_diag[cnt]).real();
@@ -879,15 +885,16 @@ namespace qbasis {
             }
         }
         std::cout << "GS_E0_vrnl = " << gs_E0_vrnl << std::endl;
-        
-        #pragma omp parallel for schedule(dynamic,256)
+
+        #pragma omp parallel for schedule(dynamic,256) default(none) \
+                shared(dim, matrix_lil, basis, intermediate_states, scratch_disp, upper_triangle, momentum)
         for (MKL_INT i = 0; i < dim; i++) {
             int tid = omp_get_thread_num();
-            
+
             // diagonal part
             for (decltype(Ham_diag.size()) cnt = 0; cnt < Ham_diag.size(); cnt++)
                 matrix_lil.add(i, i, basis[i].diagonal_operator(props,Ham_diag[cnt]));
-            
+
             // non-diagonal part
             for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
                 intermediate_states[tid].copy(basis[i]);
@@ -914,13 +921,13 @@ namespace qbasis {
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
-    
-    
+
+
     template <typename T>
     std::vector<std::complex<double>> model<T>::to_dense(const uint32_t &sec_mat_)
     {
         std::cout << "Fall back to generate matrix explicitly!" << std::endl;
-        if (sec_sym == 0) {
+        if (sec_sym == which_sym::full) {
             generate_Ham_sparse_full(sec_mat_);
             return HamMat_csr_full[sec_mat_].to_dense();
         } else {
@@ -928,16 +935,17 @@ namespace qbasis {
             return HamMat_csr_full[sec_mat_].to_dense();
         }
     }
-    
-    
+
+
     template <typename T>
     void model<T>::MultMv2(const T *x, T *y) const
     {
-        assert(matrix_free);
-        MKL_INT dim = (sec_sym == 0) ? dim_full[sec_mat] : dim_repr[sec_mat];
-        auto &basis = (sec_sym == 0) ? basis_full[sec_mat] : basis_repr[sec_mat];
+        if (!matrix_free) throw std::runtime_error("model::MultMv2 for matrix free calculation only.");
+        if (sec_sym == which_sym::vrnl) throw std::runtime_error("model::MultMv2 not ready for vrnl.");
+        MKL_INT dim = (sec_sym == which_sym::full) ? dim_full[sec_mat] : dim_repr[sec_mat];
+        auto &basis = (sec_sym == which_sym::full) ? basis_full[sec_mat] : basis_repr[sec_mat];
         int num_threads = 1;
-        #pragma omp parallel
+        #pragma omp parallel default(none) shared(num_threads)
         {
             int tid = omp_get_thread_num();
             if (tid == 0) num_threads = omp_get_num_threads();
@@ -950,19 +958,20 @@ namespace qbasis {
         std::vector<std::vector<int>> scratch_coors(num_threads);
         std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
         std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
-        
+
         std::cout << "*" << std::flush;
-        if (sec_sym == 0) {
-            #pragma omp parallel for schedule(dynamic,256)
+        if (sec_sym == which_sym::full) {
+            #pragma omp parallel for schedule(dynamic,256) default(none) \
+                    shared(dim, basis, x, y, machine_prec, intermediate_states, scratch_works1, scratch_works2)
             for (MKL_INT i = 0; i < dim; i++) {
                 int tid = omp_get_thread_num();
-                
+
                 // diagonal part
                 if (std::abs(x[i]) > machine_prec) {
                     for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
                         y[i] += x[i] * basis[i].diagonal_operator(props, Ham_diag[cnt]);
                 }
-                
+
                 // non-diagonal part
                 uint64_t i_a, i_b;
                 MKL_INT j;
@@ -972,7 +981,7 @@ namespace qbasis {
                     for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                         auto &ele_new = intermediate_states[tid][cnt];
                         if (std::abs(ele_new.second) < machine_prec) continue;
-                        if (Lin_Ja_full[sec_mat].size() > 0 && Lin_Jb_full[sec_mat].size() > 0) {
+                        if (!Lin_Ja_full[sec_mat].empty() && !Lin_Jb_full[sec_mat].empty()) {
                             ele_new.first.label_sub(props, i_a, i_b,
                                                     scratch_works1[tid], scratch_works2[tid]);
                             j = Lin_Ja_full[sec_mat][i_a] + Lin_Jb_full[sec_mat][i_b];
@@ -988,7 +997,7 @@ namespace qbasis {
             auto dim_latt = latt_parent.dimension();
             auto L        = latt_parent.Linear_size();
             bool bosonic  = q_bosonic(props);
-            
+
             std::vector<std::vector<uint32_t>> disp_i(num_threads,std::vector<uint32_t>(dim_latt));
             std::vector<std::vector<uint32_t>> disp_j(num_threads,std::vector<uint32_t>(dim_latt));
             std::vector<std::vector<int>> disp_i_int(num_threads,std::vector<int>(dim_latt));
@@ -996,23 +1005,28 @@ namespace qbasis {
             std::vector<mbasis_elem> state_sub_new1(num_threads);
             std::vector<mbasis_elem> state_sub_new2(num_threads);
             std::vector<mbasis_elem> ra_z_Tj_rb(num_threads);
-            
-            #pragma omp parallel for schedule(dynamic,256)
+
+            #pragma omp parallel for schedule(dynamic,256) default(none) \
+                    shared(dim, basis, x, y, intermediate_states, \
+                           disp_i, disp_j, disp_i_int, disp_j_int, ra_z_Tj_rb, L, bosonic, \
+                           state_sub_new1, state_sub_new2, plans_sub, plans_parent, \
+                           scratch_works1, scratch_works2, scratch_coors, scratch_works, \
+                           lanczos_precision, machine_prec)
             for (MKL_INT i = 0; i < dim; i++) {
                 int tid = omp_get_thread_num();
-                
+
                 double nu_i = norm_repr[sec_mat][i];                             // normalization factor for repr i
                 if (std::abs(nu_i) < lanczos_precision) {
                     y[i] += x[i] * static_cast<T>(fake_pos + static_cast<double>(i)/static_cast<double>(dim));
                     continue;
                 }
-                
+
                 // diagonal part
                 if (std::abs(x[i]) > machine_prec) {
                     for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)          // diagonal part:
                         y[i] += x[i] * basis[i].diagonal_operator(props,Ham_diag[cnt]);
                 }
-                
+
                 // non-diagonal part
                 uint64_t state_sub1_label, state_sub2_label;
                 int sgn;
@@ -1021,7 +1035,7 @@ namespace qbasis {
                 for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
                     intermediate_states[tid].copy(basis[i]);
                     oprXphi(*it, props, intermediate_states[tid]);
-                    
+
                     for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                         auto &ele_new = intermediate_states[tid][cnt];
                         // use Weisse Tables to find the representative |ra,rb,j>
@@ -1044,11 +1058,11 @@ namespace qbasis {
                             disp_i[tid] = Weisse_e_eq.index(pos_e).first;
                             disp_j[tid] = Weisse_e_eq.index(pos_e).second;
                         }
-                        for (uint32_t j = 0; j < disp_j[tid].size(); j++) {
-                            disp_i_int[tid][j] = static_cast<int>(disp_i[tid][j]);
-                            disp_j_int[tid][j] = static_cast<int>(disp_j[tid][j]);
+                        for (uint32_t jj = 0; jj < disp_j[tid].size(); jj++) {
+                            disp_i_int[tid][jj] = static_cast<int>(disp_i[tid][jj]);
+                            disp_j_int[tid][jj] = static_cast<int>(disp_j[tid][jj]);
                         }
-                        
+
                         if (state_rep2_label < state_rep1_label && dim_spec_involved) {
                             state_sub_new1[tid] = basis_sub_repr[state_rep2_label];
                             state_sub_new2[tid] = basis_sub_repr[state_rep1_label];
@@ -1059,7 +1073,7 @@ namespace qbasis {
                         latt_sub.translation_plan(plans_sub[tid], disp_j_int[tid], scratch_coors[tid], scratch_works[tid]);
                         state_sub_new2[tid].transform(props_sub_b, plans_sub[tid], sgn);   // T_j |rb>
                         zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1[tid], state_sub_new2[tid], ra_z_Tj_rb[tid]); // |ra> z T_j |rb>
-                        if (Lin_Ja_repr[sec_mat].size() > 0 && Lin_Jb_repr[sec_mat].size() > 0) {
+                        if (!Lin_Ja_repr[sec_mat].empty() && !Lin_Jb_repr[sec_mat].empty()) {
                             i_a = state_sub_new1[tid].label(props_sub_a, scratch_works1[tid], scratch_works2[tid]);     // use Lin Tables
                             i_b = state_sub_new2[tid].label(props_sub_b, scratch_works1[tid], scratch_works2[tid]);
                             j = Lin_Ja_repr[sec_mat][i_a] + Lin_Jb_repr[sec_mat][i_b];
@@ -1071,7 +1085,7 @@ namespace qbasis {
                         if (std::abs(x[j]) < machine_prec) continue;
                         double nu_j = norm_repr[sec_mat][j];
                         if (std::abs(nu_j) < lanczos_precision) continue;
-                        
+
                         double exp_coef = 0.0;
                         for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                             if (trans_sym[d]) {
@@ -1085,47 +1099,60 @@ namespace qbasis {
                             assert(ra_z_Tj_rb[tid] == ele_new.first);
                             if (sgn % 2 == 1) coef *= std::complex<double>(-1.0, 0.0);
                         }
-                        
+
                         y[i] += (x[j] * coef);
                     }
                 }
             }
         }
     }
-    
+
     template <typename T>
     void model<T>::MultMv(const T *x, T *y) const
     {
         T zero = static_cast<T>(0.0);
-        if (sec_sym == 0) {
+        if (sec_sym == which_sym::full) {
             for (MKL_INT j = 0; j < dim_full[sec_mat]; j++) y[j] = zero;
         } else {
             for (MKL_INT j = 0; j < dim_repr[sec_mat]; j++) y[j] = zero;
         }
         MultMv2(x, y);
     }
-    
+
     template <typename T>
-    void model<T>::locate_E0_lanczos(const uint32_t &sec_sym_, const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
+    void model<T>::locate_E0_lanczos(const which_sym &sec_sym_, const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
     {
-        std::cout << "Locating E0 with Lanczos (sec_sym = " << sec_sym_ << ")..." << std::endl;
+        std::cout << "Locating E0 with Lanczos (sec_sym = ";
+        switch (sec_sym_) {
+        case which_sym::full:
+            std::cout << "full)..." << std::endl;
+            break;
+        case which_sym::repr:
+            std::cout << "repr)..." << std::endl;
+            break;
+        case which_sym::vrnl:
+            std::cout << "vrnl)..." << std::endl;
+            break;
+        default:
+            throw std::invalid_argument("sec_sym_ not a valid input.");
+        }
+
         assert(nev > 0 && nev <= 2 && ncv >= nev - 1 && ncv <= nev);
         uint32_t seed   = 1;
         sec_sym         = sec_sym_;
-        assert(sec_sym < 3);
-        MKL_INT dim     = sec_sym == 0 ? dim_full[sec_mat] :
-                         (sec_sym == 1 ? dim_repr[sec_mat] : dim_vrnl[sec_mat]);
-        auto &HamMat    = sec_sym == 0 ? HamMat_csr_full[sec_mat] :
-                         (sec_sym == 1 ? HamMat_csr_repr[sec_mat] : HamMat_csr_vrnl[sec_mat]);
-        auto &eigenvals = sec_sym == 0 ? eigenvals_full :
-                         (sec_sym == 1 ? eigenvals_repr : eigenvals_vrnl);
-        auto &eigenvecs = sec_sym == 0 ? eigenvecs_full :
-                         (sec_sym == 1 ? eigenvecs_repr : eigenvecs_vrnl);
+        MKL_INT dim     = sec_sym == which_sym::full ? dim_full[sec_mat] :
+                          (sec_sym == which_sym::repr ? dim_repr[sec_mat] : dim_vrnl[sec_mat]);
+        auto &HamMat    = sec_sym == which_sym::full ? HamMat_csr_full[sec_mat] :
+                          (sec_sym == which_sym::repr ? HamMat_csr_repr[sec_mat] : HamMat_csr_vrnl[sec_mat]);
+        auto &eigenvals = sec_sym == which_sym::full ? eigenvals_full :
+                          (sec_sym == which_sym::repr ? eigenvals_repr : eigenvals_vrnl);
+        auto &eigenvecs = sec_sym == which_sym::full ? eigenvecs_full :
+                          (sec_sym == which_sym::repr ? eigenvecs_repr : eigenvecs_vrnl);
         assert(dim > 0);
-        
+
         using std::swap;
         std::chrono::time_point<std::chrono::system_clock> start, end;
-        std::chrono::duration<double> elapsed_seconds;
+        std::chrono::duration<double> elapsed_seconds{};
         eigenvecs.clear();
         std::vector<double> hessenberg(2*maxit, 0.0), ritz, s;
         std::vector<T> v;
@@ -1135,13 +1162,13 @@ namespace qbasis {
             v.resize(dim*2);
         }
         vec_randomize(dim, v.data(), seed);
-        
+
         bool E0_done = false;
         bool V0_done = false;
         bool E1_done = false;
         bool V1_done = false;
         ckpt_lczsE0_init(E0_done, V0_done, E1_done, V1_done, v);
-        
+
         if (! E0_done) {
             std::cout << "Calculating ground state energy (simple Lanczos)..." << std::endl;
             start = std::chrono::system_clock::now();
@@ -1163,21 +1190,21 @@ namespace qbasis {
             std::cout << "Lanczos steps: " << m << std::endl;
             std::cout << "Lanczos accuracy: " << std::abs(hessenberg[m] * s[m-1]) << std::endl;
             std::cout << "E0   = " << E0 << std::endl << std::endl;
-            
+
             E0_done = true;
             ckpt_lczsE0_updt(E0_done, V0_done, E1_done, V1_done);
         }
-        
+
         if (ncv == 0) {
             // clean up ckpt
             return;
         }
-        
+
         // obtain ground state eigenvector
         if (! V0_done) {
             start = std::chrono::system_clock::now();
             std::cout << "Calculating ground state eigenvector with CG..." << std::endl;
-            
+
             vec_randomize(dim, v.data() + 2 * dim, seed);
             double accuracy;
             MKL_INT m = 0;
@@ -1195,12 +1222,12 @@ namespace qbasis {
             std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
             std::cout << "CG steps:     " << m << std::endl;
             std::cout << "Accuracy:     " << accuracy << std::endl << std::endl;
-            
+
             V0_done = true;
             nconv = 1;
             ckpt_lczsE0_updt(E0_done, V0_done, E1_done, V1_done);
         }
-        
+
         // postpone writing down ground state eigenvector, if gap needed
         if (nev == 2 && ! E1_done) {
             start = std::chrono::system_clock::now();
@@ -1211,7 +1238,7 @@ namespace qbasis {
             blas_axpy(dim, -alpha, v.data() + 2 * dim, 1, v.data(), 1);               // v0 -= alpha * phi0
             double rnorm = blas_nrm2(dim, v.data(), 1);
             blas_scal(dim, 1.0 / rnorm, v.data(), 1);                                 // normalize v0
-            
+
             MKL_INT m = 0;
             if (matrix_free) {
                 lanczos(0, maxit-1, maxit, m, dim, *this,  v.data(), hessenberg.data(), "sr_val1");
@@ -1231,11 +1258,11 @@ namespace qbasis {
             std::cout << "Lanczos accuracy: " << std::abs(hessenberg[m] * s[m-1]) << std::endl;
             std::cout << "E1   = " << E1 << std::endl;
             std::cout << "gap  = " << gap << std::endl << std::endl;
-            
+
             E1_done = true;
             ckpt_lczsE0_updt(E0_done, V0_done, E1_done, V1_done);
         }
-        
+
         if (ncv == 1) {
             blas_copy(dim, v.data() + 2 * dim, 1, v.data(), 1);                       // copy eigenvec to head of v
             v.resize(dim);
@@ -1243,11 +1270,11 @@ namespace qbasis {
             // clean ckpt
             return;
         }
-        
+
         if (! V1_done) {
             start = std::chrono::system_clock::now();
             std::cout << "Calculate 1st excited state eigenvector with CG..." << std::endl;
-            
+
             v.resize(5*dim);
             vec_randomize(dim, v.data() + 3 * dim, seed + 7);
             double accuracy;
@@ -1265,7 +1292,7 @@ namespace qbasis {
             std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
             std::cout << "CG steps:     " << m << std::endl;
             std::cout << "Accuracy:     " << accuracy << std::endl;
-            
+
             V1_done = true;
             nconv = 2;
             blas_copy(2*dim, v.data() + 2 * dim, 1, v.data(), 1);                     // copy eigenvec to head of v
@@ -1282,30 +1309,43 @@ namespace qbasis {
                 std::cout << "After:  v0 . v1 = " << alpha << std::endl;
             }
             std::cout << std::endl;
-            
+
             ckpt_lczsE0_updt(E0_done, V0_done, E1_done, V1_done);
         }
     }
-    
-    
+
+
     template <typename T>
-    void model<T>::locate_E0_iram(const uint32_t &sec_sym_, const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
+    void model<T>::locate_E0_iram(const which_sym &sec_sym_, const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
     {
-        std::cout << "Locating lowest states with IRAM (sec_sym = " << sec_sym_ << ")..." << std::endl;
+        std::cout << "Locating lowest states with IRAM (sec_sym = ";
+        switch (sec_sym_) {
+        case which_sym::full:
+            std::cout << "full)..." << std::endl;
+            break;
+        case which_sym::repr:
+            std::cout << "repr)..." << std::endl;
+            break;
+        case which_sym::vrnl:
+            std::cout << "vrnl)..." << std::endl;
+            break;
+        default:
+            throw std::invalid_argument("sec_sym_ not a valid input.");
+        }
+
         assert(nev > 0);
         assert(ncv > nev + 1);
-        assert(sec_sym_ < 3);
         if (maxit <= 0) maxit = nev * 100; // arpack default
         sec_sym = sec_sym_;
-        MKL_INT dim     = sec_sym == 0 ? dim_full[sec_mat] :
-                         (sec_sym == 1 ? dim_repr[sec_mat] : dim_vrnl[sec_mat]);
-        auto &HamMat    = sec_sym == 0 ? HamMat_csr_full[sec_mat] :
-                         (sec_sym == 1 ? HamMat_csr_repr[sec_mat] : HamMat_csr_vrnl[sec_mat]);
-        auto &eigenvals = sec_sym == 0 ? eigenvals_full :
-                         (sec_sym == 1 ? eigenvals_repr : eigenvals_vrnl);
-        auto &eigenvecs = sec_sym == 0 ? eigenvecs_full :
-                         (sec_sym == 1 ? eigenvecs_repr : eigenvecs_vrnl);
-        
+        MKL_INT dim     = sec_sym == which_sym::full ? dim_full[sec_mat] :
+                          (sec_sym == which_sym::repr ? dim_repr[sec_mat] : dim_vrnl[sec_mat]);
+        auto &HamMat    = sec_sym == which_sym::full ? HamMat_csr_full[sec_mat] :
+                          (sec_sym == which_sym::repr ? HamMat_csr_repr[sec_mat] : HamMat_csr_vrnl[sec_mat]);
+        auto &eigenvals = sec_sym == which_sym::full ? eigenvals_full :
+                          (sec_sym == which_sym::repr ? eigenvals_repr : eigenvals_vrnl);
+        auto &eigenvecs = sec_sym == which_sym::full ? eigenvecs_full :
+                          (sec_sym == which_sym::repr ? eigenvecs_repr : eigenvecs_vrnl);
+
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         std::vector<T> v0(dim, 1.0);
@@ -1323,28 +1363,40 @@ namespace qbasis {
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
         if (nconv > 1) gap = eigenvals[1] - eigenvals[0];
     }
-    
-    
+
+
     template <typename T>
-    void model<T>::locate_Emax_iram(const uint32_t &sec_sym_, const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
+    void model<T>::locate_Emax_iram(const which_sym &sec_sym_, const MKL_INT &nev, const MKL_INT &ncv, MKL_INT maxit)
     {
-        std::cout << "Locating highest states with IRAM (sec_sym = " << sec_sym_ << ")..." << std::endl;
-        if (sec_sym_ > 0)
+        std::cout << "Locating highest states with IRAM (sec_sym = ";
+        switch (sec_sym_) {
+        case which_sym::full:
+            std::cout << "full)..." << std::endl;
+            break;
+        case which_sym::repr:
+            std::cout << "repr)..." << std::endl;
+            break;
+        case which_sym::vrnl:
+            std::cout << "vrnl)..." << std::endl;
+            break;
+        default:
+            throw std::invalid_argument("sec_sym_ not a valid input.");
+        }
+        if (sec_sym_ != which_sym::full)
             std::cout << "Warning: there may be a few artificial states above " << fake_pos << std::endl;
         assert(nev > 0);
         assert(ncv > nev + 1);
-        assert(sec_sym_ < 3);
         if (maxit <= 0) maxit = nev * 100; // arpack default
         sec_sym = sec_sym_;
-        MKL_INT dim     = sec_sym == 0 ? dim_full[sec_mat] :
-                         (sec_sym == 1 ? dim_repr[sec_mat] : dim_vrnl[sec_mat]);
-        auto &HamMat    = sec_sym == 0 ? HamMat_csr_full[sec_mat] :
-                         (sec_sym == 1 ? HamMat_csr_repr[sec_mat] : HamMat_csr_vrnl[sec_mat]);
-        auto &eigenvals = sec_sym == 0 ? eigenvals_full :
-                         (sec_sym == 1 ? eigenvals_repr : eigenvals_vrnl);
-        auto &eigenvecs = sec_sym == 0 ? eigenvecs_full :
-                         (sec_sym == 1 ? eigenvecs_repr : eigenvecs_vrnl);
-        
+        MKL_INT dim     = sec_sym == which_sym::full ? dim_full[sec_mat] :
+                          (sec_sym == which_sym::repr ? dim_repr[sec_mat] : dim_vrnl[sec_mat]);
+        auto &HamMat    = sec_sym == which_sym::full ? HamMat_csr_full[sec_mat] :
+                          (sec_sym == which_sym::repr ? HamMat_csr_repr[sec_mat] : HamMat_csr_vrnl[sec_mat]);
+        auto &eigenvals = sec_sym == which_sym::full ? eigenvals_full :
+                          (sec_sym == which_sym::repr ? eigenvals_repr : eigenvals_vrnl);
+        auto &eigenvecs = sec_sym == which_sym::full ? eigenvecs_full :
+                          (sec_sym == which_sym::repr ? eigenvecs_repr : eigenvecs_vrnl);
+
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         std::vector<T> v0(dim, 1.0);
@@ -1367,8 +1419,8 @@ namespace qbasis {
             }
         }
     }
-    
-    
+
+
     template <typename T>
     void model<T>::moprXvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
                                  const T* vec_old, T* vec_new) const
@@ -1377,9 +1429,9 @@ namespace qbasis {
         assert(dim_full[sec_old] > 0 && dim_full[sec_new] > 0);
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        
+
         int num_threads = 1;
-        #pragma omp parallel
+        #pragma omp parallel default(none) shared(num_threads)
         {
             int tid = omp_get_thread_num();
             if (tid == 0) num_threads = omp_get_num_threads();
@@ -1388,17 +1440,19 @@ namespace qbasis {
         std::vector<wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(props));
         std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
         std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
-        
+
         std::cout << "mopr * vec (s = " << sec_old << ", t = " << sec_new << ")... " << std::endl;
         for (MKL_INT j = 0; j < dim_full[sec_new]; j++) vec_new[j] = 0.0;
-        
-        #pragma omp parallel for schedule(dynamic,1)
+
+        #pragma omp parallel for schedule(dynamic,1) default(none) \
+                shared(sec_old, sec_new, vec_old, vec_new, lanczos_precision, lhs, intermediate_states, \
+                       scratch_works1, scratch_works2)
         for (MKL_INT j = 0; j < dim_full[sec_old]; j++) {
             int tid = omp_get_thread_num();
-            
+
             auto sj = vec_old[j];
             if (std::abs(sj) < lanczos_precision) continue;
-            
+
             MKL_INT i;
             uint64_t i_a, i_b;
             std::vector<std::pair<MKL_INT, T>> values;
@@ -1410,7 +1464,7 @@ namespace qbasis {
                     oprXphi(*it, props, intermediate_states[tid]);
                     for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                         auto &ele = intermediate_states[tid][cnt];
-                        if (Lin_Ja_full[sec_new].size() > 0 && Lin_Jb_full[sec_new].size() > 0) {
+                        if (!Lin_Ja_full[sec_new].empty() && !Lin_Jb_full[sec_new].empty()) {
                             ele.first.label_sub(props, i_a, i_b,
                                                 scratch_works1[tid], scratch_works2[tid]);
                             i = Lin_Ja_full[sec_new][i_a] + Lin_Jb_full[sec_new][i_b];
@@ -1438,8 +1492,8 @@ namespace qbasis {
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
-    
-    
+
+
     template <typename T>
     void model<T>::moprXvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
                                  const MKL_INT &which_col, T* vec_new) const
@@ -1448,7 +1502,7 @@ namespace qbasis {
         const T* vec_old = eigenvecs_full.data() + dim_full[sec_old] * which_col;
         moprXvec_full(lhs, sec_old, sec_new, vec_old, vec_new);
     }
-    
+
     template <typename T>
     void model<T>::transform_vec_full(const std::vector<uint32_t> &plan, const uint32_t &sec_full,
                                       const T* vec_old, T* vec_new) const
@@ -1457,9 +1511,9 @@ namespace qbasis {
         auto &basis  = basis_full[sec_full];
         auto &Lin_Ja = Lin_Ja_full[sec_full];
         auto &Lin_Jb = Lin_Jb_full[sec_full];
-        
+
         int num_threads = 1;
-        #pragma omp parallel
+        #pragma omp parallel default(none) shared(num_threads)
         {
             int tid = omp_get_thread_num();
             if (tid == 0) num_threads = omp_get_num_threads();
@@ -1468,9 +1522,11 @@ namespace qbasis {
         std::vector<mbasis_elem> intermediate_basis(num_threads, mbasis_elem(props));
         std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
         std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
-        
+
         for (MKL_INT i = 0; i < dim; i++) vec_new[i] = 0.0;
-        #pragma omp parallel for schedule(dynamic,256)
+        #pragma omp parallel for schedule(dynamic,256) default(none) \
+                shared(dim, basis, vec_old, vec_new, machine_prec, plan, Lin_Ja, Lin_Jb,\
+                       scratch_works1, scratch_works2)
         for (MKL_INT i = 0; i < dim; i++) {
             if (std::abs(vec_old[i]) < machine_prec) continue;
             int tid = omp_get_thread_num();
@@ -1479,7 +1535,7 @@ namespace qbasis {
             MKL_INT j;
             uint64_t i_a, i_b;
             basis_temp.transform(props, plan, sgn);
-            if (Lin_Ja.size() > 0 && Lin_Jb.size() > 0) {
+            if (!Lin_Ja.empty() && !Lin_Jb.empty()) {
                 basis_temp.label_sub(props, i_a, i_b, scratch_works1[tid], scratch_works2[tid]);
                 j = Lin_Ja[i_a] + Lin_Jb[i_b];
             } else {
@@ -1489,7 +1545,7 @@ namespace qbasis {
             vec_new[j] = (sgn % 2 == 0) ? vec_old[i] : (-vec_old[i]);
         }
     }
-    
+
     template <typename T>
     void model<T>::transform_vec_full(const std::vector<uint32_t> &plan, const uint32_t &sec_full,
                                       const MKL_INT &which_col, T *vec_new) const
@@ -1498,7 +1554,7 @@ namespace qbasis {
         const T* vec_old = eigenvecs_full.data() + dim_full[sec_full] * which_col;
         transform_vec_full(plan, sec_full, vec_old, vec_new);
     }
-    
+
     template <typename T>
     void model<T>::projectQ_full(const std::vector<int> &momentum, const uint32_t &sec_full,
                                  const T *vec_old, T *vec_new) const
@@ -1506,7 +1562,7 @@ namespace qbasis {
         MKL_INT dim = dim_full[sec_full];
         auto L = latt_parent.Linear_size();
         for (MKL_INT j = 0; j < dim; j++) vec_new[j] = static_cast<T>(0.0);
-        
+
         std::vector<T> vec_temp(dim);
         std::vector<int> disp;
         std::vector<uint32_t> plan;
@@ -1520,17 +1576,17 @@ namespace qbasis {
                 exp_coef += momentum[d] * disp[d] / static_cast<double>(L[d]);
             }
             auto coef = std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef));
-            
+
             latt_parent.translation_plan(plan, disp, scratch_coor, scratch_work);
             transform_vec_full(plan, sec_full, vec_old, vec_temp.data());
             blas_axpy(dim, coef, vec_temp.data(), 1, vec_new, 1);
         }
-        
+
         // normalize
         double nrm = blas_nrm2(dim, vec_new, 1);
         if (nrm < lanczos_precision) return;                                     // the state has no projection in this momentum sector
         blas_scal(dim, 1.0/nrm, vec_new, 1);
-        
+
         // double check momentum
         for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
             for (uint32_t j = 0; j < latt_parent.dimension(); j++) {
@@ -1546,11 +1602,10 @@ namespace qbasis {
             auto coef = std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef));
             blas_scal(dim, coef, vec_temp.data(), 1);                                   // vec_temp = vec_temp * e^{iKR}
             blas_axpy(dim, std::complex<double>(-1.0), vec_new, 1, vec_temp.data(), 1); // vec_temp - vec_new
-            double nrm = blas_nrm2(dim, vec_temp.data(), 1);
-            assert(nrm < lanczos_precision);
+            assert(blas_nrm2(dim, vec_temp.data(), 1) < lanczos_precision);
         }
     }
-    
+
     template <typename T>
     void model<T>::projectQ_full(const std::vector<int> &momentum, const uint32_t &sec_full,
                                  const MKL_INT &which_col, T *vec_new) const
@@ -1559,8 +1614,8 @@ namespace qbasis {
         const T* vec_old = eigenvecs_full.data() + dim_full[sec_full] * which_col;
         projectQ_full(momentum, sec_full, vec_old, vec_new);
     }
-    
-    
+
+
     template <typename T>
     T model<T>::measure_full_static(const mopr<T> &lhs, const uint32_t &sec_full, const MKL_INT &which_col) const
     {
@@ -1570,19 +1625,19 @@ namespace qbasis {
         moprXvec_full(lhs, sec_full, sec_full, which_col, vec_new.data());
         return blas_dotc(dim_full[sec_full], eigenvecs_full.data() + base, 1, vec_new.data(), 1);
     }
-    
-    
+
+
     template <typename T>
     T model<T>::measure_full_static(const std::vector<mopr<T>> &lhs, const std::vector<uint32_t> &sec_old_list, const MKL_INT &which_col) const
     {
         assert(which_col >= 0 && which_col < nconv);
-        assert(sec_old_list.size() > 0 && sec_old_list.size() == lhs.size());
+        assert(!sec_old_list.empty() && sec_old_list.size() == lhs.size());
         MKL_INT base = dim_full[sec_old_list[0]] * which_col;
-        
+
         std::vector<uint32_t> sec_new_list(sec_old_list.size());
         for (decltype(sec_old_list.size()) j = 1; j < sec_old_list.size(); j++)sec_new_list[j-1] = sec_old_list[j];
         sec_new_list.back() = sec_old_list.front();
-        
+
         std::vector<T> vec_new(dim_full[sec_new_list[0]]);
         moprXvec_full(lhs[0], sec_old_list[0], sec_new_list[0], which_col, vec_new.data());
         std::vector<T> vec_temp;
@@ -1593,7 +1648,7 @@ namespace qbasis {
         }
         return blas_dotc(dim_full[sec_old_list[0]], eigenvecs_full.data() + base, 1, vec_new.data(), 1);
     }
-    
+
     template <typename T>
     void model<T>::measure_full_dynamic(const mopr<T> &Aq, const uint32_t &sec_old, const uint32_t &sec_new,
                                         const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[]) const
@@ -1611,8 +1666,8 @@ namespace qbasis {
             lanczos(0, maxit-1, maxit, m, dim_new, HamMat, vec_new.data(), hessenberg, "dnmcs");
         }
     }
-    
-    
+
+
     template <typename T>
     void model<T>::moprXvec_repr(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
                                  const T* vec_old, T* vec_new) const
@@ -1624,9 +1679,9 @@ namespace qbasis {
         assert(dim_repr[sec_old] > 0 && dim_repr[sec_new] > 0);
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        
+
         int num_threads = 1;
-        #pragma omp parallel
+        #pragma omp parallel default(none) shared(num_threads)
         {
             int tid = omp_get_thread_num();
             if (tid == 0) num_threads = omp_get_num_threads();
@@ -1639,18 +1694,21 @@ namespace qbasis {
         std::vector<std::vector<int>> scratch_coors(num_threads);
         std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
         std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
-        
+
         std::cout << "mopr * vec (s = " << sec_old << ", t = " << sec_new << ")... " << std::endl;
         for (MKL_INT j = 0; j < dim_repr[sec_new]; j++) vec_new[j] = 0.0;
-        
-        #pragma omp parallel for schedule(dynamic,256)
+
+        #pragma omp parallel for schedule(dynamic,256) default(none) \
+                shared(sec_old, sec_new, vec_old, vec_new, lanczos_precision, lhs, intermediate_states, \
+                       dim_latt, scratch_works1, scratch_works2, plans_sub, plans_parent, \
+                       scratch_coors, scratch_works, bosonic, L)
         for (MKL_INT j = 0; j < dim_repr[sec_old]; j++) {
             auto sj     = vec_old[j];
             double nu_j = norm_repr[sec_old][j];
             if (std::abs(sj) < lanczos_precision || std::abs(nu_j) < lanczos_precision) continue;
-            
+
             int tid = omp_get_thread_num();
-            
+
             std::vector<std::pair<MKL_INT, T>> values;
             for (auto it = lhs.mats.begin(); it != lhs.mats.end(); it++) {
                 if (it->q_diagonal()) {                                          // only momentum changes
@@ -1665,7 +1723,7 @@ namespace qbasis {
                     std::vector<int> disp_i_int(dim_latt), disp_j_int(dim_latt);
                     int sgn;
                     mbasis_elem state_sub_new1, state_sub_new2, ra_z_Tj_rb;
-                    
+
                     for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                         auto &ele_new = intermediate_states[tid][cnt];
                         ele_new.first.label_sub(props, state_sub1_label, state_sub2_label,
@@ -1687,11 +1745,11 @@ namespace qbasis {
                             disp_i = Weisse_e_eq.index(pos_e).first;
                             disp_j = Weisse_e_eq.index(pos_e).second;
                         }
-                        for (uint32_t j = 0; j < disp_j.size(); j++) {
-                            disp_i_int[j] = static_cast<int>(disp_i[j]);
-                            disp_j_int[j] = static_cast<int>(disp_j[j]);
+                        for (uint32_t jj = 0; jj < disp_j.size(); jj++) {
+                            disp_i_int[jj] = static_cast<int>(disp_i[jj]);
+                            disp_j_int[jj] = static_cast<int>(disp_j[jj]);
                         }
-                        
+
                         if (state_rep2_label < state_rep1_label && dim_spec_involved) {
                             state_sub_new1 = basis_sub_repr[state_rep2_label];
                             state_sub_new2 = basis_sub_repr[state_rep1_label];
@@ -1703,7 +1761,7 @@ namespace qbasis {
                         state_sub_new2.transform(props_sub_b, plans_sub[tid], sgn);   // T_j |rb>
                         zipper_basis(props, props_sub_a, props_sub_b, state_sub_new1, state_sub_new2, ra_z_Tj_rb); // |ra> z T_j |rb>
                         MKL_INT i;
-                        if (Lin_Ja_repr[sec_new].size() > 0 && Lin_Jb_repr[sec_new].size() > 0) {
+                        if (!Lin_Ja_repr[sec_new].empty() && !Lin_Jb_repr[sec_new].empty()) {
                             uint64_t i_a = state_sub_new1.label(props_sub_a, scratch_works1[tid], scratch_works2[tid]); // use Lin Tables
                             uint64_t i_b = state_sub_new2.label(props_sub_b, scratch_works1[tid], scratch_works2[tid]);
                             i = Lin_Ja_repr[sec_new][i_a] + Lin_Jb_repr[sec_new][i_b];
@@ -1714,7 +1772,7 @@ namespace qbasis {
                         assert(ra_z_Tj_rb == basis_repr[sec_new][i]);
                         double nu_i = norm_repr[sec_new][i];
                         if (std::abs(nu_i) < lanczos_precision) continue;
-                        
+
                         double exp_coef = 0.0;
                         for (uint32_t d = 0; d < dim_latt; d++) {
                             if (trans_sym[d]) {
@@ -1742,8 +1800,8 @@ namespace qbasis {
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
-    
-    
+
+
     template <typename T>
     void model<T>::moprXvec_repr(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
                                  const MKL_INT &which_col, T* vec_new) const
@@ -1752,8 +1810,8 @@ namespace qbasis {
         const T* vec_old = eigenvecs_repr.data() + dim_repr[sec_old] * which_col;
         moprXvec_repr(lhs, sec_old, sec_new, vec_old, vec_new);
     }
-    
-    
+
+
     template <typename T>
     T model<T>::measure_repr_static(const mopr<T> &lhs, const uint32_t &sec_repr, const MKL_INT &which_col) const
     {
@@ -1768,12 +1826,12 @@ namespace qbasis {
                 base.push_back(1);
             }
         }
-        
+
         qbasis::mopr<T> opr_trans;                                               // O_t = (1/N) \sum_R T(R) O T(-R)
         std::vector<uint32_t> disp(base.size(),0);
         std::vector<uint32_t> plan(latt_parent.total_sites());
         std::vector<int> scratch_coor(latt_parent.dimension()), scratch_work(latt_parent.dimension());
-        
+
         while (! dynamic_base_overflow(disp, base)) {
             std::vector<int> disp_int(base.size());
             for (uint32_t d = 0; d < disp.size(); d++) disp_int[d] = static_cast<int>(disp[d]);
@@ -1784,13 +1842,13 @@ namespace qbasis {
             disp = dynamic_base_plus1(disp, base);
         }
         opr_trans.simplify();
-        
+
         std::vector<T> vec_new(dim_repr[sec_repr]);
         moprXvec_repr(opr_trans, sec_repr, sec_repr, which_col, vec_new.data());
         return blas_dotc(dim_repr[sec_repr], eigenvecs_repr.data() + dim_repr[sec_repr] * which_col, 1, vec_new.data(), 1);
     }
-    
-    
+
+
     template <typename T>
     void model<T>::measure_repr_dynamic(const mopr<T> &Aq, const uint32_t &sec_old, const uint32_t &sec_new,
                                         const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[]) const
@@ -1808,8 +1866,8 @@ namespace qbasis {
             lanczos(0, maxit-1, maxit, m, dim_new, HamMat, vec_new.data(), hessenberg, "dnmcs");
         }
     }
-    
-    
+
+
     template <typename T>
     void model<T>::moprXgs_vrnl(const mopr<T> &Bq, const uint32_t &sec_vrnl, T *vec_new) const
     {
@@ -1821,12 +1879,12 @@ namespace qbasis {
         auto L        = latt_parent.Linear_size();
         double sqrt_omega_g = std::sqrt(static_cast<double>(gs_omegaG_vrnl));
         assert(dim > 0);
-        
+
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        
+
         int num_threads = 1;
-        #pragma omp parallel
+        #pragma omp parallel default(none) shared(num_threads)
         {
             int tid = omp_get_thread_num();
             if (tid == 0) num_threads = omp_get_num_threads();
@@ -1834,29 +1892,30 @@ namespace qbasis {
         // prepare intermediates in advance
         std::vector<wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(props));
         std::vector<std::vector<int>> scratch_disp(num_threads,std::vector<int>(L.size()));
-        
+
         std::cout << "mopr * gs (t = " << sec_vrnl << ")... " << std::endl;
         for (MKL_INT j = 0; j < dim; j++) vec_new[j] = 0.0;
-        
-        #pragma omp parallel for schedule(dynamic,256)
+
+        #pragma omp parallel for schedule(dynamic,256) default(none) \
+                shared(dim, basis, Bq_dg, intermediate_states, scratch_disp, momentum, vec_new, sqrt_omega_g)
         for (MKL_INT j = 0; j < dim; j++) {
             //basis[j].prt_states(props);
-            
+
             int tid = omp_get_thread_num();
-            
+
             for (auto it = Bq_dg.mats.begin(); it != Bq_dg.mats.end(); it++) {
                 if (it->q_diagonal()) continue;
-                
+
                 intermediate_states[tid].copy(basis[j]);
                 oprXphi(*it, props, intermediate_states[tid]);
-                
+
                 for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                     //it->prt();
                     //std::cout << std::endl;
-                    
+
                     //intermediate_states[tid][cnt].first.prt_states(props);
-                    
-                    
+
+
                     auto &ele_new = intermediate_states[tid][cnt];
                     if (gs_omegaG_vrnl == 1) {
                         if (ele_new.first != gs_vrnl) continue;
@@ -1877,8 +1936,8 @@ namespace qbasis {
             }
         }
     }
-    
-    
+
+
     template <typename T>
     void model<T>::moprXvec_vrnl(const mopr<T> &Bq, const uint32_t &sec_old, const uint32_t &sec_new,
                                  const T* vec_old, T* vec_new, T &pG) const
@@ -1890,9 +1949,9 @@ namespace qbasis {
         assert(dim_vrnl[sec_old] > 0 && dim_vrnl[sec_new] > 0);
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        
+
         int num_threads = 1;
-        #pragma omp parallel
+        #pragma omp parallel default(none) shared(num_threads)
         {
             int tid = omp_get_thread_num();
             if (tid == 0) num_threads = omp_get_num_threads();
@@ -1900,18 +1959,20 @@ namespace qbasis {
         // prepare intermediates in advance
         std::vector<wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(props));
         std::vector<std::vector<int>> scratch_disp(num_threads);
-        
+
         std::cout << "mopr * vec (s = " << sec_old << ", t = " << sec_new << ")... " << std::endl;
         for (MKL_INT j = 0; j < dim_vrnl[sec_new]; j++) vec_new[j] = 0.0;
         pG = static_cast<T>(0.0);
-        
-        #pragma omp parallel for schedule(dynamic,256)
+
+        #pragma omp parallel for schedule(dynamic,256) default(none) \
+                shared(sec_old, sec_new, vec_old, vec_new, lanczos_precision, intermediate_states, Bq, \
+                       scratch_disp, momentum, sqrt_omega_g, pG)
         for (MKL_INT j = 0; j < dim_vrnl[sec_old]; j++) {
             auto sj = vec_old[j];
             if (std::abs(sj) < lanczos_precision) continue;
-            
+
             int tid = omp_get_thread_num();
-            
+
             std::vector<std::pair<MKL_INT, T>> values;
             T value_gs = static_cast<T>(0.0);
             for (auto it = Bq.mats.begin(); it != Bq.mats.end(); it++) {
@@ -1955,8 +2016,8 @@ namespace qbasis {
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
-    
-    
+
+
     template <typename T>
     void model<T>::moprXvec_vrnl(const mopr<T> &Bq, const uint32_t &sec_old, const uint32_t &sec_new,
                                  const MKL_INT &which_col, T *vec_new, T &pG) const
@@ -1965,8 +2026,8 @@ namespace qbasis {
         const T* vec_old = eigenvecs_vrnl.data() + dim_vrnl[sec_old] * which_col;
         moprXvec_vrnl(Bq, sec_old, sec_new, vec_old, vec_new, pG);
     }
-    
-    
+
+
     template <typename T>
     T model<T>::measure_vrnl_static_trans_invariant(const mopr<T> &lhs, const uint32_t &sec_vrnl, const MKL_INT &which_col) const
     {
@@ -1974,22 +2035,23 @@ namespace qbasis {
         auto &basis   = basis_vrnl[sec_vrnl];
         auto momentum = momenta_vrnl[sec_vrnl];
         auto eigenvec = eigenvecs_vrnl.data() + dim * which_col;
-        
+
         T result = static_cast<T>(0.0);
         int num_threads = 1;
-        #pragma omp parallel
+        #pragma omp parallel default(none) shared(num_threads)
         {
             int tid = omp_get_thread_num();
             if (tid == 0) num_threads = omp_get_num_threads();
         }
         // prepare intermediates in advance
         std::vector<qbasis::wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(props));
-        
-        #pragma omp parallel for schedule(dynamic,256)
+
+        #pragma omp parallel for schedule(dynamic,256) default(none) \
+                shared(dim, eigenvec, lanczos_precision, lhs, basis, intermediate_states, momentum, result)
         for (MKL_INT n = 0; n < dim; n++) {
             int tid = omp_get_thread_num();
-            
-            if (std::abs(eigenvec[n]) < qbasis::lanczos_precision) continue;
+
+            if (std::abs(eigenvec[n]) < lanczos_precision) continue;
             T values = static_cast<T>(0.0);
             for (decltype(lhs.size()) cnt_opr = 0; cnt_opr < lhs.size(); cnt_opr++) {
                 auto &A = lhs[cnt_opr];
@@ -2017,9 +2079,9 @@ namespace qbasis {
             }
         }
         return result;
-        
+
     }
-    
+
     template <typename T>
     void model<T>::measure_vrnl_dynamic(const mopr<T> &Bq, const uint32_t &sec_vrnl,
                                         const MKL_INT &maxit, MKL_INT &m, double &norm, double *hessenberg) const
@@ -2033,7 +2095,7 @@ namespace qbasis {
         blas_scal(dim, 1.0 / norm, vec_new.data(), 1);                     // normalize vec_new
         lanczos(0, maxit-1, maxit, m, dim, HamMat, vec_new.data(), hessenberg, "dnmcs");
     }
-    
+
     template <typename T>
     void model<T>::WannierMat_vrnl(const std::vector<std::pair<std::vector<double>,mopr<T>>> &Ar_list,
                                    const uint32_t &sec_vrnl,
@@ -2042,15 +2104,15 @@ namespace qbasis {
                                    const std::function<MKL_INT(const model<T>&, const uint32_t&)> &locate_state)
     {
         assert(sec_vrnl < basis_vrnl.size() - 1);
-        
+
         MKL_INT dim    = dim_vrnl[sec_vrnl];
         auto &basis    = basis_vrnl[sec_vrnl];
         assert(static_cast<MKL_INT>(basis.size()) == dim);
         uint32_t num_k = momenta_list.size();
         matrix_mu.resize(num_k * num_k);
-        
+
         std::cout << "Building Wannier Matrix..." << std::endl;
-        
+
         // first check if eigenstates already built
         bool states_built;
         fs::path outdir("out_Wannier");
@@ -2077,31 +2139,31 @@ namespace qbasis {
         } else {
             states_built = false;
         }
-        
-        
+
+
         if (! states_built) {
             fs::create_directory(outdir);
-            
+
             // diagonalize H for all the momenta
             MKL_INT warning_cnt = 0;
             for (uint32_t k_idx = 0; k_idx < num_k; k_idx++) {
                 std::cout << "k_idx = " << k_idx << std::endl;
                 std::string vec_filename = "out_Wannier/eigvec_" + std::to_string(k_idx) + ".dat";
-                
+
                 // change the system momentum
                 auto &momentum = momenta_list[k_idx];
                 momenta_vrnl[sec_vrnl] = momentum;
-                
+
                 // re-calculate the GS normalization factor
                 auto momentum_dis = momentum;
                 blas_axpy(static_cast<MKL_INT>(momentum.size()), -1.0, gs_momentum_vrnl.data(), 1, momentum_dis.data(), 1);
                 auto dis_gs_nrm2 = blas_nrm2(static_cast<MKL_INT>(momentum_dis.size()), momentum_dis.data(), 1);
                 gs_norm_vrnl[sec_vrnl] = dis_gs_nrm2 > lanczos_precision ? 0 : gs_omegaG_vrnl;
-                
+
                 generate_Ham_sparse_vrnl(sec_vrnl);
-                
-                locate_E0_iram(2,30,40,10000);
-                
+
+                locate_E0_iram(which_sym::vrnl, 30, 40, 10000);
+
                 // now locate the state and store it on disk
                 MKL_INT level = locate_state(*this, sec_vrnl);
                 std::vector<std::complex<double>> eigvec_k(dim);
@@ -2116,7 +2178,7 @@ namespace qbasis {
                 std::cout << std::endl;
             }
         }
-        
+
         // return Bq
         auto FourierTR = [](const std::vector<std::pair<std::vector<double>,mopr<T>>> &Ar_list,
                             const std::vector<double> &q)
@@ -2131,14 +2193,14 @@ namespace qbasis {
             }
             return Bq;
         };
-        
-        
+
+
         // temporarily use the last sector
         uint32_t sec_new = dim_vrnl.size() - 1;
         dim_vrnl[sec_new] = dim_vrnl[sec_vrnl];
         basis_vrnl[sec_new] = basis_vrnl[sec_vrnl];
-        
-        
+
+
         // build the matrix
         std::vector<std::complex<double>> eigvec_k1(dim);
         std::vector<std::complex<double>> eigvec_k2(dim);
@@ -2149,45 +2211,45 @@ namespace qbasis {
             std::string vec_filek2 = "out_Wannier/eigvec_" + std::to_string(k2_idx) + ".dat";
             int info2 = vec_disk_read(vec_filek2, dim, eigvec_k2.data());
             assert(info2 == 0);
-            
+
             // re-calculate the GS normalization factor for k2_idx
             momenta_vrnl[sec_vrnl] = momenta_list[k2_idx];
             auto momentum_dis_k2 = momenta_vrnl[sec_vrnl];
             for (uint32_t d = 0; d < momentum_dis_k2.size(); d++) momentum_dis_k2[d] -= gs_momentum_vrnl[d];
             auto dis_gs_nrm2_k2 = blas_nrm2(static_cast<MKL_INT>(momentum_dis_k2.size()), momentum_dis_k2.data(), 1);
             gs_norm_vrnl[sec_vrnl] = dis_gs_nrm2_k2 > lanczos_precision ? 0 : gs_omegaG_vrnl;
-            
+
             for (uint32_t k1_idx = 0; k1_idx <= k2_idx; k1_idx++) {
                 // read out phi(k1)
                 std::string vec_filek1 = "out_Wannier/eigvec_" + std::to_string(k1_idx) + ".dat";
                 int info1 = vec_disk_read(vec_filek1, dim, eigvec_k1.data());
                 assert(info1 == 0);
-                
+
                 // q = k1-k2
                 auto q_transfer = momenta_list[k1_idx];
                 for (uint32_t d = 0; d < q_transfer.size(); d++) q_transfer[d] -= momenta_list[k2_idx][d];
-                
+
                 // now need contruct B_{k1-k2}
                 auto Bq = FourierTR(Ar_list, q_transfer);
-                
+
                 std::cout << " --------- progress --------" << std::endl;
                 std::cout << " k2: " << k2_idx << " / " << num_k << std::endl;
                 std::cout << " k1: " << k1_idx << " / " << num_k << std::endl;
-                
+
                 // re-calculate the GS normalization factor for k1_idx
                 momenta_vrnl[sec_new] = momenta_list[k1_idx];
                 auto momentum_dis_k1 = momenta_vrnl[sec_new];
                 for (uint32_t d = 0; d < momentum_dis_k1.size(); d++) momentum_dis_k1[d] -= gs_momentum_vrnl[d];
                 auto dis_gs_nrm2_k1 = blas_nrm2(static_cast<MKL_INT>(momentum_dis_k1.size()), momentum_dis_k1.data(), 1);
                 gs_norm_vrnl[sec_new] = dis_gs_nrm2_k1 > lanczos_precision ? 0 : gs_omegaG_vrnl;
-                
+
                 moprXvec_vrnl(Bq, sec_vrnl, sec_new, eigvec_k2.data(), vec_new.data(), pG);
-                
+
                 // temporarily neglect contributions from pG
                 matrix_mu[k1_idx + k2_idx * num_k] = blas_dotc(dim, eigvec_k1.data(), 1, vec_new.data(), 1);
             }
         }
-        
+
         // get the hermitian conjugate
         for (uint32_t k2_idx = 0; k2_idx < num_k; k2_idx++) {
             assert(std::abs(matrix_mu[k2_idx + k2_idx * num_k].imag()) < lanczos_precision);
@@ -2195,25 +2257,25 @@ namespace qbasis {
                 matrix_mu[k1_idx + k2_idx * num_k] = conjugate(matrix_mu[k2_idx + k1_idx * num_k]);
             }
         }
-        
+
         // release memory
         basis_vrnl[sec_new].clear();
         basis_vrnl[sec_new].shrink_to_fit();
     }
-    
-    
+
+
 //     ---------------------------- deprecated ---------------------------------
 //     ---------------------------- deprecated ---------------------------------
-    
+
     template <typename T>
     void model<T>::basis_init_repr_deprecated(const std::vector<int> &momentum,
                                               const uint32_t &sec_full, const uint32_t &sec_repr)
     {
         assert(latt_parent.dimension() == static_cast<uint32_t>(momentum.size()));
         assert(dim_full[sec_full] > 0 && dim_full[sec_full] == static_cast<MKL_INT>(basis_full[sec_full].size()));
-        
+
         int num_threads = 1;
-        #pragma omp parallel
+        #pragma omp parallel default(none) shared(num_threads)
         {
             int tid = omp_get_thread_num();
             if (tid == 0) num_threads = omp_get_num_threads();
@@ -2224,11 +2286,11 @@ namespace qbasis {
         std::vector<std::vector<int>> scratch_coors(num_threads);
         std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
         std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
-        
+
         momenta[sec_repr] = momentum;
-        
+
         check_translation();
-        
+
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         std::cout << "Classifying basis_repr according to momentum (deprecated method): (";
@@ -2240,7 +2302,7 @@ namespace qbasis {
             }
         }
         std::cout << ")..." << std::endl;
-        
+
         //auto num_sub = latt_parent.num_sublattice();
         auto L = latt_parent.Linear_size();
         basis_belong_deprec[sec_repr].resize(dim_full[sec_full]);
@@ -2248,13 +2310,15 @@ namespace qbasis {
         basis_coeff_deprec[sec_repr].resize(dim_full[sec_full]);
         std::fill(basis_coeff_deprec[sec_repr].begin(), basis_coeff_deprec[sec_repr].end(), std::complex<double>(0.0,0.0));
         basis_repr_deprec[sec_repr].resize(0);
-        
+
         for (MKL_INT i = 0; i < dim_full[sec_full]; i++) {
             if (basis_belong_deprec[sec_repr][i] != -1) continue;
             basis_belong_deprec[sec_repr][i] = i;
             basis_repr_deprec[sec_repr].push_back(i);
             basis_coeff_deprec[sec_repr][i] = std::complex<double>(1.0, 0.0);
-            #pragma omp parallel for schedule(dynamic,1)
+            #pragma omp parallel for schedule(dynamic,1) default(none) \
+                    shared(sec_full, sec_repr, i, plans_parent, momentum, L, \
+                           scratch_coors, scratch_works, scratch_works1, scratch_works2)
             for (uint32_t site = 1; site < latt_parent.total_sites(); site++) {
                 int tid = omp_get_thread_num();
                 std::vector<int> disp;
@@ -2273,7 +2337,7 @@ namespace qbasis {
                 latt_parent.translation_plan(plans_parent[tid], disp, scratch_coors[tid], scratch_works[tid]);
                 basis_temp.transform(props, plans_parent[tid], sgn);
                 MKL_INT j;
-                if (Lin_Ja_full[sec_full].size() > 0 && Lin_Jb_full[sec_full].size() > 0) {
+                if (!Lin_Ja_full[sec_full].empty() && !Lin_Jb_full[sec_full].empty()) {
                     uint64_t i_a, i_b;
                     basis_temp.label_sub(props, i_a, i_b,
                                          scratch_works1[tid], scratch_works2[tid]);
@@ -2282,7 +2346,7 @@ namespace qbasis {
                     j = binary_search<mbasis_elem,MKL_INT>(basis_full[sec_full], basis_temp, 0, dim_full[sec_full]);
                 }
                 assert(basis_full[sec_full][j] == basis_temp);
-                
+
                 double exp_coef = 0.0;
                 for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
                     if (trans_sym[d]) {
@@ -2305,7 +2369,7 @@ namespace qbasis {
             dim_repr[sec_repr] = basis_repr_deprec[sec_repr].size();
         }
         std::cout << "dim_repr = " << dim_repr[sec_repr] << std::flush;
-        
+
         MKL_INT extra = 0;
         for (MKL_INT j = 0; j < dim_repr[sec_repr]; j++) {
             if (std::abs(basis_coeff_deprec[sec_repr][basis_repr_deprec[sec_repr][j]]) < lanczos_precision) extra++;
@@ -2315,8 +2379,8 @@ namespace qbasis {
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
-    
-    
+
+
     template <typename T>
     void model<T>::generate_Ham_sparse_repr_deprecated(const uint32_t &sec_full,
                                                        const uint32_t &sec_repr,
@@ -2333,9 +2397,9 @@ namespace qbasis {
         auto &Lin_Jb_full_depre = Lin_Jb_full[sec_full];
         auto &HamMat_csr        = HamMat_csr_repr[sec_repr];
         assert(dim_full_depre > 0 && dim_repr_depre > 0);
-        
+
         int num_threads = 1;
-        #pragma omp parallel
+        #pragma omp parallel default(none) shared(num_threads)
         {
             int tid = omp_get_thread_num();
             if (tid == 0) num_threads = omp_get_num_threads();
@@ -2344,16 +2408,19 @@ namespace qbasis {
         std::vector<wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(props));
         std::vector<std::vector<uint8_t>> scratch_works1(num_threads);
         std::vector<std::vector<uint64_t>> scratch_works2(num_threads);
-        
+
         std::cout << "Generating LIL Hamiltonian Matrix (repr) (deprecated)..." << std::endl;
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
         lil_mat<std::complex<double>> matrix_lil(dim_repr_depre, upper_triangle);
-        
-        #pragma omp parallel for schedule(dynamic,1)
+
+        #pragma omp parallel for schedule(dynamic,1) default(none) \
+                shared(dim_repr_depre, dim_full_depre, basis_repr_depre, basis_full_depre, basis_coeff, basis_belong, \
+                       matrix_lil, intermediate_states, Lin_Ja_full_depre, Lin_Jb_full_depre, \
+                       scratch_works1, scratch_works2, upper_triangle, lanczos_precision)
         for (MKL_INT i = 0; i < dim_repr_depre; i++) {
             int tid = omp_get_thread_num();
-            
+
             auto repr_i = basis_repr_depre[i];
             if (std::abs(basis_coeff[repr_i]) < lanczos_precision) {
                 matrix_lil.add(i, i, static_cast<T>(fake_pos + static_cast<double>(i)/static_cast<double>(dim_repr_depre)));
@@ -2362,16 +2429,16 @@ namespace qbasis {
             // diagonal part:
             for (uint32_t cnt = 0; cnt < Ham_diag.size(); cnt++)
                 matrix_lil.add(i, i, basis_full_depre[repr_i].diagonal_operator(props,Ham_diag[cnt]));
-            
+
             // non-diagonal part:
             for (auto it = Ham_off_diag.mats.begin(); it != Ham_off_diag.mats.end(); it++) {
                 intermediate_states[tid].copy(basis_full_depre[repr_i]);
                 oprXphi(*it, props, intermediate_states[tid]);
-                
+
                 for (MKL_INT cnt = 0; cnt < intermediate_states[tid].size(); cnt++) {
                     auto &ele_new = intermediate_states[tid][cnt];
                     MKL_INT state_j;
-                    if (Lin_Ja_full_depre.size() > 0 && Lin_Jb_full_depre.size() > 0) {
+                    if (!Lin_Ja_full_depre.empty() && !Lin_Jb_full_depre.empty()) {
                         uint64_t i_a, i_b;
                         ele_new.first.label_sub(props, i_a, i_b,
                                                 scratch_works1[tid], scratch_works2[tid]);
@@ -2383,10 +2450,10 @@ namespace qbasis {
                     assert(state_j >= 0 && state_j < dim_full_depre);
                     auto repr_j = basis_belong[state_j];
                     if (std::abs(basis_coeff[repr_j]) < lanczos_precision) continue;
-                    
+
                     auto j = binary_search<MKL_INT,MKL_INT>(basis_repr_depre, repr_j, 0, dim_repr_depre);  // < j |P'_k H | i > obtained
                     auto coeff = basis_coeff[state_j]/std::sqrt(std::real(basis_coeff[repr_i] * basis_coeff[repr_j]));
-                    
+
                     if (upper_triangle) {
                         if (i <= j) matrix_lil.add(i, j, conjugate(ele_new.second) * coeff);
                     } else {
@@ -2401,10 +2468,10 @@ namespace qbasis {
         std::chrono::duration<double> elapsed_seconds = end - start;
         std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
     }
-    
-    
-    
-    
+
+
+
+
     template <typename T>
     void model<T>::ckpt_lczsE0_init(bool &E0_done, bool &V0_done, bool &E1_done, bool &V1_done, std::vector<T> &v)
     {
@@ -2418,27 +2485,29 @@ namespace qbasis {
         } else {
             fs::create_directory(outdir);
         }
-        
-        MKL_INT dim     = (sec_sym == 0) ? dim_full[sec_mat] : dim_repr[sec_mat];
-        auto &eigenvals = (sec_sym == 0) ? eigenvals_full : eigenvals_repr;
-        auto &eigenvecs = (sec_sym == 0) ? eigenvecs_full : eigenvecs_repr;
-        
+
+        MKL_INT dim     = (sec_sym == which_sym::full) ? dim_full[sec_mat] : dim_repr[sec_mat];
+        auto &eigenvals = (sec_sym == which_sym::full) ? eigenvals_full : eigenvals_repr;
+        auto &eigenvecs = (sec_sym == which_sym::full) ? eigenvecs_full : eigenvecs_repr;
+
         std::ofstream fout("out_Qckpt/log_lczs_E0_ckpt.txt", std::ios::out | std::ios::app);
         fout << std::setprecision(10);
         fout << std::endl << "Log start (ckpt_lczsE0_init): " << date_and_time() << std::endl;
         fout << "Initializing lczs_E0" << std::endl;
-        
+
         auto filesize_ideal = 4 * sizeof(bool) + sizeof(MKL_INT) + 3 * sizeof(double);
-        
-        std::string filename0 = "out_Qckpt/lczs_E0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat);
-        if (sec_sym == 1) {
+
+        std::string filename0 = "out_Qckpt/lczs_E0_sym"
+                                + std::to_string(sec_sym == which_sym::full ? 0 : (sec_sym == which_sym::repr ? 1 : 2))
+                                + "_sec" + std::to_string(sec_mat);
+        if (sec_sym == which_sym::repr) {
             filename0 += "_K";
             for (auto &k : momenta[sec_mat]) filename0 += std::to_string(k);
         }
         filename0 += ".Qckpt";
         std::string filename1 = filename0 + "1";
         std::string filename2 = filename0 + "2";
-        
+
         if ((! fs::exists(fs::path(filename0)) && ! fs::exists(fs::path(filename1))) ||
             (fs::exists(fs::path(filename0)) && fs::file_size(fs::path(filename0)) != filesize_ideal)) {  // un-initialized
             fout << "Initializing checkpoint for lczs_E0." << std::endl;
@@ -2453,8 +2522,7 @@ namespace qbasis {
             ftemp.write(reinterpret_cast<char*>(&gap), sizeof(double));
             ftemp.close();
         } else {
-            bool updating = (fs::exists(fs::path(filename1)) &&
-                             fs::file_size(fs::path(filename1)) == filesize_ideal) ? true : false;
+            bool updating = (fs::exists(fs::path(filename1)) && fs::file_size(fs::path(filename1)) == filesize_ideal);
             fout << "Resuming from an interrupted update? " << updating << std::endl;
             if (updating && fs::exists(fs::path(filename2))) {
                 fout << "New data finished writing." << std::endl;
@@ -2466,7 +2534,7 @@ namespace qbasis {
             fs::remove(fs::path(filename1));
             fs::remove(fs::path(filename2));
             fout << "loading data from " << filename0 << std::endl;
-            
+
             std::ifstream ftemp(filename0, std::ios::in | std::ios::binary);
             ftemp.read(reinterpret_cast<char*>(&E0_done), sizeof(bool));
             fout << "E0_done: " << E0_done << std::endl;
@@ -2486,7 +2554,7 @@ namespace qbasis {
             if (E1_done) fout << "gap: " << gap << std::endl;
             ftemp.close();
         }
-        
+
         if (E1_done) {
             eigenvals.resize(2);
             eigenvals[0] = E0;
@@ -2495,11 +2563,13 @@ namespace qbasis {
             eigenvals.resize(1);
             eigenvals[0] = E0;
         }
-        
+
         if (E0_done && V0_done && (! V1_done)) {
             fout << "Reading eigenvec0 from disk." << std::endl;
-            std::string filename = "out_Qckpt/eigenvec0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat);
-            if (sec_sym == 1) {
+            std::string filename = "out_Qckpt/eigenvec0_sym"
+                                  + std::to_string(sec_sym == which_sym::full ? 0 : (sec_sym == which_sym::repr ? 1 : 2))
+                                  + "_sec" + std::to_string(sec_mat);
+            if (sec_sym == which_sym::repr) {
                 filename += "_K";
                 for (auto &k : momenta[sec_mat]) filename += std::to_string(k);
             }
@@ -2509,9 +2579,13 @@ namespace qbasis {
             vec_disk_read(filename, dim, v.data() + 2 * dim);
         } else if (V1_done) {
             fout << "Reading eigenvec0/1 from disk." << std::endl;
-            std::string flnm0 = "out_Qckpt/eigenvec0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat);
-            std::string flnm1 = "out_Qckpt/eigenvec1_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat);
-            if (sec_sym == 1) {
+            std::string flnm0 = "out_Qckpt/eigenvec0_sym"
+                               + std::to_string(sec_sym == which_sym::full ? 0 : (sec_sym == which_sym::repr ? 1 : 2))
+                               + "_sec" + std::to_string(sec_mat);
+            std::string flnm1 = "out_Qckpt/eigenvec1_sym"
+                               + std::to_string(sec_sym == which_sym::full ? 0 : (sec_sym == which_sym::repr ? 1 : 2))
+                               + "_sec" + std::to_string(sec_mat);
+            if (sec_sym == which_sym::repr) {
                 flnm0 += "_K";
                 flnm1 += "_K";
                 for (auto &k : momenta[sec_mat]) {
@@ -2525,26 +2599,28 @@ namespace qbasis {
             assert(fs::exists(fs::path(flnm1)));
             v.resize(0);
             v.shrink_to_fit();
-            
+
             eigenvecs.resize(2*dim);
             vec_disk_read(flnm0, dim, eigenvecs.data());
             vec_disk_read(flnm1, dim, eigenvecs.data() + dim);
         }
-        
+
         fout << "Log end (ckpt_lczsE0_init): " << date_and_time() << std::endl << std::endl;
         fout.close();
     }
-    
+
     template <typename T>
     void model<T>::ckpt_lczsE0_updt(const bool &E0_done, const bool &V0_done, const bool &E1_done, const bool &V1_done)
     {
         if (! enable_ckpt) return;
-        
-        MKL_INT dim     = (sec_sym == 0) ? dim_full[sec_mat] : dim_repr[sec_mat];
-        auto &eigenvecs = (sec_sym == 0) ? eigenvecs_full : eigenvecs_repr;
-        
-        std::string filename0 = "out_Qckpt/lczs_E0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat);
-        if (sec_sym == 1) {
+
+        MKL_INT dim     = (sec_sym == which_sym::full) ? dim_full[sec_mat] : dim_repr[sec_mat];
+        auto &eigenvecs = (sec_sym == which_sym::full) ? eigenvecs_full : eigenvecs_repr;
+
+        std::string filename0 = "out_Qckpt/lczs_E0_sym"
+                               + std::to_string(sec_sym == which_sym::full ? 0 : (sec_sym == which_sym::repr ? 1 : 2))
+                               + "_sec" + std::to_string(sec_mat);
+        if (sec_sym == which_sym::repr) {
             filename0 += "_K";
             for (auto &k : momenta[sec_mat]) filename0 += std::to_string(k);
         }
@@ -2552,15 +2628,15 @@ namespace qbasis {
         std::string filename1 = filename0 + "1";
         std::string filename2 = filename0 + "2";
         assert(fs::exists(fs::path(filename0)));
-        
+
         std::ofstream fout("out_Qckpt/log_lczs_E0_ckpt.txt", std::ios::out | std::ios::app);
         fout << std::setprecision(10);
         fout << std::endl << "Log start (ckpt_lczsE0_updt): " << date_and_time() << std::endl;
         fout << "Updating lczs_E0" << std::endl;
-        
+
         fs::remove(fs::path(filename1));
         fs::remove(fs::path(filename2));
-        
+
         std::ofstream ftemp(filename1, std::ios::out | std::ios::binary);
         fout << "E0_done: " << E0_done << std::endl;
         ftemp.write(reinterpret_cast<const char*>(&E0_done), sizeof(bool));
@@ -2579,10 +2655,14 @@ namespace qbasis {
         if (E1_done) fout << "gap: " << gap << std::endl;
         ftemp.write(reinterpret_cast<char*>(&gap), sizeof(double));
         ftemp.close();
-        
-        std::string flnm0 = "out_Qckpt/eigenvec0_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat);
-        std::string flnm1 = "out_Qckpt/eigenvec1_sym" + std::to_string(sec_sym) + "_sec" + std::to_string(sec_mat);
-        if (sec_sym == 1) {
+
+        std::string flnm0 = "out_Qckpt/eigenvec0_sym"
+                           + std::to_string(sec_sym == which_sym::full ? 0 : (sec_sym == which_sym::repr ? 1 : 2))
+                           + "_sec" + std::to_string(sec_mat);
+        std::string flnm1 = "out_Qckpt/eigenvec1_sym"
+                           + std::to_string(sec_sym == which_sym::full ? 0 : (sec_sym == which_sym::repr ? 1 : 2))
+                           + "_sec" + std::to_string(sec_mat);
+        if (sec_sym == which_sym::repr) {
             flnm0 += "_K";
             flnm1 += "_K";
             for (auto &k : momenta[sec_mat]) {
@@ -2592,7 +2672,7 @@ namespace qbasis {
         }
         flnm0 += ".dat";
         flnm1 += ".dat";
-        
+
         if (E0_done && V0_done && (! E1_done) && (! V1_done)) {                  // record eigenvec0
             for (auto &p : fs::directory_iterator("out_Qckpt"))
             {
@@ -2608,10 +2688,10 @@ namespace qbasis {
             if (! fs::exists(fs::path(flnm0))) vec_disk_write(flnm0, dim, eigenvecs.data());
             vec_disk_write(flnm1, dim, eigenvecs.data() + dim);
         }
-        
+
         // before/after this point, have to use old/new data
         fs::copy(fs::path(filename1), fs::path(filename2));
-        
+
         fs::remove(fs::path(filename0));                                         // at this moment, filename0 disappear
         fs::copy(fs::path(filename1), fs::path(filename0));
         ckpt_lanczos_clean();
@@ -2621,8 +2701,8 @@ namespace qbasis {
         fout << "Log end (ckpt_lczsE0_updt): " << date_and_time() << std::endl << std::endl;
         fout.close();
     }
-    
-    
+
+
     // Explicit instantiation
     //template class model<double>;
     template class model<std::complex<double>>;

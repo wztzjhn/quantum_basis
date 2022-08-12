@@ -78,26 +78,26 @@ inline lapack_int lapack_syevd_heevd(const int &matrix_layout, const char &jobz,
 }
 
 namespace qbasis {
-    
+
     // the ckpt functions are defined in ckpt.cc
     template <typename T>
     void ckpt_lanczos_init(MKL_INT &k, const MKL_INT &maxit, const MKL_INT &dim,
                            int &cnt_accuE0, double &accuracy, double &theta0_prev, double &theta1_prev,
                            T v[], double hessenberg[], const std::string &purpose);
-    
+
     template <typename T>
     void ckpt_lanczos_update(const MKL_INT &m, const MKL_INT &maxit, const MKL_INT &dim,
                              int &cnt_accuE0, double &accuracy, double &theta0_prev, double &theta1_prev,
                              T v[], double hessenberg[], const std::string &purpose);
-    
-    
-    
+
+
+
     template <typename T>
     void ckpt_CG_init(MKL_INT &m, const MKL_INT &maxit, const MKL_INT &dim, T v[], T r[], T p[]);
-    
+
     template <typename T>
     void ckpt_CG_update(const MKL_INT &m, const MKL_INT &dim, T v[], T r[], T p[]);
-    
+
     void log_Lanczos_srval(const MKL_INT &k, const std::vector<double> &ritz,
                            const double hessenberg[], const MKL_INT &maxit,
                            const double &accuracy,
@@ -125,7 +125,7 @@ namespace qbasis {
              << std::setw(20) << accu_E1 << std::endl;
         fout.close();
     }
-    
+
     // need further classification:
     // 1. ask lanczos to restart with a new linearly independent vector when v_m+1 = 0
     // 2. add DGKS re-orthogonalization (when purpose == iram)
@@ -139,7 +139,7 @@ namespace qbasis {
         double theta0_prev, theta1_prev;                                         // record Ritz values from last step
         int cnt_accuE0 = 0;
         double accuracy;
-        
+
         ckpt_lanczos_init(k, maxit, dim, cnt_accuE0, accuracy, theta0_prev, theta1_prev, v, hessenberg, purpose);
         m = k;
         np = mm - k;
@@ -147,21 +147,21 @@ namespace qbasis {
         assert(purpose != "iram" || mm < dim);                                   // # of orthogonal vectors: at most dim
         if ( cnt_accuE0 > 15 && accuracy < lanczos_precision) return;
         if (np == 0) return;
-        
+
         T zero = static_cast<T>(0.0);
         std::vector<T*> vpt(mm+1);                                               // pointers of v[0],v[1],...,v[m]
         T* phipt = &v[2*dim];                                                    // for ground state eigenvector
         T* ypt = (purpose.find("vec1") != npos) ? &v[3*dim] : &v[2*dim];         // for eigenvector y
-        
+
         if (purpose == "iram") {                                                 // v has m+1 cols
             for (MKL_INT j = 0; j <= mm; j++) vpt[j] = &v[j*dim];
         } else {                                                                 // v has only 2 or 3 cols
             for (MKL_INT j = 0; j <= mm; j++) vpt[j] = &v[(j%2)*dim];
         }
-        
+
         std::vector<double> ritz(mm), s(mm * mm);                                // Ritz values and eigenvecs of Hess
         if (purpose.find("vec") != npos) hess_eigen(hessenberg, maxit, mm, "sr", ritz, s);
-        
+
         assert(std::abs(blas_nrm2(dim, vpt[k], 1) - 1.0) < lanczos_precision);        // v[k] should be normalized
         if (k == 0) {                                                            // prepare 2 vectors to start
             hessenberg[0] = 0.0;
@@ -188,13 +188,13 @@ namespace qbasis {
             if (purpose.find("vec") != npos) blas_axpy(dim, s[m], vpt[m], 1, ypt, 1); // y += s[m] * v[m]
             ckpt_lanczos_update(m, maxit, dim, cnt_accuE0, accuracy, theta0_prev, theta1_prev, v, hessenberg, purpose);
         }
-        
+
         do {                                                                     // while m < mm
             m++;
             for (MKL_INT l = 0; l < dim; l++)
                 vpt[m][l] = -hessenberg[m-1] * vpt[m-2][l];                      // v[m] = -b[m-1] * v[m-2]
             mat.MultMv2(vpt[m-1], vpt[m]);                                       // v[m] = H * v[m-1] + v[m]
-            
+
             if (purpose == "iram" || purpose.find("val") != npos || purpose == "dnmcs") {
                 hessenberg[maxit+m-1] = std::real(blas_dotc(dim, vpt[m-1], 1, vpt[m], 1)); // a[m-1] = (v[m-1], v[m])
             } else if (purpose.find("vec") != npos) {
@@ -211,9 +211,9 @@ namespace qbasis {
                 assert(false);
             }
             blas_scal(dim, 1.0 / hessenberg[m], vpt[m], 1);                           // v[m] = v[m] / b[m]
-            
+
             if (std::abs(hessenberg[m]) < lanczos_precision) break;
-            
+
             if (purpose.find("val1") != npos || purpose.find("vec1") != npos) {  // re-orthogonalization again phi0
                 auto temp = blas_dotc(dim, phipt, 1, vpt[m], 1);
                 if (std::abs(temp) > lanczos_precision) {
@@ -223,7 +223,7 @@ namespace qbasis {
                     blas_scal(dim, 1.0 / rnorm, vpt[m], 1);
                 }
             }
-            
+
             if (purpose.find("val") != npos) {
                 hess_eigen(hessenberg, maxit, m, "sr", ritz, s);                  // calculate {theta, s}
                 if (m > 3) {
@@ -246,7 +246,7 @@ namespace qbasis {
                 theta1_prev = ritz[1];
             }
             if (purpose.find("vec") != npos) blas_axpy(dim, s[m], vpt[m], 1, ypt, 1); // y += s[m] * v[m]
-            
+
             // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             // naive re-orthogonalization, change checking criteria and replace with DGKS later
             if (purpose == "iram") {
@@ -289,7 +289,7 @@ namespace qbasis {
         } else {
             accu = blas_nrm2(dim, r, 1);
         }
-        
+
         while (m < maxit) {
             if (accu < lanczos_precision) {
                 double rnorm = blas_nrm2(dim, v, 1);
@@ -303,14 +303,14 @@ namespace qbasis {
                     blas_copy(dim, r, 1, p, 1);                                       // p = r
                     accu = blas_nrm2(dim, r, 1);
                     m++;
-                    
+
                     std::ofstream fout("log_CG.txt", std::ios::out | std::ios::app);
                     fout << std::setprecision(10);
                     fout << std::setw(20) << m << std::setw(20) << accu << std::endl;
                     fout.close();
                     ckpt_CG_update(m, dim, v, r, p);
-                    
-                    
+
+
                     if (accu < lanczos_precision) break;
                 } else {
                     break;
@@ -328,7 +328,7 @@ namespace qbasis {
                 blas_axpy(dim, static_cast<T>(1.0), r, 1, p, 1);                      // p[m+1]   = r[m+1] + beta^2 * p[m]
                 accu *= beta;                                                    // gamma[m+1] = beta[m] * gamma[m]
                 m++;
-                
+
                 ckpt_CG_update(m, dim, v, r, p);
                 std::ofstream fout("log_CG.txt", std::ios::out | std::ios::app);
                 fout << std::setprecision(10);
@@ -349,8 +349,8 @@ namespace qbasis {
                               const model<std::complex<double>> &mat, const std::complex<double> &E0, double &accu,
                               std::complex<double> v[], std::complex<double> r[],
                               std::complex<double> p[], std::complex<double> pp[]);
-    
-    
+
+
     void hess_eigen(const double hessenberg[], const MKL_INT &maxit, const MKL_INT &m,
                     const std::string &order, std::vector<double> &ritz, std::vector<double> &s)
     {
@@ -365,7 +365,7 @@ namespace qbasis {
         // ritz to be rewritten by eigenvalues in ascending order
         auto info = LAPACKE_dstedc(LAPACK_COL_MAJOR, 'I', m, ritz.data(), b.data() + 1, eigenvecs.data(), m);
         assert(info == 0);
-        
+
         std::vector<std::pair<double, MKL_INT>> eigenvals(m);
         for (MKL_INT j = 0; j < m; j++) {
             eigenvals[j].first = ritz[j];

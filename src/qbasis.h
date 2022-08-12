@@ -28,6 +28,20 @@
 #include <vector>
 #include "mkl.h"
 
+
+namespace qbasis
+{
+    enum class which_sym: int
+    {
+        /// full basis (no translational symmetry)
+        full,
+        /// representative basis of translational symmetry
+        repr,
+        /// variational basis
+        vrnl
+    };
+}
+
 namespace qbasis {
 
 //  -------------part 0: global variables, forward declarations ----------------
@@ -1313,19 +1327,19 @@ namespace qbasis {
 
     template <typename T> class model {
     public:
-        bool matrix_free;                                                        ///< if generating matrix on the fly
+        bool matrix_free{};                                                      ///< if generating matrix on the fly
         std::vector<basis_prop> props, props_sub_a, props_sub_b;
         mopr<T> Ham_diag;                                                        ///< diagonal part of H
         mopr<T> Ham_off_diag;                                                    ///< offdiagonal part of H
         mopr<T> Ham_vrnl;                                                        ///< used for generating Trugman's basis
-        MKL_INT nconv;
+        MKL_INT nconv{};
 
         // controls which sector of basis to be active
         // by default sec_full = 0 (e.g. Sz=0 ground state sector of Heisenberg model);
         // when needed, sec_full will be switched to 1 to activate another sector (e.g. Sz=1 sector),
         // such setting can avoid messing up the code when calculating correlation functions
-        uint32_t sec_sym;  ///< 0: work in dim_full; 1: work in dim_repr
-        uint32_t sec_mat;  ///< which sector the matrix is relevant.
+        which_sym sec_sym{};  ///< choose from {full, repr, vrnl}
+        uint32_t sec_mat{};  ///< which sector the matrix is relevant.
 
         std::vector<MKL_INT> dim_full;
         std::vector<MKL_INT> dim_repr;
@@ -1359,9 +1373,9 @@ namespace qbasis {
         /** \brief 1 / <vac | P_k | vac> = omega_g, for the variational vacuum state */
         std::vector<double> gs_norm_vrnl;
         /** \brief omega_g, orbital size of the variational vacuum state */
-        uint32_t gs_omegaG_vrnl;
+        uint32_t gs_omegaG_vrnl{};
         /** \brief ground state energy of the variational vacuum state */
-        double gs_E0_vrnl;
+        double gs_E0_vrnl{};
         /** \brief ground state momentum */
         std::vector<double> gs_momentum_vrnl;
 
@@ -1383,7 +1397,7 @@ namespace qbasis {
         std::vector<std::vector<MKL_INT>>              basis_repr_deprec;
         // ---------------- deprecated --------------------
 
-        model() {}
+        model() = default;
 
         explicit model(lattice latt, const uint32_t &num_secs = 5, const double &fake_pos_ = 100.0);
 
@@ -1485,22 +1499,19 @@ namespace qbasis {
         // nev = 1, calcualte up to ground state energy
         // nev = 2, calculate up to 1st excited state energy
         // ncv = 1, calculate up to ground state eigenvector
-        // ncv = 2, calculate up to 1st excited excited state eigenvector
-        // sec_sym_=0: without translation; sec_sym_=1, with translation symmetry
-        void locate_E0_lanczos(const uint32_t &sec_sym_, const MKL_INT &nev = 1, const MKL_INT &ncv = 1, MKL_INT maxit = 1000);
+        // ncv = 2, calculate up to 1st excited state eigenvector
+        void locate_E0_lanczos(const which_sym &sec_sym_, const MKL_INT &nev = 1, const MKL_INT &ncv = 1, MKL_INT maxit = 1000);
 
         /** \brief calculate the lowest eigenstates using IRAM
          *  nev, ncv, maxit following ARPACK definition
-         *  sec_sym_ : 0 (full), 1 (repr), 2 (vrnl)
          */
-        void locate_E0_iram(const uint32_t &sec_sym_, const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
+        void locate_E0_iram(const which_sym &sec_sym_, const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
 
         /** \brief calculate the highest eigenstates using IRAM
          *  nev, ncv, maxit following ARPACK definition.
-         *  sec_sym_ : 0 (full), 1 (repr), 2 (vrnl).
          *  for repr and vrnl, there may be a few artificial eigenvalues above fake_pos (default to 100), corresponding to zero norm states.
          */
-        void locate_Emax_iram(const uint32_t &sec_sym_, const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
+        void locate_Emax_iram(const which_sym &sec_sym_, const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
 
         /** \brief return dim_full */
         std::vector<MKL_INT> dimension_full() const { return dim_full; }
@@ -1665,17 +1676,17 @@ namespace qbasis {
 
         // later add conserved quantum operators and corresponding quantum numbers?
     private:
-        double Emax;
-        double E0;
-        double E1;
-        double gap;
+        double Emax{};
+        double E0{};
+        double E1{};
+        double gap{};
 
-        double fake_pos;
+        double fake_pos{};
 
         lattice latt_parent;
         lattice latt_sub;
         std::vector<bool> trans_sym;                               // if translation allowed in each dimension
-        bool dim_spec_involved;                                    // if translation allowed in partitioned direction
+        bool dim_spec_involved{};                                    // if translation allowed in partitioned direction
 
         // Weisse Tables for translation symmetry
         // Note: different from Weisse's paper, here we use Weisse_w to store the (parent) group label, instead of omega_g

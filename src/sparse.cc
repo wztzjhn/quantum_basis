@@ -30,8 +30,8 @@ namespace qbasis {
             mat[i].front().val = 0.0;
         }
     }
-    
-    
+
+
     template <typename T>
     void lil_mat<T>::add(const MKL_INT &row, const MKL_INT &col, const T &val)
     {
@@ -65,14 +65,14 @@ namespace qbasis {
         assert(row >= 0 && row < dim);
         mat[row].clear();
     }
-    
+
     template <typename T>
     void lil_mat<T>::destroy()
     {
         mat.clear();
         mat.shrink_to_fit();
     }
-    
+
     template <typename T>
     void lil_mat<T>::prt() const
     {
@@ -110,7 +110,7 @@ namespace qbasis {
             ia  = nullptr;
         }
     }
-    
+
     template <typename T>
     csr_mat<T>::csr_mat(csr_mat<T> &&old) noexcept :
         dim(old.dim), nnz(old.nnz), sym(old.sym),
@@ -137,7 +137,7 @@ namespace qbasis {
             ia = nullptr;
         }
     }
-    
+
     template <typename T>
     csr_mat<T>::~csr_mat()
     {
@@ -154,7 +154,7 @@ namespace qbasis {
             ia = nullptr;
         }
     }
-    
+
     template <typename T>
     void csr_mat<T>::prt() const
     {
@@ -168,7 +168,7 @@ namespace qbasis {
         for (MKL_INT i = 0; i <= dim; i++) std::cout << std::setw(8) << ia[i];
         std::cout << std::endl;
     }
-    
+
     template <typename T>
     csr_mat<T>::csr_mat(lil_mat<T> &old) : dim(old.dim), nnz(old.nnz), sym(old.sym)
     {
@@ -200,7 +200,7 @@ namespace qbasis {
         assert(counts == nnz);
         ia[dim] = counts;
         old.destroy();
-        
+
         if (! sym) {                                                             // check if matrix is hermitian
             for (decltype(dim) row = 0; row < dim; row++) {
                 for (decltype(dim) j = ia[row]; j < ia[row+1]; j++) {            // check for each element in current row
@@ -223,7 +223,7 @@ namespace qbasis {
             }
         }
     }
-    
+
     template <typename T>
     void csr_mat<T>::MultMv2(const T *x, T *y) const
     {
@@ -235,7 +235,7 @@ namespace qbasis {
         mkl_csrmv('n', dim, dim, one, matdescra,
                   val, ja, ia, ia + 1, x, one, y);
     }
-    
+
     template <typename T>
     void csr_mat<T>::MultMv(const T *x, T *y) const
     {
@@ -261,7 +261,7 @@ namespace qbasis {
         }
         return res;
     }
-    
+
     template <typename T>
     void swap(csr_mat<T> &lhs, csr_mat<T> &rhs)
     {
@@ -273,7 +273,7 @@ namespace qbasis {
         swap(lhs.ja,  rhs.ja);
         swap(lhs.ia,  rhs.ia);
     }
-    
+
     // Explicit instantiation
     template struct lil_mat_elem<double>;
     template struct lil_mat_elem<std::complex<double>>;
