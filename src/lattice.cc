@@ -990,7 +990,7 @@ namespace qbasis {
         matR[0] = cos(angle);
         matR[1] = sin(angle);
         matR[2] = -matR[1];
-        matR[3] = matR[0];
+        matR[3] =  matR[0];
 
         // currently only the simplest case implemented: one sublattice. More complicated cases come later
         assert(num_sub == 1);
@@ -1019,21 +1019,29 @@ namespace qbasis {
         return result;
     }
 
+    std::vector<uint32_t> lattice::reflection_plan(const std::vector<double> &abc) const
+    {
+        assert(dim == 2);
+        assert(abc.size() == 3);
+        assert(std::abs(abc[0] * abc[1]) > 1.0e-12);
+        throw std::runtime_error("reflection plan not implemented yet.");
+    }
+
 
     std::vector<std::vector<std::pair<uint32_t,uint32_t>>> lattice::plan_product(
-        const std::vector<std::vector<std::pair<uint32_t,uint32_t>>> &lhs,
-        const std::vector<std::vector<std::pair<uint32_t,uint32_t>>> &rhs) const
+        const std::vector<std::vector<std::pair<uint32_t,uint32_t>>> &P1,
+        const std::vector<std::vector<std::pair<uint32_t,uint32_t>>> &P2) const
     {
-        assert(lhs.size() == rhs.size());
-        assert(lhs[0].size() == rhs[0].size() && static_cast<uint32_t>(lhs[0].size()) == total_sites());
-        uint32_t orb_tot  = lhs.size();
-        uint32_t site_tot = lhs[0].size();
+        assert(P1.size() == P2.size());
+        assert(P1[0].size() == P2[0].size() && static_cast<uint32_t>(P1[0].size()) == total_sites());
+        uint32_t orb_tot  = P1.size();
+        uint32_t site_tot = P1[0].size();
         std::vector<std::vector<std::pair<uint32_t,uint32_t>>> res(orb_tot, std::vector<std::pair<uint32_t,uint32_t>>(site_tot));
         for (uint32_t orb0 = 0; orb0 < orb_tot; orb0++) {
             for (uint32_t site0 = 0; site0 < site_tot; site0++) {
-                auto site1 = rhs[orb0][site0].first;
-                auto orb1  = rhs[orb0][site0].second;
-                res[orb0][site0] = lhs[orb1][site1];
+                auto site1 = P2[orb0][site0].first;
+                auto orb1  = P2[orb0][site0].second;
+                res[orb0][site0] = P1[orb1][site1];
             }
         }
         return res;

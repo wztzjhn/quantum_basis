@@ -231,10 +231,9 @@ namespace qbasis {
         std::cout << "*" << std::flush;
         assert(val != nullptr && ja != nullptr && ia != nullptr);
         char matdescra[7] = "HUNC";
-        if (! sym) matdescra[0] = 'G';
-        T one  = static_cast<T>(1.0);
-        mkl_csrmv('n', dim, dim, one, matdescra,
-                  val, ja, ia, ia + 1, x, one, y);
+        if (!sym) matdescra[0] = 'G';
+        T one = static_cast<T>(1.0);
+        mkl_csrmv('n', dim, dim, one, matdescra, val, ja, ia, ia + 1, x, one, y);
     }
 
     template <typename T>
