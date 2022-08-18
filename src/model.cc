@@ -181,8 +181,8 @@ namespace qbasis {
     {
         std::cout << "Checking translational symmetry (NOT a serious check at this moment)." << std::endl;
         trans_sym.clear();
-        auto bc = latt_parent.boundary();
-        for (uint32_t j = 0; j < latt_parent.dimension(); j++) {
+        auto bc = latt_parent.bc;
+        for (uint32_t j = 0; j < latt_parent.dim; j++) {
             if (bc[j] == "pbc" || bc[j] == "PBC") {
                 trans_sym.push_back(true);
             } else {
@@ -191,8 +191,8 @@ namespace qbasis {
         }
 
         uint32_t dim_spec = latt_parent.dimension_spec();
-        if (dim_spec == latt_parent.dimension()) {
-            assert(latt_parent.num_sublattice() % 2 == 0);
+        if (dim_spec == latt_parent.dim) {
+            assert(latt_parent.num_sub % 2 == 0);
             dim_spec_involved = false;
         } else {
             dim_spec_involved = trans_sym[dim_spec];
@@ -277,7 +277,7 @@ namespace qbasis {
                                         std::vector<double> val_lst,
                                         const uint32_t &sec_repr)
     {
-        assert(latt_parent.dimension() == static_cast<uint32_t>(momentum.size()));
+        assert(latt_parent.dim == static_cast<uint32_t>(momentum.size()));
         assert(conserve_lst.size() == val_lst.size());
         assert(Weisse_e_lt.size() > 0);
         assert(!basis_sub_repr.empty());   // should be already generated when filling Weisse Tables
@@ -292,8 +292,8 @@ namespace qbasis {
 
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
-        auto L        = latt_parent.Linear_size();
-        auto base_sub = latt_sub.Linear_size();
+        auto L        = latt_parent.L;
+        auto base_sub = latt_sub.L;
         std::cout << "Momentum: (" << std::flush;
         for (uint32_t j = 0; j < momentum.size(); j++) {
             if (trans_sym[j]) {
@@ -364,7 +364,7 @@ namespace qbasis {
                 int sgn;
                 for (decltype(ra) rb = (dim_spec_involved?ra:0); rb < basis_sub_repr.size(); rb++) {
                     auto gb = belong2group_sub[rb];
-                    std::vector<uint32_t> disp_j(latt_sub.dimension(),0);
+                    std::vector<uint32_t> disp_j(latt_sub.dim, 0);
                     std::vector<int> disp_j_int(disp_j.size());
                     while (! dynamic_base_overflow(disp_j, base_sub)) {
                         auto pos = std::vector<uint64_t>{ga,gb};
@@ -380,7 +380,7 @@ namespace qbasis {
 
                         if (omega < groups_parent.size()) {  // valid representative
                             mbasis_elem rb_new = basis_sub_repr[rb];
-                            for (uint32_t j = 0; j < latt_sub.dimension(); j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
+                            for (uint32_t j = 0; j < latt_sub.dim; j++) disp_j_int[j] = static_cast<int>(disp_j[j]);
                             latt_sub.translation_plan(plans_sub[tid], disp_j_int, scratch_coors[tid], scratch_works[tid]);
                             rb_new.transform(props_sub_b, plans_sub[tid], sgn);
                             mbasis_elem ra_z_Tj_rb;
@@ -578,9 +578,9 @@ namespace qbasis {
             }
         }
         // calculate normalization factors (for the ground state)
-        uint32_t cnt_total  = latt_parent.total_sites() / latt_parent.num_sublattice();
+        uint32_t cnt_total  = latt_parent.Nsites / latt_parent.num_sub;
         uint32_t cnt_repeat = 0;
-        for (uint32_t site = 0; site < latt_parent.total_sites(); site++) {
+        for (uint32_t site = 0; site < latt_parent.Nsites; site++) {
             std::vector<int> disp;
             int sub, sgn;
             latt_parent.site2coor(disp, sub, site);
@@ -610,8 +610,8 @@ namespace qbasis {
         gs_norm_vrnl[sec_vrnl] = dis_gs_nrm2 > lanczos_precision ? 0 : gs_omegaG_vrnl;
         assert(std::abs(gs_norm_vrnl[sec_vrnl]) < 50.0);
         std::cout << "norm_GS(Q=";
-        for (uint32_t d = 0; d < latt_parent.dimension() - 1; d++) std::cout << momentum[d] << ",";
-        std::cout << momentum[latt_parent.dimension()-1] << ") = " << gs_norm_vrnl[sec_vrnl] << std::endl;
+        for (uint32_t d = 0; d < latt_parent.dim - 1; d++) std::cout << momentum[d] << ",";
+        std::cout << momentum[latt_parent.dim - 1] << ") = " << gs_norm_vrnl[sec_vrnl] << std::endl;
         std::cout << "vvvvvvvvvvv to be updated here! vvvvvvvvvvv" << std::endl;
     }
 
@@ -711,8 +711,8 @@ namespace qbasis {
         }
         // prepare intermediates in advance
         std::vector<wavefunction<T>> intermediate_states(num_threads, wavefunction<T>(basis[0]));
-        auto dim_latt = latt_parent.dimension();
-        auto L = latt_parent.Linear_size();
+        auto dim_latt = latt_parent.dim;
+        auto L = latt_parent.L;
         bool bosonic = q_bosonic(props);
         std::vector<std::vector<uint32_t>> plans_parent(num_threads);
         std::vector<std::vector<uint32_t>> plans_sub(num_threads);
@@ -806,7 +806,7 @@ namespace qbasis {
                     if (std::abs(nu_j) < lanczos_precision) continue;
 
                     double exp_coef = 0.0;
-                    for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                    for (uint32_t d = 0; d < latt_parent.dim; d++) {
                         if (trans_sym[d]) {
                             exp_coef += momentum[d] * disp_i_int[d] / static_cast<double>(L[d]);
                         }
@@ -863,7 +863,7 @@ namespace qbasis {
 
         // ground state energy
         if (std::abs(gs_E0_vrnl - 100.0) < lanczos_precision) {
-            auto NsitesPsublatt = static_cast<double>(latt_parent.total_sites() / latt_parent.num_sublattice());
+            auto NsitesPsublatt = static_cast<double>(latt_parent.Nsites / latt_parent.num_sub);
             gs_E0_vrnl = 0.0;
             for (decltype(Ham_diag.size()) cnt = 0; cnt < Ham_diag.size(); cnt++)
                 gs_E0_vrnl += gs_vrnl.diagonal_operator(props, Ham_diag[cnt]).real();
@@ -876,7 +876,7 @@ namespace qbasis {
                     unique_state.translate2center_OBC(props,latt_parent,scratch_disp[0]);
                     if (unique_state != gs_vrnl) continue;
                     double exp_coef = 0.0;
-                    for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                    for (uint32_t d = 0; d < latt_parent.dim; d++) {
                         exp_coef += gs_momentum_vrnl[d] * scratch_disp[0][d];
                     }
                     auto coeff = static_cast<double>(gs_omegaG_vrnl) / NsitesPsublatt
@@ -908,7 +908,7 @@ namespace qbasis {
                     if (j < 0 || j >= dim) continue;
                     if (upper_triangle && i > j) continue;
                     double exp_coef = 0.0;
-                    for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                    for (uint32_t d = 0; d < latt_parent.dim; d++) {
                         exp_coef += momentum[d] * scratch_disp[tid][d];
                     }
                     auto coeff = std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef));
@@ -995,8 +995,8 @@ namespace qbasis {
                 }
             }
         } else {
-            auto dim_latt = latt_parent.dimension();
-            auto L        = latt_parent.Linear_size();
+            auto dim_latt = latt_parent.dim;
+            auto L        = latt_parent.L;
             bool bosonic  = q_bosonic(props);
 
             std::vector<std::vector<uint32_t>> disp_i(num_threads,std::vector<uint32_t>(dim_latt));
@@ -1088,7 +1088,7 @@ namespace qbasis {
                         if (std::abs(nu_j) < lanczos_precision) continue;
 
                         double exp_coef = 0.0;
-                        for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                        for (uint32_t d = 0; d < latt_parent.dim; d++) {
                             if (trans_sym[d]) {
                                 exp_coef += momenta[sec_mat][d] * disp_i_int[tid][d] / static_cast<double>(L[d]);
                             }
@@ -1561,7 +1561,7 @@ namespace qbasis {
                                  const T *vec_old, T *vec_new) const
     {
         MKL_INT dim = dim_full[sec_full];
-        auto L = latt_parent.Linear_size();
+        auto L = latt_parent.L;
         for (MKL_INT j = 0; j < dim; j++) vec_new[j] = static_cast<T>(0.0);
 
         std::vector<T> vec_temp(dim);
@@ -1569,11 +1569,11 @@ namespace qbasis {
         std::vector<uint32_t> plan;
         std::vector<int> scratch_coor, scratch_work;
         int sub;
-        for (uint32_t site = 0; site < latt_parent.total_sites(); site++) {
+        for (uint32_t site = 0; site < latt_parent.Nsites; site++) {
             latt_parent.site2coor(disp, sub, site);
             if (sub != 0) continue;
             double exp_coef = 0.0;
-            for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+            for (uint32_t d = 0; d < latt_parent.dim; d++) {
                 exp_coef += momentum[d] * disp[d] / static_cast<double>(L[d]);
             }
             auto coef = std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef));
@@ -1589,8 +1589,8 @@ namespace qbasis {
         blas_scal(dim, 1.0/nrm, vec_new, 1);
 
         // double check momentum
-        for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
-            for (uint32_t j = 0; j < latt_parent.dimension(); j++) {
+        for (uint32_t d = 0; d < latt_parent.dim; d++) {
+            for (uint32_t j = 0; j < latt_parent.dim; j++) {
                 if (j == d) {
                     disp[d] = 1;
                 } else {
@@ -1674,8 +1674,8 @@ namespace qbasis {
                                  const T* vec_old, T* vec_new) const
     {
         // note: vec_new has size dim_repr[sec_target]
-        auto dim_latt = latt_parent.dimension();
-        auto L        = latt_parent.Linear_size();
+        auto dim_latt = latt_parent.dim;
+        auto L        = latt_parent.L;
         bool bosonic  = q_bosonic(props);
         assert(dim_repr[sec_old] > 0 && dim_repr[sec_new] > 0);
         std::chrono::time_point<std::chrono::system_clock> start, end;
@@ -1817,9 +1817,9 @@ namespace qbasis {
     T model<T>::measure_repr_static(const mopr<T> &lhs, const uint32_t &sec_repr, const MKL_INT &which_col) const
     {
         double denominator = 1.0;
-        auto L = latt_parent.Linear_size();
+        auto L = latt_parent.L;
         std::vector<uint32_t> base;
-        for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+        for (uint32_t d = 0; d < latt_parent.dim; d++) {
             if (trans_sym[d]) {
                 denominator *= L[d];
                 base.push_back(L[d]);
@@ -1830,8 +1830,8 @@ namespace qbasis {
 
         qbasis::mopr<T> opr_trans;                                               // O_t = (1/N) \sum_R T(R) O T(-R)
         std::vector<uint32_t> disp(base.size(),0);
-        std::vector<uint32_t> plan(latt_parent.total_sites());
-        std::vector<int> scratch_coor(latt_parent.dimension()), scratch_work(latt_parent.dimension());
+        std::vector<uint32_t> plan(latt_parent.Nsites);
+        std::vector<int> scratch_coor(latt_parent.dim), scratch_work(latt_parent.dim);
 
         while (! dynamic_base_overflow(disp, base)) {
             std::vector<int> disp_int(base.size());
@@ -1877,7 +1877,7 @@ namespace qbasis {
         auto &momentum   = momenta_vrnl[sec_vrnl];
         auto Bq_dg    = Bq;
         Bq_dg.dagger();
-        auto L        = latt_parent.Linear_size();
+        auto L        = latt_parent.L;
         double sqrt_omega_g = std::sqrt(static_cast<double>(gs_omegaG_vrnl));
         assert(dim > 0);
 
@@ -1927,7 +1927,7 @@ namespace qbasis {
                         if (unique_state != gs_vrnl) continue;
                     }
                     double exp_coef = 0.0;
-                    for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                    for (uint32_t d = 0; d < latt_parent.dim; d++) {
                         exp_coef += momentum[d] * scratch_disp[tid][d];
                     }
                     auto coeff = std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef));
@@ -1947,7 +1947,7 @@ namespace qbasis {
     {
         // note: vec_new has size dim_repr[sec_target]
         auto &momentum   = momenta_vrnl[sec_new];                                // k + q
-        auto L           = latt_parent.Linear_size();
+        auto L           = latt_parent.L;
         double sqrt_omega_g = std::sqrt(static_cast<double>(gs_omegaG_vrnl));
         assert(dim_vrnl[sec_old] > 0 && dim_vrnl[sec_new] > 0);
         std::chrono::time_point<std::chrono::system_clock> start, end;
@@ -1990,7 +1990,7 @@ namespace qbasis {
                         unique_state.translate2center_OBC(props,latt_parent,scratch_disp[tid]);
                         if (unique_state == gs_vrnl && gs_norm_vrnl[sec_new] > lanczos_precision) {
                             double exp_coef = 0.0;
-                            for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                            for (uint32_t d = 0; d < latt_parent.dim; d++) {
                                 exp_coef += momentum[d] * scratch_disp[tid][d];
                             }
                             value_gs +=  sj * ele_new.second / sqrt_omega_g
@@ -1999,7 +1999,7 @@ namespace qbasis {
                             MKL_INT i = binary_search<mbasis_elem,MKL_INT>(basis_vrnl[sec_new], unique_state, 0, dim_vrnl[sec_new]);
                             if (i < 0 || i >= dim_vrnl[sec_new]) continue;
                             double exp_coef = 0.0;
-                            for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                            for (uint32_t d = 0; d < latt_parent.dim; d++) {
                                 exp_coef += momentum[d] * scratch_disp[tid][d];
                             }
                             auto coef = sj * ele_new.second * std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef));
@@ -2274,7 +2274,7 @@ namespace qbasis {
     void model<T>::basis_init_repr_deprecated(const std::vector<int> &momentum,
                                               const uint32_t &sec_full, const uint32_t &sec_repr)
     {
-        assert(latt_parent.dimension() == static_cast<uint32_t>(momentum.size()));
+        assert(latt_parent.dim == static_cast<uint32_t>(momentum.size()));
         assert(dim_full[sec_full] > 0 && dim_full[sec_full] == static_cast<MKL_INT>(basis_full[sec_full].size()));
 
         int num_threads = 1;
@@ -2307,7 +2307,7 @@ namespace qbasis {
         std::cout << ")..." << std::endl;
 
         //auto num_sub = latt_parent.num_sublattice();
-        auto L = latt_parent.Linear_size();
+        auto L = latt_parent.L;
         basis_belong_deprec[sec_repr].resize(dim_full[sec_full]);
         std::fill(basis_belong_deprec[sec_repr].begin(), basis_belong_deprec[sec_repr].end(), -1);
         basis_coeff_deprec[sec_repr].resize(dim_full[sec_full]);
@@ -2322,14 +2322,14 @@ namespace qbasis {
             #pragma omp parallel for schedule(dynamic,1) default(none) \
                     shared(sec_full, sec_repr, i, plans_parent, momentum, L, \
                            scratch_coors, scratch_works, scratch_works1, scratch_works2)
-            for (uint32_t site = 1; site < latt_parent.total_sites(); site++) {
+            for (uint32_t site = 1; site < latt_parent.Nsites; site++) {
                 int tid = omp_get_thread_num();
                 std::vector<int> disp;
                 int sub, sgn;
                 latt_parent.site2coor(disp, sub, site);
                 if (sub != 0) continue;
                 bool flag = false;
-                for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                for (uint32_t d = 0; d < latt_parent.dim; d++) {
                     if (!trans_sym[d] && disp[d] != 0) {
                         flag = true;
                         break;
@@ -2351,7 +2351,7 @@ namespace qbasis {
                 assert(basis_full[sec_full][j] == basis_temp);
 
                 double exp_coef = 0.0;
-                for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+                for (uint32_t d = 0; d < latt_parent.dim; d++) {
                     if (trans_sym[d]) {
                         exp_coef += momentum[d] * disp[d] / static_cast<double>(L[d]);
                     }

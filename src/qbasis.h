@@ -1145,8 +1145,6 @@ namespace qbasis {
         /** \brief for any site, output the coordinate \f$ m_i \f$ (NOT \f$ m_i^0 \f$). */
         void site2coor(std::vector<int> &coor, int &sub, const uint32_t &site) const;
 
-        void site2coor_old(std::vector<int> &coor, int &sub, const uint32_t &site) const;
-
         /** \brief with given \f$ m_i \f$, output cartisian coordinates */
         void coor2cart(const std::vector<int> &coor, std::vector<double> &cart) const;
 
@@ -1183,55 +1181,14 @@ namespace qbasis {
         std::vector<std::vector<std::pair<uint32_t,uint32_t>>>
         plan_inverse(const std::vector<std::vector<std::pair<uint32_t,uint32_t>>> &old) const;
 
-        std::vector<std::string> boundary() const {
-            return bc;
-        }
-
-        uint32_t dimension() const {
-            return dim;
-        }
-
         uint32_t dimension_spec() const {
             return dim_spec;
-        }
-
-        uint32_t num_sublattice() const {
-            return num_sub;
-        }
-
-        uint32_t total_sites() const {
-            return Nsites;
-        }
-
-        /** \brief return real space basis \f$ a_i \f$*/
-        std::vector<std::vector<double>> basis_a() const {
-            return a;
-        }
-
-        /** \brief return superlattice basis \f$ A_i \f$*/
-        std::vector<std::vector<int>> basis_A() const {
-            return A;
-        }
-
-        std::vector<std::vector<double>> basis_b() const {
-            return b;
-        }
-
-        std::vector<std::vector<double>> basis_B() const {
-            return B;
         }
 
         /** \brief return the center of the lattice */
         std::vector<double> center_pos() const {
             return center;
         }
-
-        /** \brief return the positions of sublattices */
-        std::vector<std::vector<double>> sublattice_pos() const {
-            return pos_sub;
-        }
-
-        std::vector<uint32_t> Linear_size() const { return L; }
 
         uint32_t Lx() const { return L[0]; }
         uint32_t Ly() const { if (L.size() > 1) return L[1]; else return 1; }
@@ -1260,60 +1217,32 @@ namespace qbasis {
         //     }
         std::vector<std::pair<std::vector<std::vector<uint32_t>>,uint32_t>> trans_subgroups(const std::vector<bool> &trans_sym) const;
 
+        std::vector<std::vector<double>> a;       //!< real space basis {\f$ \vec{a}_0,\, \vec{a}_1,\,\ldots \f$}
+        std::vector<std::vector<double>> b;       //!< reciprocal space basis \f$ \vec{b}_i \f$
+        std::vector<std::vector<int>> A;          //!< superlattice basis, in units of \f$ \vec{a}_i \f$
+        std::vector<double> Amat;                 //!< superlattice basis in matrix format (column j -> A_j)
+        std::vector<double> Bmat;                 //!< reciprocal superlattice basis in matrix format (column i -> B_i), units: \f$ \vec{b}_i \f$
+        std::vector<std::vector<double>> pos_sub; //!< position shift \f$ \vec{d}_s \f$ of each sublattice, in units of \f$ \vec{a}_i \f$
+        std::vector<std::string> bc;              //!< boundary condition. Only explicitly used when all in 1st supercell, otherwise too complicated
+        uint32_t dim;                             //!< dimension of lattice
+        uint32_t num_sub;                         //!< number of sublattices
+        uint32_t Nsites;                          //!< total number of sites in the 1st supercell
+        std::vector<uint32_t> L;                  //!< linear size in each dimension
     private:
-        /** \brief real space basis \f$ \vec{a}_i \f$ */
-        std::vector<std::vector<double>> a;
+        // coordinates <-> site indices
+        // first find a direction (dim_spec) which has even size, if not successful, use the following:
+        // 1D: site = i * num_sub + sub
+        // 2D: site = (i + j * L[0]) * num_sub + sub
+        // 3D: site = (i + j * L[0] + k * L[0] * L[1]) * num_sub + sub
+        // otherwise, the dim_spec should be counted first
+        void site2coor_old(std::vector<int> &coor, int &sub, const uint32_t &site) const;
 
-        /** \brief reciprocal space basis \f$ \vec{b}_i \f$ */
-        std::vector<std::vector<double>> b;  // momentum space basis
-
-        /** \brief superlattice basis, in units of \f$ \vec{a}_i \f$ */
-        std::vector<std::vector<int>> A;
-
-        /** \brief superlattice basis in matrix format (column i -> A_i) */
-        std::vector<double> Amat;
-
-        /** \brief reciprocal superlattice basis, in units of \f$ \vec{b}_i \f$ */
-        std::vector<std::vector<double>> B;
-
-        /** \brief reciprocal superlattice basis in matrix format (column i -> B_i) */
-        std::vector<double> Bmat;
-
-        /** \brief position shift \f$ \vec{d}_s \f$ of each sublattice, in units of \f$ \vec{a}_i \f$ */
-        std::vector<std::vector<double>> pos_sub;
-
-        /** \brief true if {A1,A2,...} unparallel to {a1,a2,...} */
-        std::vector<bool> tilted;
-
-        /** \brief boundary condition. Only explicitly used when all in 1st supercell, otherwise too complicated */
-        std::vector<std::string> bc;
-
-        /** \brief dimension of lattice */
-        uint32_t dim;
-
-        /** \brief number of sublattices */
-        uint32_t num_sub;
-
-        /** \brief total number of sites in the 1st supercell */
-        uint32_t Nsites;
-
-        /** \brief the code starts labeling sites from a dimension which has even # of sites (if applicable) */
-        uint32_t dim_spec;
-
-        /** \brief DEPRECATED! linear size in each dimension */
-        std::vector<uint32_t> L;
-
-        /** \brief store the coordinate \f$ m_i \f$ (NOT \f$ m_i^0 \f$), and sublattice index for each site */
-        std::vector<std::pair<std::vector<int>,int>> site2coor_map;
-
-        /** \brief store the supercell index \f$ M_i \f$ for each site (empty vector if all in 1st supercell) */
-        std::vector<std::vector<int>> site2super_map;
-
-        /** \brief for given \f$ m_i^0 \f$ (in the 1st supercell) and sublattice index, return the site label */
-        std::vector<std::map<std::vector<int>,uint32_t>> coor2site_map;
-
-        /** \brief center of mass of the lattice, in units of \f$ \vec{a}_i \f$ */
-        std::vector<double> center;
+        std::vector<bool> tilted;                                       //!< \brief true if {A1,A2,...} unparallel to {a1,a2,...}
+        uint32_t dim_spec;                                              //!< \brief the code starts labeling sites from a dimension which has even # of sites (if applicable)
+        std::vector<std::pair<std::vector<int>,int>> site2coor_map;     //!< store the coordinate \f$ m_i \f$ (NOT \f$ m_i^0 \f$), and sublattice index for each site
+        std::vector<std::vector<int>> site2super_map;                   //!< store the supercell index \f$ M_i \f$ for each site (empty vector if all in 1st supercell)
+        std::vector<std::map<std::vector<int>,uint32_t>> coor2site_map; //!< for given \f$ m_i^0 \f$ (in the 1st supercell) and sublattice index, return the site label
+        std::vector<double> center;                                     //!< center of mass of the lattice, in units of \f$ \vec{a}_i \f$
 
         // one more variable here, denoting the divide and conquer partition
         // if empty(false), then force to store the matrix when working with translational symmetry

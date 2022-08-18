@@ -35,13 +35,13 @@ int main() {
 
     // constructing the Hamiltonian in operator representation
     qbasis::model<std::complex<double>> tJ(lattice);
-    tJ.add_orbital(lattice.total_sites(), "tJ");
+    tJ.add_orbital(lattice.Nsites, "tJ");
     qbasis::mopr<std::complex<double>> Sz_total;   // operators representating total Sz
     qbasis::mopr<std::complex<double>> N_total;    // operators representating total N
 
     for (int m = 0; m < Lx; m++) {
             uint32_t site_i, site_j;
-            std::vector<int> work(lattice.dimension());
+            std::vector<int> work(lattice.dim);
             lattice.coor2site({m},   0, site_i, work); // obtain site label of (x,y)
             lattice.coor2site({m+1}, 0, site_j, work);
             // construct operators on each site

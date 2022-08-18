@@ -60,11 +60,11 @@ int main() {
 
     // constructing the Hamiltonian in operator representation
     qbasis::model<std::complex<double>> Heisenberg(lattice);
-    Heisenberg.add_orbital(lattice.total_sites(), "spin-1");
+    Heisenberg.add_orbital(lattice.Nsites, "spin-1");
     qbasis::mopr<std::complex<double>> Sz_total;
     for (int x = 0; x < L; x++) {
         uint32_t site_i, site_j;
-        std::vector<int> work(lattice.dimension());
+        std::vector<int> work(lattice.dim);
         lattice.coor2site({x}, 0, site_i, work); // obtain site label of (x)
         // construct operators on each site
         // spin

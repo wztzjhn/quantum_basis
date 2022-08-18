@@ -550,7 +550,7 @@ namespace qbasis {
     void mbasis_elem::plot_states(const std::vector<basis_prop> &props, const lattice &latt,
                                   const std::string &filename) const
     {
-        uint32_t dim = latt.dimension();
+        uint32_t dim = latt.dim;
         std::ofstream fout(filename, std::ios::out);
         fout << "#(1)\t(2)\t(3)\t(4)\t(5)\t(6)" << std::endl;
         fout << "site\torb\tx\ty\tz\tbasis" << std::endl;
@@ -559,7 +559,7 @@ namespace qbasis {
         std::vector<int> coor;
         int sub;
         std::vector<double> cart;
-        for (uint32_t site = 0; site < latt.total_sites(); site++) {
+        for (uint32_t site = 0; site < latt.Nsites; site++) {
             latt.site2coor(coor, sub, site);
             latt.coor2cart(coor, cart, sub);
             for (uint32_t orb = 0; orb < props.size(); orb++) {
@@ -575,18 +575,18 @@ namespace qbasis {
     std::vector<double> mbasis_elem::center_pos(const std::vector<basis_prop> &props, const lattice &latt) const
     {
         uint32_t total_sites    = props[0].num_sites;
-        uint32_t total_dim      = latt.dimension();
-        assert(latt.total_sites() == total_sites);
+        uint32_t total_dim      = latt.dim;
+        assert(latt.Nsites == total_sites);
         if (q_same_state_all_site(props)) return latt.center_pos();
 
         std::vector<uint32_t> site_list = {};
         for (uint32_t site = 0; site < total_sites; site++) {
             if (! q_zero_site(props, site)) site_list.push_back(site);
         }
-        assert(site_list.size() > 0);
+        assert(!site_list.empty());
 
-        std::vector<std::vector<double>> pos_sub = latt.sublattice_pos();
-        std::vector<double> center(latt.dimension(), 0.0);
+        std::vector<std::vector<double>> pos_sub = latt.pos_sub;
+        std::vector<double> center(latt.dim, 0.0);
         std::vector<int> coor;
         int sub;
         for (uint32_t &site : site_list) {
@@ -672,14 +672,14 @@ namespace qbasis {
                                                    const lattice &latt, std::vector<int> &disp_vec)
     {
         uint32_t total_sites = props[0].num_sites;
-        assert(latt.total_sites() == total_sites);
+        assert(latt.Nsites == total_sites);
         if (q_same_state_all_site(props)) return *this;
 
         std::vector<double> center0 = latt.center_pos();                        // center of lattice
         std::vector<double> center1 = center_pos(props, latt);                  // center of basis
 
-        disp_vec.resize(latt.dimension());
-        for (uint32_t d = 0; d < latt.dimension(); d++) {
+        disp_vec.resize(latt.dim);
+        for (uint32_t d = 0; d < latt.dim; d++) {
             disp_vec[d] = round2int(std::floor(center0[d] - center1[d] + 1e-12));
         }
 
@@ -690,7 +690,7 @@ namespace qbasis {
         this->transform(props, scratch_plan, sgn);
 
         // check doing once more does not change state, delete later
-        uint32_t dim = latt.dimension();
+        uint32_t dim = latt.dim;
         center1 = center_pos(props, latt);
         for (uint32_t d = 0; d < dim; d++) {
             assert(round2int(std::floor(center0[d] - center1[d] + 1e-12)) == 0);
@@ -818,14 +818,14 @@ namespace qbasis {
                      const std::vector<basis_prop> &props, const lattice &latt)
     {
         assert(false);
-        for (decltype(latt.dimension()) j = 1; j < latt.dimension(); j++) {
-            assert(latt.boundary()[j-1] == latt.boundary()[j]); // relax in future
+        for (decltype(latt.dim) j = 1; j < latt.dim; j++) {
+            assert(latt.bc[j-1] == latt.bc[j]); // relax in future
         }
         std::vector<uint32_t> scratch_plan;
         std::vector<int> scratch_coor, scratch_work;
         uint32_t total_sites    = props[0].num_sites;
         uint32_t total_orbitals = props.size();
-        assert(latt.total_sites() == total_sites);
+        assert(latt.Nsites == total_sites);
         auto statis  = lhs.statistics(props);
         auto statis2 = rhs.statistics(props);
         if (statis != statis2) return false;
@@ -886,55 +886,55 @@ namespace qbasis {
             if (cnt >= num_sites_smart) break;
         }
 
-        std::vector<std::string> pbc(latt.dimension(),"pbc");
-        std::vector<std::string> obc(latt.dimension(),"obc");
-        std::vector<std::string> PBC(latt.dimension(),"PBC");
-        std::vector<std::string> OBC(latt.dimension(),"OBC");
+        std::vector<std::string> pbc(latt.dim,"pbc");
+        std::vector<std::string> obc(latt.dim,"obc");
+        std::vector<std::string> PBC(latt.dim,"PBC");
+        std::vector<std::string> OBC(latt.dim,"OBC");
 
         // later we can change it to be a more general consition
         // for obc, restrict the translation possibility: only local state 0 can be shifted outside boundary
-        std::vector<int> coor0(latt.dimension());
+        std::vector<int> coor0(latt.dim);
         int sub0;
         latt.site2coor(coor0, sub0, sites_rhs_smart[0]);
-        std::vector<std::vector<int>> extremal_coors(latt.dimension(), std::vector<int>(2));
-        for (decltype(latt.dimension()) dim = 0; dim < latt.dimension(); dim++) {
+        std::vector<std::vector<int>> extremal_coors(latt.dim, std::vector<int>(2));
+        for (decltype(latt.dim) dim = 0; dim < latt.dim; dim++) {
             extremal_coors[dim][0] = coor0[dim];
             extremal_coors[dim][1] = coor0[dim];
         }
-        if (latt.boundary() == obc || latt.boundary() == OBC) {
+        if (latt.bc == obc || latt.bc == OBC) {
             for (uint32_t site = 0; site < total_sites; site++) {
-                std::vector<int> coor(latt.dimension());
+                std::vector<int> coor(latt.dim);
                 int sub;
                 latt.site2coor(coor, sub, site);
                 std::vector<uint8_t> temp(total_orbitals);
                 for (uint32_t orb = 0; orb < total_orbitals; orb++) temp[orb] = rhs.siteRead(props, site, orb);
                 if (std::any_of(temp.begin(), temp.end(), [](uint8_t a){return a != 0; })) {
-                    for (uint32_t dim = 0; dim < latt.dimension(); dim++) {
+                    for (uint32_t dim = 0; dim < latt.dim; dim++) {
                         if (coor[dim] < extremal_coors[dim][0]) extremal_coors[dim][0] = coor[dim];
                         if (coor[dim] > extremal_coors[dim][1]) extremal_coors[dim][1] = coor[dim];
                     }
                 }
             }
         }
-        for (uint32_t dim = 0; dim < latt.dimension(); dim++) {
-            assert(extremal_coors[dim][0] >= 0 && extremal_coors[dim][0] < static_cast<int>(latt.Linear_size()[dim]));
-            assert(extremal_coors[dim][1] >= 0 && extremal_coors[dim][1] < static_cast<int>(latt.Linear_size()[dim]));
+        for (uint32_t dim = 0; dim < latt.dim; dim++) {
+            assert(extremal_coors[dim][0] >= 0 && extremal_coors[dim][0] < static_cast<int>(latt.L[dim]));
+            assert(extremal_coors[dim][1] >= 0 && extremal_coors[dim][1] < static_cast<int>(latt.L[dim]));
             assert(extremal_coors[dim][0] <= extremal_coors[dim][1]);
         }
 
         // now we want to translate rhs to compare to lhs
-        std::vector<int> coor_lhs_smart(latt.dimension()), coor_rhs_smart(latt.dimension());
+        std::vector<int> coor_lhs_smart(latt.dim), coor_rhs_smart(latt.dim);
         int sub_lhs_smart, sub_rhs_smart;
         latt.site2coor(coor_lhs_smart, sub_lhs_smart, site_lhs_smart);
         for (uint32_t cnt = 0; cnt < num_sites_smart; cnt++) {
             latt.site2coor(coor_rhs_smart, sub_rhs_smart, sites_rhs_smart[cnt]);
             if (sub_lhs_smart != sub_rhs_smart) continue;         // no way to shift to a different sublattice
-            std::vector<int> disp(latt.dimension());
+            std::vector<int> disp(latt.dim);
             bool flag = false;
-            for (uint32_t dim = 0; dim < latt.dimension(); dim++) {
+            for (uint32_t dim = 0; dim < latt.dim; dim++) {
                 disp[dim] = coor_lhs_smart[dim] - coor_rhs_smart[dim];
-                if (latt.boundary() == obc || latt.boundary() == OBC) {      // should not cross boundary
-                    if (disp[dim] > 0 && extremal_coors[dim][1] + disp[dim] >= static_cast<int>(latt.Linear_size()[dim])) {
+                if (latt.bc == obc || latt.bc == OBC) {      // should not cross boundary
+                    if (disp[dim] > 0 && extremal_coors[dim][1] + disp[dim] >= static_cast<int>(latt.L[dim])) {
                         flag = true;
                         break;
                     } else if (disp[dim] < 0 && extremal_coors[dim][0] + disp[dim] < 0) {
@@ -1364,10 +1364,10 @@ namespace qbasis {
                                  std::vector<uint64_t> &belong2rep,
                                  std::vector<std::vector<int>> &dist2rep)
     {
-        assert(latt.dimension() == trans_sym.size());
+        assert(latt.dim == trans_sym.size());
         assert(is_sorted_norepeat(basis_all));
-        auto bc = latt.boundary();
-        auto L = latt.Linear_size();
+        auto bc = latt.bc;
+        auto L = latt.L;
         uint64_t dim_all = basis_all.size();
         uint64_t dim_all_theoretical = 1;
         for (auto &prop : props)
@@ -1379,7 +1379,7 @@ namespace qbasis {
         std::fill(belong2rep.begin(), belong2rep.end(), unreachable);
 
         std::vector<uint32_t> base;                       // for enumerating the possible translations
-        for (uint32_t d = 0; d < latt.dimension(); d++) {
+        for (uint32_t d = 0; d < latt.dim; d++) {
             if (trans_sym[d]) {
                 assert(bc[d] == "pbc" || bc[d] == "PBC");
                 base.push_back(L[d]);
@@ -1387,21 +1387,21 @@ namespace qbasis {
         }
         std::vector<uint32_t> disp(base.size());
         std::vector<int> disp2;
-        std::vector<uint32_t> scratch_plan(latt.total_sites());
-        std::vector<int> scratch_coor(latt.dimension()), scratch_work(latt.dimension());
+        std::vector<uint32_t> scratch_plan(latt.Nsites);
+        std::vector<int> scratch_coor(latt.dim), scratch_work(latt.dim);
 
         for (uint64_t i = 0; i < dim_all; i++) {
             if (belong2rep[i] != unreachable) continue;          // already fixed
             reps.push_back(basis_all[i]);
             belong2rep[i] = (reps.size() - 1);                   // fix now
-            dist2rep[i] = std::vector<int>(latt.dimension(),0);  // fix now
+            dist2rep[i] = std::vector<int>(latt.dim,0);  // fix now
             if (! base.empty()) {
                 std::fill(disp.begin(), disp.end(), 0);
                 disp = dynamic_base_plus1(disp, base);
                 while (! dynamic_base_overflow(disp, base)) {
                     uint32_t pos = 0;
                     disp2.clear();
-                    for (uint32_t d = 0; d < latt.dimension(); d++) {
+                    for (uint32_t d = 0; d < latt.dim; d++) {
                         if (trans_sym[d]) {
                             disp2.push_back(static_cast<int>(disp[pos++]));
                         } else {
@@ -1436,8 +1436,8 @@ namespace qbasis {
                                   std::vector<uint32_t> &omega_g,
                                   std::vector<uint32_t> &belong2group)
     {
-        uint32_t dim = latt.dimension();
-        auto L = latt.Linear_size();
+        uint32_t dim = latt.dim;
+        auto L = latt.L;
         uint64_t dim_repr = reps.size();
 
         uint32_t num_groups = groups.size();
@@ -1450,8 +1450,8 @@ namespace qbasis {
         // for each representative, find its group
         #pragma omp parallel for schedule(dynamic,1)
         for (uint64_t j = 0; j < dim_repr; j++) {
-            std::vector<uint32_t> scratch_plan(latt.total_sites());
-            std::vector<int> scratch_coor(latt.dimension()), scratch_work(latt.dimension());
+            std::vector<uint32_t> scratch_plan(latt.Nsites);
+            std::vector<int> scratch_coor(latt.dim), scratch_work(latt.dim);
 
             // loop over groups, to check which one the repr belongs to
             for (uint32_t g = 0; g < num_groups; g++) {
@@ -1490,8 +1490,8 @@ namespace qbasis {
                            const MltArray_uint32  &Weisse_w_gt)
     {
         auto latt_sub             = divide_lattice(latt_parent);
-        uint32_t latt_sub_dim     = latt_sub.dimension();
-        auto base_sub             = latt_sub.Linear_size();
+        uint32_t latt_sub_dim     = latt_sub.dim;
+        auto base_sub             = latt_sub.L;
         uint32_t num_groups       = groups_sub.size();
 
         std::ofstream fout("log_Weisse_table.txt", std::ios::out);
@@ -1726,14 +1726,14 @@ namespace qbasis {
                                 MltArray_uint32  &Weisse_w_eq,
                                 MltArray_uint32  &Weisse_w_gt)
     {
-        assert(latt_parent.total_sites() % 2 == 0);
+        assert(latt_parent.Nsites % 2 == 0);
         auto latt_sub             = divide_lattice(latt_parent);
         uint64_t dim_repr         = basis_sub_repr.size();
         uint32_t num_groups       = groups_sub.size();
-        uint32_t latt_sub_dim     = latt_sub.dimension();
-        auto latt_sub_linear_size = latt_sub.Linear_size();
-        auto base_parent          = latt_parent.Linear_size();
-        auto base_sub             = latt_sub.Linear_size();
+        uint32_t latt_sub_dim     = latt_sub.dim;
+        auto latt_sub_linear_size = latt_sub.L;
+        auto base_parent          = latt_parent.L;
+        auto base_sub             = latt_sub.L;
         bool flag_trans           = false;                                      // if translation symmetry exists
         for (uint32_t j = 0; j < latt_sub_dim; j++) {
             if (! trans_sym[j]) {
@@ -1748,14 +1748,14 @@ namespace qbasis {
         uint32_t dim_spec = latt_parent.dimension_spec();
         bool dim_spec_involved;
         if (dim_spec == latt_sub_dim) {
-            assert(latt_parent.num_sublattice() % 2 == 0);
+            assert(latt_parent.num_sub % 2 == 0);
             dim_spec_involved = false;
         } else {
             dim_spec_involved = trans_sym[dim_spec];
         }
-        std::vector<uint32_t> plan_parent(latt_parent.total_sites());
-        std::vector<uint32_t> plan_sub(latt_sub.total_sites());
-        std::vector<int> scratch_coor(latt_parent.dimension()), scratch_work(latt_parent.dimension());
+        std::vector<uint32_t> plan_parent(latt_parent.Nsites);
+        std::vector<uint32_t> plan_sub(latt_sub.Nsites);
+        std::vector<int> scratch_coor(latt_parent.dim), scratch_work(latt_parent.dim);
         std::vector<uint8_t> scratch_work1;
         std::vector<uint64_t> scratch_work2;
 
@@ -1768,7 +1768,7 @@ namespace qbasis {
 
         // automatically determines the shape of array_4D
         std::pair<std::vector<uint32_t>,std::vector<uint32_t>> default_value;
-        assert(latt_parent.total_sites() < 999999999);
+        assert(latt_parent.Nsites < 999999999);
         default_value.first  = std::vector<uint32_t>(latt_sub_dim,999999999);
         default_value.second = default_value.first;
 
@@ -2149,11 +2149,11 @@ namespace qbasis {
                            const lattice &latt_parent, const std::pair<std::vector<std::vector<uint32_t>>,uint32_t> &group_parent,
                            const std::vector<int> &momentum)
     {
-        uint32_t dim = latt_parent.dimension();
-        uint32_t N   = latt_parent.total_sites();
-        auto L       = latt_parent.Linear_size();
-        std::vector<uint32_t> plan_parent(latt_parent.total_sites());
-        std::vector<int> scratch_work(latt_parent.dimension()), scratch_coor(latt_parent.dimension());
+        uint32_t dim = latt_parent.dim;
+        uint32_t N   = latt_parent.Nsites;
+        auto L       = latt_parent.L;
+        std::vector<uint32_t> plan_parent(latt_parent.Nsites);
+        std::vector<int> scratch_work(latt_parent.dim), scratch_coor(latt_parent.dim);
 
         std::vector<uint32_t> zerovec(dim,0);
         assert(std::any_of(group_parent.first.begin(), group_parent.first.end(), [zerovec](std::vector<uint32_t> i){ return i != zerovec; }));
@@ -2212,8 +2212,8 @@ namespace qbasis {
             denominator *= (group_parent.first[d] == zerovec ? 1.0 : static_cast<double>(L[d]));
         }
         std::complex<double> nu_inv_check = 1.0;  // <r|P_k|r>
-        auto num_sub = latt_parent.num_sublattice();
-        for (uint32_t site = num_sub; site < latt_parent.total_sites(); site += num_sub) {
+        auto num_sub = latt_parent.num_sub;
+        for (uint32_t site = num_sub; site < latt_parent.Nsites; site += num_sub) {
             std::vector<int> disp;
             int sub, sgn;
             latt_parent.site2coor(disp, sub, site);
@@ -2223,7 +2223,7 @@ namespace qbasis {
             basis_temp.transform(props, plan_parent, sgn);
             if (basis_temp != repr) continue;
             double exp_coef = 0.0;
-            for (uint32_t d = 0; d < latt_parent.dimension(); d++) {
+            for (uint32_t d = 0; d < latt_parent.dim; d++) {
                 if (group_parent.first[d] != zerovec) {
                     exp_coef += momentum2[d] * disp[d] / static_cast<double>(L[d]);
                 }

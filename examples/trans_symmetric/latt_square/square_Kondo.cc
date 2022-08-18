@@ -72,15 +72,15 @@ int main() {
 
     // constructing the Hamiltonian in operator representation
     qbasis::model<std::complex<double>> Kondo(lattice);
-    Kondo.add_orbital(lattice.total_sites(), "electron");
-    Kondo.add_orbital(lattice.total_sites(), "spin-1/2");
+    Kondo.add_orbital(lattice.Nsites, "electron");
+    Kondo.add_orbital(lattice.Nsites, "spin-1/2");
     qbasis::mopr<std::complex<double>> Nelec_total;   // operators representating total electron number
     qbasis::mopr<std::complex<double>> Sz_total;
     qbasis::mopr<std::complex<double>> Nelec_up, Nelec_dn, Mz_total, mz_total;
     for (int x = 0; x < Lx; x++) {
         for (int y = 0; y < Ly; y++) {
             uint32_t site_i, site_j;
-            std::vector<int> work(lattice.dimension());
+            std::vector<int> work(lattice.dim);
             lattice.coor2site({x,y}, 0, site_i, work); // obtain site label of (x,y)
             // construct operators on each site
             // electron

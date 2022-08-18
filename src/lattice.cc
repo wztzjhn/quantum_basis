@@ -19,44 +19,140 @@ namespace qbasis {
         b = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
         A = std::vector<std::vector<int>>(dim, std::vector<int>(dim, 0));  // for the moment, only allow A to be parallel to a
         Amat = std::vector<double>(dim * dim, 0.0);
-        B = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
         Bmat = std::vector<double>(dim * dim, 0.0);
         for (uint32_t d = 0; d < dim; d++) {
             A[d][d] = L[d];
             for (uint32_t i = 0; i < dim; i++) Amat[i + dim * d] = static_cast<double>(A[d][i]);
         }
-        if (dim == 1) {
-            B[0][0] = 1.0 / L[0];
-        } else if (dim == 2) {
-            double det =  A[0][0] * A[1][1] - A[0][1] * A[1][0];
-            B[0][0] =  A[1][1] / det;
-            B[0][1] = -A[1][0] / det;
-            B[1][0] = -A[0][1] / det;
-            B[1][1] =  A[0][0] / det;
-        } else if (dim == 3) {
-            double det =  A[0][0] * (A[1][1] * A[2][2] - A[2][1] * A[1][2])
-                        - A[0][1] * (A[1][0] * A[2][2] - A[2][0] * A[1][2])
-                        + A[0][2] * (A[1][0] * A[2][1] - A[2][0] * A[1][1]);
-            B[0][0] = (A[1][1] * A[2][2] - A[1][2] * A[2][1]) / det;
-            B[0][1] = (A[1][2] * A[2][0] - A[1][0] * A[2][2]) / det;
-            B[0][2] = (A[1][0] * A[2][1] - A[1][1] * A[2][0]) / det;
-            B[1][0] = (A[2][1] * A[0][2] - A[2][2] * A[0][1]) / det;
-            B[1][1] = (A[2][2] * A[0][0] - A[2][0] * A[0][2]) / det;
-            B[1][2] = (A[2][0] * A[0][1] - A[2][1] * A[0][0]) / det;
-            B[2][0] = (A[0][1] * A[1][2] - A[0][2] * A[1][1]) / det;
-            B[2][1] = (A[0][2] * A[1][0] - A[0][0] * A[1][2]) / det;
-            B[2][2] = (A[0][0] * A[1][1] - A[0][1] * A[1][0]) / det;
+
+        if (name == "chain" || name == "Chain" || name == "CHAIN") {
+            std::cout << "Chain lattice built."<< std::endl;
+            assert(L.size() == 1);
+            num_sub = 1;
+            a[0][0] = 1.0;
+            Nsites = L[0] * num_sub;
+            pos_sub.resize(num_sub);
+            pos_sub[0] = std::vector<double>{0.0};
+        } else if (name == "square" || name == "Square" || name == "SQUARE") {
+            std::cout << "Square lattice built."<< std::endl;
+            assert(L.size() == 2);
+            num_sub = 1;
+            a[0][0] = 1.0;      a[0][1] = 0.0;
+            a[1][0] = 0.0;      a[1][1] = 1.0;
+            Nsites = L[0] * L[1] * num_sub;
+            pos_sub.resize(num_sub);
+            pos_sub[0] = std::vector<double>{0.0, 0.0};
+        } else if (name == "triangular" || name == "Triangular" || name == "TRIANGULAR") {
+            std::cout << "Triangular lattice built."<< std::endl;
+            assert(L.size() == 2);
+            num_sub = 1;
+            a[0][0] = 1.0;      a[0][1] = 0.0;
+            a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);
+            Nsites = L[0] * L[1] * num_sub;
+            pos_sub.resize(num_sub);
+            pos_sub[0] = std::vector<double>{0.0, 0.0};
+        } else if (name == "kagome" || name == "Kagome" || name == "KAGOME") {
+            std::cout << "Kagome lattice built."<< std::endl;
+            assert(L.size() == 2);
+            num_sub = 3;
+            a[0][0] = 1.0;      a[0][1] = 0.0;
+            a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);
+            Nsites = L[0] * L[1] * num_sub;
+            pos_sub.resize(num_sub);
+            pos_sub[0] = std::vector<double>{0.0, 0.0};
+            pos_sub[1] = std::vector<double>{0.5, 0.0};
+            pos_sub[2] = std::vector<double>{0.0, 0.5};
+        } else if (name == "honeycomb" || name == "Honeycomb" || name == "HONEYCOMB") {
+            std::cout << "Honeycomb lattice built."<< std::endl;
+            assert(L.size() == 2);
+            num_sub = 2;
+            a[0][0] = 1.0;      a[0][1] = 0.0;
+            a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);
+            Nsites = L[0] * L[1] * num_sub;
+            pos_sub.resize(num_sub);
+            pos_sub[0] = std::vector<double>{0.0, 0.0};
+            pos_sub[1] = std::vector<double>{1.0/3.0, 1.0/3.0};
+        } else if (name == "cubic" || name == "Cubic" || name == "CUBIC") {
+            std::cout << "Cubic lattice built."<< std::endl;
+            assert(L.size() == 3);
+            num_sub = 1;
+            a[0][0] = 1.0;      a[0][1] = 0.0;      a[0][2] = 0.0;
+            a[1][0] = 0.0;      a[1][1] = 1.0;      a[1][2] = 0.0;
+            a[2][0] = 0.0;      a[2][1] = 0.0;      a[2][2] = 1.0;
+            Nsites = L[0] * L[1] * L[2] * num_sub;
+            pos_sub.resize(num_sub);
+            pos_sub[0] = std::vector<double>{0.0, 0.0, 0.0};
+        } else if (name == "fcc" || name == "Fcc" || name == "FCC") {
+            std::cout << "FCC lattice built."<< std::endl;
+            assert(L.size() == 3);
+            num_sub = 1;
+            a[0][0] = 0.0;       a[0][1] = 0.5;       a[0][2] = 0.5;
+            a[1][0] = 0.5;       a[1][1] = 0.0;       a[1][2] = 0.5;
+            a[2][0] = 0.5;       a[2][1] = 0.5;       a[2][2] = 0.0;
+            Nsites = L[0] * L[1] * L[2] * num_sub;
+            pos_sub.resize(num_sub);
+            pos_sub[0] = std::vector<double>{0.0, 0.0, 0.0};
+        } else if (name == "triangular-stacked" || name == "Triangular-Stacked" || name == "TRIANGULAR-STACKED") {
+            std::cout << "Stacked triangular lattice built."<< std::endl;
+            assert(L.size() == 3);
+            num_sub = 1;
+            a[0][0] = 1.0;      a[0][1] = 0.0;                   a[0][2] = 0.0;
+            a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);       a[1][2] = 0.0;
+            a[2][0] = 0.0;      a[2][1] = 0.0;                   a[2][2] = 1.0;
+            Nsites = L[0] * L[1] * L[2] * num_sub;
+            pos_sub.resize(num_sub);
+            pos_sub[0] = std::vector<double>{0.0, 0.0, 0.0};
         } else {
-            assert(false);
+            throw std::runtime_error("Lattice not recognized!");
         }
-        for (uint32_t d = 0; d < dim; d++) {
-            for (uint32_t i = 0; i < dim; i++) Bmat[i + dim * d] = B[d][i];
+
+        if (dim == 1) {
+            b[0][0] = 2.0 * PI / a[0][0];
+            Bmat[0] = 1.0 / L[0];
+        } else if (dim == 2) {
+            double det = a[0][0] * a[1][1] - a[0][1] * a[1][0];
+            b[0][0] =  2.0 * PI * a[1][1] / det;
+            b[0][1] = -2.0 * PI * a[1][0] / det;
+            b[1][0] = -2.0 * PI * a[0][1] / det;
+            b[1][1] =  2.0 * PI * a[0][0] / det;
+            det = A[0][0] * A[1][1] - A[0][1] * A[1][0];
+            Bmat[0] =  A[1][1] / det;
+            Bmat[1] = -A[1][0] / det;
+            Bmat[2] = -A[0][1] / det;
+            Bmat[3] =  A[0][0] / det;
+        } else if (dim == 3) {
+            double det = a[0][0] * (a[1][1] * a[2][2] - a[2][1] * a[1][2])
+                       - a[0][1] * (a[1][0] * a[2][2] - a[2][0] * a[1][2])
+                       + a[0][2] * (a[1][0] * a[2][1] - a[2][0] * a[1][1]);
+            b[0][0] = 2.0 * PI * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) / det;
+            b[0][1] = 2.0 * PI * (a[1][2] * a[2][0] - a[1][0] * a[2][2]) / det;
+            b[0][2] = 2.0 * PI * (a[1][0] * a[2][1] - a[1][1] * a[2][0]) / det;
+            b[1][0] = 2.0 * PI * (a[2][1] * a[0][2] - a[2][2] * a[0][1]) / det;
+            b[1][1] = 2.0 * PI * (a[2][2] * a[0][0] - a[2][0] * a[0][2]) / det;
+            b[1][2] = 2.0 * PI * (a[2][0] * a[0][1] - a[2][1] * a[0][0]) / det;
+            b[2][0] = 2.0 * PI * (a[0][1] * a[1][2] - a[0][2] * a[1][1]) / det;
+            b[2][1] = 2.0 * PI * (a[0][2] * a[1][0] - a[0][0] * a[1][2]) / det;
+            b[2][2] = 2.0 * PI * (a[0][0] * a[1][1] - a[0][1] * a[1][0]) / det;
+            det = A[0][0] * (A[1][1] * A[2][2] - A[2][1] * A[1][2])
+                - A[0][1] * (A[1][0] * A[2][2] - A[2][0] * A[1][2])
+                + A[0][2] * (A[1][0] * A[2][1] - A[2][0] * A[1][1]);
+            Bmat[0] = (A[1][1] * A[2][2] - A[1][2] * A[2][1]) / det;
+            Bmat[1] = (A[1][2] * A[2][0] - A[1][0] * A[2][2]) / det;
+            Bmat[2] = (A[1][0] * A[2][1] - A[1][1] * A[2][0]) / det;
+            Bmat[3] = (A[2][1] * A[0][2] - A[2][2] * A[0][1]) / det;
+            Bmat[4] = (A[2][2] * A[0][0] - A[2][0] * A[0][2]) / det;
+            Bmat[5] = (A[2][0] * A[0][1] - A[2][1] * A[0][0]) / det;
+            Bmat[6] = (A[0][1] * A[1][2] - A[0][2] * A[1][1]) / det;
+            Bmat[7] = (A[0][2] * A[1][0] - A[0][0] * A[1][2]) / det;
+            Bmat[8] = (A[0][0] * A[1][1] - A[0][1] * A[1][0]) / det;
+        } else {
+            throw std::logic_error("dimension error.");
         }
         for (uint32_t i = 0; i < dim; i++) {
             for (uint32_t j = 0; j < dim; j++) {
                 double prod = 0.0;
                 for (uint32_t k = 0; k < dim; k++) {
-                    prod += A[i][k] * B[j][k];
+                    prod += A[i][k] * Bmat[k + j * dim];
                 }
                 if (i == j) {
                     assert(std::abs(prod - 1.0) < opr_precision);
@@ -73,106 +169,6 @@ namespace qbasis {
                 if (j != d) tilted[d] = (tilted[d] || (A[d][j] != 0));
             }
             assert(tilted[d] == false);
-        }
-
-        if (name == "chain" || name == "Chain" || name == "CHAIN") {
-            std::cout << "Chain lattice built."<< std::endl;
-            assert(L.size() == 1);
-            num_sub = 1;
-            a[0][0] = 1.0;
-            b[0][0] = 2.0 * PI;
-            Nsites = L[0] * num_sub;
-            pos_sub.resize(num_sub);
-            pos_sub[0] = std::vector<double>{0.0};
-        } else if (name == "square" || name == "Square" || name == "SQUARE") {
-            std::cout << "Square lattice built."<< std::endl;
-            assert(L.size() == 2);
-            num_sub = 1;
-            a[0][0] = 1.0;      a[0][1] = 0.0;
-            a[1][0] = 0.0;      a[1][1] = 1.0;
-            b[0][0] = 2.0 * PI; b[0][1] = 0.0;
-            b[1][0] = 0.0;      b[1][1] = 2.0 * PI;
-            Nsites = L[0] * L[1] * num_sub;
-            pos_sub.resize(num_sub);
-            pos_sub[0] = std::vector<double>{0.0, 0.0};
-        } else if (name == "triangular" || name == "Triangular" || name == "TRIANGULAR") {
-            std::cout << "Triangular lattice built."<< std::endl;
-            assert(L.size() == 2);
-            num_sub = 1;
-            a[0][0] = 1.0;      a[0][1] = 0.0;
-            a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);
-            b[0][0] = 2.0 * PI; b[0][1] = -2.0 * PI / sqrt(3.0);
-            b[1][0] = 0.0;      b[1][1] = 4.0 * PI / sqrt(3.0);
-            Nsites = L[0] * L[1] * num_sub;
-            pos_sub.resize(num_sub);
-            pos_sub[0] = std::vector<double>{0.0, 0.0};
-        } else if (name == "kagome" || name == "Kagome" || name == "KAGOME") {
-            std::cout << "Kagome lattice built."<< std::endl;
-            assert(L.size() == 2);
-            num_sub = 3;
-            a[0][0] = 1.0;      a[0][1] = 0.0;
-            a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);
-            b[0][0] = 2.0 * PI; b[0][1] = -2.0 * PI / sqrt(3.0);
-            b[1][0] = 0.0;      b[1][1] = 4.0 * PI / sqrt(3.0);
-            Nsites = L[0] * L[1] * num_sub;
-            pos_sub.resize(num_sub);
-            pos_sub[0] = std::vector<double>{0.0, 0.0};
-            pos_sub[1] = std::vector<double>{0.5, 0.0};
-            pos_sub[2] = std::vector<double>{0.0, 0.5};
-        } else if (name == "honeycomb" || name == "Honeycomb" || name == "HONEYCOMB") {
-            std::cout << "Honeycomb lattice built."<< std::endl;
-            assert(L.size() == 2);
-            num_sub = 2;
-            a[0][0] = 1.0;      a[0][1] = 0.0;
-            a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);
-            b[0][0] = 2.0 * PI; b[0][1] = -2.0 * PI / sqrt(3.0);
-            b[1][0] = 0.0;      b[1][1] = 4.0 * PI / sqrt(3.0);
-            Nsites = L[0] * L[1] * num_sub;
-            pos_sub.resize(num_sub);
-            pos_sub[0] = std::vector<double>{0.0, 0.0};
-            pos_sub[1] = std::vector<double>{1.0/3.0, 1.0/3.0};
-        } else if (name == "cubic" || name == "Cubic" || name == "CUBIC") {
-            std::cout << "Cubic lattice built."<< std::endl;
-            assert(L.size() == 3);
-            num_sub = 1;
-            a[0][0] = 1.0;      a[0][1] = 0.0;      a[0][2] = 0.0;
-            a[1][0] = 0.0;      a[1][1] = 1.0;      a[1][2] = 0.0;
-            a[2][0] = 0.0;      a[2][1] = 0.0;      a[2][2] = 1.0;
-            b[0][0] = 2.0 * PI; b[0][1] = 0.0;      b[0][2] = 0.0;
-            b[1][0] = 0.0;      b[1][1] = 2.0 * PI; b[1][2] = 0.0;
-            b[2][0] = 0.0;      b[2][1] = 0.0;      b[2][2] = 2.0 * PI;
-            Nsites = L[0] * L[1] * L[2] * num_sub;
-            pos_sub.resize(num_sub);
-            pos_sub[0] = std::vector<double>{0.0, 0.0, 0.0};
-        } else if (name == "fcc" || name == "Fcc" || name == "FCC") {
-            std::cout << "FCC lattice built."<< std::endl;
-            assert(L.size() == 3);
-            num_sub = 1;
-            a[0][0] = 0.0;       a[0][1] = 0.5;       a[0][2] = 0.5;
-            a[1][0] = 0.5;       a[1][1] = 0.0;       a[1][2] = 0.5;
-            a[2][0] = 0.5;       a[2][1] = 0.5;       a[2][2] = 0.0;
-            b[0][0] = -2.0 * PI; b[0][1] =  2.0 * PI; b[0][2] =  2.0 * PI;
-            b[1][0] =  2.0 * PI; b[1][1] = -2.0 * PI; b[1][2] =  2.0 * PI;
-            b[2][0] =  2.0 * PI; b[2][1] =  2.0 * PI; b[2][2] = -2.0 * PI;
-            Nsites = L[0] * L[1] * L[2] * num_sub;
-            pos_sub.resize(num_sub);
-            pos_sub[0] = std::vector<double>{0.0, 0.0, 0.0};
-        } else if (name == "triangular-stacked" || name == "Triangular-Stacked" || name == "TRIANGULAR-STACKED") {
-            std::cout << "Stacked triangular lattice built."<< std::endl;
-            assert(L.size() == 3);
-            num_sub = 1;
-            a[0][0] = 1.0;      a[0][1] = 0.0;                   a[0][2] = 0.0;
-            a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);       a[1][2] = 0.0;
-            a[2][0] = 0.0;      a[2][1] = 0.0;                   a[2][2] = 1.0;
-            b[0][0] = 2.0 * PI; b[0][1] = -2.0 * PI / sqrt(3.0); b[0][2] = 0.0;
-            b[1][0] = 0.0;      b[1][1] = 4.0 * PI / sqrt(3.0);  b[1][2] = 0.0;
-            b[2][0] = 0.0;      b[2][1] = 0.0;                   b[2][2] = 2.0 * PI;
-            Nsites = L[0] * L[1] * L[2] * num_sub;
-            pos_sub.resize(num_sub);
-            pos_sub[0] = std::vector<double>{0.0, 0.0, 0.0};
-        } else {
-            std::cout << "Lattice not recognized! " << std::endl;
-            assert(false);
         }
 
         std::cout << "dim     = " << dim << std::endl;
@@ -198,7 +194,7 @@ namespace qbasis {
         std::cout << "Superlattice reciprocal space basis: " << std::endl;
         for (uint32_t d = 0; d < dim; d++) {
             std::cout << "B[" << d << "] = ";
-            for (uint32_t j = 0; j < dim; j++) std::cout << std::setw(18) << B[d][j] << "*b[" << j << "],\t";
+            for (uint32_t j = 0; j < dim; j++) std::cout << std::setw(18) << Bmat[j + d * dim] << "*b[" << j << "],\t";
             std::cout << std::endl;
         }
         std::cout << "Sublattice positions: " << std::endl;
@@ -277,11 +273,9 @@ namespace qbasis {
         b = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
         A = std::vector<std::vector<int>>(dim, std::vector<int>(dim, 0));
         Amat = std::vector<double>(dim * dim, 0.0);
-        B = std::vector<std::vector<double>>(dim, std::vector<double>(dim, 0.0));
         Bmat = std::vector<double>(dim * dim, 0.0);
         for (uint32_t d = 0; d < dim; d++) {
             a[d] = *config->get_array_of<double>(std::string("a")+std::to_string(d));
-            b[d] = *config->get_array_of<double>(std::string("b")+std::to_string(d));
             auto Atemp = *config->get_array_of<int64_t>(std::string("A") + std::to_string(d));
             for (uint32_t i = 0; i < dim; i++) {
                 A[d][i] = static_cast<int>(Atemp[i]);
@@ -289,37 +283,52 @@ namespace qbasis {
             }
         }
         if (dim == 1) {
-            B[0][0] = 1.0 / L[0];
+            b[0][0] = 2.0 * PI / a[0][0];
+            Bmat[0] = 1.0 / A[0][0];
         } else if (dim == 2) {
-            double det =  A[0][0] * A[1][1] - A[0][1] * A[1][0];
-            B[0][0] =  A[1][1] / det;
-            B[0][1] = -A[1][0] / det;
-            B[1][0] = -A[0][1] / det;
-            B[1][1] =  A[0][0] / det;
+            double det = a[0][0] * a[1][1] - a[0][1] * a[1][0];
+            b[0][0] =  2.0 * PI * a[1][1] / det;
+            b[0][1] = -2.0 * PI * a[1][0] / det;
+            b[1][0] = -2.0 * PI * a[0][1] / det;
+            b[1][1] =  2.0 * PI * a[0][0] / det;
+            det = A[0][0] * A[1][1] - A[0][1] * A[1][0];
+            Bmat[0] =  A[1][1] / det;
+            Bmat[1] = -A[1][0] / det;
+            Bmat[2] = -A[0][1] / det;
+            Bmat[3] =  A[0][0] / det;
         } else if (dim == 3) {
-            double det =  A[0][0] * (A[1][1] * A[2][2] - A[2][1] * A[1][2])
-                        - A[0][1] * (A[1][0] * A[2][2] - A[2][0] * A[1][2])
-                        + A[0][2] * (A[1][0] * A[2][1] - A[2][0] * A[1][1]);
-            B[0][0] = (A[1][1] * A[2][2] - A[1][2] * A[2][1]) / det;
-            B[0][1] = (A[1][2] * A[2][0] - A[1][0] * A[2][2]) / det;
-            B[0][2] = (A[1][0] * A[2][1] - A[1][1] * A[2][0]) / det;
-            B[1][0] = (A[2][1] * A[0][2] - A[2][2] * A[0][1]) / det;
-            B[1][1] = (A[2][2] * A[0][0] - A[2][0] * A[0][2]) / det;
-            B[1][2] = (A[2][0] * A[0][1] - A[2][1] * A[0][0]) / det;
-            B[2][0] = (A[0][1] * A[1][2] - A[0][2] * A[1][1]) / det;
-            B[2][1] = (A[0][2] * A[1][0] - A[0][0] * A[1][2]) / det;
-            B[2][2] = (A[0][0] * A[1][1] - A[0][1] * A[1][0]) / det;
+            double det = a[0][0] * (a[1][1] * a[2][2] - a[2][1] * a[1][2])
+                       - a[0][1] * (a[1][0] * a[2][2] - a[2][0] * a[1][2])
+                       + a[0][2] * (a[1][0] * a[2][1] - a[2][0] * a[1][1]);
+            b[0][0] = 2.0 * PI * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) / det;
+            b[0][1] = 2.0 * PI * (a[1][2] * a[2][0] - a[1][0] * a[2][2]) / det;
+            b[0][2] = 2.0 * PI * (a[1][0] * a[2][1] - a[1][1] * a[2][0]) / det;
+            b[1][0] = 2.0 * PI * (a[2][1] * a[0][2] - a[2][2] * a[0][1]) / det;
+            b[1][1] = 2.0 * PI * (a[2][2] * a[0][0] - a[2][0] * a[0][2]) / det;
+            b[1][2] = 2.0 * PI * (a[2][0] * a[0][1] - a[2][1] * a[0][0]) / det;
+            b[2][0] = 2.0 * PI * (a[0][1] * a[1][2] - a[0][2] * a[1][1]) / det;
+            b[2][1] = 2.0 * PI * (a[0][2] * a[1][0] - a[0][0] * a[1][2]) / det;
+            b[2][2] = 2.0 * PI * (a[0][0] * a[1][1] - a[0][1] * a[1][0]) / det;
+            det = A[0][0] * (A[1][1] * A[2][2] - A[2][1] * A[1][2])
+                - A[0][1] * (A[1][0] * A[2][2] - A[2][0] * A[1][2])
+                + A[0][2] * (A[1][0] * A[2][1] - A[2][0] * A[1][1]);
+            Bmat[0] = (A[1][1] * A[2][2] - A[1][2] * A[2][1]) / det;
+            Bmat[1] = (A[1][2] * A[2][0] - A[1][0] * A[2][2]) / det;
+            Bmat[2] = (A[1][0] * A[2][1] - A[1][1] * A[2][0]) / det;
+            Bmat[3] = (A[2][1] * A[0][2] - A[2][2] * A[0][1]) / det;
+            Bmat[4] = (A[2][2] * A[0][0] - A[2][0] * A[0][2]) / det;
+            Bmat[5] = (A[2][0] * A[0][1] - A[2][1] * A[0][0]) / det;
+            Bmat[6] = (A[0][1] * A[1][2] - A[0][2] * A[1][1]) / det;
+            Bmat[7] = (A[0][2] * A[1][0] - A[0][0] * A[1][2]) / det;
+            Bmat[8] = (A[0][0] * A[1][1] - A[0][1] * A[1][0]) / det;
         } else {
-            assert(false);
-        }
-        for (uint32_t d = 0; d < dim; d++) {
-            for (uint32_t i = 0; i < dim; i++) Bmat[i + dim * d] = B[d][i];
+            throw std::logic_error("dimension error.");
         }
         for (uint32_t i = 0; i < dim; i++) {
             for (uint32_t j = 0; j < dim; j++) {
                 double prod = 0.0;
                 for (uint32_t k = 0; k < dim; k++) {
-                    prod += A[i][k] * B[j][k];
+                    prod += A[i][k] * Bmat[k + j * dim];
                 }
                 if (i == j) {
                     assert(std::abs(prod - 1.0) < opr_precision);
@@ -363,7 +372,7 @@ namespace qbasis {
         std::cout << "Superlattice reciprocal space basis: " << std::endl;
         for (uint32_t d = 0; d < dim; d++) {
             std::cout << "B[" << d << "] = ";
-            for (uint32_t j = 0; j < dim; j++) std::cout << std::setw(18) << B[d][j] << "*b[" << j << "],\t";
+            for (uint32_t j = 0; j < dim; j++) std::cout << std::setw(18) << Bmat[j + d * dim] << "*b[" << j << "],\t";
             std::cout << std::endl;
         }
         std::cout << "Sublattice positions: " << std::endl;
@@ -386,8 +395,7 @@ namespace qbasis {
                              + A[0][2] * (A[1][0] * A[2][1] - A[2][0] * A[1][1]) );
                 break;
             default:
-                assert(false);
-                break;
+                throw std::runtime_error("dim wrong!");
         }
         Nsites *= num_sub;
         std::cout << "Nsites: " << Nsites << std::endl;
@@ -463,7 +471,7 @@ namespace qbasis {
 
     bool lattice::q_dividable() const
     {
-        if (total_sites() % 2 != 0) return false;
+        if (Nsites % 2 != 0) return false;
         if (dim_spec == dim && num_sub % 2 != 0) return false;
         return true;
     }
@@ -733,7 +741,7 @@ namespace qbasis {
         } else {
             latt_trans = lattice("cubic",  L_trans, std::vector<std::string>(dim_trans,"pbc"));
         }
-        assert(lattice_size == latt_trans.total_sites());
+        assert(lattice_size == latt_trans.Nsites);
 
         std::cout << "Translation subgroups on lattice with size ";
         for (uint32_t d = 0; d < dim_trans - 1; d++) {
@@ -975,7 +983,7 @@ namespace qbasis {
     std::vector<uint32_t> lattice::rotation_plan(const uint32_t &origin, const double &angle) const
     {
         assert(dim == 2);
-        std::vector<uint32_t> result(total_sites());
+        std::vector<uint32_t> result(Nsites);
         std::vector<int> coor(dim), work(dim);
         std::vector<double> x0(dim), x1(dim), xwork(dim);
         int sub;
@@ -995,7 +1003,7 @@ namespace qbasis {
         // currently only the simplest case implemented: one sublattice. More complicated cases come later
         assert(num_sub == 1);
         if (num_sub == 1) {
-            for (uint32_t site = 0; site < total_sites(); site++) {
+            for (uint32_t site = 0; site < Nsites; site++) {
                 site2coor(coor, sub, site);
                 xwork[0] = coor[0] * a[0][0] + coor[1] * a[1][0] - x0[0];
                 xwork[1] = coor[0] * a[0][1] + coor[1] * a[1][1] - x0[1];
@@ -1033,7 +1041,7 @@ namespace qbasis {
         const std::vector<std::vector<std::pair<uint32_t,uint32_t>>> &P2) const
     {
         assert(P1.size() == P2.size());
-        assert(P1[0].size() == P2[0].size() && static_cast<uint32_t>(P1[0].size()) == total_sites());
+        assert(P1[0].size() == P2[0].size() && static_cast<uint32_t>(P1[0].size()) == Nsites);
         uint32_t orb_tot  = P1.size();
         uint32_t site_tot = P1[0].size();
         std::vector<std::vector<std::pair<uint32_t,uint32_t>>> res(orb_tot, std::vector<std::pair<uint32_t,uint32_t>>(site_tot));
@@ -1050,7 +1058,7 @@ namespace qbasis {
     std::vector<std::vector<std::pair<uint32_t,uint32_t>>> lattice::plan_inverse(
         const std::vector<std::vector<std::pair<uint32_t,uint32_t>>> &old) const
     {
-        assert(static_cast<uint32_t>(old[0].size()) == total_sites());
+        assert(static_cast<uint32_t>(old[0].size()) == Nsites);
         uint32_t orb_tot = old.size();
         uint32_t site_tot = old[0].size();
         std::vector<std::vector<std::pair<uint32_t,uint32_t>>> res(orb_tot, std::vector<std::pair<uint32_t,uint32_t>>(site_tot));
@@ -1072,7 +1080,7 @@ namespace qbasis {
         lattice child(parent);
         auto dim_spec = parent.dim_spec;
         auto dim = parent.dim;
-        assert(parent.total_sites() % 2 == 0);
+        assert(parent.Nsites % 2 == 0);
         if (dim_spec == dim) {
             assert(parent.num_sub % 2 == 0);
             child.num_sub /= 2;

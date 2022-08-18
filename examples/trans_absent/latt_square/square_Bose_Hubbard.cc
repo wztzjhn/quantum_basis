@@ -39,7 +39,7 @@ int main() {
 
     // initialize the Hamiltonian
     qbasis::model<std::complex<double>> Hubbard(lattice);
-    Hubbard.add_orbital(lattice.total_sites(), "boson", boson_limit);
+    Hubbard.add_orbital(lattice.Nsites, "boson", boson_limit);
 
     qbasis::mopr<std::complex<double>> Nboson;   // operators representating total boson number
 
@@ -47,7 +47,7 @@ int main() {
     for (int x = 0; x < Lx; x++) {
         for (int y = 0; y < Ly; y++) {
             uint32_t site_i, site_j;
-            std::vector<int> work(lattice.dimension());
+            std::vector<int> work(lattice.dim);
             lattice.coor2site({x,y}, 0, site_i, work); // obtain site label of (x,y)
             // construct operators on each site
             auto b_i    = qbasis::opr<std::complex<double>>(site_i,0,false,b);

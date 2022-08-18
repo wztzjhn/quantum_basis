@@ -42,13 +42,13 @@ int main() {
 
     // constructing the Hamiltonian in operator representation
     qbasis::model<std::complex<double>> Hubbard(lattice);
-    Hubbard.add_orbital(lattice.total_sites(), "electron");
+    Hubbard.add_orbital(lattice.Nsites, "electron");
     qbasis::mopr<std::complex<double>> Nup;   // operators representating total electron number
     qbasis::mopr<std::complex<double>> Ndown;
     for (int x = 0; x < Lx; x++) {
         for (int y = 0; y < Ly; y++) {
             uint32_t site_i, site_j;
-            std::vector<int> work(lattice.dimension());
+            std::vector<int> work(lattice.dim);
             lattice.coor2site({x,y}, 0, site_i, work); // obtain site label of (x,y)
             // construct operators on each site
             auto c_up_i    = qbasis::opr<std::complex<double>>(site_i,0,true,c_up);
@@ -159,7 +159,7 @@ int main() {
                 double qdotr = 2.0 * PI * (m * x / static_cast<double>(Lx) + n * y / static_cast<double>(Ly));
                 auto coeff = 0.5 / sqrt(static_cast<double>(Lx * Ly)) * std::exp(std::complex<double>{0.0,qdotr});
                 uint32_t site;
-                std::vector<int> work(lattice.dimension());
+                std::vector<int> work(lattice.dim);
                 lattice.coor2site({x,y}, 0, site, work);
                 auto c_up_i    = qbasis::opr<std::complex<double>>(site,0,true,c_up);
                 auto c_dn_i    = qbasis::opr<std::complex<double>>(site,0,true,c_dn);

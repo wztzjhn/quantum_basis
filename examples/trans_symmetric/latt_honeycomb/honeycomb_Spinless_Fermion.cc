@@ -34,7 +34,7 @@ int main() {
 
     // initialize the Hamiltonian
     qbasis::model<std::complex<double>> spinless(lattice);
-    spinless.add_orbital(lattice.total_sites(), "spinless-fermion");
+    spinless.add_orbital(lattice.Nsites, "spinless-fermion");
     double constant = 0.0; // the constant energy correction from \sum_{\langle i,j \rangle} V1/4
 
     qbasis::mopr<std::complex<double>> Nfermion;   // operators representating total fermion number
@@ -51,7 +51,7 @@ int main() {
     for (int x = 0; x < Lx; x++) {
         for (int y = 0; y < Ly; y++) {
             uint32_t site_i, site_j;
-            std::vector<int> work(lattice.dimension());
+            std::vector<int> work(lattice.dim);
             lattice.coor2site({x,y}, 0, site_i, work); // obtain site label of (x,y)
             // construct operators on each site
             auto c_i    = qbasis::opr<std::complex<double>>(site_i,0,true,c);
