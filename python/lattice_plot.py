@@ -36,6 +36,12 @@ for sub in range(0,num_sub):
     pos_sub.append(np.array(parsed_toml["pos_sub"+str(sub)]))
 pos_sub = np.array(pos_sub)
 
+
+xmin =  100000000.0
+xmax = -100000000.0
+ymin =  100000000.0
+ymax = -100000000.0
+
 sites = []
 carts = []
 for sub in range(0,num_sub):
@@ -46,14 +52,38 @@ for sub in range(0,num_sub):
         site_temp.append(info[i]["site"])
         pos = ((info[i]["site"][0]+pos_sub[sub][0])*a[0]
               +(info[i]["site"][1]+pos_sub[sub][1])*a[1])
+        if pos[0] < xmin:
+            xmin = pos[0]
+        if pos[0] > xmax:
+            xmax = pos[0]
+        if pos[1] < ymin:
+            ymin = pos[1]
+        if pos[1] > ymax:
+            ymax = pos[1]
+
+        if pos[0] + (R[0][0]*a[0]+R[0][1]*a[1])[0] < xmin:
+            xmin = pos[0] + (R[0][0]*a[0]+R[0][1]*a[1])[0]
+        if pos[0] + (R[0][0]*a[0]+R[0][1]*a[1])[0] > xmax:
+            xmax = pos[0] + (R[0][0]*a[0]+R[0][1]*a[1])[0]
+        if pos[1] + (R[0][0]*a[0]+R[0][1]*a[1])[1] < ymin:
+            ymin = pos[1] + (R[0][0]*a[0]+R[0][1]*a[1])[1]
+        if pos[1] + (R[0][0]*a[0]+R[0][1]*a[1])[1] > ymax:
+            ymax = pos[1] + (R[0][0]*a[0]+R[0][1]*a[1])[1]
+
+        if pos[0] + (R[1][0]*a[0]+R[1][1]*a[1])[0] < xmin:
+            xmin = pos[0] + (R[1][0]*a[0]+R[1][1]*a[1])[0]
+        if pos[0] + (R[1][0]*a[0]+R[1][1]*a[1])[0] > xmax:
+            xmax = pos[0] + (R[1][0]*a[0]+R[1][1]*a[1])[0]
+        if pos[1] + (R[1][0]*a[0]+R[1][1]*a[1])[1] < ymin:
+            ymin = pos[1] + (R[1][0]*a[0]+R[1][1]*a[1])[1]
+        if pos[1] + (R[1][0]*a[0]+R[1][1]*a[1])[1] > ymax:
+            ymax = pos[1] + (R[1][0]*a[0]+R[1][1]*a[1])[1]
+
         cart_temp.append(pos)
     sites.append(np.array(site_temp))
     carts.append(np.array(cart_temp))
 
-xmin = np.amin(carts[0][:,0])
-xmax = np.amax(carts[0][:,0])
-ymin = np.amin(carts[0][:,1])
-ymax = np.amax(carts[0][:,1])
+
 for sub in range(1,num_sub):
     if np.amin(carts[sub][:,0]) < xmin:
         xmin = np.amin(carts[sub][:,0])
@@ -65,20 +95,23 @@ for sub in range(1,num_sub):
         ymax = np.amax(carts[sub][:,1])
 
 
+
 plotstyle = [ "o", "s", "^", "v", "*" ]
 plotcolor = [ "r", "b", "m", "g", "c"]
 for sub in range(0,num_sub):
     plt.plot(carts[sub][:,0],carts[sub][:,1],plotstyle[sub],color=plotcolor[sub])
 
 for sub in range(0,num_sub):
-    plt.plot(carts[sub][:,0]+(R[0][0]*a[0]+R[0][1]*a[1])[0],
+     plt.plot(carts[sub][:,0]+(R[0][0]*a[0]+R[0][1]*a[1])[0],
              carts[sub][:,1]+(R[0][0]*a[0]+R[0][1]*a[1])[1],plotstyle[sub],color='orange')
-    plt.plot(carts[sub][:,0]+(R[1][0]*a[0]+R[1][1]*a[1])[0],
+     plt.plot(carts[sub][:,0]+(R[1][0]*a[0]+R[1][1]*a[1])[0],
              carts[sub][:,1]+(R[1][0]*a[0]+R[1][1]*a[1])[1],plotstyle[sub],color='grey')
 
-#plt.xlim(math.floor(xmin-0.7),math.ceil(xmax+0.7))
-#plt.ylim(math.floor(ymin-0.7),math.ceil(ymax+0.7))
-plt.axes().set_aspect('equal')
+
+plt.xlim(math.floor(xmin-0.7),math.ceil(xmax+0.7))
+plt.ylim(math.floor(ymin-0.7),math.ceil(ymax+0.7))
+plt.axis('equal')
+
 
 plt.arrow(0,0,a[0][0],a[0][1],color='black')
 plt.arrow(0,0,a[1][0],a[1][1],color='black')
