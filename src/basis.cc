@@ -38,13 +38,12 @@ namespace qbasis {
     {
         bits_per_site = static_cast<uint8_t>(ceil(log2(static_cast<double>(dim_local)) - 1e-9));
         name = "unknown";
-        if (! dilute_) {
+        if (!dilute_) {
             num_bytes = static_cast<uint16_t>((bits_per_site * num_sites) / 8 + 1);
             bits_ignore = static_cast<uint8_t>(num_bytes * 8 - bits_per_site * num_sites);
         } else {
-            assert(false); // modify later
+            throw std::invalid_argument("dilute case not implemented yet.");
         }
-
     }
 
     basis_prop::basis_prop(const uint32_t &n_sites, const std::string &s, const extra_info &ex):
@@ -140,7 +139,7 @@ namespace qbasis {
     mbasis_elem::mbasis_elem(const std::vector<basis_prop> &props)
     {
         uint16_t total_bytes = 2; // first 2 bytes used for storing the length (in terms of bytes) of mbits
-        for (decltype(props.size()) orb = 0; orb < props.size(); orb++) total_bytes += props[orb].num_bytes;
+        for (const auto &prop : props) total_bytes += prop.num_bytes;
         mbits = static_cast<uint8_t*>(malloc(total_bytes * sizeof(uint8_t)));
 
         mbits[0] = total_bytes / 256;
@@ -159,25 +158,16 @@ namespace qbasis {
         } else {
             mbits = nullptr;
         }
-#ifdef DEBUG
-//        printf("copy from &mbits = %p  to  %p\n",static_cast<void*>(old.mbits),static_cast<void*>(mbits));
-#endif
     }
 
     mbasis_elem::mbasis_elem(mbasis_elem &&old) noexcept
     {
-#ifdef DEBUG
-//        printf("move from &mbits = %p\n",static_cast<void*>(old.mbits));
-#endif
         mbits = old.mbits;
         old.mbits = nullptr;
     }
 
     mbasis_elem::~mbasis_elem()
     {
-#ifdef DEBUG
-//        printf("desctuctor used, &mbits = %p\n",static_cast<void*>(mbits));
-#endif
         if (mbits != nullptr)
         {
             free(mbits);
@@ -193,7 +183,7 @@ namespace qbasis {
         for (uint32_t orb = 0; orb < orbital; orb++) byte_pos += props[orb].num_bytes;
 
         uint8_t res;
-        if (! props[orbital].dilute) {
+        if (!props[orbital].dilute) {
             uint32_t bits_per_site = props[orbital].bits_per_site;
             uint32_t bit_pos = bits_per_site * site;
             byte_pos += bit_pos / 8;
@@ -208,7 +198,7 @@ namespace qbasis {
                 res = static_cast<uint8_t>((res_temp >> bit_pos) & mask);
             }
         } else {
-            assert(false); // implement later
+            throw std::runtime_error("dilute case not implemented yet.");
         }
         return res;
     }
@@ -476,7 +466,7 @@ namespace qbasis {
                 uint32_t num_sites = props[orb].num_sites;
                 uint32_t num_sites_sub1 = (num_sites + 1) / 2;
                 uint32_t num_sites_sub2 = num_sites - num_sites_sub1;
-                uint32_t local_dim = static_cast<uint32_t>(props[orb].dim_local);
+                auto local_dim = static_cast<uint32_t>(props[orb].dim_local);
                 label_sub(props, orb, nums_sub1[orb], nums_sub2[orb], work1);
                 base_sub1[orb] = int_pow<uint32_t, uint64_t>(local_dim, num_sites_sub1);
                 base_sub2[orb] = int_pow<uint32_t, uint64_t>(local_dim, num_sites_sub2);
@@ -500,7 +490,7 @@ namespace qbasis {
         for (uint32_t orb = 0; orb < props.size() - 1; orb++) assert(props[orb].num_sites == props[orb+1].num_sites);
 
         uint32_t local_dimension = 1;
-        for (decltype(props.size()) j = 0; j < props.size(); j++) local_dimension *= props[j].dim_local;
+        for (const auto &prop : props) local_dimension *= prop.dim_local;
         uint32_t total_orbitals = props.size();
         uint32_t total_sites    = props[0].num_sites;
 
@@ -754,7 +744,7 @@ namespace qbasis {
         } else {
             double res = 0.0;
             for (decltype(lhs.size()) j = 0; j < lhs.size(); j++) {
-                auto op = lhs[j];
+                const auto& op = lhs[j];
                 res += diagonal_operator(props, op);
             }
             return res;
@@ -768,7 +758,7 @@ namespace qbasis {
         } else {
             std::complex<double> res = 0.0;
             for (decltype(lhs.size()) j = 0; j < lhs.size(); j++) {
-                auto op = lhs[j];
+                const auto& op = lhs[j];
                 res += diagonal_operator(props, op);
             }
             return res;
@@ -1013,8 +1003,7 @@ namespace qbasis {
     {
         std::cout << "Enumerating basis with " << val_lst.size() << " conserved quantum numbers..." << std::endl;
         std::cout << "Quantum #s: ";
-        for (decltype(val_lst.size()) cnt = 0; cnt < val_lst.size(); cnt++)
-            std::cout << val_lst[cnt] << "\t";
+        for (double val : val_lst) std::cout << val << "\t";
         std::cout << std::endl;
         uint32_t n_sites = props[0].num_sites;
         assert(conserve_lst.size() == val_lst.size());
@@ -1025,15 +1014,15 @@ namespace qbasis {
         uint32_t n_orbs = props.size();
         uint32_t dim_local = 1;
         std::vector<uint32_t> dim_local_vec;
-        for (decltype(props.size()) j = 0; j < props.size(); j++) {
-            dim_local *= static_cast<uint32_t>(props[j].dim_local);
-            dim_local_vec.push_back(static_cast<uint32_t>(props[j].dim_local));
+        for (const auto &prop : props) {
+            dim_local *= static_cast<uint32_t>(prop.dim_local);
+            dim_local_vec.push_back(static_cast<uint32_t>(prop.dim_local));
         }
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
 
         // Hilbert space size if without any symmetry
-        MKL_INT dim_total = int_pow<MKL_INT,MKL_INT>(static_cast<MKL_INT>(dim_local), static_cast<MKL_INT>(n_sites));
+        auto dim_total = int_pow<MKL_INT,MKL_INT>(static_cast<MKL_INT>(dim_local), static_cast<MKL_INT>(n_sites));
         assert(dim_total > 0); // prevent overflow
         std::cout << "Nsite     = " << n_sites << std::endl;
         std::cout << "Dim_local = " << dim_local << std::endl;
@@ -1048,12 +1037,13 @@ namespace qbasis {
         // array to help distributing jobs to different threads
         std::vector<MKL_INT> job_array;
         for (MKL_INT j = 0; j < dim_total; j+=10000) job_array.push_back(j);
-        MKL_INT total_chunks = static_cast<MKL_INT>(job_array.size());
+        auto total_chunks = static_cast<MKL_INT>(job_array.size());
         job_array.push_back(dim_total);
 
         MKL_INT dim_full = 0;
         MKL_INT report = dim_total > 1000000 ? (total_chunks / 10) : total_chunks;
-        #pragma omp parallel for schedule(dynamic,1)
+        #pragma omp parallel for schedule(dynamic,1) default(none) \
+                shared(total_chunks, report, std::cout, job_array, base, GS, n_orbs, n_sites, conserve_lst, val_lst, dim_full, basis_temp, props)
         for (MKL_INT chunk = 0; chunk < total_chunks; chunk++) {
             if (chunk > 0 && chunk % report == 0) {
                 std::cout << "progress: "
@@ -1087,7 +1077,7 @@ namespace qbasis {
                 state_num++;
                 if (state_num < job_array[chunk+1]) state_new.increment(props);
             }
-            if (basis_temp_job.size() > 0) {
+            if (!basis_temp_job.empty()) {
                 #pragma omp critical
                 {
                     dim_full += basis_temp_job.size();
@@ -1122,7 +1112,7 @@ namespace qbasis {
     {
 
         bool sorted = true;
-        MKL_INT dim = static_cast<MKL_INT>(basis.size());
+        auto dim = static_cast<MKL_INT>(basis.size());
         assert(dim > 0);
         for (MKL_INT j = 0; j < dim - 1; j++) {
             if (! (basis[j] < basis[j+1])) {
@@ -1157,7 +1147,7 @@ namespace qbasis {
         basis_props_split(props, props_sub_a, props_sub_b);
 
         bool sorted = true;
-        MKL_INT dim = static_cast<MKL_INT>(basis.size());
+        auto dim = static_cast<MKL_INT>(basis.size());
         assert(dim > 0);
         for (MKL_INT j = 0; j < dim - 1; j++) {
             assert(basis[j] != basis[j+1]);
@@ -1206,7 +1196,7 @@ namespace qbasis {
         std::chrono::time_point<std::chrono::system_clock> start, end;
         start = std::chrono::system_clock::now();
 
-        MKL_INT dim = static_cast<MKL_INT>(basis.size());
+        auto dim = static_cast<MKL_INT>(basis.size());
         std::vector<basis_prop> props_sub_a, props_sub_b;
         basis_props_split(props, props_sub_a, props_sub_b);
 
@@ -1218,7 +1208,7 @@ namespace qbasis {
         std::cout << "Filling Lin Table (" << Nsites_a << "+" << Nsites_b <<" sites, dim=" << basis.size() << ")..." << std::endl;
 
         uint32_t local_dim = 1;
-        for (decltype(props.size()) j = 0; j < props.size(); j++) local_dim *= props[j].dim_local;
+        for (const auto &prop : props) local_dim *= prop.dim_local;
         uint64_t dim_sub_a = int_pow<uint32_t, uint64_t>(local_dim, Nsites_a);
         uint64_t dim_sub_b = int_pow<uint32_t, uint64_t>(local_dim, Nsites_b);
 
@@ -1227,7 +1217,7 @@ namespace qbasis {
         Lin_Jb = std::vector<MKL_INT>(dim_sub_b,-1);
 
         int num_threads = 1;
-        #pragma omp parallel
+        #pragma omp parallel default(none) shared(num_threads)
         {
             int tid = omp_get_thread_num();
             if (tid == 0) num_threads = omp_get_num_threads();
@@ -1239,7 +1229,8 @@ namespace qbasis {
         // the element J may not be necessary, remove if not used
         std::cout << "building the (Ia,Ib,J) table...                    " << std::flush;
         std::vector<std::vector<MKL_INT>> table_pre(dim,std::vector<MKL_INT>(3));
-        #pragma omp parallel for schedule(dynamic,1)
+        #pragma omp parallel for schedule(dynamic,1) default(none) \
+                shared(dim, basis, props, scratch_works1, scratch_works2, table_pre)
         for (MKL_INT j = 0; j < dim; j++) {
             int tid = omp_get_thread_num();
             uint64_t i_a, i_b;
@@ -1255,7 +1246,7 @@ namespace qbasis {
         start = end;
 
         std::cout << "checking if table_pre sorted via I_b               " << std::flush;
-        #pragma omp parallel for schedule(dynamic,1)
+        #pragma omp parallel for schedule(dynamic,1) default(none) shared(dim, table_pre)
         for (MKL_INT j = 0; j < dim - 1; j++) {
             if (table_pre[j][1] == table_pre[j+1][1]) {
                 assert(table_pre[j][0] < table_pre[j+1][0]);
@@ -1274,7 +1265,7 @@ namespace qbasis {
         // Thus, J form a graph, with several pieces disconnected
         ALGraph g(static_cast<uint64_t>(dim));
         std::cout << "Initializing graph vertex info...                  " << std::flush;
-        #pragma omp parallel for schedule(dynamic,1)
+        #pragma omp parallel for schedule(dynamic,1) default(none) shared(dim, g, table_pre)
         for (MKL_INT j = 0; j < dim; j++) {
             g[j].i_a = table_pre[j][0];
             g[j].i_b = table_pre[j][1];
@@ -1342,7 +1333,8 @@ namespace qbasis {
         } else {
             // check with the original basis, delete later
             std::cout << "double checking Lin Table validity...              " << std::flush;
-            #pragma omp parallel for schedule(dynamic,1)
+            #pragma omp parallel for schedule(dynamic,1) default(none) \
+                    shared(dim, basis, props, scratch_works1, scratch_works2, Lin_Ja, Lin_Jb)
             for (MKL_INT j = 0; j < dim; j++) {
                 int tid = omp_get_thread_num();
                 uint64_t i_a, i_b;
@@ -1448,7 +1440,8 @@ namespace qbasis {
         for (uint32_t g = 0; g < num_groups; g++) omega_g[g] = groups[g].second;
 
         // for each representative, find its group
-        #pragma omp parallel for schedule(dynamic,1)
+        #pragma omp parallel for schedule(dynamic,1) default(none) \
+                shared(dim_repr, latt, num_groups, dim, trans_sym, groups, reps, props, belong2group)
         for (uint64_t j = 0; j < dim_repr; j++) {
             std::vector<uint32_t> scratch_plan(latt.Nsites);
             std::vector<int> scratch_coor(latt.dim), scratch_work(latt.dim);
@@ -1512,26 +1505,17 @@ namespace qbasis {
                         if (res.first  != std::vector<uint32_t>(res.first.size(),999999999) ||
                             res.second != std::vector<uint32_t>(res.second.size(),999999999)) {
                             fout << "ja = ";
-                            for (decltype(disp_ja.size()) j = 0; j < disp_ja.size(); j++) {
-                                fout << disp_ja[j] << "\t";
-                            }
+                            for (uint32_t j : disp_ja) fout << j << "\t";
                             fout << std::endl;
                             fout << "jb = ";
-                            for (decltype(disp_jb.size()) j = 0; j < disp_jb.size(); j++) {
-                                fout << disp_jb[j] << "\t";
-                            }
+                            for (uint32_t j : disp_jb) fout << j << "\t";
                             fout << std::endl;
                             fout << "i  = ";
-                            for (decltype(res.first.size()) j = 0; j < res.first.size(); j++) {
-                                fout << res.first[j] << "\t";
-                            }
+                            for (uint32_t j : res.first) fout << j << "\t";
                             fout << std::endl;
                             fout << "j  = ";
-                            for (decltype(res.second.size()) j = 0; j < res.second.size(); j++) {
-                                fout << res.second[j] << "\t";
-                            }
-                            fout << std::endl;
-                            fout << std::endl;
+                            for (uint32_t j : res.second) fout << j << "\t";
+                            fout << std::endl << std::endl;
                         }
                         disp_jb = dynamic_base_plus1(disp_jb, base_sub);
                     }
@@ -1556,26 +1540,17 @@ namespace qbasis {
                         if (res.first  != std::vector<uint32_t>(res.first.size(),999999999) ||
                             res.second != std::vector<uint32_t>(res.second.size(),999999999)) {
                             fout << "ja = ";
-                            for (decltype(disp_ja.size()) j = 0; j < disp_ja.size(); j++) {
-                                fout << disp_ja[j] << "\t";
-                            }
+                            for (uint32_t j : disp_ja) fout << j << "\t";
                             fout << std::endl;
                             fout << "jb = ";
-                            for (decltype(disp_jb.size()) j = 0; j < disp_jb.size(); j++) {
-                                fout << disp_jb[j] << "\t";
-                            }
+                            for (uint32_t j : disp_jb) fout << j << "\t";
                             fout << std::endl;
                             fout << "i  = ";
-                            for (decltype(res.first.size()) j = 0; j < res.first.size(); j++) {
-                                fout << res.first[j] << "\t";
-                            }
+                            for (uint32_t j : res.first) fout << j << "\t";
                             fout << std::endl;
                             fout << "j  = ";
-                            for (decltype(res.second.size()) j = 0; j < res.second.size(); j++) {
-                                fout << res.second[j] << "\t";
-                            }
-                            fout << std::endl;
-                            fout << std::endl;
+                            for (uint32_t j : res.second) fout << j << "\t";
+                            fout << std::endl << std::endl;
                         }
                         disp_jb = dynamic_base_plus1(disp_jb, base_sub);
                     }
@@ -1600,26 +1575,17 @@ namespace qbasis {
                         if (res.first  != std::vector<uint32_t>(res.first.size(),999999999) ||
                             res.second != std::vector<uint32_t>(res.second.size(),999999999)) {
                             fout << "ja = ";
-                            for (decltype(disp_ja.size()) j = 0; j < disp_ja.size(); j++) {
-                                fout << disp_ja[j] << "\t";
-                            }
+                            for (uint32_t j : disp_ja) fout << j << "\t";
                             fout << std::endl;
                             fout << "jb = ";
-                            for (decltype(disp_jb.size()) j = 0; j < disp_jb.size(); j++) {
-                                fout << disp_jb[j] << "\t";
-                            }
+                            for (uint32_t j : disp_jb) fout << j << "\t";
                             fout << std::endl;
                             fout << "i  = ";
-                            for (decltype(res.first.size()) j = 0; j < res.first.size(); j++) {
-                                fout << res.first[j] << "\t";
-                            }
+                            for (uint32_t j : res.first) fout << j << "\t";
                             fout << std::endl;
                             fout << "j  = ";
-                            for (decltype(res.second.size()) j = 0; j < res.second.size(); j++) {
-                                fout << res.second[j] << "\t";
-                            }
-                            fout << std::endl;
-                            fout << std::endl;
+                            for (uint32_t j : res.second) fout << j << "\t";
+                            fout << std::endl << std::endl;
                         }
                         disp_jb = dynamic_base_plus1(disp_jb, base_sub);
                     }
@@ -1640,9 +1606,7 @@ namespace qbasis {
                     auto g = Weisse_w_lt.index(pos_w);
                     if (g < groups_parent.size()) {
                         fout << "j = ";
-                        for (decltype(disp_j.size()) j = 0; j < disp_j.size(); j++) {
-                            fout << disp_j[j] << "\t";
-                        }
+                        for (uint32_t j : disp_j) fout << j << "\t";
                         fout << std::endl;
                         fout << "g(parent) = " << g << std::endl;
                         fout << "omega = " << groups_parent[g].second << std::endl;
@@ -1665,9 +1629,7 @@ namespace qbasis {
                     auto g = Weisse_w_eq.index(pos_w);
                     if (g < groups_parent.size()) {
                         fout << "j = ";
-                        for (decltype(disp_j.size()) j = 0; j < disp_j.size(); j++) {
-                            fout << disp_j[j] << "\t";
-                        }
+                        for (uint32_t j : disp_j) fout << j << "\t";
                         fout << std::endl;
                         fout << "g(parent) = " << g << std::endl;
                         fout << "omega = " << groups_parent[g].second << std::endl;
@@ -1691,9 +1653,7 @@ namespace qbasis {
                         auto g = Weisse_w_gt.index(pos_w);
                         if (g < groups_parent.size()) {
                             fout << "j = ";
-                            for (decltype(disp_j.size()) j = 0; j < disp_j.size(); j++) {
-                                fout << disp_j[j] << "\t";
-                            }
+                            for (uint32_t j : disp_j) fout << j << "\t";
                             fout << std::endl;
                             fout << "g(parent) = " << g << std::endl;
                             fout << "omega = " << groups_parent[g].second << std::endl;
@@ -1704,9 +1664,7 @@ namespace qbasis {
                 }
             }
         }
-
         fout.close();
-
     }
 
     void classify_Weisse_tables(const std::vector<basis_prop> &props_parent,
@@ -1800,7 +1758,7 @@ namespace qbasis {
 
         for (uint32_t ga = 0; ga < num_groups; ga++) {
             // change the assert to: if (size==0) continue
-            assert(examples[ga].size() > 0);
+            assert(!examples[ga].empty());
             for (uint32_t gb = 0; gb < num_groups; gb++) {
                 bool flag_lt, flag_eq, flag_gt;
                 if (ga != gb) { // then it is impossible to pick ra == rb, table_eq not available
@@ -1841,7 +1799,7 @@ namespace qbasis {
                         rb_new.transform(props_sub, plan_sub, sgn);                               // Tj |rb>
                         auto rb_new_label = rb_new.label(props_sub, scratch_work1, scratch_work2);
                         assert(basis_sub_repr[belong2rep[rb_new_label]] == rb);
-                        auto dist_to_rb = dist2rep[rb_new_label];
+                        const auto& dist_to_rb = dist2rep[rb_new_label];
                         if (dist_to_rb != disp_j_int) {                                           // remove over-countings
                             disp_j = dynamic_base_plus1(disp_j, base_sub);
                             continue;
@@ -1902,7 +1860,7 @@ namespace qbasis {
                         rb_new.transform(props_sub, plan_sub, sgn);                               // Tj |rb>
                         auto rb_new_label = rb_new.label(props_sub, scratch_work1, scratch_work2);
                         assert(basis_sub_repr[belong2rep[rb_new_label]] == rb);
-                        auto dist_to_rb = dist2rep[rb_new_label];
+                        const auto& dist_to_rb = dist2rep[rb_new_label];
                         if (dist_to_rb != disp_j_int) {                                           // remove over-countings
                             disp_j = dynamic_base_plus1(disp_j, base_sub);
                             continue;
@@ -1962,7 +1920,7 @@ namespace qbasis {
                         rb_new.transform(props_sub, plan_sub, sgn);                               // Tj |rb>
                         auto rb_new_label = rb_new.label(props_sub, scratch_work1, scratch_work2);
                         assert(basis_sub_repr[belong2rep[rb_new_label]] == rb);
-                        auto dist_to_rb = dist2rep[rb_new_label];
+                        const auto& dist_to_rb = dist2rep[rb_new_label];
                         if (dist_to_rb != disp_j_int) {                                           // remove over-countings
                             disp_j = dynamic_base_plus1(disp_j, base_sub);
                             continue;
@@ -2135,8 +2093,6 @@ namespace qbasis {
                     disp_j = dynamic_base_plus1(disp_j, base_sub);
                 }
             }
-
-
         }
 
         log_Weisse_tables(latt_parent, groups_parent, groups_sub,
@@ -2274,7 +2230,7 @@ namespace qbasis {
     bool wavefunction<T>::q_sorted() const
     {
         if (size() == 0 || size() == 1) return true;
-        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
+        auto capacity = static_cast<MKL_INT>(ele.size());
         bool check = true;
         for (MKL_INT j = (bgn + 1) % capacity; j != end; j = (j + 1) % capacity) {
             if (ele[j].first < ele[(j + capacity - 1) % capacity].first) {
@@ -2289,7 +2245,7 @@ namespace qbasis {
     bool wavefunction<T>::q_sorted_fully() const
     {
         if (size() == 0 || size() == 1) return true;
-        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
+        auto capacity = static_cast<MKL_INT>(ele.size());
         bool check = true;
         for (MKL_INT j = (bgn + 1) % capacity; j != end; j = (j + 1) % capacity) {
             if ( !(ele[(j + capacity - 1) % capacity].first < ele[j].first) ) {
@@ -2305,7 +2261,7 @@ namespace qbasis {
     {
         assert(q_sorted_fully());
         if (q_empty()) return 0.0;
-        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
+        auto capacity = static_cast<MKL_INT>(ele.size());
         double res = 0.0;
         for (MKL_INT j = bgn; j != end; j = (j + 1) % capacity) {
             res += std::norm(ele[j].second);
@@ -2316,7 +2272,7 @@ namespace qbasis {
     template <typename T>
     void wavefunction<T>::prt_bits(const std::vector<basis_prop> &props) const
     {
-        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
+        auto capacity = static_cast<MKL_INT>(ele.size());
         for (MKL_INT j = bgn; j != end; j = (j + 1) % capacity) {
             std::cout << "coeff: " << ele[j].second << std::endl;
             ele[j].first.prt_bits(props);
@@ -2327,7 +2283,7 @@ namespace qbasis {
     template <typename T>
     void wavefunction<T>::prt_states(const std::vector<basis_prop> &props) const
     {
-        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
+        auto capacity = static_cast<MKL_INT>(ele.size());
         for (MKL_INT j = bgn; j != end; j = (j + 1) % capacity) {
             std::cout << "coeff: " << ele[j].second << std::endl;
             ele[j].first.prt_states(props);
@@ -2356,7 +2312,7 @@ namespace qbasis {
     wavefunction<T> &wavefunction<T>::reserve(const MKL_INT& capacity_new)
     {
         assert(capacity_new > 0);
-        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
+        auto capacity = static_cast<MKL_INT>(ele.size());
         if (capacity_new <= capacity) return *this;
 
         auto gs = ele[bgn].first;
@@ -2380,7 +2336,7 @@ namespace qbasis {
     wavefunction<T> &wavefunction<T>::add(const mbasis_elem &rhs)
     {
         assert(ele[0].first.mbits[0] == rhs.mbits[0] && ele[0].first.mbits[1] == rhs.mbits[1]);
-        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
+        auto capacity = static_cast<MKL_INT>(ele.size());
         if (size() + 1 >= capacity) {
             capacity += capacity;
             reserve(capacity);
@@ -2404,7 +2360,7 @@ namespace qbasis {
     wavefunction<T> &wavefunction<T>::add(const std::pair<mbasis_elem, T> &rhs)
     {
         assert(ele[0].first.mbits[0] == rhs.first.mbits[0] && ele[0].first.mbits[1] == rhs.first.mbits[1]);
-        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
+        auto capacity = static_cast<MKL_INT>(ele.size());
         if (size() + 1 >= capacity) {
             capacity += capacity;
             reserve(capacity);
@@ -2429,7 +2385,7 @@ namespace qbasis {
     {
         if (rhs.q_empty()) return *this;
         assert(ele[0].first.mbits[0] == rhs.ele[0].first.mbits[0] && ele[0].first.mbits[1] == rhs.ele[0].first.mbits[1]);
-        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
+        auto capacity = static_cast<MKL_INT>(ele.size());
         MKL_INT cnt_total = rhs.size();
         if (size() + cnt_total >= capacity) {
             capacity += capacity;
@@ -2486,7 +2442,7 @@ namespace qbasis {
             end = 0;
             return *this;
         }
-        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
+        auto capacity = static_cast<MKL_INT>(ele.size());
         for (MKL_INT j = bgn; j != end; j = (j + 1) % capacity) ele[j].second *= rhs;
         return *this;
     }
@@ -2496,7 +2452,7 @@ namespace qbasis {
     {
         if (q_empty()) return *this;            // itself zero
         MKL_INT size_old = size();
-        MKL_INT capacity = static_cast<MKL_INT>(ele.size());
+        auto capacity = static_cast<MKL_INT>(ele.size());
 
         // sqeeze into a single chunk
         using std::swap;
@@ -2631,7 +2587,7 @@ namespace qbasis {
     {
         if (res.q_empty()) return;
 
-        MKL_INT capacity = static_cast<MKL_INT>(res.ele.size());
+        auto capacity = static_cast<MKL_INT>(res.ele.size());
         MKL_INT cnt_total = res.size();
 
         // if diagonal operator, implementation is simple
@@ -2731,7 +2687,7 @@ namespace qbasis {
             res.end = 0;
         }
         assert(res.ele[0].first.mbits[0] == rhs.mbits[0] && res.ele[0].first.mbits[1] == rhs.mbits[1]);
-        MKL_INT capacity = static_cast<MKL_INT>(res.ele.size());
+        auto capacity = static_cast<MKL_INT>(res.ele.size());
 
         auto dim = props[lhs.orbital].dim_local;
         assert(lhs.dim == dim);
@@ -2795,7 +2751,7 @@ namespace qbasis {
         }
         if (phi0.q_empty()) return;
 
-        MKL_INT capacity0 = static_cast<MKL_INT>(phi0.ele.size());
+        auto capacity0 = static_cast<MKL_INT>(phi0.ele.size());
         for (MKL_INT j = phi0.bgn; j != phi0.end; j = (j+1) % capacity0) {
             if (std::abs(phi0.ele[j].second) < machine_prec) continue;
             oprXphi(phi0.ele[j].second * lhs, props, res, phi0.ele[j].first, true);
@@ -2889,7 +2845,7 @@ namespace qbasis {
     {
         assert(conserve_lst.size() == val_lst.size());
         int num_threads = 1;
-        #pragma omp parallel
+        #pragma omp parallel default(none) shared(num_threads)
         {
             int tid = omp_get_thread_num();
             if (tid == 0) num_threads = omp_get_num_threads();
@@ -2901,7 +2857,8 @@ namespace qbasis {
         start = std::chrono::system_clock::now();
         std::list<mbasis_elem> basis_new;
 
-        #pragma omp parallel for schedule(dynamic,256)
+        #pragma omp parallel for schedule(dynamic,256) default(none) \
+                shared(basis, Ham, props, intermediate_states, conserve_lst, val_lst, basis_new)
         for (decltype(basis.size()) j = 0; j < basis.size(); j++) {
             int tid = omp_get_thread_num();
 
@@ -2953,7 +2910,7 @@ namespace qbasis {
     void rm_mbasis_dulp_trans(const lattice &latt, std::list<mbasis_elem> &basis, const std::vector<basis_prop> &props)
     {
         std::chrono::time_point<std::chrono::system_clock> start, end;
-        std::chrono::duration<double> elapsed_seconds;
+        std::chrono::duration<double> elapsed_seconds{};
         start = std::chrono::system_clock::now();
         std::cout << "Moving states to translational equivalents... " << std::flush;
 
