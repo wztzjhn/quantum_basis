@@ -47,7 +47,7 @@ namespace qbasis {
             assert(L.size() == 2);
             num_sub = 1;
             a[0][0] = 1.0;      a[0][1] = 0.0;
-            a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);
+            a[1][0] = -0.5;      a[1][1] = 0.5 * sqrt(3.0);
             Nsites = L[0] * L[1] * num_sub;
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0};
@@ -56,22 +56,22 @@ namespace qbasis {
             assert(L.size() == 2);
             num_sub = 3;
             a[0][0] = 1.0;      a[0][1] = 0.0;
-            a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);
+            a[1][0] = -0.5;      a[1][1] = 0.5 * sqrt(3.0);
             Nsites = L[0] * L[1] * num_sub;
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0};
-            pos_sub[1] = std::vector<double>{0.5, 0.0};
-            pos_sub[2] = std::vector<double>{0.0, 0.5};
+            pos_sub[1] = std::vector<double>{0.0, 0.5};
+            pos_sub[2] = std::vector<double>{-0.5, 0.0};
         } else if (name == "honeycomb" || name == "Honeycomb" || name == "HONEYCOMB") {
             std::cout << "Honeycomb lattice built."<< std::endl;
             assert(L.size() == 2);
             num_sub = 2;
             a[0][0] = 1.0;      a[0][1] = 0.0;
-            a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);
+            a[1][0] = -0.5;      a[1][1] = 0.5 * sqrt(3.0);
             Nsites = L[0] * L[1] * num_sub;
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0};
-            pos_sub[1] = std::vector<double>{1.0/3.0, 1.0/3.0};
+            pos_sub[1] = std::vector<double>{2.0 / 3.0, 1.0 / 3.0};
         } else if (name == "cubic" || name == "Cubic" || name == "CUBIC") {
             std::cout << "Cubic lattice built."<< std::endl;
             assert(L.size() == 3);
@@ -96,9 +96,9 @@ namespace qbasis {
             std::cout << "Stacked triangular lattice built."<< std::endl;
             assert(L.size() == 3);
             num_sub = 1;
-            a[0][0] = 1.0;      a[0][1] = 0.0;                   a[0][2] = 0.0;
-            a[1][0] = 0.5;      a[1][1] = 0.5 * sqrt(3.0);       a[1][2] = 0.0;
-            a[2][0] = 0.0;      a[2][1] = 0.0;                   a[2][2] = 1.0;
+            a[0][0] = 1.0;      a[0][1] = 0.0;                       a[0][2] = 0.0;
+            a[1][0] = -0.5;     a[1][1] = 0.5 * std::sqrt(3.0);      a[1][2] = 0.0;
+            a[2][0] = 0.0;      a[2][1] = 0.0;                       a[2][2] = 1.0;
             Nsites = L[0] * L[1] * L[2] * num_sub;
             pos_sub.resize(num_sub);
             pos_sub[0] = std::vector<double>{0.0, 0.0, 0.0};

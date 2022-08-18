@@ -84,9 +84,10 @@ int main() {
                 constant += 0.25 * V1;
             }
 
-             // with bottom neighbor (x, y-1), sublattice 1
-            if (bc[1] == "pbc" || (bc[1] == "obc" && y > 0)) {
-                lattice.coor2site({x,y-1}, 1, site_j, work);
+             // with bottom neighbor (x-1, y-1), sublattice 1
+            if ((bc[0] == "pbc" || (bc[0] == "obc" && x > 0)) &&
+                (bc[1] == "pbc" || (bc[1] == "obc" && y > 0))) {
+                lattice.coor2site({x-1,y-1}, 1, site_j, work);
                 auto c_j    = qbasis::opr<std::complex<double>>(site_j,0,true,c);
                 auto c_dg_j = c_j; c_dg_j.dagger();
                 auto n_j    = c_dg_j * c_j;
