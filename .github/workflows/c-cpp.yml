@@ -35,9 +35,9 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libmkl-dev libboost-dev
         cd /tmp
-        wget https://github.com/wztzjhn/arpack-ng/archive/refs/heads/dev.zip
-        unzip dev.zip
-        cd arpack-ng-dev/
+        wget https://github.com/opencollab/arpack-ng/archive/refs/heads/master.zip
+        unzip master.zip
+        cd arpack-ng-master/
         sh bootstrap
         ./configure --enable-icb --with-blas=mkl_gf_ilp64 --with-lapack=mkl_gf_ilp64 --prefix=$HOME/installs
         make check
