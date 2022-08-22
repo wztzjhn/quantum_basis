@@ -256,10 +256,13 @@ namespace qbasis {
     T2 binary_search(const std::vector<T1> &array, const T1 &val,
                           const T2 &bgn, const T2 &end)
     {
-        if(array.size() == 0 && bgn == end) return static_cast<T2>(array.size());            // not found
-        assert(bgn < end);
-        assert(bgn >= 0 && bgn < static_cast<T2>(array.size()));
-        assert(end > 0 && end <= static_cast<T2>(array.size()));
+        if (array.size() == 0 && bgn == end) return static_cast<T2>(array.size());            // not found
+        if (bgn >= end) throw std::logic_error("array not sorted.");
+        if (array.size() > 2) {
+            if (array[1] < array[0] || array[2] < array[1] || array.back() < array[0]) throw std::logic_error("array not sorted.");
+        }
+        if (bgn < 0 || bgn >= static_cast<T2>(array.size())) throw std::invalid_argument("bgn out of bounds");
+        if (end <= 0 || end > static_cast<T2>(array.size())) throw std::invalid_argument("end out of bounds");
         T2 low  = bgn;
         T2 high = end - 1;
         T2 mid;
