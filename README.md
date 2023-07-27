@@ -94,9 +94,9 @@ To learn how to use this library to design ED code for your own models, please r
 
     ```
     cd /tmp
-    wget https://github.com/opencollab/arpack-ng/archive/refs/heads/master.zip
-    unzip master.zip
-    cd arpack-ng-master/
+    wget https://github.com/opencollab/arpack-ng/archive/refs/tags/3.9.0.tar.gz
+    tar xf 3.9.0.tar.gz
+    cd arpack-ng-3.9.0
     sh bootstrap
     FFLAGS="-m64 -I${MKL_INC_DIR}" FCFLAGS="-m64 -I$MKL_INC_DIR" CFLAGS="-DMKL_ILP64 -m64 -I${MKL_INC_DIR}" CXXFLAGS="-DMKL_ILP64 -m64 -I${MKL_INC_DIR}" LIBS="-L${MKL_LIB_DIR} -Wl,--no-as-needed -lmkl_gf_ilp64 -lmkl_tbb_thread -lmkl_core -lpthread -ltbb -lstdc++ -lm -ldl" LIBSUFFIX="ILP64" INTERFACE64="1" ./configure --with-blas=mkl_gf_ilp64 --with-lapack=mkl_gf_ilp64 --enable-icb --prefix=$HOME/installs
     make check

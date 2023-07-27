@@ -39,7 +39,7 @@ set(LIBS ${LIBS} ${Boost_LIBRARIES})
 # MKL
 set(MKL_ARCH "intel64")
 set(MKL_LINK "dynamic")
-set(MKL_THREADING "tbb_thread")
+set(MKL_THREADING "sequential")
 set(MKL_INTERFACE_FULL "intel_ilp64")
 add_compile_definitions(MKL_ILP64)
 find_package(MKL CONFIG REQUIRED)
