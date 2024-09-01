@@ -145,6 +145,7 @@ int main() {
             fout_dnmcs_pm << "b\t" << std::endl;
             fout_dnmcs_pm << "a\t" << std::endl;
         }
+        std::cout << std::endl;
     }
     fout_dnmcs_pm.close();
 }

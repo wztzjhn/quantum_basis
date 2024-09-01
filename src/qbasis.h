@@ -1092,6 +1092,14 @@ namespace qbasis {
               const MKL_INT &maxit, const std::string &order,
               MKL_INT &nconv, double eigenvals[], T eigenvecs[]);
 
+    // feast method to get eigenvalues inside [E_low, E_high]
+    // nev:   number of eigenvalues needed
+    // nconv: number of eigenvalues converged
+    template <typename T>
+    void call_feast(csr_mat<T> &mat, MKL_INT nev,
+                    const double &E_low, const double &E_high, MKL_INT max_loops,
+                    MKL_INT &nconv, double eigenvals[], T eigenvecs[]);
+
 
 //  ----------------------------- part 5: Lattices  ----------------------------
 //  ----------------------------------------------------------------------------
@@ -1439,6 +1447,12 @@ namespace qbasis {
          *  for repr and vrnl, there may be a few artificial eigenvalues above fake_pos (default to 100), corresponding to zero norm states.
          */
         void locate_Emax_iram(const which_sym &sec_sym_, const MKL_INT &nev = 2, const MKL_INT &ncv = 6, MKL_INT maxit = 0);
+
+        /** \brief calculate eigenstates in [E_low, E_high]. Note: for repr and vrnl, there may be a few artificial eigenvalues above fake_pos (default to 100), corresponding to zero norm states.
+         *  \param nev number of estimated number of eigenstates in the requested energy range
+         */
+        void locate_Es_feast(const which_sym &sec_sym_, const MKL_INT &nev,
+                             const double &E_low, const double &E_high, MKL_INT max_loop = 20);
 
         /** \brief return dim_full */
         std::vector<MKL_INT> dimension_full() const { return dim_full; }

@@ -602,6 +602,55 @@ namespace qbasis {
         }
     }
 
+    template <typename T>
+    void call_feast(csr_mat<T> &mat, MKL_INT nev,
+                    const double &E_low, const double &E_high, MKL_INT max_loops,
+                    MKL_INT &nconv, double eigenvals[], T eigenvecs[])
+    {
+        std::cout << "FEAST info:" << std::endl;
+        std::cout << "nev      = " << nev << std::endl;
+        std::cout << "Max loop = " << max_loops << std::endl;
+
+        if (nev < 1) throw std::invalid_argument("nev should be at leat 1.");
+        if (nev > mat.dim) throw std::invalid_argument("nev too large.");
+        if (max_loops < 20) throw std::invalid_argument("max_loops should be at least 20.");
+
+        MKL_INT fpm[128];
+        feastinit(fpm);
+        fpm[0]  = 1; // print runtime status to the screen
+        fpm[3]  = max_loops;
+        fpm[26] = 1; // Extended Eigensolver routines check input matrices
+
+        // feast routine used PARDISO, which requires 1-based index at the moment
+        MKL_INT *ja = mat.ja;
+        MKL_INT *ia = mat.ia;
+        for (int i = 0; i < mat.nnz; ++i) ja[i] += 1;
+        for (int i = 0; i <= mat.dim; ++i) ia[i] += 1;
+
+        char UPLO = mat.sym ? 'U' : 'F';
+        double epsout; // On output, contains the relative error on the trace: |tracei - tracei-1| /max(|emin|, |emax|)
+        MKL_INT loop;  // On output, contains the number of refinement loop executed
+        std::vector<double> res(nev);
+        MKL_INT info;
+        zfeast_hcsrev(&UPLO, &mat.dim, mat.val, ia, ja, fpm, &epsout, &loop,
+                      &E_low, &E_high, &nev, eigenvals, eigenvecs, &nconv,
+                      res.data(), &info);
+        std::cout << "Used loops: " << loop << std::endl;
+
+        if (info > 3 || info < 0) throw std::runtime_error("FEAST failed.");
+        if (info == 1) throw std::runtime_error("No eigenvalue found in the search interval.");
+        if (info == 2) throw std::runtime_error("No Convergence (number of iteration loops > fpm[3]).");
+        if (info == 3) throw std::runtime_error("Size of the subspace m0 is too small (m0 < m).");
+
+        std::cout << std::endl << "Level" << "\t" << "Eigenval" << std::endl;
+        for (MKL_INT i = 0; i < nconv; ++i) {
+            std::cout << i << "\t" << eigenvals[i] << std::endl;
+        }
+
+        for (int i = 0; i < mat.nnz; ++i) ja[i] -= 1;
+        for (int i = 0; i <= mat.dim; ++i) ia[i] -= 1;
+    }
+
     // Explicit instantiation
 /*
     template void iram(const MKL_INT &dim, csr_mat<double> &mat, double v0[], const MKL_INT &nev, const MKL_INT &ncv,
@@ -617,5 +666,9 @@ namespace qbasis {
     template void iram(const MKL_INT &dim, model<std::complex<double>> &mat, std::complex<double> v0[],
                        const MKL_INT &nev, const MKL_INT &ncv, const MKL_INT &maxit, const std::string &order,
                        MKL_INT &nconv, double eigenvals[], std::complex<double> eigenvecs[]);
+
+    template void call_feast(csr_mat<std::complex<double>> &mat, MKL_INT nev,
+                             const double &E_low, const double &E_high, MKL_INT max_loops,
+                             MKL_INT &nconv, double eigenvals[], std::complex<double> eigenvecs[]);
 
 }

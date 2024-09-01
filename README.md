@@ -24,7 +24,7 @@ Heisenberg.locate_E0_lanczos();
 ```
 Heisenberg.measure(Sx1*Sx2);
 ```
-- More featuers (good quantum numbers, translation symmetry, dynamical response, etc.)? Explore the folder "examples"!
+- More featuers (good quantum numbers, translation symmetry, dynamical response, etc.)? Explore the folder *examples*!
 - Need design very different Hamiltonians? Explore the folder "examples" for ideas!
 
 ## Examples
@@ -92,13 +92,14 @@ To learn how to use this library to design ED code for your own models, please r
 2. Install the following dependencies (the names may appear slightly different for different Linux distros):
 
     - gfortran
+    - g++
     - pkg-config
     - boost-dev
 
     A single command to get them on **Ubuntu**:
     
     ```
-    sudo apt install gfortran pkg-config libboost-dev
+    sudo apt install gfortran g++ pkg-config libboost-dev
     ```
 
 3. Install ARPACK-NG:
@@ -126,6 +127,11 @@ To learn how to use this library to design ED code for your own models, please r
 
     ```make clean; make install```
 
+6. To try out the examples, go to folders:
+    - *examples/trans_absent/platform_linux* (without using translational symmetry)
+    - *examples/trans_symmetric/platform_linux* (using translational symmetry)
+
+    and use the makefiles therein.
 
 ## Restrictions on lattice:
 When using translational symmetry, at least one of the dimensions (Lx, Ly, Lz, or number of sublattices) has to be an even number (current implementation of the generalized Lin Table).

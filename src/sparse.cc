@@ -150,34 +150,35 @@ namespace qbasis {
     template <typename T>
     void csr_mat<T>::destroy()
     {
-        if(val != nullptr) {
+        if (val != nullptr) {
             delete [] val;
             val = nullptr;
         }
-        if(ja != nullptr){
+        if (ja != nullptr){
             delete [] ja;
             ja = nullptr;
         }
-        if(ia != nullptr){
+        if (ia != nullptr){
             delete [] ia;
             ia = nullptr;
         }
         sparse_status_t info = mkl_sparse_destroy(handle);
         if (info != SPARSE_STATUS_SUCCESS) throw std::runtime_error("handle destruction failed");
+        handle = nullptr;
     }
 
     template <typename T>
     csr_mat<T>::~csr_mat()
     {
-        if(val != nullptr) {
+        if (val != nullptr) {
             delete [] val;
             val = nullptr;
         }
-        if(ja != nullptr) {
+        if (ja != nullptr) {
             delete [] ja;
             ja = nullptr;
         }
-        if(ia != nullptr) {
+        if (ia != nullptr) {
             delete [] ia;
             ia = nullptr;
         }
@@ -229,6 +230,7 @@ namespace qbasis {
         assert(counts == nnz);
         ia[dim] = counts;
         old.destroy();
+        std::cout << "LIL matrix destroyed." << std::endl;
 
         if (! sym) {                                                             // check if matrix is hermitian
             for (decltype(dim) row = 0; row < dim; row++) {
@@ -250,6 +252,7 @@ namespace qbasis {
                     }
                 }
             }
+            std::cout << "Hermitian check: successful." << std::endl;
         }
 
         sparse_status_t info = create_handle(&handle, SPARSE_INDEX_BASE_ZERO, dim, dim, ia, ia+1, ja, val);

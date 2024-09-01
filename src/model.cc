@@ -1421,6 +1421,49 @@ namespace qbasis {
         }
     }
 
+    template <typename T>
+    void model<T>::locate_Es_feast(const which_sym &sec_sym_, const MKL_INT &nev,
+                             const double &E_low, const double &E_high, MKL_INT max_loop)
+    {
+        std::cout << "Locating eigenstates with FEAST (sec_sym = ";
+        switch (sec_sym_) {
+        case which_sym::full:
+            std::cout << "full)..." << std::endl;
+            break;
+        case which_sym::repr:
+            std::cout << "repr)..." << std::endl;
+            break;
+        case which_sym::vrnl:
+            std::cout << "vrnl)..." << std::endl;
+            break;
+        default:
+            throw std::invalid_argument("sec_sym_ not a valid input.");
+        }
+
+        assert(nev > 0);
+        sec_sym = sec_sym_;
+        MKL_INT dim     = sec_sym == which_sym::full ? dim_full[sec_mat] :
+                          (sec_sym == which_sym::repr ? dim_repr[sec_mat] : dim_vrnl[sec_mat]);
+        auto &HamMat    = sec_sym == which_sym::full ? HamMat_csr_full[sec_mat] :
+                          (sec_sym == which_sym::repr ? HamMat_csr_repr[sec_mat] : HamMat_csr_vrnl[sec_mat]);
+        auto &eigenvals = sec_sym == which_sym::full ? eigenvals_full :
+                          (sec_sym == which_sym::repr ? eigenvals_repr : eigenvals_vrnl);
+        auto &eigenvecs = sec_sym == which_sym::full ? eigenvecs_full :
+                          (sec_sym == which_sym::repr ? eigenvecs_repr : eigenvecs_vrnl);
+
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+
+        std::vector<T> v0(dim, 1.0);
+        eigenvals.resize(nev);
+        eigenvecs.resize(dim * nev);
+        call_feast(HamMat, nev, E_low, E_high, max_loop, nconv, eigenvals.data(), eigenvecs.data());
+        assert(nconv > 0);
+
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::cout << "elapsed time: " << elapsed_seconds.count() << "s." << std::endl;
+    }
 
     template <typename T>
     void model<T>::moprXvec_full(const mopr<T> &lhs, const uint32_t &sec_old, const uint32_t &sec_new,
