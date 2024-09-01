@@ -1,5 +1,5 @@
 CXX       = icpx
-CXXFLAGS  = -std=c++17 -O3 -unroll -ipo -no-fma -fp-model=precise -m64 -DMKL_ILP64 -march=native -fPIC -fiopenmp \
+CXXFLAGS  = -std=c++17 -O3 -unroll -fp-model=precise -m64 -DMKL_ILP64 -march=native -fPIC -fiopenmp \
             -I${HOME}/installs/include -I${MKL_INC_DIR}
 LIBS      = -L${HOME}/installs/lib -larpackILP64 -fiopenmp \
             -L${MKL_LIB_DIR} -lmkl_intel_ilp64 -lmkl_tbb_thread -lmkl_core -lpthread -lm -ldl
