@@ -119,36 +119,36 @@ int main() {
             }
 
 
-            /*         2
+            /*         1
              *        /
              *       /
-             *      1
+             *      2
              *     /
              *    v
-             *   2
+             *   1
              */
             {
-                Heisenberg.add_Ham(std::complex<double>(0.5*J,0.0) * (Splus_i1 * Sminus_i2 + Sminus_i1 * Splus_i2));
-                Heisenberg.add_Ham(std::complex<double>(J,0.0) * ( Sz_i1 * Sz_i2 ));
+                uint32_t site_j1;
+                lattice.coor2site({m-1,n-1}, 1, site_j1, work);
+                auto Splus_j1   = qbasis::opr<std::complex<double>>(site_j1,0,false,Splus);
+                auto Sminus_j1  = qbasis::opr<std::complex<double>>(site_j1,0,false,Sminus);
+                auto Sz_j1      = qbasis::opr<std::complex<double>>(site_j1,0,false,Sz);
+                Heisenberg.add_Ham(std::complex<double>(0.5*J,0.0) * (Splus_i2 * Sminus_j1 + Sminus_i2 * Splus_j1));
+                Heisenberg.add_Ham(std::complex<double>(J,0.0) * ( Sz_i2 * Sz_j1 ));
             }
 
 
-            /*         0
+            /*         1
              *        ^
              *       /
-             *      1
+             *      2
              *     /
              *    /
-             *   0
+             *   1
              */
             {
-                uint32_t site_j2;
-                lattice.coor2site({m+1,n+1}, 2, site_j2, work);
-                auto Splus_j2   = qbasis::opr<std::complex<double>>(site_j2,0,false,Splus);
-                auto Sminus_j2  = qbasis::opr<std::complex<double>>(site_j2,0,false,Sminus);
-                auto Sz_j2      = qbasis::opr<std::complex<double>>(site_j2,0,false,Sz);
-                Heisenberg.add_Ham(std::complex<double>(0.5*J,0.0) * (Splus_i1 * Sminus_j2 + Sminus_i1 * Splus_j2));
-                Heisenberg.add_Ham(std::complex<double>(J,0.0) * ( Sz_i1 * Sz_j2 ));
+                Heisenberg.add_Ham(std::complex<double>(0.5*J,0.0) * (Splus_i2 * Sminus_i1 + Sminus_i2 * Splus_i1));
+                Heisenberg.add_Ham(std::complex<double>(J,0.0) * ( Sz_i2 * Sz_i1 ));
             }
 
             // total Sz operator
