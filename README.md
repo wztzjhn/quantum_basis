@@ -48,47 +48,58 @@ To learn how to use this library to design ED code for your own models, please r
 
 ## Install from source (Linux):
 
-0. (Optional but recommended) Create a local folder to keep the manually installed libraries: 
+0. Create a local folder to keep the manually installed libraries (optional for experts): 
 
-    ```mkdir ~/installs; mkdir ~/installs/lib; mkdir ~/installs/include```
+    ```cd ${HOME}; mkdir ~/installs; mkdir ~/installs/lib; mkdir ~/installs/include```
 
     Then add the following to the end of your *~/.bashrc* file and restart the terminal:
 
     ```
-    export LD_LIBRARY_PATH=${HOME}/installs/lib:$LD_LIBRARY_PATH
+    export LD_LIBRARY_PATH=${HOME}/installs/lib:${HOME}/installs/lib64:$LD_LIBRARY_PATH
     if [ -d ${HOME}/installs/lib/pkgconfig ]; then
         export PKG_CONFIG_PATH=${HOME}/installs/lib/pkgconfig:$PKG_CONFIG_PATH
     fi
+    if [ -d ${HOME}/installs/lib64/pkgconfig ]; then
+        export PKG_CONFIG_PATH=${HOME}/installs/lib64/pkgconfig:$PKG_CONFIG_PATH
+    fi
+    export OMP_NUM_THREADS=1
     ```
 
 1. Install MKL. There are two options: 
 
-    - For regular users, you can install from your linux distro. e.g., in Ubuntu, you can simply type
+    - For some linux distros, MKL is already included in the package repository. For instance, in Ubuntu, you can simply type
     
         ```sudo apt install libmkl-dev```
     
-    - For developers, it is recommended to download directly from [*Intel*](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl-download.html).
+    - Otherwise, you can download from [*Intel*](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl-download.html), where the **Offline Installer** option is recommended.
     
     Either way, after installaltion, you should add the following to the end of your *~/.bashrc* file and restart the terminal:
 
     ```
     if [ -f /opt/intel/oneapi/setvars.sh ]; then
-        source /opt/intel/oneapi/setvars.sh intel64 
+        source /opt/intel/oneapi/setvars.sh intel64
         export MKL_INC_DIR=${MKLROOT}/include
         export MKL_LIB_DIR=${MKLROOT}/lib/intel64
     elif [ -d /usr/include/mkl ] && [ -d /usr/lib/x86_64-linux-gnu ]; then
         export MKL_INC_DIR=/usr/include/mkl
         export MKL_LIB_DIR=/usr/lib/x86_64-linux-gnu
     fi
+    unset PYTHONPATH
     ```
 
-    Note: The variable {intel64} and the destination folders may vary depending on the system, should change the above lines accordingly.
+    Note: The variable *intel64* and the destination folders may vary depending on the system, should change the above lines accordingly.
     
-2. Install the following dependencies:
+2. Install the following dependencies (the names may appear slightly different for different Linux distros):
 
-    ```libboost-dev```
+    - gfortran
+    - pkg-config
+    - boost-dev
 
-    (for example, if on Ubuntu, simply type ```sudo apt install libboost-dev```)
+    A single command to get them on **Ubuntu**:
+    
+    ```
+    sudo apt install gfortran pkg-config libboost-dev
+    ```
 
 3. Install ARPACK-NG:
 

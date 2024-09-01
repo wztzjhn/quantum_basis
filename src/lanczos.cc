@@ -585,9 +585,9 @@ namespace qbasis {
             for (MKL_INT j = 1; j < nconv; j++) {
                 bool sorted = true;
                 for (MKL_INT i = 0; i < nconv - j; i++) {
-                    if (comp(eigenvals[i+1],eigenvals[i])) {
-                        swap(eigenvals[i],eigenvals[i+1]);
-                        vec_swap(dim, eigenvecs + i * dim, eigenvecs + (i+1) * dim);
+                    if (comp(eigenvals[i + 1], eigenvals[i])) {
+                        swap(eigenvals[i], eigenvals[i + 1]);
+                        vec_swap(dim, eigenvecs + i * dim, eigenvecs + (i + 1) * dim);
                         sorted = false;
                     }
                 }
@@ -597,7 +597,8 @@ namespace qbasis {
                 std::cout << "E_" << j << " = " << eigenvals[j] << std::endl;
             }
             std::cout << "Caution: IRAM may miss a few degenerate eigenstates!" << std::endl;
-            std::cout << "(in these cases, try a different set of {nev, ncv} may help finding the missing eigenstates)" << std::endl;
+            std::cout << "(in these cases, try a different set of {nev, ncv} may help finding the missing eigenstates)"
+                      << std::endl;
         }
     }
 

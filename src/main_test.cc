@@ -134,8 +134,8 @@ int test_chain_tJ() {
 
 
     // local matrix representation
-    auto c_up = std::vector<std::vector<std::complex<double>>>(3,std::vector<std::complex<double>>(3, 0.0));
-    auto c_dn = std::vector<std::vector<std::complex<double>>>(3,std::vector<std::complex<double>>(3, 0.0));
+    auto c_up = std::vector<std::vector<std::complex<double>>>(3,std::vector<std::complex<double>>(3, {0.0, 0.0}));
+    auto c_dn = std::vector<std::vector<std::complex<double>>>(3,std::vector<std::complex<double>>(3, {0.0, 0.0}));
     c_up[0][1] = std::complex<double>(1.0,0.0);
     c_dn[0][2] = std::complex<double>(1.0,0.0);
 

@@ -976,8 +976,16 @@ namespace qbasis {
     template <typename T> class csr_mat {
         friend void swap <> (csr_mat<T>&, csr_mat<T>&);
     public:
+        MKL_INT dim;
+        MKL_INT nnz;        // number of non-zero entries
+        bool sym;           // if storing only upper triangle
+        T *val;
+        MKL_INT *ja;
+        MKL_INT *ia;
+        sparse_matrix_t handle;
+
         // default constructor
-        csr_mat() : dim(0), nnz(0), sym(false), val(nullptr), ja(nullptr), ia(nullptr) {}
+        csr_mat() : dim(0), nnz(0), sym(false), val(nullptr), ja(nullptr), ia(nullptr), handle(nullptr) {}
 
         // copy constructor
         csr_mat(const csr_mat<T> &old);
@@ -1010,14 +1018,6 @@ namespace qbasis {
         void MultMv(const T *x, T *y) const;
 
         std::vector<T> to_dense() const;
-
-    private:
-        MKL_INT dim;
-        MKL_INT nnz;        // number of non-zero entries
-        bool sym;           // if storing only upper triangle
-        T *val;
-        MKL_INT *ja;
-        MKL_INT *ia;
     };
 
 

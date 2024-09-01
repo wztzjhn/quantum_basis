@@ -4,18 +4,39 @@
 
 #include "qbasis.h"
 
-// general function to perform matrix vector product in mkl, deprecated since MKL 2018.3
+// general function to perform matrix vector product in mkl
 inline // double
-void mkl_csrmv(const char transa, const MKL_INT m, const MKL_INT k, const double alpha, const char *matdescra,
-               const double *val, const MKL_INT *indx, const MKL_INT *pntrb, const MKL_INT *pntre,
-               const double *x, const double beta, double *y) {
-    mkl_dcsrmv(&transa, &m, &k, &alpha, matdescra, val, indx, pntrb, pntre, x, &beta, y);
+sparse_status_t mkl_sparse_mv(const sparse_operation_t &operation, const double &alpha,
+                              const sparse_matrix_t &A, const struct matrix_descr &descr,
+                              const double *x, const double &beta, double *y)
+{
+    return mkl_sparse_d_mv(operation, alpha, A, descr, x, beta, y);
 }
+inline  // complex double
+sparse_status_t mkl_sparse_mv(const sparse_operation_t &operation, const MKL_Complex16 &alpha,
+                              const sparse_matrix_t &A, const struct matrix_descr &descr,
+                              const MKL_Complex16 *x, const MKL_Complex16 &beta, MKL_Complex16 *y)
+{
+    return mkl_sparse_z_mv(operation, alpha, A, descr, x, beta, y);
+}
+
+// in recent MKL, a handle should be used for referring to sparse matrices
+inline // double
+sparse_status_t create_handle(sparse_matrix_t *A, const sparse_index_base_t indexing,
+                              const MKL_INT rows, const MKL_INT cols,
+                              MKL_INT *rows_start, MKL_INT *rows_end,
+                              MKL_INT *col_indx, double *values)
+{
+    return mkl_sparse_d_create_csr(A, indexing, rows, cols, rows_start, rows_end, col_indx, values);
+}
+
 inline // complex double
-void mkl_csrmv(const char transa, const MKL_INT m, const MKL_INT k, const std::complex<double> alpha, const char *matdescra,
-               const std::complex<double> *val, const MKL_INT *indx, const MKL_INT *pntrb, const MKL_INT *pntre,
-               const std::complex<double> *x, const std::complex<double> beta, std::complex<double> *y) {
-    mkl_zcsrmv(&transa, &m, &k, &alpha, matdescra, val, indx, pntrb, pntre, x, &beta, y);
+sparse_status_t create_handle(sparse_matrix_t *A, const sparse_index_base_t indexing,
+                              const MKL_INT rows, const MKL_INT cols,
+                              MKL_INT *rows_start, MKL_INT *rows_end,
+                              MKL_INT *col_indx, MKL_Complex16 *values)
+{
+    return mkl_sparse_z_create_csr(A, indexing, rows, cols, rows_start, rows_end, col_indx, values);
 }
 
 namespace qbasis {
@@ -105,21 +126,25 @@ namespace qbasis {
             for (MKL_INT j = 0; j < dim + 1; j++) {
                 ia[j]  = old.ia[j];
             }
+            sparse_status_t info = create_handle(&handle, SPARSE_INDEX_BASE_ZERO, dim, dim, ia, ia+1, ja, val);
+            if (info != SPARSE_STATUS_SUCCESS) throw std::runtime_error("create_handle failed");
         } else {
-            val = nullptr;
-            ja  = nullptr;
-            ia  = nullptr;
+            val    = nullptr;
+            ja     = nullptr;
+            ia     = nullptr;
+            handle = nullptr;
         }
     }
 
     template <typename T>
     csr_mat<T>::csr_mat(csr_mat<T> &&old) noexcept :
         dim(old.dim), nnz(old.nnz), sym(old.sym),
-        val(old.val), ja(old.ja), ia(old.ia)
+        val(old.val), ja(old.ja), ia(old.ia), handle(old.handle)
     {
-        old.val = nullptr;
-        old.ja  = nullptr;
-        old.ia  = nullptr;
+        old.val    = nullptr;
+        old.ja     = nullptr;
+        old.ia     = nullptr;
+        old.handle = nullptr;
     }
 
     template <typename T>
@@ -137,6 +162,8 @@ namespace qbasis {
             delete [] ia;
             ia = nullptr;
         }
+        sparse_status_t info = mkl_sparse_destroy(handle);
+        if (info != SPARSE_STATUS_SUCCESS) throw std::runtime_error("handle destruction failed");
     }
 
     template <typename T>
@@ -154,6 +181,7 @@ namespace qbasis {
             delete [] ia;
             ia = nullptr;
         }
+        mkl_sparse_destroy(handle);
     }
 
     template <typename T>
@@ -223,6 +251,9 @@ namespace qbasis {
                 }
             }
         }
+
+        sparse_status_t info = create_handle(&handle, SPARSE_INDEX_BASE_ZERO, dim, dim, ia, ia+1, ja, val);
+        if (info != SPARSE_STATUS_SUCCESS) throw std::runtime_error("create_handle failed");
     }
 
     template <typename T>
@@ -230,10 +261,28 @@ namespace qbasis {
     {
         std::cout << "*" << std::flush;
         assert(val != nullptr && ja != nullptr && ia != nullptr);
-        char matdescra[7] = "HUNC";
-        if (!sym) matdescra[0] = 'G';
         T one = static_cast<T>(1.0);
-        mkl_csrmv('n', dim, dim, one, matdescra, val, ja, ia, ia + 1, x, one, y);
+
+        struct matrix_descr descr = {SPARSE_MATRIX_TYPE_GENERAL, SPARSE_FILL_MODE_UPPER, SPARSE_DIAG_NON_UNIT};
+        if (sym) {
+            if (sizeof(T) == sizeof(double)) {
+                descr.type = SPARSE_MATRIX_TYPE_SYMMETRIC;
+            } else {
+                descr.type = SPARSE_MATRIX_TYPE_HERMITIAN;
+            }
+        }
+        if (!sym) {
+            descr.type = SPARSE_MATRIX_TYPE_GENERAL;
+        } else if (sizeof(T) == sizeof(double)) {
+            descr.type = SPARSE_MATRIX_TYPE_SYMMETRIC;
+        } else {
+            descr.type = SPARSE_MATRIX_TYPE_HERMITIAN;
+        }
+        descr.mode = SPARSE_FILL_MODE_UPPER;
+        descr.diag = SPARSE_DIAG_NON_UNIT;
+
+        sparse_status_t info = mkl_sparse_mv(SPARSE_OPERATION_NON_TRANSPOSE, one, handle, descr, x, one, y);
+        if (info != SPARSE_STATUS_SUCCESS) throw std::runtime_error("matrix-vector product failed.");
     }
 
     template <typename T>
@@ -266,12 +315,13 @@ namespace qbasis {
     void swap(csr_mat<T> &lhs, csr_mat<T> &rhs)
     {
         using std::swap;
-        swap(lhs.dim, rhs.dim);
-        swap(lhs.nnz, rhs.nnz);
-        swap(lhs.sym, rhs.sym);
-        swap(lhs.val, rhs.val);
-        swap(lhs.ja,  rhs.ja);
-        swap(lhs.ia,  rhs.ia);
+        swap(lhs.dim,    rhs.dim);
+        swap(lhs.nnz,    rhs.nnz);
+        swap(lhs.sym,    rhs.sym);
+        swap(lhs.val,    rhs.val);
+        swap(lhs.ja,     rhs.ja);
+        swap(lhs.ia,     rhs.ia);
+        swap(lhs.handle, rhs.handle);
     }
 
     // Explicit instantiation

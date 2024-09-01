@@ -1321,17 +1321,17 @@ namespace qbasis {
     {
         std::cout << "Locating lowest states with IRAM (sec_sym = ";
         switch (sec_sym_) {
-        case which_sym::full:
-            std::cout << "full)..." << std::endl;
-            break;
-        case which_sym::repr:
-            std::cout << "repr)..." << std::endl;
-            break;
-        case which_sym::vrnl:
-            std::cout << "vrnl)..." << std::endl;
-            break;
-        default:
-            throw std::invalid_argument("sec_sym_ not a valid input.");
+            case which_sym::full:
+                std::cout << "full)..." << std::endl;
+                break;
+            case which_sym::repr:
+                std::cout << "repr)..." << std::endl;
+                break;
+            case which_sym::vrnl:
+                std::cout << "vrnl)..." << std::endl;
+                break;
+            default:
+                throw std::invalid_argument("sec_sym_ not a valid input.");
         }
 
         assert(nev > 0);
@@ -1371,17 +1371,17 @@ namespace qbasis {
     {
         std::cout << "Locating highest states with IRAM (sec_sym = ";
         switch (sec_sym_) {
-        case which_sym::full:
-            std::cout << "full)..." << std::endl;
-            break;
-        case which_sym::repr:
-            std::cout << "repr)..." << std::endl;
-            break;
-        case which_sym::vrnl:
-            std::cout << "vrnl)..." << std::endl;
-            break;
-        default:
-            throw std::invalid_argument("sec_sym_ not a valid input.");
+            case which_sym::full:
+                std::cout << "full)..." << std::endl;
+                break;
+            case which_sym::repr:
+                std::cout << "repr)..." << std::endl;
+                break;
+            case which_sym::vrnl:
+                std::cout << "vrnl)..." << std::endl;
+                break;
+            default:
+                throw std::invalid_argument("sec_sym_ not a valid input.");
         }
         if (sec_sym_ != which_sym::full)
             std::cout << "Warning: there may be a few artificial states above " << fake_pos << std::endl;
@@ -1602,7 +1602,7 @@ namespace qbasis {
             double exp_coef = momentum[d] * disp[d] / static_cast<double>(L[d]);
             auto coef = std::exp(std::complex<double>(0.0, 2.0 * PI * exp_coef));
             blas_scal(dim, coef, vec_temp.data(), 1);                                   // vec_temp = vec_temp * e^{iKR}
-            blas_axpy(dim, std::complex<double>(-1.0), vec_new, 1, vec_temp.data(), 1); // vec_temp - vec_new
+            blas_axpy(dim, std::complex<double>{-1.0, 0.0}, vec_new, 1, vec_temp.data(), 1); // vec_temp - vec_new
             assert(blas_nrm2(dim, vec_temp.data(), 1) < lanczos_precision);
         }
     }
