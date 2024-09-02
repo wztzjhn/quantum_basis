@@ -1,6 +1,6 @@
 [![C/C++ CI](https://github.com/wztzjhn/quantum_basis/actions/workflows/c-cpp.yml/badge.svg?branch=master)](https://github.com/wztzjhn/quantum_basis/actions/workflows/c-cpp.yml)
 # Quantum Basis
-Basis of condensed matter quantum lattice problems, for usage in exact diagonalization (ED). The code is designed for any general bosonic or fermionic problem (or a mix of both), as long as the user can provide the [matrix form of the elementary operators](docs/Manual.pdf) of the Hamiltonian.
+Basis of condensed matter quantum lattice problems, for usage in exact diagonalization (ED). The code is designed for any general bosonic or fermionic problem (or a mix of both), as long as the user can provide the [matrix form of the elementary operators](docs/Manual.pdf) (see Chapter 2 for details) of the Hamiltonian.
 
 ## Human-friendly usage (Heisenberg model as *example*)
 *Note: the grammars below may differ slightly from the acutal code, please refer to the folder "examples" for exact usage.*
