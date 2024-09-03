@@ -1,0 +1,26 @@
+var classqbasis_1_1opr =
+[
+    [ "opr", "classqbasis_1_1opr.html#a297bc1810a4b1c3ef8b1098b297fe89b", null ],
+    [ "opr", "classqbasis_1_1opr.html#ab209565d2cbc1a241437dee946813fda", null ],
+    [ "opr", "classqbasis_1_1opr.html#afccd0a5bec51f2a5f1300fd2a7603c59", null ],
+    [ "opr", "classqbasis_1_1opr.html#adad9b936ab5d56fe95c3fddce184a5e2", null ],
+    [ "opr", "classqbasis_1_1opr.html#a38a0c9e69989bf991066db88881cadd0", null ],
+    [ "~opr", "classqbasis_1_1opr.html#ac09f301af4d59892a067e59641b88dc9", null ],
+    [ "change_site", "classqbasis_1_1opr.html#ad61056656e90fa3d0f77110caddb2aa2", null ],
+    [ "dagger", "classqbasis_1_1opr.html#a5a6d39715131ae54b8b9a86376caee53", null ],
+    [ "negative", "classqbasis_1_1opr.html#a8e623c9032bbc8842621f430e5f6d18d", null ],
+    [ "norm", "classqbasis_1_1opr.html#abe80fd5bd5ae67eeb7177b97dc888f76", null ],
+    [ "operator*=", "classqbasis_1_1opr.html#aeadce777471b6b63bf1f0a727cd6be88", null ],
+    [ "operator*=", "classqbasis_1_1opr.html#a343a5a6b811c065281192de2d97ff056", null ],
+    [ "operator+=", "classqbasis_1_1opr.html#ad201a24be493d0f5a3217767f31bd7bf", null ],
+    [ "operator-=", "classqbasis_1_1opr.html#aa38aa3d4cba67d30506eb0db728e2550", null ],
+    [ "operator=", "classqbasis_1_1opr.html#abfaee54d2f79d27275b73d3630db0d0d", null ],
+    [ "pos_orb", "classqbasis_1_1opr.html#a15b04ea279c69a0e7e8af67e0f656683", null ],
+    [ "pos_site", "classqbasis_1_1opr.html#a4a181cc9df47831fa0a8468af6618f77", null ],
+    [ "prt", "classqbasis_1_1opr.html#a002439432460bab5f96f4c2dfb0b5bf0", null ],
+    [ "q_diagonal", "classqbasis_1_1opr.html#a1fe86437b95348eb7f247d3dcf2f79ba", null ],
+    [ "q_identity", "classqbasis_1_1opr.html#a8fa95214e9b98d626a06d326e3479bb0", null ],
+    [ "q_zero", "classqbasis_1_1opr.html#a00b2dc48e5b639a6b5a4cec5a412f112", null ],
+    [ "simplify", "classqbasis_1_1opr.html#ada9a68409dcb69df211735fa5e4fb70d", null ],
+    [ "transform", "classqbasis_1_1opr.html#ae1763021646a8c582b7eadd656ad5f07", null ]
+];
