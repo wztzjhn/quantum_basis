@@ -1,7 +1,6 @@
 var searchData=
 [
-  ['dagger_0',['dagger',['../classqbasis_1_1opr.html#a5a6d39715131ae54b8b9a86376caee53',1,'qbasis::opr']]],
-  ['dimension_5ffull_1',['dimension_full',['../classqbasis_1_1model.html#a8fb03a28564c718dd9f3480ac074af0d',1,'qbasis::model']]],
-  ['dimension_5frepr_2',['dimension_repr',['../classqbasis_1_1model.html#a950505a473aeb70939e7609945052d8b',1,'qbasis::model']]],
-  ['dimension_5fvrnl_3',['dimension_vrnl',['../classqbasis_1_1model.html#a4be71fec44267f08abffdfe759b84019',1,'qbasis::model']]]
+  ['energy_5fgap_0',['energy_gap',['../classqbasis_1_1model.html#a43f300976b9a133aa655f09e75bc89e1',1,'qbasis::model']]],
+  ['energy_5fmax_1',['energy_max',['../classqbasis_1_1model.html#adfe4cfc71a12ee45c69560122b7e4e73',1,'qbasis::model']]],
+  ['energy_5fmin_2',['energy_min',['../classqbasis_1_1model.html#aa0c17797cf922ffd58a345c01527179c',1,'qbasis::model']]]
 ];

@@ -1,8 +1,12 @@
 var searchData=
 [
-  ['operator_2a_3d_0',['operator*=',['../classqbasis_1_1opr.html#aeadce777471b6b63bf1f0a727cd6be88',1,'qbasis::opr::operator*=(const opr&lt; T &gt; &amp;rhs)'],['../classqbasis_1_1opr.html#a343a5a6b811c065281192de2d97ff056',1,'qbasis::opr::operator*=(const T &amp;rhs)']]],
-  ['operator_2b_3d_1',['operator+=',['../classqbasis_1_1opr.html#ad201a24be493d0f5a3217767f31bd7bf',1,'qbasis::opr']]],
-  ['operator_2d_3d_2',['operator-=',['../classqbasis_1_1opr.html#aa38aa3d4cba67d30506eb0db728e2550',1,'qbasis::opr']]],
-  ['operator_3d_3',['operator=',['../classqbasis_1_1mbasis__elem.html#a549f9a6a89450d9023393c0bde4546d7',1,'qbasis::mbasis_elem::operator=()'],['../classqbasis_1_1opr.html#abfaee54d2f79d27275b73d3630db0d0d',1,'qbasis::opr::operator=(opr&lt; T &gt; old)']]],
-  ['opr_4',['opr',['../classqbasis_1_1opr.html#a297bc1810a4b1c3ef8b1098b297fe89b',1,'qbasis::opr::opr()'],['../classqbasis_1_1opr.html#ab209565d2cbc1a241437dee946813fda',1,'qbasis::opr::opr(const uint32_t &amp;site_, const uint32_t &amp;orbital_, const bool &amp;fermion_, const std::vector&lt; T &gt; &amp;mat_)'],['../classqbasis_1_1opr.html#afccd0a5bec51f2a5f1300fd2a7603c59',1,'qbasis::opr::opr(const uint32_t &amp;site_, const uint32_t &amp;orbital_, const bool &amp;fermion_, const std::vector&lt; std::vector&lt; T &gt; &gt; &amp;mat_)'],['../classqbasis_1_1opr.html#adad9b936ab5d56fe95c3fddce184a5e2',1,'qbasis::opr::opr(const opr&lt; T &gt; &amp;old)'],['../classqbasis_1_1opr.html#a38a0c9e69989bf991066db88881cadd0',1,'qbasis::opr::opr(opr&lt; T &gt; &amp;&amp;old) noexcept']]]
+  ['q_5fdiagonal_0',['q_diagonal',['../classqbasis_1_1opr.html#a1fe86437b95348eb7f247d3dcf2f79ba',1,'qbasis::opr']]],
+  ['q_5ffermion_1',['q_fermion',['../classqbasis_1_1basis__prop.html#a9e057c0b9c23775180912f39ed3a7870',1,'qbasis::basis_prop']]],
+  ['q_5fidentity_2',['q_identity',['../classqbasis_1_1opr.html#a8fa95214e9b98d626a06d326e3479bb0',1,'qbasis::opr']]],
+  ['q_5fmaximized_3',['q_maximized',['../classqbasis_1_1mbasis__elem.html#a8b1096b5670f37b97ea8b42c52872347',1,'qbasis::mbasis_elem::q_maximized(const std::vector&lt; basis_prop &gt; &amp;props, const uint32_t &amp;orbital) const'],['../classqbasis_1_1mbasis__elem.html#a3bc5a2a8c4d7cf75804f2d3fc0eca78a',1,'qbasis::mbasis_elem::q_maximized(const std::vector&lt; basis_prop &gt; &amp;props) const']]],
+  ['q_5fsame_5fstate_5fall_5fsite_4',['q_same_state_all_site',['../classqbasis_1_1mbasis__elem.html#a51082148e35d3ffa9fc17ef8b63961b9',1,'qbasis::mbasis_elem::q_same_state_all_site(const std::vector&lt; basis_prop &gt; &amp;props, const uint32_t &amp;orbital) const'],['../classqbasis_1_1mbasis__elem.html#a6a918d26b0d5f52a595603be3f976f36',1,'qbasis::mbasis_elem::q_same_state_all_site(const std::vector&lt; basis_prop &gt; &amp;props) const']]],
+  ['q_5ftilted_5',['q_tilted',['../classqbasis_1_1lattice.html#a7edb6573f85539b70dd83d225f8891e4',1,'qbasis::lattice']]],
+  ['q_5fzero_6',['q_zero',['../classqbasis_1_1mbasis__elem.html#a77477fa3e5759acc1a737b7fdebf7d92',1,'qbasis::mbasis_elem::q_zero()'],['../classqbasis_1_1opr.html#a00b2dc48e5b639a6b5a4cec5a412f112',1,'qbasis::opr::q_zero()']]],
+  ['q_5fzero_5forbital_7',['q_zero_orbital',['../classqbasis_1_1mbasis__elem.html#a3c8163f6279be0f3d22425f787a77b19',1,'qbasis::mbasis_elem']]],
+  ['q_5fzero_5fsite_8',['q_zero_site',['../classqbasis_1_1mbasis__elem.html#a1b2274cf127b36c1b721f17912f16142',1,'qbasis::mbasis_elem']]]
 ];

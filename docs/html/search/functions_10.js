@@ -1,8 +1,5 @@
 var searchData=
 [
-  ['toml_5fwriter_0',['toml_writer',['../classcpptoml_1_1toml__writer.html#a64f5bc7584f23e8b9901bb421170563b',1,'cpptoml::toml_writer']]],
-  ['transform_1',['transform',['../classqbasis_1_1mbasis__elem.html#a5707cd2f669650744abefdf6478f1fb6',1,'qbasis::mbasis_elem::transform(const std::vector&lt; basis_prop &gt; &amp;props, const std::vector&lt; uint32_t &gt; &amp;plan, int &amp;sgn, const uint32_t &amp;orbital)'],['../classqbasis_1_1mbasis__elem.html#a671982d0e788413a5adb9e39e01ae0bd',1,'qbasis::mbasis_elem::transform(const std::vector&lt; basis_prop &gt; &amp;props, const std::vector&lt; uint32_t &gt; &amp;plan, int &amp;sgn)'],['../classqbasis_1_1mbasis__elem.html#a5f1266e176619ae2eb928eb4094e53b9',1,'qbasis::mbasis_elem::transform(const std::vector&lt; basis_prop &gt; &amp;props, const std::vector&lt; std::vector&lt; std::pair&lt; uint32_t, uint32_t &gt; &gt; &gt; &amp;plan, int &amp;sgn)'],['../classqbasis_1_1opr.html#ae1763021646a8c582b7eadd656ad5f07',1,'qbasis::opr::transform()']]],
-  ['transform_5fvec_5ffull_2',['transform_vec_full',['../classqbasis_1_1model.html#a0a18954db80f3af870562efb0f1a0b8a',1,'qbasis::model::transform_vec_full(const std::vector&lt; uint32_t &gt; &amp;plan, const uint32_t &amp;sec_full, const T *vec_old, T *vec_new) const'],['../classqbasis_1_1model.html#a71b36fc7691b9c2b0f0cc0a107c5a867',1,'qbasis::model::transform_vec_full(const std::vector&lt; uint32_t &gt; &amp;plan, const uint32_t &amp;sec_full, const MKL_INT &amp;which_col, T *vec_new) const']]],
-  ['translate2center_5fobc_3',['translate2center_OBC',['../classqbasis_1_1mbasis__elem.html#a32552d32ab4c24aba946432c2d0f653c',1,'qbasis::mbasis_elem']]],
-  ['translation_5fplan_4',['translation_plan',['../classqbasis_1_1lattice.html#a409fd2cfb73073a27b57a301214c33c6',1,'qbasis::lattice']]]
+  ['_7embasis_5felem_0',['~mbasis_elem',['../classqbasis_1_1mbasis__elem.html#a4133c80e02c68d562b90f44e263a07fd',1,'qbasis::mbasis_elem']]],
+  ['_7eopr_1',['~opr',['../classqbasis_1_1opr.html#ac09f301af4d59892a067e59641b88dc9',1,'qbasis::opr']]]
 ];

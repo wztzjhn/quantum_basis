@@ -1,0 +1,47 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+*.x
+
+# Folders
+alps_benchmark
+plots
+xbuild
+build
+bin
+cmake-build-*
+.idea
+results
+.ipynb_checkpoints
+.vscode
+
+# Other files
+.DS_Store
+*.lyx
+*.nb
