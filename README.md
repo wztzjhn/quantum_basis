@@ -67,29 +67,25 @@ To learn how to use this library to design ED code for your own models, please r
 
 1. Install MKL. There are two options: 
 
-    - For some linux distros, MKL is already included in the package repository. For instance, in Ubuntu, you can simply type
+    - It is recommended to download from [*Intel*](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl-download.html), and use the **Offline Installer** option.
     
-        ```sudo apt install libmkl-dev```
-    
-    - Otherwise, you can download from [*Intel*](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl-download.html), where the **Offline Installer** option is recommended.
-    
-    Either way, after installaltion, you should add the following to the end of your *~/.bashrc* file and restart the terminal:
+    Then add the following to the end of your *~/.bashrc* file and restart the terminal:
 
     ```
     if [ -f /opt/intel/oneapi/setvars.sh ]; then
         source /opt/intel/oneapi/setvars.sh intel64
         export MKL_INC_DIR=${MKLROOT}/include
         export MKL_LIB_DIR=${MKLROOT}/lib/intel64
-    elif [ -d /usr/include/mkl ] && [ -d /usr/lib/x86_64-linux-gnu ]; then
-        export MKL_INC_DIR=/usr/include/mkl
-        export MKL_LIB_DIR=/usr/lib/x86_64-linux-gnu
     fi
     unset PYTHONPATH
     ```
 
-    Note: The variable *intel64* and the destination folders may vary depending on the system, should change the above lines accordingly.
+    Notes:
+   
+   - The variable *intel64* and the destination folders may vary depending on the system, should change the above lines accordingly.
+   - If you need install MKL on a cluster by hand without root permission, should designate the installation location to your home folder, and change the lines added to bashrc accordingly.
     
-2. Install the following dependencies (the names may appear slightly different for different Linux distros):
+3. Install the following dependencies (the names may appear slightly different for different Linux distros):
 
     - gfortran
     - g++
@@ -102,7 +98,7 @@ To learn how to use this library to design ED code for your own models, please r
     sudo apt install gfortran g++ pkg-config libboost-dev
     ```
 
-3. Install ARPACK-NG:
+4. Install ARPACK-NG:
 
     ```
     cd /tmp
@@ -115,7 +111,7 @@ To learn how to use this library to design ED code for your own models, please r
     make install
     ```
 
-4. Test *Quantum Basis*:
+5. Test *Quantum Basis*:
 
     Create a directory "bin" that sits at the same level of "src": `mkdir bin`, then go inside "src": `cd src`, then type
 
@@ -123,11 +119,11 @@ To learn how to use this library to design ED code for your own models, please r
     
     Then execute the file `./test.x` in folder bin. :beer: if you see "All tests passed!" :beer:
 
-5. Install *Quantum Basis* as a library:
+6. Install *Quantum Basis* as a library:
 
     ```make clean; make install```
 
-6. To try out the examples, go to folders:
+7. To try out the examples, go to folders:
     - *examples/trans_absent/platform_linux* (without using translational symmetry)
     - *examples/trans_symmetric/platform_linux* (using translational symmetry)
 
