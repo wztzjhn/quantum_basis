@@ -133,6 +133,9 @@ To learn how to use this library to design ED code for your own models, please r
 
     and use the makefiles therein.
 
+## Doxygen documentation:
+https://wztzjhn.github.io/quantum_basis/
+
 ## Restrictions on lattice:
 When using translational symmetry, at least one of the dimensions (Lx, Ly, Lz, or number of sublattices) has to be an even number (current implementation of the generalized Lin Table).
 

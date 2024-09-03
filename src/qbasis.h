@@ -1516,7 +1516,6 @@ namespace qbasis {
          * \f]
          *
          *  on exit: \f$ a_i \f$, \f$ b_i \f$ and norm are given.
-         *  NEED enable CKPT later!!!
          */
         void measure_full_dynamic(const mopr<T> &Aq, const uint32_t &sec_old, const uint32_t &sec_new,
                                   const MKL_INT &maxit, MKL_INT &m, double &norm, double hessenberg[]) const;
