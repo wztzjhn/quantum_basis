@@ -44,7 +44,7 @@ namespace qbasis {
     const double machine_prec = std::numeric_limits<double>::epsilon();
     const double opr_precision = 1e-12;
     const double sparse_precision = 1e-14;
-    const double lanczos_precision = 1e-12;
+    const double lanczos_precision = 2e-12;
 
     void initialize(const bool &enable_ckpt_)
     {
