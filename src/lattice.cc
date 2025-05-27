@@ -2,7 +2,7 @@
 #include <limits>
 
 #include "qbasis.h"
-#include "cpptoml.h"
+#include "extern/cpptoml/cpptoml.h"
 
 #define PI 3.1415926535897932
 

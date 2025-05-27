@@ -89,24 +89,13 @@ To learn how to use this library to design ED code for your own models, please r
 
     - gfortran
     - g++
-    - cpptoml
     - pkg-config
     - boost-dev
 
     For **Ubuntu**, a single command should suffice:
     
     ```
-    sudo apt install gfortran g++ libcpptoml-dev pkg-config libboost-dev
-    ```
-
-    For other Linux distros, cpptoml can be downloaded easily:
-    
-    ```
-    cd /tmp
-    wget https://github.com/skystrife/cpptoml/archive/refs/tags/v0.1.1.tar.gz
-    tar xf v0.1.1.tar.gz
-    cd cpptoml-0.1.1
-    cp include/cpptoml.h ~/installs/include
+    sudo apt install gfortran g++ pkg-config libboost-dev
     ```
 
 4. Install ARPACK-NG:
