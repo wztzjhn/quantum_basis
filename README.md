@@ -1,5 +1,9 @@
-[![C/C++ CI](https://github.com/wztzjhn/quantum_basis/actions/workflows/c-cpp.yml/badge.svg?branch=master)](https://github.com/wztzjhn/quantum_basis/actions/workflows/c-cpp.yml)
 # Quantum Basis
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18952956.svg)](https://doi.org/10.5281/zenodo.18952956)
+[![License](https://img.shields.io/badge/license-GPL--3.0-blue)](https://www.gnu.org/licenses/gpl-3.0)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://wztzjhn.github.io/quantum_basis/)
+[![C/C++ CI](https://github.com/wztzjhn/quantum_basis/actions/workflows/c-cpp.yml/badge.svg?branch=master)](https://github.com/wztzjhn/quantum_basis/actions/workflows/c-cpp.yml)
+
 Basis of condensed matter quantum lattice problems, for usage in exact diagonalization (ED). The code is designed for any general bosonic or fermionic problem (or a mix of both), as long as the user can provide the [matrix form of the elementary operators](docs/Manual.pdf) (see Chapter 2 for details) of the Hamiltonian.
 
 ## Human-friendly usage (Heisenberg model as *example*)
@@ -134,4 +138,18 @@ https://wztzjhn.github.io/quantum_basis/
 
 ## Restrictions on lattice:
 When using translational symmetry, at least one of the dimensions (Lx, Ly, Lz, or number of sublattices) has to be an even number (current implementation of the generalized Lin Table).
+
+## Citing
+
+If you used Quantum Basis in your research, please cite us:
+
+```bibtex
+@software{qbasis,
+  author = {Wang, Zhentao},
+  title  = {{Quantum Basis}},
+  year   = {2026},
+  doi    = {10.5281/zenodo.18952956},
+  url    = {https://github.com/wztzjhn/quantum_basis}
+}
+```
 
