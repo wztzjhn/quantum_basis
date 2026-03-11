@@ -145,11 +145,12 @@ If you used Quantum Basis in your research, please cite us:
 
 ```bibtex
 @software{qbasis,
-  author = {Wang, Zhentao},
-  title  = {{Quantum Basis}},
-  year   = {2026},
-  doi    = {10.5281/zenodo.18952956},
-  url    = {https://github.com/wztzjhn/quantum_basis}
+  author    = {Wang, Zhentao},
+  title     = {{Quantum Basis}},
+  year      = {2026},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.18952956},
+  url       = {https://github.com/wztzjhn/quantum_basis}
 }
 ```
 
