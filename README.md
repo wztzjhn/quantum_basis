@@ -59,21 +59,18 @@ To learn how to use this library to design ED code for your own models, please r
     Then add the following to the end of your *~/.bashrc* file and restart the terminal:
 
     ```
-    export LD_LIBRARY_PATH=${HOME}/installs/lib:${HOME}/installs/lib64:$LD_LIBRARY_PATH
-    if [ -d ${HOME}/installs/lib/pkgconfig ]; then
-        export PKG_CONFIG_PATH=${HOME}/installs/lib/pkgconfig:$PKG_CONFIG_PATH
+    export INSTDIR="${HOME}/installs"
+    export LD_LIBRARY_PATH=${INSTDIR}/lib:${INSTDIR}/lib64:$LD_LIBRARY_PATH
+    if [ -d ${INSTDIR}/lib/pkgconfig ]; then
+        export PKG_CONFIG_PATH=${INSTDIR}/lib/pkgconfig:$PKG_CONFIG_PATH
     fi
-    if [ -d ${HOME}/installs/lib64/pkgconfig ]; then
-        export PKG_CONFIG_PATH=${HOME}/installs/lib64/pkgconfig:$PKG_CONFIG_PATH
+    if [ -d ${INSTDIR}/lib64/pkgconfig ]; then
+        export PKG_CONFIG_PATH=${INSTDIR}/lib64/pkgconfig:$PKG_CONFIG_PATH
     fi
     export OMP_NUM_THREADS=1
     ```
 
-1. Install MKL. There are two options: 
-
-    - It is recommended to download from [*Intel*](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl-download.html), and use the **Offline Installer** option.
-    
-    Then add the following to the end of your *~/.bashrc* file and restart the terminal:
+1. Install MKL. It is recommended to download [*Intel oneAPI*](https://www.intel.com/content/www/us/en/developer/tools/oneapi/oneapi-toolkit-download.html), and use the **Offline Installer** option. Then add the following to the end of your *~/.bashrc* file and restart the terminal:
 
     ```
     if [ -f /opt/intel/oneapi/setvars.sh ]; then
@@ -110,7 +107,7 @@ To learn how to use this library to design ED code for your own models, please r
     tar xf 3.9.0.tar.gz
     cd arpack-ng-3.9.0
     sh bootstrap
-    FFLAGS="-m64 -I${MKL_INC_DIR}" FCFLAGS="-m64 -I$MKL_INC_DIR" CFLAGS="-DMKL_ILP64 -m64 -I${MKL_INC_DIR}" CXXFLAGS="-DMKL_ILP64 -m64 -I${MKL_INC_DIR}" LIBS="-L${MKL_LIB_DIR} -Wl,--no-as-needed -lmkl_gf_ilp64 -lmkl_tbb_thread -lmkl_core -lpthread -ltbb -lstdc++ -lm -ldl" LIBSUFFIX="ILP64" INTERFACE64="1" ./configure --with-blas=mkl_gf_ilp64 --with-lapack=mkl_gf_ilp64 --enable-icb --prefix=$HOME/installs
+    FFLAGS="-m64 -I${MKL_INC_DIR}" FCFLAGS="-m64 -I$MKL_INC_DIR" CFLAGS="-DMKL_ILP64 -m64 -I${MKL_INC_DIR}" CXXFLAGS="-DMKL_ILP64 -m64 -I${MKL_INC_DIR}" LIBS="-L${MKL_LIB_DIR} -Wl,--no-as-needed -lmkl_gf_ilp64 -lmkl_tbb_thread -lmkl_core -lpthread -lm -ldl" LIBSUFFIX="ILP64" INTERFACE64="1" ./configure --with-blas=mkl_gf_ilp64 --with-lapack=mkl_gf_ilp64 --enable-icb --prefix=${INSTDIR}
     make check
     make install
     ```
