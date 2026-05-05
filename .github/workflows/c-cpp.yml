@@ -47,5 +47,5 @@ jobs:
     - name: make test
       run: |
         mkdir bin
-        cd src; make test -j2
+        cd src; make -f Makefile_old test -j2
         cd ../bin; ./test.x
